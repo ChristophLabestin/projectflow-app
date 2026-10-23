@@ -60,7 +60,27 @@ const EN = {
     inspect: 'Inspect Element',
     offlineTitle: 'ProjectFlow is offline',
     offlineBody: 'The app could not be loaded. Check your connection — ProjectFlow reconnects automatically.',
-    offlineRetry: 'Try again'
+    offlineRetry: 'Try again',
+    quickCapture: 'Quick Capture',
+    newWindow: 'New Window',
+    openInNewWindow: 'Open in New Window',
+    recent: 'Recent Projects',
+    notificationComplete: 'Complete',
+    notificationSnooze: 'Remind me in 1 h',
+    notificationReplyPlaceholder: 'Comment on the task…',
+    focusPause: 'Pause',
+    focusResume: 'Resume',
+    focusComplete: 'Done',
+    meetingSoonTitle: 'Meeting in {minutes} min',
+    meetingPauseFocusHint: 'pause focus on "{task}"?',
+    meetingPauseFocus: 'Pause focus',
+    meetingNotesPrefix: 'Follow-up',
+    meetingEndedTitle: 'Meeting over',
+    meetingEndedBody: 'Capture notes from "{title}" as tasks?',
+    meetingCapture: 'Capture',
+    dayCloseTitle: 'Time to close the day?',
+    dayCloseBody: 'Review what is still open and set up tomorrow.',
+    dayCloseAction: 'Close day'
 };
 
 export type NativeLabels = typeof EN;
@@ -121,7 +141,27 @@ const DE: NativeLabels = {
     inspect: 'Element untersuchen',
     offlineTitle: 'ProjectFlow ist offline',
     offlineBody: 'Die App konnte nicht geladen werden. Prüfe deine Verbindung – ProjectFlow verbindet sich automatisch neu.',
-    offlineRetry: 'Erneut versuchen'
+    offlineRetry: 'Erneut versuchen',
+    quickCapture: 'Schnell erfassen',
+    newWindow: 'Neues Fenster',
+    openInNewWindow: 'In neuem Fenster öffnen',
+    recent: 'Zuletzt geöffnet',
+    notificationComplete: 'Erledigt',
+    notificationSnooze: 'In 1 Std. erinnern',
+    notificationReplyPlaceholder: 'Kommentar zur Aufgabe …',
+    focusPause: 'Pause',
+    focusResume: 'Fortsetzen',
+    focusComplete: 'Erledigt',
+    meetingSoonTitle: 'Meeting in {minutes} Min.',
+    meetingPauseFocusHint: 'Fokus auf „{task}“ pausieren?',
+    meetingPauseFocus: 'Fokus pausieren',
+    meetingNotesPrefix: 'Nachbereitung',
+    meetingEndedTitle: 'Meeting vorbei',
+    meetingEndedBody: 'Notizen aus „{title}“ als Aufgaben erfassen?',
+    meetingCapture: 'Erfassen',
+    dayCloseTitle: 'Feierabend?',
+    dayCloseBody: 'Schau, was noch offen ist, und plane morgen.',
+    dayCloseAction: 'Tag abschließen'
 };
 
 let current: NativeLabels | null = null;

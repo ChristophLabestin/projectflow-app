@@ -34,7 +34,7 @@ if (!fs.existsSync(plist)) process.exit(0);
 
 const read = (key) => {
     try {
-        return execFileSync('/usr/libexec/PlistBuddy', ['-c', `Print :${key}`, plist], { encoding: 'utf8' }).trim();
+        return execFileSync('/usr/libexec/PlistBuddy', ['-c', `Print :${key}`, plist], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
     } catch {
         return null;
     }
@@ -44,12 +44,29 @@ const set = (key, value) => {
     execFileSync('/usr/libexec/PlistBuddy', ['-c', command, plist]);
 };
 
+const CALENDAR_TEXT = 'ProjectFlow reads your upcoming meetings to pause your focus task and to offer capturing meeting notes.';
+const hasDocumentTypes = read('CFBundleDocumentTypes:0:CFBundleTypeRole') === 'Viewer';
+
 const iconCurrent = fs.existsSync(targetIcon) && fs.readFileSync(targetIcon).equals(fs.readFileSync(icon));
-if (!renamed && read('CFBundleName') === NAME && read('CFBundleIdentifier') === BUNDLE_ID && iconCurrent) process.exit(0);
+if (!renamed && hasDocumentTypes && read('NSCalendarsFullAccessUsageDescription') && read('CFBundleName') === NAME && read('CFBundleIdentifier') === BUNDLE_ID && iconCurrent) process.exit(0);
 
 set('CFBundleName', NAME);
 set('CFBundleDisplayName', NAME);
 set('CFBundleIdentifier', BUNDLE_ID);
+set('NSCalendarsUsageDescription', `'${CALENDAR_TEXT}'`);
+set('NSCalendarsFullAccessUsageDescription', `'${CALENDAR_TEXT}'`);
+// Accept any file dropped onto the Dock icon (never becomes the default app for a file type).
+if (!hasDocumentTypes) {
+    const run = (command) => execFileSync('/usr/libexec/PlistBuddy', ['-c', command, plist], { stdio: 'ignore' });
+    try { run('Delete :CFBundleDocumentTypes'); } catch { /* not present */ }
+    run('Add :CFBundleDocumentTypes array');
+    run('Add :CFBundleDocumentTypes:0 dict');
+    run('Add :CFBundleDocumentTypes:0:CFBundleTypeName string Attachment');
+    run('Add :CFBundleDocumentTypes:0:CFBundleTypeRole string Viewer');
+    run('Add :CFBundleDocumentTypes:0:LSHandlerRank string None');
+    run('Add :CFBundleDocumentTypes:0:LSItemContentTypes array');
+    run('Add :CFBundleDocumentTypes:0:LSItemContentTypes:0 string public.item');
+}
 fs.copyFileSync(icon, targetIcon);
 // Editing the bundle breaks Electron's ad-hoc signature; re-sign so macOS keeps launching it.
 execFileSync('codesign', ['--force', '--deep', '--sign', '-', appDir], { stdio: 'ignore' });

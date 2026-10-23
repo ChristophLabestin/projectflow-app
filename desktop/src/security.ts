@@ -49,9 +49,17 @@ export const applySessionSecurity = () => {
 
 const isOfflinePage = (url: string) => url.startsWith('file://') && url.includes('offline.html');
 
+let openAppWindow: ((path: string) => void) | null = null;
+
+/** window.open / ⌘-click on an app URL opens a ProjectFlow window instead of the browser. */
+export const setAppWindowOpener = (opener: (path: string) => void) => {
+    openAppWindow = opener;
+};
+
 /** Navigation + window.open policy for an app window (main or quick access). */
 export const hardenAppContents = (contents: WebContents) => {
     contents.setWindowOpenHandler(({ url }) => {
+        // Auth popups are app-origin URLs too, so they must be matched first.
         if (isAuthPopupUrl(url)) {
             return {
                 action: 'allow',
@@ -63,6 +71,11 @@ export const hardenAppContents = (contents: WebContents) => {
                     webPreferences: { preload: undefined, sandbox: true, contextIsolation: true, nodeIntegration: false }
                 }
             };
+        }
+        if (isAppUrl(url) && openAppWindow) {
+            const parsed = new URL(url);
+            openAppWindow(`${parsed.pathname}${parsed.search}${parsed.hash}`);
+            return { action: 'deny' };
         }
         openExternalSafe(url);
         return { action: 'deny' };

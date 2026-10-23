@@ -34,6 +34,7 @@
     },
     "files": [
       "dist/**",
+      "!dist/native/**",
       "assets/**",
       "package.json"
     ],
@@ -62,7 +63,30 @@
           ]
         }
       ],
-      "hardenedRuntime": true
+      "hardenedRuntime": true,
+      "extendInfo": {
+        "NSCalendarsUsageDescription": "ProjectFlow reads your upcoming meetings to pause your focus task and to offer capturing meeting notes.",
+        "NSCalendarsFullAccessUsageDescription": "ProjectFlow reads your upcoming meetings to pause your focus task and to offer capturing meeting notes.",
+        "CFBundleDocumentTypes": [
+          {
+            "CFBundleTypeName": "Attachment",
+            "CFBundleTypeRole": "Viewer",
+            "LSHandlerRank": "None",
+            "LSItemContentTypes": [
+              "public.item"
+            ]
+          }
+        ]
+      },
+      "extraResources": [
+        {
+          "from": "dist/native",
+          "to": "native",
+          "filter": [
+            "pf-calendar"
+          ]
+        }
+      ]
     },
     "win": {
       "icon": "assets/icon.png",

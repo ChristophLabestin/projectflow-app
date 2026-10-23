@@ -23,6 +23,8 @@ These routes must remain accessible without being logged in.
 - [x] `/feedback/initiative/:token` — Public initiative feedback form with required-field validation that creates linked initiative tasks from customer submissions
 - [x] `/ui` — Component Style Guide (Dev only). Includes tokens, typography, buttons, cards, inputs, date/time, media library, badges, checkboxes/toggles, max-width container categories, Level of Depth guidance, and next standardization candidates.
 - [x] `/desktop/quick-access` — Desktop app only (Electron shell, `desktop/`): content of the Quick Access pop-out window (`QuickAccessWindow` → `PinnedTasksModal variant="window"`). Rendered inside `RootLayout` without `AppLayout` and without global overlays; in a normal browser it redirects to `/`.
+- [x] `/desktop/capture` — Desktop only: Quick Capture panel (`QuickCaptureWindow`), opened by the global shortcut.
+- [x] `/desktop/day?mode=start|close` — Desktop only: day start / day close window (`DesktopDayWindow`, plan logic from `utils/dayPlan`).
 
 ---
 

@@ -1,13 +1,16 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useHelpCenter } from '../../context/HelpCenterContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { usePinnedTasks } from '../../context/PinnedTasksContext';
 import { useTheme } from '../../context/ThemeContext';
-import { useUIState } from '../../context/UIContext';
+import { useToast, useUIState } from '../../context/UIContext';
+import { SettingsModal } from '../SettingsModal';
+import { addComment } from '../../services/dataService';
+import { attachFilesToItem, canAttachToItem, completeItem, filesFromPayload } from '../../services/desktopActions';
 import { useWorkspace } from '../../context/WorkspaceContext';
-import { subscribeToNotifications } from '../../services/notificationService';
+import { markNotificationAsRead, subscribeToNotifications } from '../../services/notificationService';
 import { DESKTOP_OPEN_SEARCH_EVENT, getDesktopBridge, hasDesktopCapability, pinnedItemPath, type DesktopCommandEvent } from '../../services/desktop';
 import type { Notification } from '../../types';
 
@@ -19,8 +22,7 @@ const COMMAND_ROUTES: Partial<Record<DesktopCommandEvent['command'], string>> = 
     'go-projects': '/projects',
     'go-tasks': '/tasks',
     'go-calendar': '/calendar',
-    'go-notifications': '/notifications',
-    'open-settings': '/profile'
+    'go-notifications': '/notifications'
 };
 
 const notificationPath = (notification: Notification) => {
@@ -28,6 +30,34 @@ const notificationPath = (notification: Notification) => {
     if (notification.projectId) return `/project/${notification.projectId}`;
     if (notification.deepLink?.startsWith('/')) return notification.deepLink;
     return '/notifications';
+};
+
+type BridgeHandlers = {
+    showSuccess: (message: string) => void;
+    showError: (message: string, details?: string) => void;
+    t: (key: string) => string;
+};
+
+/** Buttons and inline reply of native notifications (macOS), handled without opening the window. */
+const handleNotificationAction = async (data: Record<string, unknown> | undefined, handlers: BridgeHandlers) => {
+    const str = (value: unknown) => (typeof value === 'string' && value ? value : undefined);
+    const action = str(data?.action);
+    const notificationId = str(data?.notificationId);
+    const taskId = str(data?.taskId);
+    const projectId = str(data?.projectId);
+    const tenantId = str(data?.tenantId);
+    try {
+        if (action === 'complete' && taskId && projectId) {
+            await completeItem({ id: taskId, type: 'task', projectId, tenantId });
+            handlers.showSuccess(handlers.t('desktop.toast.taskCompleted'));
+        } else if (action === 'reply' && taskId && projectId && str(data?.text)) {
+            await addComment(projectId, taskId, 'task', str(data?.text)!, tenantId);
+            handlers.showSuccess(handlers.t('desktop.toast.replied'));
+        }
+        if (notificationId && action !== 'snooze') await markNotificationAsRead(notificationId, tenantId);
+    } catch {
+        handlers.showError(handlers.t('desktop.toast.actionFailed'));
+    }
 };
 
 const readNotifiedIds = () => {
@@ -83,20 +113,26 @@ export const DesktopBridge = () => {
     const bridge = getDesktopBridge();
     const navigate = useNavigate();
     const { user } = useAuth();
-    const { language } = useLanguage();
+    const { language, t } = useLanguage();
     const { theme } = useTheme();
     const { activeWorkspaceId } = useWorkspace();
     const { openTaskCreateModal, openProjectCreateModal } = useUIState();
     const { openHelpCenter } = useHelpCenter();
-    const { isModalOpen, toggleModal, pinnedItems, focusItem, focusState } = usePinnedTasks();
+    const { isModalOpen, toggleModal, pinnedItems, focusItem, focusState, snoozeFocusItem, startFocusItem, completeFocusItem } = usePinnedTasks();
+    const { showSuccess, showError, showInfo } = useToast();
+    const [settingsOpen, setSettingsOpen] = useState(false);
 
-    const handlersRef = useRef({ navigate, openTaskCreateModal, openProjectCreateModal, openHelpCenter, isModalOpen, toggleModal });
-    handlersRef.current = { navigate, openTaskCreateModal, openProjectCreateModal, openHelpCenter, isModalOpen, toggleModal };
+    const handlers = {
+        navigate, openTaskCreateModal, openProjectCreateModal, openHelpCenter, isModalOpen, toggleModal,
+        focusItem, snoozeFocusItem, startFocusItem, completeFocusItem, showSuccess, showError, showInfo, t
+    };
+    const handlersRef = useRef(handlers);
+    handlersRef.current = handlers;
 
     // Commands from menus, tray, dock, deep links and notification clicks.
     useEffect(() => {
         if (!bridge) return;
-        const unsubscribe = bridge.onCommand(({ command, path }) => {
+        const unsubscribe = bridge.onCommand(({ command, path, data }) => {
             const handlers = handlersRef.current;
             const route = COMMAND_ROUTES[command];
             if (route) {
@@ -122,6 +158,48 @@ export const DesktopBridge = () => {
                 case 'open-quick-access-modal':
                     if (!handlers.isModalOpen) handlers.toggleModal();
                     break;
+                case 'open-settings':
+                    setSettingsOpen(true);
+                    break;
+                case 'focus-pause': {
+                    const minutes = typeof data?.minutes === 'number' ? data.minutes : 60;
+                    if (handlers.focusItem) handlers.snoozeFocusItem(minutes);
+                    break;
+                }
+                case 'focus-resume':
+                    if (handlers.focusItem) handlers.startFocusItem(handlers.focusItem);
+                    break;
+                case 'focus-complete': {
+                    const item = handlers.focusItem;
+                    if (!item) break;
+                    void completeItem(item)
+                        .then(() => {
+                            handlers.completeFocusItem(item.id);
+                            handlers.showSuccess(handlers.t('desktop.toast.focusCompleted').replace('{title}', item.title));
+                        })
+                        .catch(() => handlers.showError(handlers.t('desktop.toast.actionFailed')));
+                    break;
+                }
+                case 'notification-action':
+                    void handleNotificationAction(data, handlers);
+                    break;
+                case 'attach-files': {
+                    const files = filesFromPayload(data?.files);
+                    const item = handlers.focusItem;
+                    if (!files.length) {
+                        handlers.showError(handlers.t('desktop.toast.filesTooLarge'));
+                        break;
+                    }
+                    if (!canAttachToItem(item)) {
+                        handlers.showInfo(handlers.t('desktop.toast.attachNeedsFocus'));
+                        break;
+                    }
+                    handlers.showInfo(handlers.t('desktop.toast.attaching').replace('{count}', String(files.length)));
+                    void attachFilesToItem(files, item)
+                        .then((count) => handlers.showSuccess(handlers.t('desktop.toast.attached').replace('{count}', String(count)).replace('{title}', item.title)))
+                        .catch(() => handlers.showError(handlers.t('desktop.toast.actionFailed')));
+                    break;
+                }
             }
         });
         // Only now may the shell flush queued commands (cold-start deep links).
@@ -192,12 +270,17 @@ export const DesktopBridge = () => {
                     id: notification.id,
                     title: notification.title,
                     body: notification.message,
-                    path: notificationPath(notification)
+                    path: notificationPath(notification),
+                    taskId: notification.taskId,
+                    projectId: notification.projectId,
+                    tenantId: notification.tenantId || activeWorkspaceId || undefined
                 });
             });
         }, activeWorkspaceId || undefined);
         return () => unsubscribe();
     }, [bridge, user, activeWorkspaceId]);
 
-    return null;
+    return settingsOpen ? (
+        <SettingsModal isOpen initialTab="desktop" onClose={() => setSettingsOpen(false)} />
+    ) : null;
 };

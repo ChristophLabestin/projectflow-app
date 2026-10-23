@@ -14,10 +14,40 @@ export interface DesktopSettings {
     lastBackground?: string;
     /** Global pop-out shortcut; null disables it. */
     quickAccessShortcut?: string | null;
+    /** Global Quick Capture shortcut; null disables it. */
+    quickCaptureShortcut?: string | null;
+    launchAtLogin: boolean;
+    dayStartEnabled: boolean;
+    dayCloseEnabled: boolean;
+    /** HH:MM local time for the day-close prompt. */
+    dayCloseTime: string;
+    lastDayStart?: string;
+    lastDayClose?: string;
+    calendarEnabled: boolean;
+    meetingLeadMinutes: number;
+    /** macOS Shortcuts run when a focus task starts / stops (e.g. to toggle a Focus mode); empty = off. */
+    focusShortcutOn: string;
+    focusShortcutOff: string;
+    mediaKeysEnabled: boolean;
+    /** Recently opened projects (Dock menu / Windows jump list). */
+    recents: { path: string; title: string }[];
+    /** Extra windows restored on launch. */
+    secondaryWindows: { path: string; bounds?: Rectangle }[];
 }
 
 const DEFAULTS: DesktopSettings = {
-    quickAccessAlwaysOnTop: true
+    quickAccessAlwaysOnTop: true,
+    launchAtLogin: false,
+    dayStartEnabled: true,
+    dayCloseEnabled: true,
+    dayCloseTime: '17:30',
+    calendarEnabled: false,
+    meetingLeadMinutes: 5,
+    focusShortcutOn: '',
+    focusShortcutOff: '',
+    mediaKeysEnabled: false,
+    recents: [],
+    secondaryWindows: []
 };
 
 let cache: DesktopSettings | null = null;
@@ -68,4 +98,10 @@ export const visibleBounds = (bounds?: Rectangle): Rectangle | undefined => {
         && bounds.y + bounds.height > workArea.y
     ));
     return visible ? bounds : undefined;
+};
+
+/** Local calendar day, e.g. 2026-10-23 (day start/close run once per day). */
+export const todayKey = () => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 };

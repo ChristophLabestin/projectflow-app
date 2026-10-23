@@ -9,6 +9,9 @@ import {
     IPC,
     type DesktopCommandEvent,
     type DesktopNotificationPayload,
+    type DesktopPreferences,
+    type DesktopPreferencesInfo,
+    type OpenWindowRequest,
     type DesktopWindowState,
     type QuickAccessAction,
     type QuickAccessState,
@@ -69,6 +72,12 @@ if (location.origin === appOrigin) {
         setBadge: (count: number, overlayDataUrl?: string | null) => ipcRenderer.send(IPC.setBadge, { count, overlayDataUrl }),
         notify: (payload: DesktopNotificationPayload) => ipcRenderer.send(IPC.notify, payload),
         updateTray: (snapshot: TraySnapshot) => ipcRenderer.send(IPC.updateTray, snapshot),
-        setLanguage: (language: 'de' | 'en') => ipcRenderer.send(IPC.setLanguage, language)
+        setLanguage: (language: 'de' | 'en') => ipcRenderer.send(IPC.setLanguage, language),
+        getPreferences: (): Promise<DesktopPreferencesInfo> => ipcRenderer.invoke(IPC.getPreferences),
+        setPreferences: (patch: Partial<DesktopPreferences>): Promise<DesktopPreferencesInfo> => ipcRenderer.invoke(IPC.setPreferences, patch),
+        openWindow: (request: OpenWindowRequest) => ipcRenderer.send(IPC.openWindow, request),
+        closeSelf: () => ipcRenderer.send(IPC.closeSelf),
+        addRecent: (recent: { path: string; title: string }) => ipcRenderer.send(IPC.addRecent, recent),
+        onWindowPayload: (callback: (payload: Record<string, unknown>) => void) => subscribe(IPC.windowPayload, callback)
     });
 }

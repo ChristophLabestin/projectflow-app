@@ -25,7 +25,9 @@ import { PinnedTasksModal } from './components/PinnedTasksModal';
 import { DesktopBridge } from './components/desktop/DesktopBridge';
 import { DesktopTitleBar } from './components/desktop/DesktopTitleBar';
 import { QuickAccessWindow } from './screens/QuickAccessWindow';
-import { DESKTOP_QUICK_ACCESS_PATH, isDesktop, isDesktopQuickAccessWindow } from './services/desktop';
+import { QuickCaptureWindow } from './screens/QuickCaptureWindow';
+import { DesktopDayWindow } from './screens/DesktopDayWindow';
+import { DESKTOP_QUICK_ACCESS_PATH, desktopWindowKind, isDesktop } from './services/desktop';
 import { ErrorPage } from './screens/ErrorPage';
 import { HelpCenterDrawer } from './components/help/HelpCenterDrawer';
 import { HelpCenterFloatingButton } from './components/help/HelpCenterFloatingButton';
@@ -141,8 +143,11 @@ const RootLayout = () => {
     const location = useLocation();
     const isPublicRoute = /^(\/login|\/register|\/invite|\/auth\/action|\/legal|\/feedback)/.test(location.pathname);
 
-    // Desktop Quick Access pop-out: only the panel, none of the global overlays (no second modal, help, banners).
-    if (location.pathname === DESKTOP_QUICK_ACCESS_PATH && isDesktopQuickAccessWindow()) {
+    // Desktop utility windows (Quick Access pop-out, Quick Capture, day window): only their own content,
+    // none of the global overlays (no second Quick Access modal, help, banners, bridge).
+    const windowKind = desktopWindowKind();
+    const isUtilityWindow = windowKind === 'quick-access' || windowKind === 'capture' || windowKind === 'day';
+    if (isUtilityWindow && location.pathname.startsWith('/desktop/')) {
         return (
             <>
                 <GlobalToast />
@@ -155,7 +160,7 @@ const RootLayout = () => {
     return (
         <>
             {isDesktop() && <DesktopTitleBar mode={isPublicRoute ? 'overlay' : 'inline'} />}
-            {isDesktop() && !isDesktopQuickAccessWindow() && <DesktopBridge />}
+            {windowKind === 'main' && <DesktopBridge />}
             <GlobalToast />
             <OfflineBanner />
             <GlobalConfirmationModal />
@@ -212,6 +217,8 @@ export const AppRouter = () => {
                     <Route path="/invite/:tenantId/:inviteId" element={<AcceptInvite />} />
                     <Route path="/feedback/initiative/:token" element={withRouteSuspense(<PublicInitiativeFeedbackPage />)} />
                     <Route path={DESKTOP_QUICK_ACCESS_PATH} element={<QuickAccessWindow />} />
+                    <Route path="/desktop/capture" element={<QuickCaptureWindow />} />
+                    <Route path="/desktop/day" element={<DesktopDayWindow />} />
                     {/* Public project intake was removed; old share links land on the app start. */}
                     <Route path="/feedback/project/:token" element={<Navigate to="/" replace />} />
 

@@ -5,10 +5,13 @@
 export const BRIDGE_VERSION = 1;
 
 /** Feature flags the web app checks before calling into the bridge (old shells meet new web code). */
-export const CAPABILITIES = ['titlebar', 'app-menu', 'popout', 'badge', 'tray', 'notifications', 'language'] as const;
+export const CAPABILITIES = [
+    'titlebar', 'app-menu', 'popout', 'badge', 'tray', 'notifications', 'language',
+    'preferences', 'quick-capture', 'notification-actions', 'day-flow', 'file-drop', 'calendar', 'recents', 'windows'
+] as const;
 export type DesktopCapability = typeof CAPABILITIES[number];
 
-export type WindowKind = 'main' | 'quick-access';
+export type WindowKind = 'main' | 'quick-access' | 'capture' | 'day' | 'secondary';
 
 /** Commands from menus, tray, dock, jump list and shortcuts; routed by the web app's DesktopBridge. */
 export type DesktopCommand =
@@ -23,11 +26,45 @@ export type DesktopCommand =
     | 'go-tasks'
     | 'go-calendar'
     | 'go-notifications'
-    | 'navigate';
+    | 'navigate'
+    | 'focus-pause'
+    | 'focus-resume'
+    | 'focus-complete'
+    | 'notification-action'
+    | 'attach-files';
 
 export interface DesktopCommandEvent {
     command: DesktopCommand;
     path?: string;
+    data?: Record<string, unknown>;
+}
+
+/** User-facing shell preferences (Settings → Desktop). */
+export interface DesktopPreferences {
+    launchAtLogin: boolean;
+    quickCaptureShortcut: string | null;
+    quickAccessShortcut: string | null;
+    dayStartEnabled: boolean;
+    dayCloseEnabled: boolean;
+    dayCloseTime: string;
+    calendarEnabled: boolean;
+    meetingLeadMinutes: number;
+    focusShortcutOn: string;
+    focusShortcutOff: string;
+    mediaKeysEnabled: boolean;
+}
+
+export interface DesktopPreferencesInfo extends DesktopPreferences {
+    /** Platform support, so the settings UI can hide what does not exist there. */
+    supports: { calendar: boolean; focusShortcuts: boolean; touchBar: boolean; notificationActions: boolean };
+    /** Result of the last calendar access attempt. */
+    calendarStatus: 'unknown' | 'granted' | 'denied' | 'unavailable';
+}
+
+export interface DesktopFilePayload {
+    name: string;
+    type: string;
+    bytes: Uint8Array;
 }
 
 export interface DesktopWindowState {
@@ -57,6 +94,10 @@ export interface DesktopNotificationPayload {
     title: string;
     body?: string;
     path?: string;
+    /** Task context enables the native actions (complete, snooze, reply). */
+    taskId?: string;
+    projectId?: string;
+    tenantId?: string;
 }
 
 export interface TraySnapshot {
@@ -78,8 +119,20 @@ export const IPC = {
     setBadge: 'pf:set-badge',
     notify: 'pf:notify',
     updateTray: 'pf:update-tray',
-    setLanguage: 'pf:set-language'
+    setLanguage: 'pf:set-language',
+    getPreferences: 'pf:get-preferences',
+    setPreferences: 'pf:set-preferences',
+    openWindow: 'pf:open-window',
+    closeSelf: 'pf:close-self',
+    addRecent: 'pf:add-recent',
+    windowPayload: 'pf:window-payload'
 } as const;
+
+/** Windows the web app may ask the shell to open. */
+export type OpenWindowRequest =
+    | { kind: 'capture'; text?: string }
+    | { kind: 'day'; mode: 'start' | 'close' }
+    | { kind: 'secondary'; path: string };
 
 export type WindowAction = 'minimize' | 'toggle-maximize' | 'close' | 'back' | 'forward';
 /** `dock` closes the pop-out and reopens the Quick Access modal in the main window. */

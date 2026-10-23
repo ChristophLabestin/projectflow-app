@@ -342,3 +342,45 @@ Open / not verified:
 - Windows build on real hardware (title bar overlay colors, Alt/F10 menu, accelerators with hidden menu bar, overlay badge, AUMID toasts).
 - Phase 1b system-browser OAuth handoff (one-time code callable + `projectflow://auth`), Windows Hello passkeys.
 - Deep links and notification toasts only work fully in a packaged build (macOS); signing/notarization and auto-update (Phase 4).
+
+## 15. Desktop features round 2 (2026-10-23)
+
+Built on owner request ("strong additions" + Quick Capture + small extras). Shell code in `desktop/src/features/`
+(`notifications`, `calendar`, `focus`, `dayFlow`, `files`, `preferences`) and `desktop/src/windows/auxWindows.ts`;
+web side in `screens/QuickCaptureWindow.tsx`, `screens/DesktopDayWindow.tsx`, `components/settings/DesktopSettingsPanel.tsx`,
+`services/desktopActions.ts`, `utils/quickCapture.ts`. Bridge capabilities: `preferences`, `quick-capture`,
+`notification-actions`, `day-flow`, `file-drop`, `calendar`, `recents`, `windows` (optional methods, feature-detected).
+
+- **Quick Capture** (`⌃⌘N` / `Ctrl+Shift+Alt+N`, tray, Dock, File menu, Touch Bar): non-activating panel (macOS
+  `type: 'panel'`) on the display under the cursor, hides on blur. Parser: `#project` (fuzzy picker), `!`/`!!`/`!!!`
+  or `!hoch|!high…`, `heute|morgen|übermorgen`; no project → personal task; optional pin; `⌘↩` opens it in the main
+  window; clipboard text offered as a chip (read by main only when the panel opens).
+- **Interactive notifications** (macOS): Complete, "Remind me in 1 h" (main re-shows after 1 h) and inline Reply
+  (comment on the task); handled in the background by `DesktopBridge` (`notification-action`). Windows: plain toasts.
+- **Day start / day close**: first unlock/wake/launch between 5–12 h opens `/desktop/day?mode=start` once a day
+  (Dashboard plan logic `utils/dayPlan`, start focus from the list). At the configured time — only when the user is
+  active (`powerMonitor` idle < 10 min) — a notification offers `/desktop/day?mode=close` (complete, move to tomorrow,
+  end focus). Launch at login (packaged builds only).
+- **File drop**: files on the Dock icon (`open-file`, `CFBundleDocumentTypes` public.item, rank None) or the Windows
+  shortcut/"Open with" (argv) attach to the current focus task; files dropped on the Quick Access pop-out attach to the
+  shown item. Upload via `uploadTenantFile` + one comment with the links (project tasks/initiatives only, ≤5 files, ≤25 MB).
+- **Calendar & meetings** (macOS, opt-in): bundled EventKit helper `desktop/native/calendar-events.swift`
+  (`dist/native/pf-calendar`, `extraResources` when packaged, `NSCalendars*UsageDescription`). Polls every 2 min;
+  N min before a meeting → "pause focus?" (snooze for the meeting length); after it → "capture notes?" (opens Quick
+  Capture prefilled). Windows: unsupported (no local calendar API) — hidden in settings.
+- **Recents**: projects opened in `AppLayout` → File › Recent, Dock menu, Windows jump list (deep links
+  `projectflow://…`, `/desktop/command/new-task|quick-capture`).
+- **Multiple windows**: File › New Window (`⌘⌥N`), context menu "Open in New Window", `window.open`/⌘-click on app links;
+  `secondary` windows have the title bar but no bridge duties; restored on launch.
+- **Focus-mode coupling** (macOS): user-named Shortcuts run on focus start/stop (`shortcuts run`), e.g. to toggle
+  Do Not Disturb — macOS has no API to set Focus modes directly. **Touch Bar**: Quick Capture, Quick Access, focus
+  title, Pause/Resume, Done. **Media key** Play/Pause toggles the focus (opt-in).
+- **Settings → Desktop app** (`SettingsModal` tab, menu `⌘,`): all of the above per device (stored by the shell).
+
+Not possible / open:
+- Spotlight / Windows Search indexing of tasks needs CoreSpotlight/Windows Search integration from a signed native
+  module — replaced by recents (Dock menu, jump list) and Quick Capture; revisit with signing (Phase 4).
+- Uploads do not work against the local emulator (callable cannot sign URLs without a service account), so file drop
+  is verified up to the upload call only.
+- The calendar helper is built for the host architecture; a universal macOS build needs a `lipo`-merged helper.
+- Notification actions need the user to allow notifications for the (dev) bundle once.

@@ -13,6 +13,7 @@ import { subscribeUserStatusPreference } from '../services/domain/userStatusServ
 import { subscribeProjectTasks } from '../services/domain/tasksService';
 import { isProjectExcludedFromHealth } from '../services/healthService';
 import { isClientProject } from '../config/projectTemplates';
+import { getDesktopBridge } from '../services/desktop';
 
 const Sidebar = lazy(() => import('./Sidebar').then((module) => ({ default: module.Sidebar })));
 const TopBar = lazy(() => import('./TopBar').then((module) => ({ default: module.TopBar })));
@@ -163,6 +164,12 @@ export const AppLayout = () => {
         });
         return () => unsub();
     }, [user?.uid]);
+
+    // Desktop app: recently opened projects feed the Dock menu / Windows jump list.
+    useEffect(() => {
+        if (!projectId || !project?.title || project.id !== projectId) return;
+        getDesktopBridge()?.addRecent?.({ path: `/project/${projectId}`, title: project.title });
+    }, [projectId, project?.id, project?.title]);
 
     useEffect(() => {
         if (!project?.companyProjectId) {

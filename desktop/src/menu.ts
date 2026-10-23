@@ -3,7 +3,9 @@ import { IS_DEV } from './config';
 import type { DesktopCommand } from './contract';
 import { labels } from './labels';
 import { openExternalSafe } from './security';
-import { getMainWindow, sendCommand, setZoomLevel, showMainWindow } from './windows/mainWindow';
+import { getSettings, updateSettings } from './store';
+import { showCapture } from './windows/auxWindows';
+import { createSecondaryWindow, getMainWindow, sendCommand, setZoomLevel, showMainWindow } from './windows/mainWindow';
 import { getQuickAccessState, setQuickAccessAlwaysOnTop, toggleQuickAccess } from './windows/quickAccess';
 
 const isMac = process.platform === 'darwin';
@@ -26,6 +28,59 @@ const command = (label: string, id: DesktopCommand, accelerator?: string, extra:
 const pageShortcut = { registerAccelerator: false } as const;
 
 const mainContents = () => getMainWindow()?.webContents;
+
+/** Path of the focused app window, so "New Window" duplicates what the user is looking at. */
+const currentPath = () => {
+    const contents = (BrowserWindow.getFocusedWindow() ?? getMainWindow())?.webContents;
+    try {
+        const url = new URL(contents?.getURL() || '');
+        return url.pathname.startsWith('/desktop/') ? '/' : `${url.pathname}${url.search}`;
+    } catch {
+        return '/';
+    }
+};
+
+const MAX_RECENTS = 6;
+
+/** Recently opened projects, reported by the web app; shown in File, the Dock menu and the Windows jump list. */
+export const addRecent = (recent: { path: string; title: string }) => {
+    const recents = [recent, ...getSettings().recents.filter((item) => item.path !== recent.path)].slice(0, MAX_RECENTS);
+    const changed = JSON.stringify(recents) !== JSON.stringify(getSettings().recents);
+    if (!changed) return;
+    updateSettings({ recents });
+    installMenus();
+};
+
+const recentsSubmenu = (): MenuItemConstructorOptions[] => {
+    const recents = getSettings().recents;
+    if (!recents.length) return [];
+    return [{
+        label: labels().recent,
+        submenu: recents.map((item) => ({ label: item.title, click: () => runCommand('navigate', item.path) }))
+    }];
+};
+
+/** Windows jump list: tasks + recent projects, launched as deep links into the running instance. */
+const applyJumpList = () => {
+    if (process.platform !== 'win32') return;
+    const l = labels();
+    const link = (title: string, target: string) => ({
+        type: 'task' as const,
+        title,
+        program: process.execPath,
+        args: `${process.defaultApp ? `"${process.argv[1]}" ` : ''}projectflow://${target.replace(/^\//, '')}`,
+        iconPath: process.execPath,
+        iconIndex: 0
+    });
+    app.setJumpList([
+        { type: 'tasks', items: [link(l.newTask, 'desktop/command/new-task'), link(l.quickCapture, 'desktop/command/quick-capture')] },
+        ...(getSettings().recents.length ? [{
+            type: 'custom' as const,
+            name: l.recent,
+            items: getSettings().recents.map((item) => link(item.title, item.path))
+        }] : [])
+    ]);
+};
 
 export const buildMenuTemplate = (): MenuItemConstructorOptions[] => {
     const l = labels();
@@ -53,6 +108,10 @@ export const buildMenuTemplate = (): MenuItemConstructorOptions[] => {
         submenu: [
             command(l.newTask, 'new-task', 'CmdOrCtrl+N'),
             command(l.newProject, 'new-project', 'CmdOrCtrl+Shift+N'),
+            { label: l.quickCapture, click: () => showCapture() },
+            { type: 'separator' },
+            { label: l.newWindow, accelerator: 'CmdOrCtrl+Alt+N', click: () => createSecondaryWindow(currentPath()) },
+            ...recentsSubmenu(),
             { type: 'separator' },
             ...(!isMac ? [command(l.settings, 'open-settings', 'Ctrl+,'), { type: 'separator' } as MenuItemConstructorOptions] : []),
             { role: 'close', label: l.closeWindow },
@@ -151,10 +210,15 @@ export const installMenus = () => {
     if (isMac) {
         const l = labels();
         app.dock?.setMenu(Menu.buildFromTemplate([
+            ...getSettings().recents.map((item) => ({ label: item.title, click: () => runCommand('navigate', item.path) })),
+            ...(getSettings().recents.length ? [{ type: 'separator' } as MenuItemConstructorOptions] : []),
             command(l.newTask, 'new-task'),
-            { label: l.quickAccessPopOut, click: () => toggleQuickAccess() }
+            { label: l.quickCapture, click: () => showCapture() },
+            { label: l.quickAccessPopOut, click: () => toggleQuickAccess() },
+            { label: l.newWindow, click: () => createSecondaryWindow('/') }
         ]));
     }
+    applyJumpList();
     // Keep the hidden Windows menu bar out of the way (accelerators stay active through the application menu).
     BrowserWindow.getAllWindows().forEach((win) => win.setMenuBarVisibility(false));
 };

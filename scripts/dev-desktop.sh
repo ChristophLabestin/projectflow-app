@@ -12,6 +12,7 @@
 #
 # The Electron renderer exposes Chrome DevTools Protocol on DEBUG_PORT (default 9333) for
 # Playwright/browser tooling: chromium.connectOverCDP('http://127.0.0.1:9333').
+# MAIN_INSPECT_PORT=9339 additionally opens the Node inspector of the main process (shell debugging).
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -82,7 +83,7 @@ fi
 echo "Desktop app → http://localhost:$PORT (CDP on 127.0.0.1:$DEBUG_PORT)"
 cd "$DESKTOP"
 PF_DESKTOP_URL="http://localhost:$PORT" PF_DESKTOP_USER_DATA="$PROFILE_DIR" \
-    "$DESKTOP/node_modules/.bin/electron" . --remote-debugging-port="$DEBUG_PORT" &
+    "$DESKTOP/node_modules/.bin/electron" . --remote-debugging-port="$DEBUG_PORT" ${MAIN_INSPECT_PORT:+--inspect="$MAIN_INSPECT_PORT"} &
 ELECTRON_PID=$!
 
 # If the web stack dies underneath (e.g. another session kills emulators/Vite), the app would keep running

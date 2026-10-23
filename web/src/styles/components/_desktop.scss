@@ -264,3 +264,421 @@ html.is-desktop.desktop-window-quick-access {
         -webkit-app-region: no-drag;
     }
 }
+
+.pinned-tasks-compact--window.is-drop-active::after {
+    content: '';
+    position: absolute;
+    inset: 6px;
+    border: 2px dashed var(--color-primary);
+    border-radius: var(--radius-lg, 12px);
+    background: rgba(var(--color-surface-card-rgb), 0.6);
+    pointer-events: none;
+}
+
+// ---------------------------------------------------------------------------
+// Quick Capture panel (/desktop/capture) — transparent window, the card is the visible part
+// ---------------------------------------------------------------------------
+
+html.is-desktop.desktop-window-capture {
+    background: transparent;
+
+    body,
+    #root {
+        background: transparent;
+        padding-top: 0;
+        height: 100vh;
+    }
+}
+
+.quick-capture {
+    height: 100vh;
+    padding: 16px;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+}
+
+.quick-capture__card {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    border: 1px solid var(--color-surface-border);
+    border-radius: 16px;
+    background: var(--color-surface-card);
+    box-shadow: 0 24px 60px -20px rgba(0, 0, 0, 0.45), 0 2px 8px rgba(0, 0, 0, 0.12);
+    overflow: hidden;
+    -webkit-app-region: drag;
+
+    button,
+    input {
+        -webkit-app-region: no-drag;
+    }
+}
+
+.quick-capture__field {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px 18px;
+}
+
+.quick-capture__icon {
+    font-size: 24px;
+    color: var(--color-text-subtle);
+}
+
+.quick-capture__input {
+    flex: 1;
+    min-width: 0;
+    border: 0;
+    outline: 0;
+    background: transparent;
+    color: var(--color-text-main);
+    font: inherit;
+    font-size: 1.3rem;
+    font-weight: 500;
+
+    &::placeholder {
+        color: var(--color-text-subtle);
+    }
+}
+
+.quick-capture__meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 0 18px 14px;
+}
+
+.quick-capture__chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    height: 26px;
+    padding: 0 10px;
+    border: 1px solid var(--color-surface-border);
+    border-radius: 999px;
+    background: var(--color-surface-bg);
+    color: var(--color-text-muted);
+    font: inherit;
+    font-size: 0.78rem;
+    font-weight: 600;
+
+    .material-symbols-outlined {
+        font-size: 15px;
+    }
+
+    &.is-set {
+        color: var(--color-text-main);
+        border-color: var(--color-surface-border-hover);
+    }
+}
+
+.quick-capture__chip--toggle {
+    cursor: pointer;
+
+    &:hover {
+        background: var(--color-surface-hover);
+    }
+}
+
+.quick-capture__suggestions {
+    list-style: none;
+    margin: 0;
+    padding: 0 8px 8px;
+    border-top: 1px solid var(--color-surface-border);
+}
+
+.quick-capture__suggestion {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 4px;
+    padding: 8px 10px;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--color-text-main);
+    font: inherit;
+    font-size: 0.9rem;
+    text-align: left;
+    cursor: pointer;
+
+    .material-symbols-outlined {
+        font-size: 18px;
+        color: var(--color-text-subtle);
+    }
+
+    &.is-active,
+    &:hover {
+        background: var(--color-surface-hover);
+    }
+}
+
+.quick-capture__footer {
+    padding: 10px 18px;
+    border-top: 1px solid var(--color-surface-border);
+    background: var(--color-surface-bg);
+    font-size: 0.75rem;
+}
+
+.quick-capture__hint {
+    color: var(--color-text-subtle);
+}
+
+.quick-capture__status {
+    font-weight: 600;
+
+    &.is-success {
+        color: var(--color-success);
+    }
+
+    &.is-error {
+        color: var(--color-error);
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Day start / day close window (/desktop/day)
+// ---------------------------------------------------------------------------
+
+html.is-desktop.desktop-window-day #root {
+    padding-top: 0;
+    height: 100vh;
+}
+
+.desktop-day-window {
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    background: var(--color-surface-card);
+}
+
+.desktop-day-window__header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 28px 24px 16px;
+    -webkit-app-region: drag;
+
+    h1 {
+        margin: 0;
+        font-size: 1.6rem;
+        line-height: 1.2;
+        color: var(--color-text-main);
+    }
+
+    button {
+        -webkit-app-region: no-drag;
+    }
+}
+
+.desktop-day-window__eyebrow {
+    margin: 0 0 4px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--color-text-subtle);
+}
+
+.desktop-day-window__summary {
+    margin: 8px 0 0;
+    color: var(--color-text-muted);
+    font-size: 0.9rem;
+}
+
+.desktop-day-window__close {
+    display: inline-flex;
+    padding: 6px;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--color-text-muted);
+    cursor: pointer;
+
+    &:hover {
+        background: var(--color-surface-hover);
+    }
+}
+
+.desktop-day-window__focus {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 0 24px 12px;
+    padding: 10px 12px;
+    border-radius: 12px;
+    background: var(--color-surface-bg);
+    color: var(--color-text-main);
+}
+
+.desktop-day-window__focus-title {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-weight: 600;
+}
+
+.desktop-day-window__list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 4px 16px 16px;
+}
+
+.desktop-day-window__empty,
+.desktop-day-window__more {
+    padding: 12px 8px;
+    color: var(--color-text-muted);
+    font-size: 0.9rem;
+}
+
+.desktop-day-window__item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 8px;
+    border-bottom: 1px solid var(--color-surface-border);
+
+    &.is-handled {
+        opacity: 0.55;
+
+        .desktop-day-window__title {
+            text-decoration: line-through;
+        }
+    }
+}
+
+.desktop-day-window__check {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    flex-shrink: 0;
+    border: 1px solid var(--color-surface-border-hover);
+    border-radius: 999px;
+    background: transparent;
+    color: var(--color-text-subtle);
+    cursor: pointer;
+
+    .material-symbols-outlined {
+        font-size: 16px;
+    }
+
+    &:hover:not(:disabled) {
+        border-color: var(--color-success);
+        color: var(--color-success);
+    }
+}
+
+.desktop-day-window__item--danger .desktop-day-window__check {
+    border-color: var(--color-error);
+}
+
+.desktop-day-window__item--warning .desktop-day-window__check {
+    border-color: var(--color-warning);
+}
+
+.desktop-day-window__copy {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    border: 0;
+    background: transparent;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+
+.desktop-day-window__title {
+    color: var(--color-text-main);
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.desktop-day-window__reason {
+    color: var(--color-text-muted);
+    font-size: 0.8rem;
+}
+
+.desktop-day-window__action {
+    flex-shrink: 0;
+    padding: 4px 10px;
+    border: 1px solid var(--color-surface-border);
+    border-radius: 999px;
+    background: transparent;
+    color: var(--color-text-main);
+    font: inherit;
+    font-size: 0.78rem;
+    font-weight: 600;
+    cursor: pointer;
+
+    &:hover {
+        background: var(--color-surface-hover);
+    }
+}
+
+.desktop-day-window__footer {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 14px 20px;
+    border-top: 1px solid var(--color-surface-border);
+}
+
+// ---------------------------------------------------------------------------
+// Settings → Desktop
+// ---------------------------------------------------------------------------
+
+.desktop-settings__shortcut {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.desktop-settings__shortcut-field {
+    min-width: 120px;
+    height: 36px;
+    padding: 0 12px;
+    border: 1px solid var(--color-surface-border);
+    border-radius: var(--radius-md);
+    background: var(--color-surface-bg);
+    color: var(--color-text-main);
+    font: inherit;
+    font-size: 0.85rem;
+    font-weight: 650;
+    letter-spacing: 0.04em;
+    cursor: pointer;
+
+    &.is-recording {
+        border-color: var(--color-primary);
+        color: var(--color-text-muted);
+    }
+}
+
+.desktop-settings__text {
+    width: 220px;
+    height: 36px;
+    padding: 0 10px;
+    border: 1px solid var(--color-surface-border);
+    border-radius: var(--radius-md);
+    background: var(--color-surface-bg);
+    color: var(--color-text-main);
+    font: inherit;
+    font-size: 0.85rem;
+}
+
+.desktop-settings__actions {
+    display: flex;
+    gap: 16px;
+    padding-top: 8px;
+}

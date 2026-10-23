@@ -1,7 +1,7 @@
 import { BrowserWindow, Menu, clipboard, nativeTheme, type WebContents } from 'electron';
 import path from 'node:path';
-import { APP_ORIGIN, APP_URL, IS_DEV, appUrlFor } from '../config';
-import { IPC, type DesktopCommandEvent, type DesktopWindowState, type TitleBarTheme } from '../contract';
+import { APP_ORIGIN, APP_URL, IS_DEV, appUrlFor, isAppUrl } from '../config';
+import { IPC, type DesktopCommandEvent, type DesktopWindowState, type TitleBarTheme, type WindowKind } from '../contract';
 import { hardenAppContents, openExternalSafe } from '../security';
 import { getSettings, updateSettings, visibleBounds } from '../store';
 import { labels } from '../labels';
@@ -22,7 +22,7 @@ export const isAppQuitting = () => isQuitting;
 
 const preloadPath = () => path.join(__dirname, 'preload.js');
 
-export const windowWebPreferences = (kind: 'main' | 'quick-access') => ({
+export const windowWebPreferences = (kind: WindowKind) => ({
     preload: preloadPath(),
     contextIsolation: true,
     sandbox: true,
@@ -65,8 +65,7 @@ export const applyTitleBarTheme = (theme: TitleBarTheme) => {
     titleBarTheme = theme;
     nativeTheme.themeSource = theme.mode;
     updateSettings({ lastBackground: theme.color });
-    const win = getMainWindow();
-    if (win) syncNativeTitleBar(win);
+    [getMainWindow(), ...secondaryWindows].forEach((win) => { if (win && !win.isDestroyed()) syncNativeTitleBar(win); });
 };
 
 export const setZoomLevel = (win: BrowserWindow, level: number) => {
@@ -135,6 +134,10 @@ const attachContextMenu = (contents: WebContents) => {
             });
             items.push({ type: 'separator' });
         }
+        if (params.linkURL && isAppUrl(params.linkURL)) {
+            const url = new URL(params.linkURL);
+            items.push({ label: l.openInNewWindow, click: () => createSecondaryWindow(`${url.pathname}${url.search}`) });
+        }
         if (params.linkURL) {
             items.push({ label: l.openLinkInBrowser, click: () => openExternalSafe(params.linkURL) });
             items.push({ label: l.copyLink, click: () => clipboard.writeText(params.linkURL) });
@@ -171,9 +174,84 @@ export const attachCommonContentsHandlers = (win: BrowserWindow, onLoadFailed: (
     });
 };
 
+/** Title bar per platform: traffic lights inside our bar (mac), caption-button overlay (Windows). */
+const titleBarOptions = () => {
+    if (process.platform === 'darwin') {
+        return {
+            titleBarStyle: 'hidden' as const,
+            trafficLightPosition: { x: TRAFFIC_LIGHT_X, y: (TITLEBAR_HEIGHT - TRAFFIC_LIGHT_SIZE) / 2 - 2 }
+        };
+    }
+    if (process.platform === 'win32') {
+        return {
+            titleBarStyle: 'hidden' as const,
+            titleBarOverlay: { color: titleBarTheme.color, symbolColor: titleBarTheme.symbolColor, height: TITLEBAR_HEIGHT }
+        };
+    }
+    return {};
+};
+
+// ---------------------------------------------------------------------------
+// Secondary windows ("open in new window"): same chrome, no bridge duties; restored on launch.
+// ---------------------------------------------------------------------------
+
+const secondaryWindows = new Set<BrowserWindow>();
+
+const persistSecondaryWindows = () => {
+    if (isQuitting) return;
+    updateSettings({
+        secondaryWindows: [...secondaryWindows]
+            .filter((win) => !win.isDestroyed())
+            .map((win) => {
+                const url = new URL(win.webContents.getURL() || APP_ORIGIN);
+                return { path: `${url.pathname}${url.search}`, bounds: win.getBounds() };
+            })
+    });
+};
+
+export const createSecondaryWindow = (pathname: string, savedBounds?: Electron.Rectangle) => {
+    const bounds = visibleBounds(savedBounds);
+    const main = getMainWindow();
+    const offset = main ? main.getBounds() : null;
+    const win = new BrowserWindow({
+        width: bounds?.width ?? 1200,
+        height: bounds?.height ?? 800,
+        x: bounds?.x ?? (offset ? offset.x + 32 : undefined),
+        y: bounds?.y ?? (offset ? offset.y + 32 : undefined),
+        minWidth: 720,
+        minHeight: 480,
+        show: false,
+        title: 'ProjectFlow',
+        backgroundColor: getSettings().lastBackground?.length === 7 ? getSettings().lastBackground : '#f5f5f2',
+        ...titleBarOptions(),
+        webPreferences: windowWebPreferences('secondary')
+    });
+    secondaryWindows.add(win);
+    win.once('ready-to-show', () => win.show());
+    attachCommonContentsHandlers(win, () => undefined);
+    const emit = () => emitWindowState(win);
+    ['maximize', 'unmaximize', 'enter-full-screen', 'leave-full-screen', 'focus', 'blur']
+        .forEach((name) => win.on(name as 'focus', emit));
+    win.webContents.on('did-navigate', emit);
+    win.webContents.on('did-navigate-in-page', () => { emit(); persistSecondaryWindows(); });
+    win.webContents.on('did-finish-load', () => syncNativeTitleBar(win));
+    win.on('moved', persistSecondaryWindows);
+    win.on('resized', persistSecondaryWindows);
+    win.on('closed', () => {
+        secondaryWindows.delete(win);
+        persistSecondaryWindows();
+    });
+    void win.loadURL(appUrlFor(pathname));
+    persistSecondaryWindows();
+    return win;
+};
+
+export const restoreSecondaryWindows = () => {
+    getSettings().secondaryWindows.forEach(({ path: saved, bounds }) => createSecondaryWindow(saved, bounds));
+};
+
 export const createMainWindow = (initialPath = '/') => {
     const settings = getSettings();
-    const isMac = process.platform === 'darwin';
     const isWin = process.platform === 'win32';
     const bounds = visibleBounds(settings.mainBounds);
 
@@ -187,14 +265,7 @@ export const createMainWindow = (initialPath = '/') => {
         show: false,
         title: 'ProjectFlow',
         backgroundColor: settings.lastBackground && settings.lastBackground.length === 7 ? settings.lastBackground : '#f5f5f2',
-        ...(isMac ? {
-            titleBarStyle: 'hidden' as const,
-            trafficLightPosition: { x: TRAFFIC_LIGHT_X, y: (TITLEBAR_HEIGHT - TRAFFIC_LIGHT_SIZE) / 2 - 2 }
-        } : {}),
-        ...(isWin ? {
-            titleBarStyle: 'hidden' as const,
-            titleBarOverlay: { color: titleBarTheme.color, symbolColor: titleBarTheme.symbolColor, height: TITLEBAR_HEIGHT }
-        } : {}),
+        ...titleBarOptions(),
         webPreferences: windowWebPreferences('main')
     });
     mainWindow = win;

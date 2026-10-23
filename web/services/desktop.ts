@@ -5,8 +5,10 @@
  */
 
 export type DesktopPlatform = 'darwin' | 'win32' | 'linux';
-export type DesktopWindowKind = 'main' | 'quick-access';
-export type DesktopCapability = 'titlebar' | 'app-menu' | 'popout' | 'badge' | 'tray' | 'notifications' | 'language';
+export type DesktopWindowKind = 'main' | 'quick-access' | 'capture' | 'day' | 'secondary';
+export type DesktopCapability =
+    | 'titlebar' | 'app-menu' | 'popout' | 'badge' | 'tray' | 'notifications' | 'language'
+    | 'preferences' | 'quick-capture' | 'notification-actions' | 'day-flow' | 'file-drop' | 'calendar' | 'recents' | 'windows';
 
 export type DesktopCommand =
     | 'new-task'
@@ -20,12 +22,42 @@ export type DesktopCommand =
     | 'go-tasks'
     | 'go-calendar'
     | 'go-notifications'
-    | 'navigate';
+    | 'navigate'
+    | 'focus-pause'
+    | 'focus-resume'
+    | 'focus-complete'
+    | 'notification-action'
+    | 'attach-files';
 
 export interface DesktopCommandEvent {
     command: DesktopCommand;
     path?: string;
+    data?: Record<string, unknown>;
 }
+
+export interface DesktopPreferences {
+    launchAtLogin: boolean;
+    quickCaptureShortcut: string | null;
+    quickAccessShortcut: string | null;
+    dayStartEnabled: boolean;
+    dayCloseEnabled: boolean;
+    dayCloseTime: string;
+    calendarEnabled: boolean;
+    meetingLeadMinutes: number;
+    focusShortcutOn: string;
+    focusShortcutOff: string;
+    mediaKeysEnabled: boolean;
+}
+
+export interface DesktopPreferencesInfo extends DesktopPreferences {
+    supports: { calendar: boolean; focusShortcuts: boolean; touchBar: boolean; notificationActions: boolean };
+    calendarStatus: 'unknown' | 'granted' | 'denied' | 'unavailable';
+}
+
+export type DesktopOpenWindowRequest =
+    | { kind: 'capture'; text?: string }
+    | { kind: 'day'; mode: 'start' | 'close' }
+    | { kind: 'secondary'; path: string };
 
 export interface DesktopWindowState {
     isMaximized: boolean;
@@ -67,9 +99,16 @@ export interface DesktopBridge {
     onCommand(callback: (event: DesktopCommandEvent) => void): () => void;
     ready(): void;
     setBadge(count: number, overlayDataUrl?: string | null): void;
-    notify(payload: { id: string; title: string; body?: string; path?: string }): void;
+    notify(payload: { id: string; title: string; body?: string; path?: string; taskId?: string; projectId?: string; tenantId?: string }): void;
     updateTray(snapshot: DesktopTraySnapshot): void;
     setLanguage(language: 'de' | 'en'): void;
+    // Since capabilities 'preferences' … 'windows' (shell 0.2):
+    getPreferences?(): Promise<DesktopPreferencesInfo>;
+    setPreferences?(patch: Partial<DesktopPreferences>): Promise<DesktopPreferencesInfo>;
+    openWindow?(request: DesktopOpenWindowRequest): void;
+    closeSelf?(): void;
+    addRecent?(recent: { path: string; title: string }): void;
+    onWindowPayload?(callback: (payload: Record<string, unknown>) => void): () => void;
 }
 
 declare global {
@@ -87,6 +126,8 @@ export const isDesktop = () => Boolean(getDesktopBridge());
 export const desktopPlatform = (): DesktopPlatform | null => getDesktopBridge()?.platform ?? null;
 
 export const isDesktopQuickAccessWindow = () => getDesktopBridge()?.windowKind === 'quick-access';
+
+export const desktopWindowKind = (): DesktopWindowKind | null => getDesktopBridge()?.windowKind ?? null;
 
 export const hasDesktopCapability = (capability: DesktopCapability) => (
     Boolean(getDesktopBridge()?.capabilities?.includes(capability))

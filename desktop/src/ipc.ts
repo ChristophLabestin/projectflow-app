@@ -1,12 +1,17 @@
-import { BrowserWindow, Notification, app, ipcMain, nativeImage } from 'electron';
+import { BrowserWindow, app, ipcMain, nativeImage } from 'electron';
 import { sanitizeAppPath } from './config';
-import { IPC, type DesktopNotificationPayload, type QuickAccessAction, type TitleBarTheme, type WindowAction } from './contract';
+import { IPC, type DesktopNotificationPayload, type OpenWindowRequest, type QuickAccessAction, type TitleBarTheme, type WindowAction } from './contract';
+import { showAppNotification } from './features/notifications';
+import { getPreferences, setPreferences } from './features/preferences';
+import { refreshTouchBar } from './features/focus';
+import { hideCapture, openDayWindow, showCapture } from './windows/auxWindows';
 import { setLanguage } from './labels';
-import { installMenus } from './menu';
+import { addRecent, installMenus } from './menu';
 import { isTrustedSender } from './security';
 import { refreshTray, updateTray } from './tray';
 import {
     applyTitleBarTheme,
+    createSecondaryWindow,
     getMainWindow,
     getWindowState,
     markRendererReady,
@@ -25,28 +30,6 @@ import {
 } from './windows/quickAccess';
 
 const COLOR = /^#[0-9a-f]{6}([0-9a-f]{2})?$/i;
-const shownNotifications = new Map<string, Notification>();
-
-const showNotification = (payload: DesktopNotificationPayload) => {
-    if (!Notification.isSupported()) return;
-    if (typeof payload?.id !== 'string' || typeof payload.title !== 'string') return;
-    if (shownNotifications.has(payload.id)) return;
-    const path = sanitizeAppPath(payload.path);
-    const notification = new Notification({
-        title: payload.title.slice(0, 120),
-        body: typeof payload.body === 'string' ? payload.body.slice(0, 300) : undefined,
-        silent: false
-    });
-    notification.on('click', () => {
-        showMainWindow();
-        if (path) sendCommand({ command: 'navigate', path });
-    });
-    // Keep a reference, otherwise the click handler can be garbage collected before it fires.
-    notification.on('close', () => shownNotifications.delete(payload.id));
-    shownNotifications.set(payload.id, notification);
-    notification.show();
-};
-
 const setBadge = (count: unknown, overlayDataUrl: unknown) => {
     const value = typeof count === 'number' && Number.isFinite(count) ? Math.max(0, Math.floor(count)) : 0;
     if (process.platform === 'win32') {
@@ -134,7 +117,7 @@ export const registerIpc = () => {
         if (senderWindow(event) === getMainWindow()) setBadge(payload?.count, payload?.overlayDataUrl);
     });
     on(IPC.notify, (event, payload: DesktopNotificationPayload) => {
-        if (senderWindow(event) === getMainWindow()) showNotification(payload);
+        if (senderWindow(event) === getMainWindow()) showAppNotification(payload);
     });
     on(IPC.updateTray, (event, snapshot: unknown) => {
         if (senderWindow(event) === getMainWindow()) updateTray(snapshot);
@@ -143,6 +126,34 @@ export const registerIpc = () => {
         if (setLanguage(language)) {
             installMenus();
             refreshTray();
+            refreshTouchBar();
         }
+    });
+
+    handle(IPC.getPreferences, () => getPreferences());
+    handle(IPC.setPreferences, (_event, patch: unknown) => setPreferences(patch));
+
+    on(IPC.openWindow, (_event, request: OpenWindowRequest) => {
+        if (!request || typeof request !== 'object') return;
+        if (request.kind === 'capture') showCapture(typeof request.text === 'string' ? request.text.slice(0, 500) : undefined);
+        if (request.kind === 'day' && (request.mode === 'start' || request.mode === 'close')) openDayWindow(request.mode);
+        if (request.kind === 'secondary') {
+            const safe = sanitizeAppPath(request.path);
+            if (safe) createSecondaryWindow(safe);
+        }
+    });
+
+    // Capture hides (kept alive for speed); every other window really closes.
+    on(IPC.closeSelf, (event) => {
+        const win = senderWindow(event);
+        if (!win || win === getMainWindow()) return;
+        if (win.webContents.getURL().includes('/desktop/capture')) hideCapture();
+        else win.close();
+    });
+
+    on(IPC.addRecent, (event, recent: { path?: unknown; title?: unknown }) => {
+        if (senderWindow(event) !== getMainWindow()) return;
+        const safe = sanitizeAppPath(recent?.path);
+        if (safe && typeof recent.title === 'string' && recent.title.trim()) addRecent({ path: safe, title: recent.title.trim().slice(0, 80) });
     });
 };

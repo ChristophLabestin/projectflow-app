@@ -1,4 +1,11 @@
 import { app, globalShortcut } from 'electron';
+import { startDayFlow, stopDayFlow } from './features/dayFlow';
+import { filesFromArgv, queueFilesForFocus } from './features/files';
+import { refreshTouchBar } from './features/focus';
+import { initPreferences } from './features/preferences';
+import { stopCalendar } from './features/calendar';
+import { setAppWindowOpener } from './security';
+import { createCaptureWindow, showCapture } from './windows/auxWindows';
 import path from 'node:path';
 import { APP_ID, IS_DEV, PROTOCOL, sanitizeAppPath } from './config';
 import { registerIpc } from './ipc';
@@ -6,10 +13,8 @@ import { installMenus } from './menu';
 import { applySessionSecurity, hardenChildWindows } from './security';
 import { flushSettings, getSettings } from './store';
 import { createTray, destroyTray, refreshTray } from './tray';
-import { createMainWindow, sendCommand, setQuitting, showMainWindow } from './windows/mainWindow';
-import { openQuickAccess, setQuickAccessStateListener, toggleQuickAccess } from './windows/quickAccess';
-
-const DEFAULT_SHORTCUT = process.platform === 'darwin' ? 'Alt+Command+P' : 'Control+Shift+Alt+P';
+import { createMainWindow, createSecondaryWindow, restoreSecondaryWindows, sendCommand, setQuitting, showMainWindow } from './windows/mainWindow';
+import { openQuickAccess, setQuickAccessStateListener } from './windows/quickAccess';
 
 app.setName('ProjectFlow');
 if (IS_DEV) {
@@ -30,11 +35,18 @@ const deepLinkPath = (value: string | undefined) => {
 };
 const deepLinkFromArgv = (argv: string[]) => argv.map(deepLinkPath).find((value): value is string => Boolean(value)) ?? null;
 
-const openDeepLink = (url: string) => {
-    const target = deepLinkPath(url);
+/** `/desktop/command/<name>` deep links come from the Windows jump list. */
+const handleDeepLinkPath = (target: string | null) => {
+    if (target === '/desktop/command/quick-capture') {
+        showCapture();
+        return;
+    }
     showMainWindow();
-    if (target) sendCommand({ command: 'navigate', path: target });
+    if (target === '/desktop/command/new-task') sendCommand({ command: 'new-task' });
+    else if (target) sendCommand({ command: 'navigate', path: target });
 };
+
+const openDeepLink = (url: string) => handleDeepLinkPath(deepLinkPath(url));
 
 if (!app.requestSingleInstanceLock()) {
     app.quit();
@@ -55,9 +67,18 @@ if (!app.requestSingleInstanceLock()) {
     });
 
     app.on('second-instance', (_event, argv) => {
-        const target = deepLinkFromArgv(argv);
-        showMainWindow();
-        if (target) sendCommand({ command: 'navigate', path: target });
+        const files = filesFromArgv(argv);
+        if (files.length) {
+            queueFilesForFocus(files);
+            return;
+        }
+        handleDeepLinkPath(deepLinkFromArgv(argv));
+    });
+
+    // macOS: files dropped onto the Dock icon (may arrive before ready).
+    app.on('open-file', (event, filePath) => {
+        event.preventDefault();
+        queueFilesForFocus([filePath]);
     });
 
     hardenChildWindows();
@@ -71,8 +92,10 @@ if (!app.requestSingleInstanceLock()) {
             copyright: '© Labestin Digital'
         });
 
-        createMainWindow(coldStartPath ?? '/');
+        const coldStart = coldStartPath;
         coldStartPath = null;
+        createMainWindow(coldStart?.startsWith('/desktop/command/') ? '/' : coldStart ?? '/');
+        if (coldStart?.startsWith('/desktop/command/')) handleDeepLinkPath(coldStart);
 
         setQuickAccessStateListener(() => {
             installMenus();
@@ -81,16 +104,14 @@ if (!app.requestSingleInstanceLock()) {
         installMenus();
         createTray();
 
-        const shortcut = getSettings().quickAccessShortcut === undefined ? DEFAULT_SHORTCUT : getSettings().quickAccessShortcut;
-        if (shortcut) {
-            try {
-                if (!globalShortcut.register(shortcut, toggleQuickAccess)) {
-                    console.warn(`[desktop] global shortcut ${shortcut} is taken by another app`);
-                }
-            } catch (error) {
-                console.warn('[desktop] invalid global shortcut', error);
-            }
-        }
+        initPreferences();
+        setAppWindowOpener((target) => createSecondaryWindow(target));
+        restoreSecondaryWindows();
+        createCaptureWindow();
+        refreshTouchBar();
+        startDayFlow();
+        const argvFiles = filesFromArgv(process.argv);
+        if (argvFiles.length) queueFilesForFocus(argvFiles);
 
         if (getSettings().quickAccessOpen) openQuickAccess();
     });
@@ -104,6 +125,8 @@ if (!app.requestSingleInstanceLock()) {
 
     app.on('will-quit', () => {
         globalShortcut.unregisterAll();
+        stopDayFlow();
+        stopCalendar();
         destroyTray();
     });
 

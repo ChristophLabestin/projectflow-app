@@ -5,6 +5,8 @@ import { labels } from './labels';
 import { sanitizeAppPath } from './config';
 import { showMainWindow } from './windows/mainWindow';
 import { openPathInMain, toggleQuickAccess } from './windows/quickAccess';
+import { showCapture } from './windows/auxWindows';
+import { updateFocus } from './features/focus';
 
 let tray: Tray | null = null;
 let snapshot: TraySnapshot = { focus: null, pinned: [] };
@@ -46,6 +48,7 @@ const rebuild = () => {
             }))
         ] : []),
         { type: 'separator' },
+        { label: l.quickCapture, click: () => showCapture() },
         { label: l.quickAccessPopOut, click: () => toggleQuickAccess() },
         { label: l.openApp, click: () => showMainWindow() },
         { type: 'separator' },
@@ -91,6 +94,7 @@ export const updateTray = (value: unknown) => {
     if (!next) return;
     snapshot = next;
     rebuild();
+    updateFocus(next.focus);
 };
 
 /** Language switch / quick access state change. */

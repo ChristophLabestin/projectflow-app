@@ -15,7 +15,8 @@ import {
 import { doc, getDoc } from 'firebase/firestore';
 import { db, auth } from '../services/firebase';
 import { Button } from './ui/Button';
-import { useConfirm } from '../context/UIContext';
+import { useConfirm, useToast } from '../context/UIContext';
+import { attachFilesToItem, canAttachToItem } from '../services/desktopActions';
 import { CommentSection } from './CommentSection';
 import { useLanguage } from '../context/LanguageContext';
 import { getDesktopBridge, hasDesktopCapability, type DesktopQuickAccessState } from '../services/desktop';
@@ -741,6 +742,34 @@ export const PinnedTasksModal = ({ variant = 'overlay' }: PinnedTasksModalProps)
         if (isModalOpen) toggleModal();
     };
 
+    // Desktop pop-out: drop files onto the window to attach them to the shown item.
+    const { showSuccess, showError, showInfo } = useToast();
+    const [isDropActive, setIsDropActive] = useState(false);
+    const dropHandlers = (target: PinnedItem | null) => (isWindow ? {
+        onDragOver: (event: React.DragEvent) => {
+            if (!event.dataTransfer.types.includes('Files')) return;
+            event.preventDefault();
+            setIsDropActive(true);
+        },
+        onDragLeave: (event: React.DragEvent) => {
+            if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setIsDropActive(false);
+        },
+        onDrop: (event: React.DragEvent) => {
+            event.preventDefault();
+            setIsDropActive(false);
+            const files = Array.from(event.dataTransfer.files).slice(0, 5);
+            if (!files.length) return;
+            if (!canAttachToItem(target)) {
+                showInfo(t('desktop.toast.attachNeedsProject'));
+                return;
+            }
+            showInfo(t('desktop.toast.attaching').replace('{count}', String(files.length)));
+            void attachFilesToItem(files, target)
+                .then((count) => showSuccess(t('desktop.toast.attached').replace('{count}', String(count)).replace('{title}', target.title)))
+                .catch(() => showError(t('desktop.toast.actionFailed')));
+        }
+    } : {});
+
     /** The pop-out never navigates itself: item links open in the main window. */
     const openItemPath = (path: string) => {
         if (isWindow && desktop) {
@@ -1083,7 +1112,8 @@ export const PinnedTasksModal = ({ variant = 'overlay' }: PinnedTasksModalProps)
     if (isCompactMode || isWindow) {
         return (
             <div
-                className={`pinned-tasks-compact ${isWindow ? 'pinned-tasks-compact--window' : ''}`.trim()}
+                className={`pinned-tasks-compact ${isWindow ? 'pinned-tasks-compact--window' : ''} ${isDropActive ? 'is-drop-active' : ''}`.trim()}
+                {...dropHandlers(activeItem)}
                 style={isWindow ? undefined : {
                     left: position.x,
                     top: position.y,
