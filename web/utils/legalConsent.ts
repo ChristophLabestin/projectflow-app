@@ -18,7 +18,9 @@ export const isLegalType = (value: unknown): value is LegalType =>
 
 /** Old URL slug kept working: /legal/impressum → imprint. */
 export const legalTypeFromSlug = (slug: string | undefined): LegalType | null => {
-    if (slug === 'impressum') return 'imprint';
+    if (slug === 'impressum' || slug === 'legal-notice') return 'imprint';
+    if (slug === 'datenschutz' || slug === 'app-privacy' || slug === 'appPrivacy') return 'privacy';
+    if (slug === 'agb' || slug === 'tos') return 'terms';
     return isLegalType(slug) ? slug : null;
 };
 
