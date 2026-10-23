@@ -45,6 +45,7 @@ These routes are rendered inside the authenticated app shell/layout.
 - [x] `/activity` — Workspace activity feed (`WorkspaceActivity`, `components/activity/ActivityFeed`): filters person/project/type/period in the URL (`?person=&project=&type=&period=`), grouped by day, endless scroll, live first page; guests see their projects only
 - [x] `/insights` — Workspace insights (`WorkspaceInsights`, full members; guests redirect to `/activity`): KPIs, throughput, cycle time, burn-up, workload, project health, AI weekly report
 - [x] `/admin/*`, `/insights/onboarding` — moved to the **admin console** (`admin/`, see below); `AdminConsoleRedirect` sends old links to `VITE_ADMIN_CONSOLE_URL` (default `https://projectflow-admin.web.app`, `/insights/onboarding` → `/onboarding`).
+- [x] `/wiki`, `/wiki/:docId` — Workspace wiki (lazy `screens/wiki/WikiScreen`; full members, guests see a notice): page tree with drag & drop, favorites, search, templates, trash (`?view=trash`), Tiptap page editor with autosave, versions, AI, task links, backlinks. Concept `brain/plans/wiki-concept.md`. Sidebar entry via `WORKSPACE_AREAS.wiki`.
 - Consent gate: every signed-in route (incl. `/desktop/quick-access|capture|day|tray`) is wrapped in `LegalConsentGate`; contract `brain/plans/legal-consent-contract.md`.
 - [x] `/projects` — Projects list (SCSS refactor complete: cards/spotlight/suggestion/table/toolbars aligned to tokens + common components; company/startup projects are grouped separately with linked workstreams, and bottom lifecycle lists separate backlog/planning, paused, completed, and canceled projects)
 - [x] `/tasks` — Global tasks overview (SCSS refactor, common controls, board + modal alignment)
@@ -77,6 +78,7 @@ Base:
 - [x] `/project/:id` (index) — Project overview (command-first layout with compact/showcase masthead modes, command strip, attention queue, conditional right-column project triage for overdue/blocked/unassigned task cleanup and team delegation, demoted reference modules, compact delivery guardrails card without repeating the masthead purpose, explicit pause/resume/cancel lifecycle; company/startup projects add an action-first company command surface with founder action, launch readiness, a workstream modal/drawer task inspector, company context, a dedicated founding-brief modal, source references, and linked-project rollups)
 - [x] `/project/:id/details` — Project details/settings (SCSS refactor + common components)
 - [x] `/project/:id/activity` — Project activity: `ActivityFeed` for the project (stream) + collapsible legacy log ("Earlier activity")
+- [x] `/project/:id/wiki`, `/project/:id/wiki/:docId` — Project wiki (same `WikiScreen`, space `project`; project members incl. guests). Project nav item `wiki`.
 - [x] `/project/:id/codex` — removed 2026-09-26; redirects to the project overview (sessions still appear in activity)
 
 ### 3.2 Project Tasks
@@ -125,7 +127,7 @@ Social module and Marketing dashboard/ads/email/recipients were removed 2026-10-
 
 ## Landing (getprojectflow.com, separate app in `landing/`)
 Static pages rendered at build time from `landing/src/templates/pages.ts` (Firebase site `getprojectflow`, cleanUrls):
-- `/` (DE) · `/en` (EN) — home: hero + proof strip, flow (4 steps), features bento, security, platforms + MCP integrations, FAQ, CTA
+- `/` (DE) · `/en` (EN) — home: pinned story stage (6 acts: noise → inbox → board → focus → done & team → everywhere/app frame), MCP scene, features grid, FAQ, CTA
 - Legal: no texts in the landing. `LEGAL_SOURCE` in `landing/src/templates/pages.ts`: `app-link` links to `app.getprojectflow.com/legal/<type>`; `api` (current since 2026-10-23) builds `/impressum` · `/en/imprint`, `/datenschutz` · `/en/privacy`, `/agb` · `/en/terms` as shells that load `GET /api/legal/<type>?lang=` (`landing/src/js/legal.ts`). Source texts: `legal/<type>.<lang>.md` (imported as drafts by `functions/scripts/import-legal-docs.mjs`)
 - `/docs/mcp` · `/en/docs/mcp` — public MCP guide (`landing/src/content/docs-mcp.ts`, template `docs.ts`); server URL constant `MCP_URL` in `landing/src/templates/pages.ts`. Linked from nav, footer and the AI section. Keep in sync with `brain/operations/mcp-install-guide.md` and `web/components/settings/aiClients.ts`.
 - `404.html` — bilingual not-found

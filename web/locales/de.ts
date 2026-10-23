@@ -3678,6 +3678,9 @@ const de = {
     'activity.types.file.deleted': '{actor} hat {object} gelöscht',
     'activity.types.doc.created': '{actor} hat {object} erstellt',
     'activity.types.doc.updated': '{actor} hat {object} bearbeitet',
+    'activity.types.doc.archived': '{actor} hat {object} in den Papierkorb verschoben',
+    'activity.types.doc.restored': '{actor} hat {object} wiederhergestellt',
+    'activity.types.doc.deleted': '{object} wurde endgültig gelöscht',
     'activity.types.automation.ran': '{actor} wurde für {object} ausgeführt',
     'activity.types.automation.failed': '{actor} ist bei {object} fehlgeschlagen',
     'activity.types.fallback': '{actor} · {object}',
@@ -3768,6 +3771,18 @@ const de = {
     'insights.report.copy': 'Kopieren',
     'insights.report.copied': 'Kopiert',
     'insights.report.error': 'Der Bericht konnte nicht erstellt werden. Bitte versuche es später erneut.',
+    'taskDetail.docs.title': 'Verknüpfte Docs',
+    'taskDetail.docs.link': 'Wiki-Seite verknüpfen',
+    'taskDetail.docs.new': 'Neue Seite zu dieser Aufgabe',
+    'taskDetail.docs.search': 'Seiten suchen …',
+    'taskDetail.docs.noMatches': 'Keine passenden Seiten.',
+    'taskDetail.docs.empty': 'Noch keine Wiki-Seiten verknüpft.',
+    'taskDetail.docs.unlink': 'Verknüpfung lösen',
+    'taskDetail.docs.mentioned': 'Auf der Seite erwähnt',
+    'taskDetail.docs.untitled': 'Ohne Titel',
+    'taskDetail.docs.error': 'Das hat nicht geklappt. Bitte erneut versuchen.',
+    'search.section.docs': 'Wiki-Seiten',
+    'search.scope.docs': 'Wiki',
 
     // File manager (brain/plans/files-concept.md)
     'nav.files': 'Dateien',
@@ -3886,6 +3901,10 @@ const de = {
     'activity.types.file.moved': 'hat eine Datei verschoben',
     'activity.types.file.trashed': 'hat eine Datei in den Papierkorb verschoben',
     'activity.types.file.restored': 'hat eine Datei wiederhergestellt',
+    'insights.report.saveWiki': 'Als Wiki-Seite speichern',
+    'insights.report.savingWiki': 'Speichere …',
+    'insights.report.openWiki': 'Wiki-Seite öffnen',
+    'insights.report.wikiTitle': 'Wochenbericht {week}',
 };
 
 export default de;

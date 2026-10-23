@@ -41,8 +41,8 @@ sessions — Flows (automations), Files and Wiki.
 6. **AI weekly report** — callable `generateWeeklyInsightsReport` (OpenAI via the existing
    `ai-service.ts` client helpers): input = the latest insights doc + up to 200 events of the
    last 7 days (titles/types only). Output markdown (progress, risks, next steps), stored in
-   `tenants/{t}/insights_reports/{isoWeek}`; copy button, "save as wiki page" once the Wiki
-   route exists (feature flag).
+   `tenants/{t}/insights_reports/{isoWeek}-{lang}`; copy button and "save as wiki page"
+   (`createWikiPageFromMarkdown`, workspace wiki, shown while `WORKSPACE_AREAS.wiki` is on).
 7. **Sidebar** — "Arbeitsbereich" gains Activity, Insights, Documents, Wiki, Flows.
    Documents/Wiki/Flows are gated by `WORKSPACE_AREAS` in `web/config/features.ts`; the owning
    sessions flip their flag once their route exists. Guests see Activity (scoped to their

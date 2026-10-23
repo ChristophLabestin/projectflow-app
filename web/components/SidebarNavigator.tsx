@@ -485,7 +485,7 @@ export const SidebarNavigator: React.FC<SidebarNavigatorProps> = ({ isDrawer = f
     const secondaryAnchors: NavRowDef[] = [
         { key: 'projects', to: '/projects', icon: 'layers', label: t('nav.projects') },
         ...(isWorkspaceAreaEnabled('documents') ? [{ key: 'documents', to: '/files', icon: 'folder_open', label: t('nav.documents') }] : []),
-        ...(isWorkspaceAreaEnabled('wiki') ? [{ key: 'wiki', to: '/wiki', icon: 'menu_book', label: t('nav.wiki') }] : []),
+        ...(isWorkspaceAreaEnabled('wiki') && activeWorkspace?.role !== 'Guest' ? [{ key: 'wiki', to: '/wiki', icon: 'menu_book', label: t('nav.wiki') }] : []),
         ...(isWorkspaceAreaEnabled('flows') ? [{ key: 'flows', to: '/flows', icon: 'account_tree', label: t('nav.flows') }] : []),
         { key: 'activity', to: '/activity', icon: 'history', label: t('nav.activity') },
         ...(activeWorkspace?.role !== 'Guest' ? [{ key: 'insights', to: '/insights', icon: 'insights', label: t('nav.insights'), exact: true }] : []),
@@ -533,6 +533,7 @@ export const SidebarNavigator: React.FC<SidebarNavigatorProps> = ({ isDrawer = f
                 { id: 'effort', path: '/effort', icon: 'schedule', label: t('nav.effort') },
                 { id: 'invoices', path: '/invoices', icon: 'request_quote', label: t('nav.invoices') }
             ] : []),
+            { id: 'wiki', path: '/wiki', icon: 'menu_book', label: t('nav.wiki') },
             { id: 'activity', path: '/activity', icon: 'history', label: t('nav.activity'), moduleKey: 'activity' },
             { id: 'files', path: '/files', icon: 'folder_open', label: t('nav.files') },
         ];

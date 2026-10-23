@@ -186,3 +186,6 @@ ios/Packages/ProjectFlowKit/Package.resolved
 .firebase/
 .firebase.admin-e2e.json
 .firebase-admin-e2e.log
+
+# Local Functions emulator secret overrides (never commit)
+functions/.secret.local

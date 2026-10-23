@@ -73,6 +73,7 @@ const FilesPage = React.lazy(() => import('./screens/FilesPage').then((module) =
 const ProjectActivity = React.lazy(() => import('./screens/ProjectActivity').then((module) => ({ default: module.ProjectActivity })));
 const WorkspaceInsights = React.lazy(() => import('./screens/WorkspaceInsights').then((module) => ({ default: module.WorkspaceInsights })));
 const WorkspaceActivity = React.lazy(() => import('./screens/WorkspaceActivity').then((module) => ({ default: module.WorkspaceActivity })));
+const WikiScreen = React.lazy(() => import('./screens/wiki/WikiScreen').then((module) => ({ default: module.WikiScreen })));
 const ProjectMilestones = React.lazy(() => import('./screens/ProjectMilestones').then((module) => ({ default: module.ProjectMilestones })));
 const MarketingLayout = React.lazy(() => import('./screens/marketing/MarketingLayout').then((module) => ({ default: module.MarketingLayout })));
 const MarketingSettings = React.lazy(() => import('./screens/marketing/MarketingSettings').then((module) => ({ default: module.MarketingSettings })));
@@ -272,6 +273,8 @@ export const AppRouter = () => {
                         <Route path="/files" element={withRouteSuspense(<FilesPage />)} />
                         {/* The media library is part of the file manager now. */}
                         <Route path="/media" element={<Navigate to="/files?type=image" replace />} />
+                        <Route path="/wiki" element={withRouteSuspense(<WikiScreen />)} />
+                        <Route path="/wiki/:docId" element={withRouteSuspense(<WikiScreen />)} />
                         <Route path="/profile" element={<Profile />} />
 
                         <Route path="/personal-tasks" element={<PersonalTasksPage />} />
@@ -297,6 +300,8 @@ export const AppRouter = () => {
                             {/* The Codex view was removed; keep old links working. */}
                             <Route path="codex" element={<Navigate to=".." relative="path" replace />} />
                             <Route path="milestones" element={withRouteSuspense(<ProjectMilestones />)} />
+                            <Route path="wiki" element={withRouteSuspense(<WikiScreen />)} />
+                            <Route path="wiki/:docId" element={withRouteSuspense(<WikiScreen />)} />
                             <Route
                                 path="sprints"
                                 element={

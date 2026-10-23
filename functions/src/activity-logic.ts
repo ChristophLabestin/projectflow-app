@@ -33,6 +33,9 @@ export const ACTIVITY_EVENT_TYPES = [
     'file.deleted',
     'doc.created',
     'doc.updated',
+    'doc.archived',
+    'doc.restored',
+    'doc.deleted',
     'automation.ran',
     'automation.failed'
 ] as const;

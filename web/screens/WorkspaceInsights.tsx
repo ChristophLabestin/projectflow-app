@@ -32,6 +32,8 @@ import {
 } from '../services/domain/insightsService';
 import { subscribeWorkspaceMembers } from '../services/domain/workspaceMembersService';
 import { aggregateInsights } from '../utils/insightsAggregate';
+import { isWorkspaceAreaEnabled } from '../config/features';
+import { createWikiPageFromMarkdown } from '../services/wiki/wikiService';
 import './workspace-insights.scss';
 
 type WeeksOption = '4' | '8' | '12';
@@ -88,6 +90,9 @@ export const WorkspaceInsights = () => {
     const [reportBusy, setReportBusy] = useState(false);
     const [reportError, setReportError] = useState(false);
     const [copied, setCopied] = useState(false);
+    const [wikiDocId, setWikiDocId] = useState<string | null>(null);
+    const [wikiBusy, setWikiBusy] = useState(false);
+    const wikiEnabled = isWorkspaceAreaEnabled('wiki');
 
     useEffect(() => {
         if (!tenantId || isGuest) return undefined;
@@ -150,6 +155,7 @@ export const WorkspaceInsights = () => {
         setReportError(false);
         try {
             setReport(await generateWeeklyInsightsReport(tenantId, language === 'de' ? 'de' : 'en'));
+            setWikiDocId(null);
         } catch (err) {
             console.error('Weekly report failed', err);
             setReportError(true);
@@ -169,6 +175,26 @@ export const WorkspaceInsights = () => {
         }
     };
 
+    const saveToWiki = async () => {
+        if (!tenantId || !report) return;
+        setWikiBusy(true);
+        setReportError(false);
+        try {
+            const docId = await createWikiPageFromMarkdown(tenantId, {
+                space: { type: 'workspace', projectId: null },
+                title: t('insights.report.wikiTitle').replace('{week}', report.week),
+                markdown: report.markdown,
+                icon: 'insights',
+            });
+            setWikiDocId(docId);
+        } catch (err) {
+            console.error('Saving the weekly report to the wiki failed', err);
+            setReportError(true);
+        } finally {
+            setWikiBusy(false);
+        }
+    };
+
     if (isGuest) return <Navigate to="/activity" replace />;
 
     const projectOptions = [
@@ -184,7 +210,7 @@ export const WorkspaceInsights = () => {
     const delta = data ? data.completed - data.completedPrev : 0;
 
     return (
-        <div className="insights-page custom-scrollbar">
+        <div className="insights-page">
             <div className="insights-page__content">
                 <header className="insights-page__header">
                     <div>
@@ -363,6 +389,17 @@ export const WorkspaceInsights = () => {
                                     {copied ? t('insights.report.copied') : t('insights.report.copy')}
                                 </Button>
                             )}
+                            {report && wikiEnabled && (wikiDocId ? (
+                                <Link to={`/wiki/${wikiDocId}`} className="insights-report__wiki-link">
+                                    <span className="material-symbols-outlined" aria-hidden="true">menu_book</span>
+                                    {t('insights.report.openWiki')}
+                                </Link>
+                            ) : (
+                                <Button size="sm" variant="ghost" onClick={() => void saveToWiki()} disabled={wikiBusy}
+                                    icon={<span className="material-symbols-outlined">menu_book</span>}>
+                                    {wikiBusy ? t('insights.report.savingWiki') : t('insights.report.saveWiki')}
+                                </Button>
+                            ))}
                             <Button size="sm" variant="secondary" onClick={() => void generateReport()} disabled={reportBusy}
                                 icon={<span className="material-symbols-outlined">auto_awesome</span>}>
                                 {reportBusy ? t('insights.report.generating') : report ? t('insights.report.regenerate') : t('insights.report.generate')}

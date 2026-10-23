@@ -319,6 +319,12 @@ Concept: `brain/plans/help-center-rework.md`.
 - `CrashReports.tsx` / `CrashIssueDetail.tsx` (+ `crashFormat.ts`, `admin.scss`): crash issue list and detail on `services/crashReportsService.ts`.
 - Web crash capture lives in `services/errorReporting.ts` (`reportError`, global handlers, `isCrashReportingEnabled`/`setCrashReportingEnabled`); the ErrorBoundary reports render crashes through it.
 
+## Wiki & Docs (`web/screens/wiki/`, `web/components/wiki/`, 2026-10-23)
+- `WikiScreen` (route container: tree + home/page/trash), `WikiSidebar` (tree, native drag & drop before/inside/after, favorites, search), `WikiPage` (autosave 1.5 s, `bodyRev` conflict guard, presence, rail: TOC/linked tasks/backlinks), `WikiDialogs` (`IconPicker`, `WikiVersionsDrawer`, `WikiLinkTaskDialog`, `WikiAiDialog`, `WikiTemplatePicker`), `WikiMenu` (portaled origin-aware action menu).
+- Editor `screens/wiki/editor/WikiEditor` on Tiptap 3 (same library as the blog editor) + `extension-table`/`-mention`/`-details`: slash menu, `@`-mentions (`wikiMention` live chips), `wikiCallout`, `wikiTaskList` (filtered live task list), `wikiFile` (file block, provider `screens/wiki/wikiFiles.ts`), `wikiToc`, bubble menus (format/table). Host contract `editor/host.ts`.
+- `components/wiki/LinkedDocsPanel` — task detail "Linked docs" (link/unlink, new project page for the task).
+- Strings: `locales/wiki-{en,de}.ts` via `useWikiT` (lazy chunk). Styles `screens/wiki/wiki.scss`, `components/wiki/linked-docs-panel.scss`.
+- Service entry for other features: `createWikiPageFromMarkdown(tenantId, { space, title, markdown, parentId?, icon?, linkedTaskRefs? })` in `services/wiki/wikiService.ts`.
 ## File manager (`web/components/files/`, 2026-10-23)
 - `FileAttachments` — attachment panel for one object (`parent: { type, id, projectId, title }`): drag & drop, paste, picker, list with preview/actions. Used in task detail; wiki docs use `type: 'doc'`.
 - `FilesBrowser` — list/grid with search, filters (type, project, object, uploader, time), sort, trash; used by `/files` and `/project/:id/files`.

@@ -17,6 +17,7 @@ import { TextInput } from '../components/common/Input/TextInput';
 import { EditTaskModal } from '../components/EditTaskModal';
 import { MultiAssigneeSelector } from '../components/MultiAssigneeSelector';
 import { TaskRelationshipsPanel } from '../components/TaskRelationshipsPanel';
+import { LinkedDocsPanel } from '../components/wiki/LinkedDocsPanel';
 import { ProjectLabelsModal } from '../components/ProjectLabelsModal';
 import { toMillis, timeAgo } from '../utils/time';
 import { activityIcon } from '../utils/activityHelpers';
@@ -1164,6 +1165,10 @@ export const ProjectTaskDetail = () => {
                             tenantId={activeTenantId}
                             onTaskChange={(updates) => setTask(prev => prev ? { ...prev, ...updates } : prev)}
                         />
+                    </div>
+
+                    <div className="task-detail__sidebar-section">
+                        <LinkedDocsPanel projectId={id!} taskId={task.id} taskTitle={task.title} tenantId={activeTenantId} />
                     </div>
 
                     <div className="task-detail__sidebar-section">

@@ -36,6 +36,9 @@ export const ACTIVITY_TYPES: Record<string, ActivityTypeDef> = {
     'file.deleted': { domain: 'file', icon: 'delete_forever' },
     'doc.created': { domain: 'doc', icon: 'note_add' },
     'doc.updated': { domain: 'doc', icon: 'edit_note' },
+    'doc.archived': { domain: 'doc', icon: 'delete' },
+    'doc.restored': { domain: 'doc', icon: 'restore_page' },
+    'doc.deleted': { domain: 'doc', icon: 'delete_forever' },
     'automation.ran': { domain: 'automation', icon: 'bolt' },
     'automation.failed': { domain: 'automation', icon: 'error' },
 };
