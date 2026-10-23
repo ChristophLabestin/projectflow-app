@@ -10,10 +10,10 @@ import { Badge, Card, Empty, ErrorNote, PageHead, Segmented, Skeleton, Tabs } fr
 import { dayKeyList } from '../lib/days';
 import { GrantsTable, roleTone, UserDrawer } from './Users';
 
-type Billing = { plan: string; status: string; seats: number; aiAddonSeats: number; billingInterval: string | null; trialEndsAt: number | null; graceEndsAt: number | null; currentPeriodEnd: number | null; cancelAtPeriodEnd: boolean; paid: boolean; mrr: number; missing: boolean; exempt: boolean };
+type Billing = { plan: string; status: string; seats: number; aiAddonSeats: number; billingInterval: string | null; trialEndsAt: number | null; graceEndsAt: number | null; currentPeriodEnd: number | null; cancelAtPeriodEnd: boolean; paid: boolean; mrr: number; missing: boolean; exempt: boolean; workspaceType: 'personal' | 'team'; storageQuotaBytes: number | null; flowsQuota: string | null };
 export const STATUS_TONE_BILLING: Record<string, 'green' | 'amber' | 'red' | 'blue' | 'neutral' | 'violet'> = { active: 'green', trialing: 'blue', grace: 'violet', past_due: 'red', canceled: 'neutral', free: 'neutral', exempt: 'amber' };
 export const statusLabel = (status: string) => (status === 'exempt' ? 'Intern' : status);
-type Ws = { billing: Billing | null; id: string; name: string; ownerId: string | null; ownerEmail: string | null; createdAt: number | null; suspendedAt: number | null; members: number; guests: number; projects: number; lastProjectUpdate: number | null; grants: number; aiEnabled: boolean };
+type Ws = { billing: Billing | null; workspaceType: 'personal' | 'team'; orphaned: boolean; id: string; name: string; ownerId: string | null; ownerEmail: string | null; createdAt: number | null; suspendedAt: number | null; members: number; guests: number; projects: number; lastProjectUpdate: number | null; grants: number; aiEnabled: boolean };
 type Policy = { enabled: boolean; allowGuests: boolean; allowDeleteScopes: boolean; allowPersonalTokens: boolean; inAppEnabled: boolean; inAppAi: boolean; monthlyCredits?: number | null };
 type WsDetail = {
     id: string; name: string; ownerId: string | null; createdAt: number | null; suspendedAt: number | null; suspendedReason: string | null; suspensionLog: { id: string; suspended: boolean; reason: string; email: string; at: number | null }[]; modules: string[] | null;
@@ -122,6 +122,8 @@ const BillingTab: React.FC<{ b: WsDetail['billing']; id: string; name: string; o
             <span className="ac-muted">MRR netto <b>{eur(b.mrr)}</b></span>
         </div>
         <dl className="ac-kv">
+            <dt>Workspace-Typ</dt><dd>{b.workspaceType === 'personal' ? 'Persönlich' : 'Team'}</dd>
+            <dt>Speicher / Flows</dt><dd>{b.storageQuotaBytes ? `${Math.round(b.storageQuotaBytes / 1024 ** 3)} GB` : '–'} · Flows-Kontingent {b.flowsQuota || '–'}</dd>
             <dt>Plätze / KI-Pakete</dt><dd>{num(b.seats)} / {num(b.aiAddonSeats)} <span className="ac-muted">({num(b.aiMemberIds)} zugewiesen)</span></dd>
             <dt>Abrechnung</dt><dd>{b.billingInterval === 'year' ? 'jährlich' : b.billingInterval === 'month' ? 'monatlich' : '–'}</dd>
             <dt>Periode bis</dt><dd>{dateTime(b.currentPeriodEnd)}</dd>
@@ -247,14 +249,18 @@ export const WorkspacesScreen: React.FC = () => {
     const [user, setUser] = useState<string | null>(null);
     const [search, setSearch] = useState('');
     const [filter, setFilter] = useState('all');
+    const [type, setType] = useState('all');
+    const [plan, setPlan] = useState('');
     const { data, loading, error, reload } = useAdminQuery<{ workspaces: Ws[] }>('workspaces.list');
+    const plans = Array.from(new Set((data?.workspaces || []).map((w) => w.billing?.plan).filter(Boolean) as string[])).sort();
     const q = search.trim().toLowerCase();
-    const rows = (data?.workspaces || []).filter((w) => (!q || `${w.name} ${w.ownerEmail} ${w.id}`.toLowerCase().includes(q))
-        && (filter === 'all' || (filter === 'team' && w.members > 1) || (filter === 'mcp' && w.grants > 0) || (filter === 'empty' && w.projects === 0) || (filter === 'suspended' && Boolean(w.suspendedAt)) || (filter === 'paying' && (w.billing?.mrr ?? 0) > 0) || (filter === 'trial' && w.billing?.status === 'trialing') || (filter === 'exempt' && w.billing?.status === 'exempt')));
+    const rows = (data?.workspaces || []).filter((w) => (type === 'all' || w.workspaceType === type) && (!plan || w.billing?.plan === plan) && (!q || `${w.name} ${w.ownerEmail} ${w.id}`.toLowerCase().includes(q))
+        && (filter === 'all' || (filter === 'team' && w.members > 1) || (filter === 'mcp' && w.grants > 0) || (filter === 'empty' && w.projects === 0) || (filter === 'suspended' && Boolean(w.suspendedAt)) || (filter === 'paying' && (w.billing?.mrr ?? 0) > 0) || (filter === 'trial' && w.billing?.status === 'trialing') || (filter === 'exempt' && w.billing?.status === 'exempt') || (filter === 'orphaned' && w.orphaned)));
     const setOpen = (id: string | null) => setParams((p) => { const n = new URLSearchParams(p); if (id) n.set('id', id); else n.delete('id'); return n; });
 
     const columns: Column<Ws>[] = [
-        { key: 'name', label: 'Workspace', render: (w) => <span className="ac-row" style={{ flexWrap: 'nowrap' }}><span className="ac-strong">{w.name}</span>{w.suspendedAt && <Badge tone="red">gesperrt</Badge>}</span> },
+        { key: 'name', label: 'Workspace', render: (w) => <span className="ac-row" style={{ flexWrap: 'nowrap' }}><span className="ac-strong">{w.name}</span>{w.suspendedAt && <Badge tone="red">gesperrt</Badge>}{w.orphaned && <Badge tone="amber" title="Owner hat kein Auth-Konto mehr">verwaist</Badge>}</span> },
+        { key: 'workspaceType', label: 'Typ', value: (w) => w.workspaceType, render: (w) => <Badge plain tone={w.workspaceType === 'personal' ? 'blue' : 'neutral'}>{w.workspaceType === 'personal' ? 'Persönlich' : 'Team'}</Badge> },
         { key: 'ownerEmail', label: 'Owner', render: (w) => <span className="ac-muted">{w.ownerEmail || w.ownerId}</span> },
         { key: 'plan', label: 'Plan', value: (w) => w.billing?.plan || '', render: (w) => (w.billing ? <span className="ac-row" style={{ flexWrap: 'nowrap' }}><span>{w.billing.plan}</span><Badge tone={STATUS_TONE_BILLING[w.billing.status] || 'neutral'} plain>{statusLabel(w.billing.status)}</Badge></span> : '–') },
         { key: 'mrr', label: 'MRR', num: true, value: (w) => w.billing?.mrr ?? 0, render: (w) => (w.billing?.mrr ? eur(w.billing.mrr) : <span className="ac-muted">–</span>) },
@@ -274,7 +280,9 @@ export const WorkspacesScreen: React.FC = () => {
             <DataTable id="workspaces" rows={data ? rows : null} loading={loading} columns={columns} rowKey={(w) => w.id} onOpen={(w) => setOpen(w.id)} selectedKey={openId} defaultSort={{ key: 'createdAt', dir: 'desc' }}
                 toolbar={<>
                     <div className="ac-search"><input className="ac-input" placeholder="Name, Owner, ID …" value={search} onChange={(e) => setSearch(e.target.value)} /></div>
-                    <Segmented value={filter} onChange={setFilter} options={[{ value: 'all', label: 'Alle' }, { value: 'team', label: 'Teams' }, { value: 'mcp', label: 'Mit MCP' }, { value: 'empty', label: 'Leer' }, { value: 'paying', label: 'Zahlend' }, { value: 'trial', label: 'Test' }, { value: 'exempt', label: 'Intern' }, { value: 'suspended', label: 'Gesperrt' }]} />
+                    <Segmented value={type} onChange={setType} options={[{ value: 'all', label: 'Alle Typen' }, { value: 'team', label: 'Team' }, { value: 'personal', label: 'Persönlich' }]} />
+                    <select className="ac-select" value={plan} onChange={(e) => setPlan(e.target.value)}><option value="">Alle Pläne</option>{plans.map((p) => <option key={p} value={p}>{p}</option>)}</select>
+                    <Segmented value={filter} onChange={setFilter} options={[{ value: 'all', label: 'Alle' }, { value: 'team', label: 'Mehrere Mitglieder' }, { value: 'mcp', label: 'Mit MCP' }, { value: 'empty', label: 'Leer' }, { value: 'paying', label: 'Zahlend' }, { value: 'trial', label: 'Test' }, { value: 'exempt', label: 'Intern' }, { value: 'orphaned', label: 'Verwaist' }, { value: 'suspended', label: 'Gesperrt' }]} />
                 </>} />
             {openId && <WorkspaceDrawer id={openId} onClose={() => setOpen(null)} onOpenUser={setUser} />}
             {user && <UserDrawer uid={user} onClose={() => setUser(null)} />}

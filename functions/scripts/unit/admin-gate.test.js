@@ -70,5 +70,8 @@ test('billing MRR per contract §6', () => {
     assert.equal(mrrOf({ status: 'active', seats: 5, aiAddonSeats: 2, billingInterval: 'month' }), 80);
     assert.equal(mrrOf({ status: 'past_due', seats: 3, aiAddonSeats: 0, billingInterval: 'year' }), 30);
     assert.equal(mrrOf({ status: 'trialing', seats: 9, billingInterval: 'month' }), 0);
+    assert.equal(mrrOf({ plan: 'personal', status: 'active', seats: 1, aiAddonSeats: 1, billingInterval: 'month' }), 15);
+    assert.equal(mrrOf({ plan: 'personal', status: 'active', seats: 1, billingInterval: 'year' }), 4);
+    assert.equal(billingOf({ plan: 'personal', status: 'free', workspaceType: 'personal' }).workspaceType, 'personal');
     assert.equal(billingOf(undefined).status, 'grace');
 });
