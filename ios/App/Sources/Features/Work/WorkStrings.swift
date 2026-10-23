@@ -1,5 +1,52 @@
-// Copy for the Work feature (DE/EN). Keep keys and wording aligned with web/locales where the web has them.
+// Copy for the Work feature (DE/EN). `work.group.*` come from `web/locales/de.ts` / `en.ts`; the rest is app-only.
 enum WorkStrings {
-    static let de: [String: String] = [:]
-    static let en: [String: String] = [:]
+    static let de: [String: String] = [
+        "work.group.due.overdue": "Überfällig", "work.group.due.today": "Heute", "work.group.due.week": "Nächste 7 Tage",
+        "work.group.due.later": "Später", "work.group.due.none": "Ohne Datum", "work.group.done": "Erledigt",
+        "work.title": "Arbeit",
+        "work.mode.list": "Liste", "work.mode.week": "Woche",
+        "work.summary.open": "{count} offen", "work.summary.week": "{count} diese Woche",
+        "work.filter.project": "Projekt", "work.filter.projects": "{count} Projekte",
+        "work.filter.priority": "Priorität", "work.filter.priorities": "{count} Prioritäten",
+        "work.filter.personal": "Persönlich", "work.filter.completed": "Erledigte", "work.filter.reset": "Zurücksetzen",
+        "work.filter.allProjects": "Alle Projekte", "work.filter.noProjects": "Noch keine Projekte.",
+        "work.week.unplanned": "Ungeplant", "work.week.unplanned.empty": "Alles eingeplant — nichts liegt mehr herum.",
+        "work.week.dropHint": "Hierhin ziehen zum Einplanen", "work.week.dropHint.tray": "Hierhin ziehen, um die Planung zu lösen",
+        "work.week.thisWeek": "Diese Woche", "work.week.nextWeek": "Nächste Woche",
+        "work.week.previous": "Vorherige Woche", "work.week.next": "Nächste Woche anzeigen",
+        "work.week.more": "{count} weitere anzeigen", "work.week.less": "Weniger anzeigen",
+        "work.week.empty": "Nichts geplant",
+        "work.week.hint": "Gedrückt halten und auf einen Tag ziehen, um einzuplanen.",
+        "work.planned": "Eingeplant für {date}", "work.planned.overdue": "Eingeplant für {date} — noch überfällig",
+        "work.planned.moveDue": "Fälligkeit verschieben", "work.unplanned": "Aus dem Plan genommen",
+        "work.empty.title": "Keine Aufgaben", "work.empty.message": "Alles erledigt — oder noch nichts erfasst.",
+        "work.empty.action": "Aufgabe erfassen",
+        "work.emptyFiltered.title": "Nichts gefunden", "work.emptyFiltered.message": "Mit diesen Filtern gibt es keine Aufgaben.",
+        "work.loading": "Aufgaben werden geladen",
+    ]
+
+    static let en: [String: String] = [
+        "work.group.due.overdue": "Overdue", "work.group.due.today": "Today", "work.group.due.week": "Next 7 days",
+        "work.group.due.later": "Later", "work.group.due.none": "No date", "work.group.done": "Completed",
+        "work.title": "Work",
+        "work.mode.list": "List", "work.mode.week": "Week",
+        "work.summary.open": "{count} open", "work.summary.week": "{count} this week",
+        "work.filter.project": "Project", "work.filter.projects": "{count} projects",
+        "work.filter.priority": "Priority", "work.filter.priorities": "{count} priorities",
+        "work.filter.personal": "Personal", "work.filter.completed": "Completed", "work.filter.reset": "Reset",
+        "work.filter.allProjects": "All projects", "work.filter.noProjects": "No projects yet.",
+        "work.week.unplanned": "Unplanned", "work.week.unplanned.empty": "Everything is planned — nothing is lying around.",
+        "work.week.dropHint": "Drop here to plan", "work.week.dropHint.tray": "Drop here to unplan",
+        "work.week.thisWeek": "This week", "work.week.nextWeek": "Next week",
+        "work.week.previous": "Previous week", "work.week.next": "Show next week",
+        "work.week.more": "Show {count} more", "work.week.less": "Show less",
+        "work.week.empty": "Nothing planned",
+        "work.week.hint": "Press and hold, then drag onto a day to plan it.",
+        "work.planned": "Planned for {date}", "work.planned.overdue": "Planned for {date} — still overdue",
+        "work.planned.moveDue": "Move due date", "work.unplanned": "Removed from the plan",
+        "work.empty.title": "No tasks", "work.empty.message": "All done — or nothing captured yet.",
+        "work.empty.action": "Capture a task",
+        "work.emptyFiltered.title": "Nothing found", "work.emptyFiltered.message": "No tasks match these filters.",
+        "work.loading": "Loading tasks",
+    ]
 }

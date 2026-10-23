@@ -71,7 +71,7 @@ private extension TodayEntry {
 }
 
 /// One stop: ring (completes in place) · title + due text · priority.
-struct TodayStopRow: View {
+struct WidgetStopRow: View {
     let stop: TodaySnapshot.Stop
     let strings: ExtensionStrings
     var linked = true
@@ -190,7 +190,7 @@ struct TodaySmallView: View {
                 Spacer(minLength: 0)
                 PFDayBand(segments: snapshot.bandSegments, height: 9)
                 if let stop = snapshot.stops.first {
-                    TodayStopRow(stop: stop, strings: entry.strings, linked: false, showsPriority: false, titleSize: 13)
+                    WidgetStopRow(stop: stop, strings: entry.strings, linked: false, showsPriority: false, titleSize: 13)
                         .frame(minHeight: 30)
                         .padding(.vertical, -4)
                 }
@@ -236,7 +236,7 @@ struct TodayMediumView: View {
                     let stops = Array(snapshot.stops.prefix(3))
                     ForEach(Array(stops.enumerated()), id: \.element.id) { index, stop in
                         if index > 0 { PFRowDivider(leadingInset: 0) }
-                        TodayStopRow(stop: stop, strings: entry.strings, showsPriority: false, titleSize: 13)
+                        WidgetStopRow(stop: stop, strings: entry.strings, showsPriority: false, titleSize: 13)
                     }
                     if stops.isEmpty {
                         Text(entry.strings.t("w.noStops")).font(WidgetFont.meta()).foregroundStyle(PFColor.textMuted)
@@ -279,7 +279,7 @@ struct TodayLargeView: View {
                 VStack(spacing: 0) {
                     ForEach(Array(stops.enumerated()), id: \.element.id) { index, stop in
                         if index > 0 { PFRowDivider(leadingInset: 28) }
-                        TodayStopRow(stop: stop, strings: entry.strings, titleSize: 15)
+                        WidgetStopRow(stop: stop, strings: entry.strings, titleSize: 15)
                     }
                 }
                 .padding(.top, 2)
