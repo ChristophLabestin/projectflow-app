@@ -38,7 +38,7 @@ public struct CaptureChip: View {
             .padding(.horizontal, 13)
             .frame(minHeight: 38)
             .foregroundStyle(isSet ? PFColor.onPrimary : PFColor.textMain)
-            .background(isSet ? PFColor.primary : PFColor.raised, in: .capsule)
+            .pfPillSurface(selected: isSet)
             .overlay { Capsule().strokeBorder(PFColor.textMain.opacity(isActive ? 0.9 : 0), lineWidth: 1.5) }
             .contentShape(.capsule)
             .animation(PFMotion.fast, value: isActive)
