@@ -6,7 +6,12 @@
  *   produces content; the result is parsed JSON in the given schema, never free text.
  * Quotas/credits stay with the caller.
  */
+import OpenAI from 'openai';
+
 import { ModelError, ModelTier, ModelUsage, getClient, tierModel, toModelError } from './ai-models';
+
+/** Server client, or a client for the caller's own OpenAI key (BYOK). */
+const clientFor = (apiKey?: string) => (apiKey ? new OpenAI({ apiKey }) : getClient());
 
 export const DECISIONS_MODEL = 'gpt-6-luna';
 
@@ -31,7 +36,7 @@ export type DecisionAnswer =
 
 export interface DecideResult { answers: DecisionAnswer[]; usage: ModelUsage }
 
-export const aiDecide = async (request: { input: string; questions: DecisionQuestion[] }): Promise<DecideResult> => {
+export const aiDecide = async (request: { input: string; questions: DecisionQuestion[]; apiKey?: string }): Promise<DecideResult> => {
     if (request.questions.length === 0) return { answers: [], usage: { inputTokens: 0, outputTokens: 0, cachedTokens: 0 } };
     const questions = request.questions.map((question) => ({
         type: question.type,
@@ -43,7 +48,7 @@ export const aiDecide = async (request: { input: string; questions: DecisionQues
     let response: any;
     try {
         // The openai SDK has no `decisions` resource yet; the generic post keeps auth, retries and errors.
-        response = await getClient().post('/decisions', { body: { model: DECISIONS_MODEL, input: request.input, questions } });
+        response = await clientFor(request.apiKey).post('/decisions', { body: { model: DECISIONS_MODEL, input: request.input, questions } });
     } catch (error) {
         throw toModelError(error);
     }
@@ -65,13 +70,15 @@ export interface GenerateRequest {
     /** JSON schema (strict: every property required, additionalProperties false). */
     schema: { name: string; schema: Record<string, unknown> };
     maxOutputTokens?: number;
+    /** Own OpenAI key of the caller (BYOK); default: server key. */
+    apiKey?: string;
 }
 
 export const aiGenerate = async <T>(request: GenerateRequest): Promise<{ data: T; usage: ModelUsage }> => {
     const { model, effort, serviceTier } = tierModel(request.tier);
     let response: any;
     try {
-        response = await getClient().responses.create({
+        response = await clientFor(request.apiKey).responses.create({
             model,
             service_tier: serviceTier,
             reasoning: { effort },

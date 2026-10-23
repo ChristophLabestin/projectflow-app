@@ -120,6 +120,9 @@ const decryptSecret = (box: { iv?: string; tag?: string; data?: string } | undef
     }
 };
 
+/** Decrypted own OpenAI key of a user, or null (needs AI_KEY_SECRETS in runWith). */
+export const ownAiKeyFor = async (uid: string): Promise<string | null> => decryptSecret((await aiKeyRef(uid).get()).data()?.secret);
+
 /** Functions that may use a caller's own OpenAI key must list this secret in runWith. */
 export const AI_KEY_SECRETS = ['AI_KEY_ENCRYPTION_KEY'];
 

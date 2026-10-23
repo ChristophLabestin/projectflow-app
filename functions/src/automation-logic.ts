@@ -109,15 +109,44 @@ export interface AutomationLimits {
     runsPerMonth: number;
     aiStepsPerMonth: number;
     activeFlowsPerWorkspace: number;
+    /** 'free' | 'seat' (entitlements/plan.flowsQuota) or 'legacy' (no entitlement doc = beta grace). */
+    tier?: 'free' | 'seat' | 'legacy';
 }
 
-/** Plattform-admin override `tenants/{t}.limits.automations` (until plans exist). */
-export const resolveLimits = (tenant: Json | null | undefined): AutomationLimits => {
+/** Free plan (personal Free workspace): small quota, no server AI (own OpenAI key still works). */
+export const FREE_FLOW_QUOTA = { activeFlowsPerWorkspace: 3, runsPerMonth: 200, aiStepsPerMonth: 0 } as const;
+const SEAT_FLOW_QUOTA = { runsPerSeat: 2000, aiStepsPerSeat: 200, activeBase: 50, activePerExtraSeat: 10, activeMax: 200 } as const;
+
+/**
+ * Flow quota of a workspace from its billing entitlements (brain/plans/billing-entitlements-contract.md):
+ * `flowsQuota: 'free'` → FREE_FLOW_QUOTA; `'seat'` (Personal/Team/Organization/exempt) → per paid seat
+ * (2,000 runs + 200 AI steps per seat and month; 50 active flows + 10 per extra seat, max 200).
+ * No entitlement doc = legacy workspace in grace → one-seat quota. A platform-admin override
+ * `tenants/{t}.limits.automations` wins field by field.
+ */
+export const flowQuotaFor = (entitlement: Json | null | undefined, tenant: Json | null | undefined): AutomationLimits => {
+    let base: AutomationLimits;
+    if (!entitlement) {
+        base = { runsPerMonth: AUTOMATION_LIMITS.runsPerMonth, aiStepsPerMonth: AUTOMATION_LIMITS.aiStepsPerMonth, activeFlowsPerWorkspace: AUTOMATION_LIMITS.activeFlowsPerWorkspace, tier: 'legacy' };
+    } else if ((entitlement.flowsQuota ?? (entitlement.plan === 'free' ? 'free' : 'seat')) === 'free') {
+        base = { ...FREE_FLOW_QUOTA, tier: 'free' };
+    } else {
+        const seats = Math.max(1, Math.floor(Number(entitlement.seats) || 1));
+        base = {
+            runsPerMonth: SEAT_FLOW_QUOTA.runsPerSeat * seats,
+            aiStepsPerMonth: SEAT_FLOW_QUOTA.aiStepsPerSeat * seats,
+            activeFlowsPerWorkspace: Math.min(SEAT_FLOW_QUOTA.activeMax, SEAT_FLOW_QUOTA.activeBase + SEAT_FLOW_QUOTA.activePerExtraSeat * (seats - 1)),
+            tier: 'seat'
+        };
+    }
     const raw = tenant?.limits?.automations || {};
-    const pick = (key: keyof AutomationLimits) =>
-        Number.isFinite(raw[key]) && raw[key] >= 0 ? Number(raw[key]) : AUTOMATION_LIMITS[key];
-    return { runsPerMonth: pick('runsPerMonth'), aiStepsPerMonth: pick('aiStepsPerMonth'), activeFlowsPerWorkspace: pick('activeFlowsPerWorkspace') };
+    const pick = (key: 'runsPerMonth' | 'aiStepsPerMonth' | 'activeFlowsPerWorkspace') =>
+        Number.isFinite(raw[key]) && raw[key] >= 0 ? Number(raw[key]) : base[key];
+    return { runsPerMonth: pick('runsPerMonth'), aiStepsPerMonth: pick('aiStepsPerMonth'), activeFlowsPerWorkspace: pick('activeFlowsPerWorkspace'), tier: base.tier };
 };
+
+/** Legacy quota (no entitlements) with the platform-admin override; prefer `flowQuotaFor`. */
+export const resolveLimits = (tenant: Json | null | undefined): AutomationLimits => flowQuotaFor(null, tenant);
 
 // ---------------------------------------------------------------------------
 // Schema

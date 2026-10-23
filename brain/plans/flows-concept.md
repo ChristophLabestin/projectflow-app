@@ -147,6 +147,8 @@ Projektzugang sehen Projekt-Flows und deren Protokoll (lesend).
 - Indexe: `automations (enabled, trigger.type)`, `automation_runs (automationId, startedAt desc)`,
   `automation_runs (status, resumeAt)`.
 
+**Kontingente pro Plan** (Billing `entitlements/plan.flowsQuota`, Vertrag `billing-entitlements-contract.md` §3): Free 3 aktive Flows / 200 Läufe / KI nur mit eigenem Schlüssel; je Platz 2.000 Läufe + 200 KI-Schritte, 50 aktive Flows + 10 je Platz. Über dem Limit: Aktivieren bzw. manueller Lauf → Billing-Code, automatische Läufe `skipped_limit` („Kontingent erreicht“); nichts wird gelöscht oder abgeschaltet.
+
 **Gesperrte Workspaces** (`tenants/{t}.suspendedAt`, Admin-Konsole, Helper `tenant-status.ts`): keine Event-Runs, Zeitpläne verbrauchen den Slot ohne Lauf, laufende/wartende Runs enden als `skipped_suspended`, alle Flow-Callables antworten `failed-precondition`.
 
 ## 5a. KI in Flows (Paket 5, 2026-10-23, User-Vorgabe „Decisions API + Structured Outputs als Standard“)
