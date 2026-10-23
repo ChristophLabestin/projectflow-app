@@ -3,6 +3,8 @@ import { Link, useNavigate } from 'react-router-dom';
 import type { Editor } from '@tiptap/react';
 import { useLanguage } from '../../context/LanguageContext';
 import { useToast } from '../../context/UIContext';
+import { useWorkspace } from '../../context/WorkspaceContext';
+import { FileAttachments } from '../../components/files/FileAttachments';
 import { useMotionOnChange } from '../../components/motion';
 import type { WikiDocMeta, WikiEditorPresence, WikiJsonNode, WikiPrefs } from '../../types/wiki';
 import {
@@ -64,6 +66,7 @@ export const WikiPage: React.FC<WikiPageProps> = ({ meta, docs, prefs, basePath,
     const { showError, showSuccess } = useToast();
     const navigate = useNavigate();
     const data = useWikiData();
+    const { activeWorkspace } = useWorkspace();
     const { tenantId, isGuest, uid, space } = data;
 
     const [loaded, setLoaded] = React.useState<{ docId: string; json: WikiJsonNode } | null>(null);
@@ -502,6 +505,15 @@ export const WikiPage: React.FC<WikiPageProps> = ({ meta, docs, prefs, basePath,
                             <span /><span /><span />
                         </div>
                     )}
+
+                    <section className="wiki-attachments">
+                        <FileAttachments
+                            tenantId={tenantId}
+                            parent={{ type: 'doc', id: meta.id, projectId: meta.projectId, title: meta.title || t('wiki.untitled') }}
+                            role={activeWorkspace?.role || null}
+                            title={t('wiki.rail.files')}
+                        />
+                    </section>
 
                     <section className="wiki-children">
                         {children.length > 0 && <h2 className="wiki-rail__label">{t('wiki.rail.subpages')}</h2>}
