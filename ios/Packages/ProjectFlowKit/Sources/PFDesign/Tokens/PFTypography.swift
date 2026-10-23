@@ -41,8 +41,11 @@ public enum PFFont {
     public static func registerIfNeeded() {
         guard !registered else { return }
         registered = true
-        if let url = Bundle.module.url(forResource: "PlusJakartaSans-VF", withExtension: "ttf") {
-            CTFontManagerRegisterFontsForURL(url as CFURL, .process, nil)
+        // Roboto Medium only for the "Sign in with Google" button (Google branding guidelines, Apache 2.0).
+        for name in ["PlusJakartaSans-VF", "Roboto-Medium"] {
+            if let url = Bundle.module.url(forResource: name, withExtension: "ttf") {
+                CTFontManagerRegisterFontsForURL(url as CFURL, .process, nil)
+            }
         }
     }
 

@@ -18,6 +18,14 @@
 			<key>CFBundleURLName</key><string>de.christophlabestin.projectflow</string>
 			<key>CFBundleURLSchemes</key><array><string>projectflow</string></array>
 		</dict>
+		<dict>
+			<!-- Google Sign-In (REVERSED_CLIENT_ID) and Firebase OAuth redirects (GitHub; encoded GOOGLE_APP_ID). -->
+			<key>CFBundleURLName</key><string>firebase-auth</string>
+			<key>CFBundleURLSchemes</key><array>
+				<string>com.googleusercontent.apps.11139679569-n88v32b26tam5nqvhmm27t6k7ahp5c43</string>
+				<string>app-1-11139679569-ios-8f2cc861969cce7915bf70</string>
+			</array>
+		</dict>
 	</array>
 	<key>LSRequiresIPhoneOS</key><true/>
 	<key>ITSAppUsesNonExemptEncryption</key><false/>

@@ -1,4 +1,6 @@
 import SwiftUI
+import FirebaseAuth
+import GoogleSignIn
 import PFDesign
 
 @main
@@ -20,6 +22,8 @@ struct ProjectFlowApp: App {
                     AppIntentBridge.model = model
                 }
                 .onOpenURL { url in
+                    // Sign-in redirects (Google, Firebase OAuth for GitHub) first; the proxy is off, so by hand.
+                    if GIDSignIn.sharedInstance.handle(url) || Auth.auth().canHandle(url) { return }
                     model.router.handle(url: url, activeTenant: model.workspace?.tenantId)
                 }
                 .onContinueUserActivity(NSUserActivityTypeBrowsingWeb) { activity in

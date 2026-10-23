@@ -89,6 +89,7 @@
 		6A78D8FE65EAC4738A2337E4 /* PlanningSheets.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89F748B2E27BB31CE8120C6 /* PlanningSheets.swift */; };
 		6AF38C9FA3AA4C3D133A2D0F /* SystemSync.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4A65B02487F2B4A16816A46 /* SystemSync.swift */; };
 		6B499F1018DF4501D4FE7D92 /* PFModel in Frameworks */ = {isa = PBXBuildFile; productRef = 5D714314D86EC4611BD1A0A7 /* PFModel */; };
+		6B49FA707F29A97971413497 /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = F9EDDD28D9D07FFEF70C6A0B /* GoogleSignIn */; };
 		6D3FAB63DBE271F27037472F /* TodayWidgetViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9BBB89863690CB4FCD76AAD2 /* TodayWidgetViews.swift */; };
 		6D72A5BDA7BD2D53AB73172D /* FirestoreWriter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44F310BCFDA8B6E1D0701374 /* FirestoreWriter.swift */; };
 		6DFDD2DDBC0B884668280057 /* ProjectTaskIndex.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7BE01BF918DB1F016063093 /* ProjectTaskIndex.swift */; };
@@ -158,6 +159,7 @@
 		DB9B0085AB28604B46BC4EEA /* Controls.swift in Sources */ = {isa = PBXBuildFile; fileRef = 93A34A5BA31F750720D5C8EA /* Controls.swift */; };
 		DC5731F152E47EAD1AD41036 /* ShareModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = DAA49F86E3FA87036F47EC82 /* ShareModel.swift */; };
 		DD6FB7DC028036A1CF0405FC /* ProjectsPortfolio.swift in Sources */ = {isa = PBXBuildFile; fileRef = 066996BCF67755BE705FE3EB /* ProjectsPortfolio.swift */; };
+		DDADE423A0B5F323303B82CF /* SocialButtons.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A0A04DF94D357D55160B81C /* SocialButtons.swift */; };
 		DFC5318A15FE014644E0A0E6 /* StartupSeeding.swift in Sources */ = {isa = PBXBuildFile; fileRef = DEC18B0D345E5813D8680CDC /* StartupSeeding.swift */; };
 		E1207494DCE3EC373AFD993E /* PFDomain in Frameworks */ = {isa = PBXBuildFile; productRef = 651EE6F626E3317EB82CE461 /* PFDomain */; };
 		E1C363A8424662E973EDEA12 /* AppShortcuts.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 67A4BEC589BD8555BA02A24A /* AppShortcuts.xcstrings */; };
@@ -244,6 +246,7 @@
 		0E6A3495309C68BCAB890838 /* DeepLinks.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeepLinks.swift; sourceTree = "<group>"; };
 		12A2D230FC996843CF2F20E6 /* TodayDayClose.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TodayDayClose.swift; sourceTree = "<group>"; };
 		19E773E5D6E25EBB73D1A36F /* PasskeyRegistration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PasskeyRegistration.swift; sourceTree = "<group>"; };
+		1A0A04DF94D357D55160B81C /* SocialButtons.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SocialButtons.swift; sourceTree = "<group>"; };
 		1BA130460B8137AFFBFC5041 /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
 		1C2AC12C9A6F4C14DFB30D19 /* InboxLogic.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InboxLogic.swift; sourceTree = "<group>"; };
 		1FB343B95C66C528DD5FF0EF /* ProjectFlowWidgets.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = ProjectFlowWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -417,6 +420,7 @@
 				92B27CB1D6855A7333AB2222 /* PFSnapshot in Frameworks */,
 				4993A897E4D481BCEEECB915 /* FirebaseMessaging in Frameworks */,
 				16E77E76AEA0589EDED9993E /* FirebaseAuth in Frameworks */,
+				6B49FA707F29A97971413497 /* GoogleSignIn in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -524,6 +528,7 @@
 				E50B796034553AE06808F353 /* AuthCoordinators.swift */,
 				A31B98699EA7B8EB594E7D9E /* AuthFlowView.swift */,
 				F401CC5F28A86B0F4B0C5C47 /* AuthStrings.swift */,
+				1A0A04DF94D357D55160B81C /* SocialButtons.swift */,
 			);
 			path = Auth;
 			sourceTree = "<group>";
@@ -960,6 +965,7 @@
 				B1E3E524B99DA009BB15CD2D /* PFSnapshot */,
 				7F8BCA3C2BC2D1F0233FEA57 /* FirebaseMessaging */,
 				B7D94F4D8DEABAFC7314806D /* FirebaseAuth */,
+				F9EDDD28D9D07FFEF70C6A0B /* GoogleSignIn */,
 			);
 			productName = ProjectFlow;
 			productReference = 939AE0BDE889F1161652064A /* ProjectFlow.app */;
@@ -1004,6 +1010,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				DB395E993DE245DE7A4EA095 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
+				B952F679DF3F0D0468875329 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */,
 				EA16C933CED5F775572DD253 /* XCLocalSwiftPackageReference "Packages/ProjectFlowKit" */,
 			);
 			preferredProjectObjectVersion = 77;
@@ -1201,6 +1208,7 @@
 				EF2659D5CB0B16D05B86EE9E /* SharedSession.swift in Sources */,
 				0B77706DD6934119B9116A36 /* SharedSessionStore.swift in Sources */,
 				49280D9D81096B55D0865B31 /* ShellStrings.swift in Sources */,
+				DDADE423A0B5F323303B82CF /* SocialButtons.swift in Sources */,
 				174865552F76676DDE499EFF /* SpotlightIndexer.swift in Sources */,
 				0419F5E85CF6F3856F69E5CA /* SprintEditor.swift in Sources */,
 				DFC5318A15FE014644E0A0E6 /* StartupSeeding.swift in Sources */,
@@ -1299,7 +1307,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 2;
+				CURRENT_PROJECT_VERSION = 3;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				DEVELOPMENT_TEAM = 48BM67TY9G;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
@@ -1465,7 +1473,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 2;
+				CURRENT_PROJECT_VERSION = 3;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = 48BM67TY9G;
 				ENABLE_NS_ASSERTIONS = NO;
@@ -1587,7 +1595,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 2;
+				CURRENT_PROJECT_VERSION = 3;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				DEVELOPMENT_TEAM = 48BM67TY9G;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
@@ -1761,6 +1769,14 @@
 /* End XCLocalSwiftPackageReference section */
 
 /* Begin XCRemoteSwiftPackageReference section */
+		B952F679DF3F0D0468875329 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/google/GoogleSignIn-iOS";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 10.0.0;
+			};
+		};
 		DB395E993DE245DE7A4EA095 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/firebase/firebase-ios-sdk";
@@ -1829,6 +1845,11 @@
 		E1065FACB8E51F518519604B /* PFModel */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = PFModel;
+		};
+		F9EDDD28D9D07FFEF70C6A0B /* GoogleSignIn */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = B952F679DF3F0D0468875329 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */;
+			productName = GoogleSignIn;
 		};
 		FCC80AE2C2D0E4F31DD509D9 /* PFSnapshot */ = {
 			isa = XCSwiftPackageProductDependency;

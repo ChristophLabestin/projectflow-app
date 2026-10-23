@@ -3,6 +3,8 @@ import CryptoKit
 import Foundation
 import UIKit
 import FirebaseAuth
+import FirebaseCore
+import GoogleSignIn
 import PFData
 
 /// Sign in with Apple → Firebase `apple.com` credential (contract C6). Keeps the last authorization
@@ -180,5 +182,43 @@ extension Data {
 
     var base64URLEncoded: String {
         base64EncodedString().replacingOccurrences(of: "+", with: "-").replacingOccurrences(of: "/", with: "_").replacingOccurrences(of: "=", with: "")
+    }
+}
+
+/// Google (GoogleSignIn SDK → `google.com` credential) and GitHub (Firebase OAuth web flow), same providers as the web.
+@MainActor
+enum SocialSignIn {
+    /// Google needs the iOS OAuth client of the Firebase config (missing in the emulator setup).
+    static var isGoogleAvailable: Bool { FirebaseApp.app()?.options.clientID != nil }
+
+    static func google(auth: AuthService) async throws {
+        guard let clientID = FirebaseApp.app()?.options.clientID else { throw PFDataError.message("Google Sign-In is not configured") }
+        GIDSignIn.sharedInstance.configuration = GIDConfiguration(clientID: clientID)
+        guard let presenter = UIApplication.shared.connectedScenes
+            .compactMap({ ($0 as? UIWindowScene)?.keyWindow?.rootViewController }).first else { return }
+        let result = try await GIDSignIn.sharedInstance.signIn(withPresenting: topmost(presenter))
+        guard let idToken = result.user.idToken?.tokenString else { throw PFDataError.message("Google returned no ID token") }
+        let credential = GoogleAuthProvider.credential(withIDToken: idToken, accessToken: result.user.accessToken.tokenString)
+        try await auth.signIn(with: credential)
+    }
+
+    static func github(auth: AuthService) async throws {
+        let provider = OAuthProvider(providerID: "github.com")
+        provider.scopes = ["user:email"]
+        let credential = try await provider.credential(with: nil)
+        try await auth.signIn(with: credential)
+    }
+
+    /// True when the user closed the Google or GitHub sheet themselves.
+    static func isCancellation(_ error: Error) -> Bool {
+        let nsError = error as NSError
+        if nsError.domain == kGIDSignInErrorDomain, nsError.code == GIDSignInError.canceled.rawValue { return true }
+        return nsError.domain == AuthErrorDomain && nsError.code == AuthErrorCode.webContextCancelled.rawValue
+    }
+
+    private static func topmost(_ controller: UIViewController) -> UIViewController {
+        var top = controller
+        while let presented = top.presentedViewController { top = presented }
+        return top
     }
 }

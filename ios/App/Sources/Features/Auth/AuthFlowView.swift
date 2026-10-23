@@ -16,6 +16,7 @@ struct AuthFlowView: View {
     @State private var passkey = PasskeyCoordinator()
     @State private var markCenter: CGPoint?
     @State private var appeared = false
+    @State private var emailExpanded = false
 
     enum Mode: Hashable { case signIn, register }
 
@@ -39,10 +40,8 @@ struct AuthFlowView: View {
             ScrollView {
                 VStack(spacing: PFSpace.xl) {
                     hero
-                    card
+                    methods
                         .offset(y: appeared ? 0 : 40)
-                        .opacity(appeared ? 1 : 0)
-                    alternatives
                         .opacity(appeared ? 1 : 0)
                 }
                 .padding(.horizontal, PFSpace.page)
@@ -57,6 +56,7 @@ struct AuthFlowView: View {
         .onAppear { withAnimation(.spring(response: 0.8, dampingFraction: 0.8).delay(0.15)) { appeared = true } }
         .task {
             if ProcessInfo.processInfo.arguments.contains("-pfAutoLogin") {
+                emailExpanded = true
                 email = "demo@projectflow.test"
                 password = "projectflow-demo"
                 submit()
@@ -90,9 +90,87 @@ struct AuthFlowView: View {
         .padding(.top, PFSpace.xl)
     }
 
-    private var card: some View {
+    /// Sign-in methods: e-mail (a button that unfolds into the form), passkey, then Apple, Google and GitHub.
+    private var methods: some View {
+        VStack(spacing: PFSpace.s) {
+            emailEntry
+            PFButton(L10n.t("auth.passkey"), systemImage: "person.badge.key", kind: .secondary, size: .large, fullWidth: true) {
+                Task { await run { try await passkey.signIn(auth: model.auth, email: email.isEmpty ? nil : email) } }
+            }
+            HStack(spacing: PFSpace.s) {
+                Rectangle().fill(PFColor.hairline).frame(height: 1)
+                Text(L10n.t("auth.or")).pfText(.eyebrow).foregroundStyle(PFColor.textMuted)
+                Rectangle().fill(PFColor.hairline).frame(height: 1)
+            }
+            .padding(.vertical, PFSpace.xs)
+            AppleSignInBrandButton {
+                Task { await run { try await apple.signIn(auth: model.auth) } }
+            }
+            if SocialSignIn.isGoogleAvailable {
+                GoogleSignInBrandButton {
+                    Task { await run { try await SocialSignIn.google(auth: model.auth) } }
+                }
+            }
+            GitHubSignInBrandButton {
+                Task { await run { try await SocialSignIn.github(auth: model.auth) } }
+            }
+            if let error, !emailExpanded {
+                errorLabel(error)
+            }
+            Text(L10n.t("auth.legal")).pfText(.caption).foregroundStyle(PFColor.textMuted)
+                .frame(maxWidth: .infinity)
+                .multilineTextAlignment(.center)
+                .padding(.top, PFSpace.s)
+                .padding(.bottom, PFSpace.xxl)
+        }
+        .disabled(isBusy)
+    }
+
+    /// A button the size of the SSO buttons that unfolds into the e-mail form (same surface, growing in place).
+    private var emailEntry: some View {
+        let radius: CGFloat = emailExpanded ? PFRadius.surface + 4 : 26
+        return VStack(alignment: .leading, spacing: PFSpace.m) {
+            if emailExpanded {
+                emailForm
+                    .transition(.asymmetric(insertion: .opacity.combined(with: .scale(scale: 0.96, anchor: .top)), removal: .opacity))
+            } else {
+                Button {
+                    PFHaptics.tap()
+                    withAnimation(.spring(response: 0.5, dampingFraction: 0.82)) { emailExpanded = true }
+                } label: {
+                    HStack(spacing: 8) {
+                        Image(systemName: "envelope").font(.system(size: 15, weight: .semibold))
+                        Text(L10n.t("auth.continueEmail")).pfText(.button)
+                    }
+                    .foregroundStyle(PFColor.textMain)
+                    .frame(maxWidth: .infinity, minHeight: 52)
+                    .contentShape(.rect)
+                }
+                .buttonStyle(.pfPressable)
+                .transition(.opacity)
+            }
+        }
+        .padding(emailExpanded ? PFSpace.l : 0)
+        .background(PFColor.card, in: RoundedRectangle(cornerRadius: radius, style: .continuous))
+        .pfElevation(.card, radius: radius)
+    }
+
+    private var emailForm: some View {
         VStack(alignment: .leading, spacing: PFSpace.m) {
-            PFSegmented([(Mode.signIn, L10n.t("auth.signIn")), (Mode.register, L10n.t("auth.register"))], selection: $mode)
+            HStack(spacing: PFSpace.s) {
+                PFSegmented([(Mode.signIn, L10n.t("auth.signIn")), (Mode.register, L10n.t("auth.register"))], selection: $mode)
+                Button {
+                    withAnimation(.spring(response: 0.45, dampingFraction: 0.85)) { emailExpanded = false }
+                } label: {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundStyle(PFColor.textMuted)
+                        .frame(width: 36, height: 36)
+                        .background(PFColor.raised, in: .circle)
+                }
+                .buttonStyle(.pfPressable)
+                .accessibilityLabel(L10n.t("common.close"))
+            }
 
             VStack(spacing: PFSpace.s) {
                 if mode == .register {
@@ -108,13 +186,7 @@ struct AuthFlowView: View {
                 PFSecureField(L10n.t("auth.password"), text: $password, isNew: mode == .register) { submit() }
             }
 
-            if let error {
-                Label(error, systemImage: "exclamationmark.circle")
-                    .pfText(.metaStrong)
-                    .foregroundStyle(PFColor.dangerText)
-                    .transition(.opacity)
-                    .accessibilityAddTraits(.updatesFrequently)
-            }
+            if let error { errorLabel(error) }
 
             PFButton(mode == .signIn ? L10n.t("auth.signIn") : L10n.t("auth.createAccount"),
                      systemImage: "arrow.right", size: .large, fullWidth: true) { submit() }
@@ -129,30 +201,14 @@ struct AuthFlowView: View {
                     .frame(maxWidth: .infinity)
             }
         }
-        .padding(PFSpace.l)
-        .pfCard(radius: PFRadius.surface + 4)
     }
 
-    private var alternatives: some View {
-        VStack(spacing: PFSpace.m) {
-            HStack(spacing: PFSpace.s) {
-                Rectangle().fill(PFColor.hairline).frame(height: 1)
-                Text(L10n.t("auth.or")).pfText(.eyebrow).foregroundStyle(PFColor.textMuted)
-                Rectangle().fill(PFColor.hairline).frame(height: 1)
-            }
-            VStack(spacing: PFSpace.s) {
-                PFButton(L10n.t("auth.apple"), systemImage: "apple.logo", kind: .secondary, size: .large, fullWidth: true) {
-                    Task { await run { try await apple.signIn(auth: model.auth) } }
-                }
-                PFButton(L10n.t("auth.passkey"), systemImage: "person.badge.key", kind: .secondary, size: .large, fullWidth: true) {
-                    Task { await run { try await passkey.signIn(auth: model.auth, email: email.isEmpty ? nil : email) } }
-                }
-            }
-            Text(L10n.t("auth.legal")).pfText(.caption).foregroundStyle(PFColor.textMuted)
-                .frame(maxWidth: .infinity)
-                .multilineTextAlignment(.center)
-                .padding(.bottom, PFSpace.xxl)
-        }
+    private func errorLabel(_ text: String) -> some View {
+        Label(text, systemImage: "exclamationmark.circle")
+            .pfText(.metaStrong)
+            .foregroundStyle(PFColor.dangerText)
+            .transition(.opacity)
+            .accessibilityAddTraits(.updatesFrequently)
     }
 
     private func submit() {
@@ -186,6 +242,8 @@ struct AuthFlowView: View {
             try await work()
         } catch let authError as ASAuthorizationError where authError.code == .canceled {
             // User dismissed the system sheet.
+        } catch where SocialSignIn.isCancellation(error) {
+            // User closed the Google or GitHub sheet.
         } catch {
             self.error = AuthErrorText.message(for: error)
         }
