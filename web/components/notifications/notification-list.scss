@@ -5,36 +5,57 @@
     flex-direction: column;
 }
 
-.notification-list__group + .notification-list__group {
-    border-top: 1px solid var(--color-surface-border);
-}
-
 .notification-list__group-title {
+    position: sticky;
+    top: 0;
+    z-index: 1;
     margin: 0;
-    padding: 12px 20px 4px;
+    padding: 12px 20px 6px;
+    background: var(--color-surface-card);
     color: var(--color-text-muted);
     font-size: 0.6875rem;
-    font-weight: 700;
-    letter-spacing: 0.04em;
+    font-weight: 600;
+    letter-spacing: 0.06em;
     text-transform: uppercase;
 }
 
 .notification-list__items {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
     margin: 0;
     padding: 0 8px 8px;
     list-style: none;
 }
 
 .notification-row {
+    --tone-rgb: var(--status-backlog-rgb);
+    --tone-text: var(--color-status-backlog-text);
+
     position: relative;
     display: grid;
-    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-columns: auto minmax(0, 1fr);
     align-items: start;
     gap: 12px;
     padding: 12px;
+
+    @media (hover: none) {
+        grid-template-columns: auto minmax(0, 1fr) auto;
+    }
     border-radius: var(--radius-lg);
     cursor: pointer;
     transition: background-color 0.15s ease;
+
+    &[data-tone='assign'] { --tone-rgb: var(--status-open-rgb); --tone-text: var(--color-status-open-text); }
+    &[data-tone='comment'] { --tone-rgb: var(--status-planning-rgb); --tone-text: var(--color-status-planning-text); }
+    &[data-tone='status'] { --tone-rgb: var(--status-done-rgb); --tone-text: var(--color-status-done-text); }
+    &[data-tone='due'] { --tone-rgb: var(--status-review-rgb); --tone-text: var(--color-status-review-text); }
+    &[data-tone='project'] { --tone-rgb: var(--status-in-progress-rgb); --tone-text: var(--color-status-in-progress-text); }
+    &[data-tone='reminder'] { --tone-rgb: var(--status-review-rgb); --tone-text: var(--color-status-review-text); }
+
+    &--unread {
+        background: var(--color-surface-hover-light);
+    }
 
     &:hover,
     &:focus-visible {
@@ -51,25 +72,16 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 32px;
-    height: 32px;
+    width: 36px;
+    height: 36px;
     border-radius: var(--radius-full);
-    background: var(--color-surface-hover);
-    color: var(--color-text-muted);
+    background: rgba(var(--tone-rgb), 0.14);
+    color: var(--tone-text);
     font-size: 1.125rem;
 
-    .notification-row--unread & {
-        background: var(--color-primary);
-        color: var(--color-primary-text);
-    }
-
-    .notification-row[data-tone='due'] & {
-        color: var(--color-status-review-text);
-    }
-
-    .notification-row--unread[data-tone='due'] & {
-        background: rgba(var(--color-warning-rgb), 0.16);
-        color: var(--color-status-review-text);
+    .notification-row:not(.notification-row--unread) & {
+        background: var(--color-surface-hover);
+        color: var(--color-text-muted);
     }
 }
 
@@ -101,8 +113,16 @@
     }
 }
 
+.notification-row__meta {
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    gap: 6px;
+}
+
 .notification-row__time {
     flex-shrink: 0;
+    font-variant-numeric: tabular-nums;
     color: var(--color-text-muted);
     font-size: 0.75rem;
 }
@@ -120,19 +140,42 @@
     font-weight: 600;
 }
 
+// Hover actions overlay the time/unread meta instead of reserving a column.
 .notification-row__actions {
+    position: absolute;
+    top: 8px;
+    right: 8px;
     display: flex;
     gap: 2px;
+    padding: 2px;
+    border-radius: var(--radius-md);
+    background: var(--color-surface-hover);
     opacity: 0;
+    pointer-events: none;
     transition: opacity 0.15s ease;
 
     .notification-row:hover &,
     .notification-row:focus-within & {
         opacity: 1;
+        pointer-events: auto;
     }
 
     @media (hover: none) {
+        position: static;
         opacity: 1;
+        pointer-events: auto;
+        background: transparent;
+    }
+}
+
+.notification-row__meta {
+    transition: opacity 0.15s ease;
+
+    @media (hover: hover) {
+        .notification-row:hover &,
+        .notification-row:focus-within & {
+            opacity: 0;
+        }
     }
 }
 
@@ -164,19 +207,15 @@
 }
 
 .notification-row__dot {
-    position: absolute;
-    top: 50%;
-    left: 2px;
-    width: 6px;
-    height: 6px;
+    width: 8px;
+    height: 8px;
     border-radius: var(--radius-full);
-    background: var(--color-primary);
-    transform: translateY(-50%);
+    background: var(--color-error);
 }
 
 .notification-list--compact {
     .notification-list__group-title {
-        padding: 10px 16px 2px;
+        padding: 10px 18px 4px;
     }
 
     .notification-list__items {
@@ -189,9 +228,9 @@
     }
 
     .notification-row__icon {
-        width: 28px;
-        height: 28px;
-        font-size: 1rem;
+        width: 32px;
+        height: 32px;
+        font-size: 1.0625rem;
     }
 
     .notification-row__message {

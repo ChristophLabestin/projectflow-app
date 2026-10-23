@@ -110,12 +110,22 @@ const fill = (template: string, values: Record<string, string>) =>
  * Localized title + message. Server triggers store `params` (task title, status, dates...);
  * older docs, reminders and nudges fall back to the stored text.
  */
+// Older notifications were stored with English copy and no params; recover the quoted task title
+// so their title and message still render in the user's language.
+const LEGACY_TASK_TYPES = new Set<NotificationType>(['task_assigned', 'task_completed', 'comment_added', 'comment_mention']);
+
+const legacyParams = (notification: Notification): Notification['params'] | undefined => {
+    if (!LEGACY_TASK_TYPES.has(notification.type)) return undefined;
+    const match = /["„“]([^"„“”]+)["“”]/.exec(notification.message || '');
+    return match ? { taskTitle: match[1] } : undefined;
+};
+
 export const getNotificationText = (
     notification: Notification,
     t: Translate,
     formatDate: (value: string) => string
 ): { title: string; message: string } => {
-    const params = notification.params;
+    const params = notification.params || legacyParams(notification);
     if (!params || !LOCALIZED_TYPES.has(notification.type)) {
         return { title: notification.title, message: notification.message };
     }

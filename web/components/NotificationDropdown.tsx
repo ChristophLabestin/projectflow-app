@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import React, { Suspense, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '../context/UIContext';
@@ -10,6 +10,8 @@ import { getNotificationPath, type NotificationFilter } from '../utils/notificat
 import { NotificationList } from './notifications/NotificationList';
 import { NotificationFilterTabs, NotificationOtherWorkspaces, NotificationState } from './notifications/NotificationCenterParts';
 import './notifications/notification-dropdown.scss';
+
+const SettingsModal = React.lazy(() => import('./SettingsModal').then((module) => ({ default: module.SettingsModal })));
 
 interface NotificationDropdownProps {
     position?: 'topbar' | 'sidebar';
@@ -26,6 +28,7 @@ const EDGE = 8;
 export const NotificationDropdown = ({ position = 'topbar' }: NotificationDropdownProps) => {
     const [isOpen, setIsOpen] = useState(false);
     const [filter, setFilter] = useState<NotificationFilter>('all');
+    const [settingsOpen, setSettingsOpen] = useState(false);
     const [panelStyle, setPanelStyle] = useState<React.CSSProperties>({});
     const triggerRef = useRef<HTMLButtonElement>(null);
     const panelRef = useRef<HTMLDivElement>(null);
@@ -144,24 +147,26 @@ export const NotificationDropdown = ({ position = 'topbar' }: NotificationDropdo
                     aria-label={t('notifications.title')}
                 >
                     <div className="notification-panel__header">
-                        <div className="notification-panel__heading">
-                            <h2 className="notification-panel__title">{t('notifications.title')}</h2>
-                            <p className="notification-panel__subtitle">
-                                {unreadCount > 0
-                                    ? t('notifications.subtitle.unread').replace('{count}', String(unreadCount))
-                                    : t('notifications.subtitle.allCaughtUp')}
-                            </p>
-                        </div>
-                        {unreadCount > 0 && (
-                            <button
-                                type="button"
-                                className="notification-panel__link"
-                                onClick={() => void run(markAllRead, 'notifications.toast.updateError')}
-                            >
-                                <span className="material-symbols-outlined" aria-hidden="true">done_all</span>
-                                {t('notifications.actions.markAllRead')}
-                            </button>
-                        )}
+                        <h2 className="notification-panel__title">{t('notifications.title')}</h2>
+                        <button
+                            type="button"
+                            className="notification-panel__icon-button"
+                            onClick={() => void run(markAllRead, 'notifications.toast.updateError')}
+                            disabled={unreadCount === 0}
+                            aria-label={t('notifications.actions.markAllRead')}
+                            title={t('notifications.actions.markAllRead')}
+                        >
+                            <span className="material-symbols-outlined" aria-hidden="true">done_all</span>
+                        </button>
+                        <button
+                            type="button"
+                            className="notification-panel__icon-button"
+                            onClick={() => { setIsOpen(false); setSettingsOpen(true); }}
+                            aria-label={t('notifications.actions.settings')}
+                            title={t('notifications.actions.settings')}
+                        >
+                            <span className="material-symbols-outlined" aria-hidden="true">tune</span>
+                        </button>
                     </div>
                     <div className="notification-panel__toolbar">
                         <NotificationFilterTabs value={filter} unreadCount={unreadCount} onChange={setFilter} />
@@ -196,6 +201,11 @@ export const NotificationDropdown = ({ position = 'topbar' }: NotificationDropdo
                     </div>
                 </div>,
                 document.body
+            )}
+            {settingsOpen && (
+                <Suspense fallback={null}>
+                    <SettingsModal isOpen initialTab="notifications" onClose={() => setSettingsOpen(false)} />
+                </Suspense>
             )}
         </>
     );
