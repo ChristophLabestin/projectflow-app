@@ -5,6 +5,7 @@ import { useInAppAi } from '../../../hooks/useInAppAi';
 import { AiAssistError, streamAiAssist, type AiChatMessage, type AiContextEnvelope, type AiProposalPreview } from '../../../services/aiAssistClient';
 import { clearThread, loadThread, saveThread, threadKey } from '../../../services/aiThreads';
 import { aiErrorMessage } from './aiErrors';
+import { aiAccessFromError, type AiAccessStatus } from '../../../hooks/useAiAccess';
 
 /**
  * Headless conversation with the in-app assistant (UI-independent; any surface — popover, command bar,
@@ -30,6 +31,7 @@ export const useAiConversation = ({ active, getContext, screenKey }: UseAiConver
     const [running, setRunning] = useState(false);
     const [steps, setSteps] = useState<string[]>([]);
     const [error, setError] = useState('');
+    const [planStatus, setPlanStatus] = useState<AiAccessStatus | null>(null);
     const [chips, setChips] = useState<AiContextChip[]>([]);
     const [context, setContext] = useState<AiContextEnvelope>({ surface: 'other' });
     const abortRef = useRef<AbortController | null>(null);
@@ -67,6 +69,7 @@ export const useAiConversation = ({ active, getContext, screenKey }: UseAiConver
         show();
         setSteps([]);
         setError('');
+        setPlanStatus(null);
         setRunning(true);
         const controller = new AbortController();
         abortRef.current = controller;
@@ -88,7 +91,11 @@ export const useAiConversation = ({ active, getContext, screenKey }: UseAiConver
             show();
             if (keyRef.current === key) void saveThread(user.uid, key, tenantId, [...history, { role: 'assistant', content: answer }]).catch(() => undefined);
         } catch (caught) {
-            if (!controller.signal.aborted) setError(aiErrorMessage(caught instanceof AiAssistError ? caught.code : 'internal', t));
+            if (!controller.signal.aborted) {
+                const code = caught instanceof AiAssistError ? caught.code : 'internal';
+                setPlanStatus(aiAccessFromError(code));
+                setError(aiErrorMessage(code, t));
+            }
             setMessages(answer || proposals.length ? [...earlier, { role: 'assistant', content: answer, proposals }] : earlier);
         } finally {
             setRunning(false);
@@ -105,5 +112,5 @@ export const useAiConversation = ({ active, getContext, screenKey }: UseAiConver
         if (user && keyRef.current) void clearThread(user.uid, keyRef.current).catch(() => undefined);
     }, [user]);
 
-    return { messages, running, steps, error, chips, context, send, stop, reset };
+    return { messages, running, steps, error, planStatus, chips, context, send, stop, reset };
 };
