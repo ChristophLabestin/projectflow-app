@@ -291,15 +291,18 @@
     text-decoration: none;
     white-space: nowrap;
     overflow: hidden;
-    transition: color var(--transition-fast);
+    transition: color var(--motion-duration-fast) var(--motion-ease-out);
 
     &:hover { color: var(--color-text-main); }
     &.is-active { color: var(--color-text-main); font-weight: 600; }
+    // Press feedback on the icon only (the row keeps its width animation untouched).
+    &:active .snav-row__icon { transform: scale(0.9); transition-duration: var(--motion-duration-instant); }
 }
 
 .snav-row__icon {
     flex: 0 0 20px;
     font-size: 20px;
+    transition: transform var(--motion-duration-fast) var(--motion-ease-out);
 }
 
 .snav-row__label {

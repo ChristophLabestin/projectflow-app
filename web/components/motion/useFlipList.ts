@@ -3,12 +3,14 @@ import { prefersReducedMotion } from '../brand/motion';
 import { MOTION } from './tokens';
 
 type FlipOptions = {
-    /** Items to track; each needs a stable `data-flip-key`. */
-    selector?: string;
+    /** Attribute holding each item's stable key (default `data-flip-key`, e.g. `data-task-id`). */
+    keyAttribute?: string;
     /** Fade/rise newly added items in. */
     enter?: boolean;
     /** Let removed items slide out (a detached copy is animated in place, then dropped). */
     exit?: boolean;
+    /** Keys that just landed via drag & drop: they settle in place instead of gliding from their old slot. */
+    settleKeys?: React.MutableRefObject<Set<string>>;
     /** Skip all motion while true (e.g. during an active drag, which animates itself). */
     disabled?: boolean;
 };
@@ -23,7 +25,7 @@ const MAX_ANIMATED = 80;
  * renders never animates. Runs after every commit of the owning component; costs one rect read per item.
  */
 export const useFlipList = (containerRef: React.RefObject<HTMLElement | null>, options: FlipOptions = {}) => {
-    const { selector = '[data-flip-key]', enter = true, exit = true, disabled = false } = options;
+    const { keyAttribute = 'data-flip-key', enter = true, exit = true, disabled = false, settleKeys } = options;
     const snapshots = useRef(new Map<string, Snapshot>());
     const ready = useRef(false);
 
@@ -31,14 +33,14 @@ export const useFlipList = (containerRef: React.RefObject<HTMLElement | null>, o
         const container = containerRef.current;
         if (!container) return;
         const origin = container.getBoundingClientRect();
-        const items = Array.from(container.querySelectorAll<HTMLElement>(selector));
+        const items = Array.from(container.querySelectorAll<HTMLElement>(`[${keyAttribute}]`));
         const animate = ready.current && !disabled && !prefersReducedMotion() && typeof container.animate === 'function';
         const next = new Map<string, Snapshot>();
         const viewport = window.innerHeight || document.documentElement.clientHeight;
         let budget = MAX_ANIMATED;
 
         for (const node of items) {
-            const key = node.dataset.flipKey;
+            const key = node.getAttribute(keyAttribute);
             if (!key || node.dataset.flipGhost) continue;
             const rect = node.getBoundingClientRect();
             const snap: Snapshot = {
@@ -54,7 +56,14 @@ export const useFlipList = (containerRef: React.RefObject<HTMLElement | null>, o
             if (!animate || budget <= 0) continue;
             const inView = !viewport || (rect.bottom > 0 && rect.top < viewport);
             const prev = snapshots.current.get(key);
-            if (prev) {
+            if (settleKeys?.current.has(key) && (!prev || Math.abs(prev.x - snap.x) > 0.5 || Math.abs(prev.y - snap.y) > 0.5)) {
+                settleKeys.current.delete(key);
+                budget -= 1;
+                node.animate(
+                    [{ opacity: 0.5, transform: 'scale(0.96)' }, { opacity: 1, transform: 'none' }],
+                    { duration: MOTION.slow, easing: MOTION.spring }
+                );
+            } else if (prev) {
                 const dx = prev.x - snap.x;
                 const dy = prev.y - snap.y;
                 if ((Math.abs(dx) > 0.5 || Math.abs(dy) > 0.5) && inView) {

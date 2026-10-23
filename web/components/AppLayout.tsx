@@ -242,7 +242,7 @@ export const AppLayout = () => {
             {navOpen && (
                 <div className="fixed inset-0 z-50 md:hidden flex">
                     <div
-                        className="fixed inset-0 bg-black/40 backdrop-blur-sm transition-opacity"
+                        className="fixed inset-0 bg-black/40 backdrop-blur-sm motion-fade-in"
                         onClick={() => setNavOpen(false)}
                     />
                     <div className="relative w-4/5 max-w-xs h-full bg-card shadow-2xl animate-fade-in-left">

@@ -3,6 +3,7 @@ import { format } from 'date-fns';
 import {
     DndContext,
     DragEndEvent,
+    DragOverEvent,
     DragOverlay,
     DragStartEvent,
     PointerSensor,
@@ -13,6 +14,7 @@ import {
     useSensors
 } from '@dnd-kit/core';
 import { Badge } from '../../../common/Badge/Badge';
+import { MOTION, useFlipList } from '../../../motion';
 import type { WorkViewContext } from './shared/viewTypes';
 import type { WorkItem } from './shared/useWorkItems';
 import { parseDateValue } from '../../../../utils/taskDates';
@@ -30,14 +32,16 @@ const Card: React.FC<{ item: WorkItem; ctx: WorkViewContext; draggable: boolean;
         id: `${item.kind}:${item.id}`,
         disabled: !draggable
     });
-    const style = transform ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)` } : undefined;
+    // The DragOverlay carries the card while dragging; the original stays put as a placeholder.
+    const style = transform && !isDragging ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)` } : undefined;
     const due = item.dueDate ? parseDateValue(item.dueDate) : null;
     return (
         <div
             ref={overlay ? undefined : setNodeRef}
             style={style}
             data-status={item.status}
-            className={`po-board__task ${isDragging ? 'is-dragging' : ''} ${draggable ? 'is-draggable' : ''}`.trim()}
+            data-flip-key={overlay ? undefined : `${item.kind}:${item.id}`}
+            className={`po-board__task ${isDragging ? 'is-dragging' : ''} ${draggable ? 'is-draggable' : ''} ${overlay ? 'is-overlay' : ''}`.trim()}
             {...(overlay ? {} : attributes)}
             {...(overlay ? {} : listeners)}
             onClick={() => ctx.onItemClick(item)}
@@ -102,6 +106,11 @@ const columnKeyOf = (item: WorkItem, groupBy: WorkViewContext['groupBy']): strin
 export const WorkViewBoard: React.FC<{ ctx: WorkViewContext }> = ({ ctx }) => {
     const { items, initiatives, labels, groupBy, t } = ctx;
     const [activeId, setActiveId] = React.useState<string | null>(null);
+    // Cross-lane drops skip the overlay's fly-back; the card settles in its new lane instead.
+    const [crossing, setCrossing] = React.useState(false);
+    const boardRef = React.useRef<HTMLDivElement>(null);
+    const settleKeys = React.useRef(new Set<string>());
+    useFlipList(boardRef, { disabled: Boolean(activeId), settleKeys });
     const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
 
     const columns = React.useMemo<Column[]>(() => {
@@ -145,8 +154,15 @@ export const WorkViewBoard: React.FC<{ ctx: WorkViewContext }> = ({ ctx }) => {
         return items.find((i) => i.kind === kind && i.id === id) || null;
     }, [activeId, items]);
 
+    const handleDragOver = (event: DragOverEvent) => {
+        const overId = event.over ? String(event.over.id) : '';
+        const [kind, id] = String(event.active.id).split(':');
+        const item = items.find((i) => i.kind === kind && i.id === id);
+        setCrossing(Boolean(item && overId.startsWith('col:') && columnKeyOf(item, groupBy) !== overId.slice(4)));
+    };
+
     const handleDragEnd = (event: DragEndEvent) => {
-        setActiveId(null);
+        setActiveId(null); // `crossing` stays until the next drag start: the drop animation reads it now.
         const { active, over } = event;
         if (!over) return;
         const overId = String(over.id);
@@ -155,6 +171,8 @@ export const WorkViewBoard: React.FC<{ ctx: WorkViewContext }> = ({ ctx }) => {
         const [kind, id] = String(active.id).split(':');
         const item = items.find((i) => i.kind === kind && i.id === id);
         if (item && columnKeyOf(item, groupBy) !== targetKey) {
+            settleKeys.current.add(String(active.id));
+            window.setTimeout(() => settleKeys.current.delete(String(active.id)), 4000);
             ctx.onMoveItemToGroup(item, groupBy, targetKey);
         }
     };
@@ -172,15 +190,17 @@ export const WorkViewBoard: React.FC<{ ctx: WorkViewContext }> = ({ ctx }) => {
         <DndContext
             sensors={sensors}
             collisionDetection={closestCorners}
-            onDragStart={(event: DragStartEvent) => setActiveId(String(event.active.id))}
+            onDragStart={(event: DragStartEvent) => { setCrossing(false); setActiveId(String(event.active.id)); }}
+            onDragOver={handleDragOver}
             onDragEnd={handleDragEnd}
+            onDragCancel={() => { setActiveId(null); setCrossing(false); }}
         >
-            <div className="po-board">
+            <div ref={boardRef} className="po-board">
                 {columns.map((column) => (
                     <Lane key={column.key} column={column} items={byColumn[column.key] || []} ctx={ctx} />
                 ))}
             </div>
-            <DragOverlay>
+            <DragOverlay dropAnimation={crossing ? null : { duration: MOTION.slow, easing: MOTION.easeOut }}>
                 {activeItem ? <Card item={activeItem} ctx={ctx} draggable={false} overlay /> : null}
             </DragOverlay>
         </DndContext>
