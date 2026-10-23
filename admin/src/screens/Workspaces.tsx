@@ -113,6 +113,35 @@ const ExemptCard: React.FC<{ id: string; name: string; exempt: boolean; onSaved:
     );
 };
 
+const gb = (bytes: number | null | undefined) => (bytes == null ? '–' : `${(bytes / 1024 ** 3).toFixed(bytes >= 10 * 1024 ** 3 ? 0 : 1).replace('.', ',')} GB`);
+
+const StorageCard: React.FC<{ id: string }> = ({ id }) => {
+    const { confirm, toast } = useUi();
+    const { data, reload } = useAdminQuery<{ usedBytes: number; fileCount: number; quotaBytes: number; maxFileBytes: number; planQuotaBytes: number | null; overrideBytes: number | null }>('billing.storage', { id });
+    const [value, setValue] = useState('');
+    const [reason, setReason] = useState('');
+    const save = async (clear: boolean) => {
+        const bytes = clear ? null : Math.round(Number(value) * 1024 ** 3);
+        if (!(await confirm({ title: clear ? 'Speicher-Override entfernen?' : `Speicher auf ${value} GB setzen?`, message: 'Überschreibt das Kontingent des Plans (storageQuotaOverrideBytes), bis der Override entfernt wird. Wird protokolliert.', confirmLabel: clear ? 'Entfernen' : 'Setzen' }))) return;
+        try { await adminApi('billing.setStorageOverride', { id, bytes, reason }); toast('Speicher-Kontingent geändert'); setReason(''); reload(); } catch (err: any) { toast(err.message, 'error'); }
+    };
+    if (!data) return null;
+    return (
+        <Card title="Dateispeicher" subtitle={`${gb(data.usedBytes)} von ${gb(data.quotaBytes)} · ${num(data.fileCount)} Dateien · max. ${Math.round(data.maxFileBytes / 1024 ** 2)} MB pro Datei`}>
+            <div className="ac-stack">
+                <Meter value={data.usedBytes / Math.max(1, data.quotaBytes)} color={data.usedBytes / Math.max(1, data.quotaBytes) > 0.9 ? 'var(--color-error)' : undefined} />
+                <span className="ac-muted">Plan: {gb(data.planQuotaBytes)}{data.overrideBytes ? ` · Override aktiv: ${gb(data.overrideBytes)}` : ''}</span>
+                <div className="ac-row">
+                    <input className="ac-input" type="number" min={1} style={{ width: 110 }} placeholder="GB" value={value} onChange={(e) => setValue(e.target.value)} />
+                    <input className="ac-input" style={{ flex: 1 }} placeholder="Begründung (mind. 10 Zeichen)" value={reason} onChange={(e) => setReason(e.target.value)} />
+                    <button className="ac-btn ac-btn--primary" disabled={!(Number(value) >= 1) || reason.trim().length < 10} onClick={() => save(false)}>Override setzen</button>
+                    {data.overrideBytes && <button className="ac-btn" disabled={reason.trim().length < 10} onClick={() => save(true)}>Entfernen</button>}
+                </div>
+            </div>
+        </Card>
+    );
+};
+
 const BillingTab: React.FC<{ b: WsDetail['billing']; id: string; name: string; onSaved: () => void }> = ({ b, id, name, onSaved }) => (
     <div className="ac-stack">
         <div className="ac-row">
@@ -133,6 +162,7 @@ const BillingTab: React.FC<{ b: WsDetail['billing']; id: string; name: string; o
             <dt>Stripe</dt><dd>{b.customerId ? <a href={`https://dashboard.stripe.com/customers/${encodeURIComponent(b.customerId)}`} target="_blank" rel="noopener noreferrer" className="mono">{b.customerId}</a> : '–'}{b.stripeSubscriptionId ? <span className="mono ac-muted"> · {b.stripeSubscriptionId}</span> : ''}</dd>
         </dl>
         <p className="ac-muted">Plan und Abo ändern sich über Stripe bzw. die Billing-Functions; hier nur „intern“.</p>
+        <StorageCard id={id} />
         <ExemptCard id={id} name={name} exempt={b.exempt} onSaved={onSaved} />
     </div>
 );

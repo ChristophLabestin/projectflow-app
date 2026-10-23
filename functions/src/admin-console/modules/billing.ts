@@ -1,5 +1,6 @@
 import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 import { setBillingExempt } from '../../billing';
+import { getWorkspaceFileUsage } from '../../file-storage';
 import type { HandlerMap } from '../types';
 import { AdminInputError, toMs } from '../types';
 
@@ -63,6 +64,35 @@ export const billingHandlers: HandlerMap = {
             if (!(await db.collection('tenants').doc(id).get()).exists) throw new AdminInputError('Workspace nicht gefunden');
             await setBillingExempt(id, params.exempt, `platform-admin:${uid}`);
             return { ok: true, exempt: params.exempt };
+        },
+    },
+    /** Storage per workspace: usage vs. quota; override via entitlements/plan.storageQuotaOverrideBytes (files-logic resolveQuotaBytes). */
+    'billing.storage': {
+        audit: 'none',
+        run: async ({ db }, params) => {
+            const id = typeof params?.id === 'string' ? params.id.trim().slice(0, 128) : '';
+            if (!id) throw new AdminInputError('id fehlt');
+            const [usage, plan] = await Promise.all([getWorkspaceFileUsage(id), db.collection('tenants').doc(id).collection('entitlements').doc('plan').get()]);
+            return { ...usage, planQuotaBytes: plan.get('storageQuotaBytes') ?? null, overrideBytes: plan.get('storageQuotaOverrideBytes') ?? null };
+        },
+    },
+    'billing.setStorageOverride': {
+        audit: 'mutation',
+        target: (p) => `tenants/${String(p?.id || '').slice(0, 128)}/entitlements/plan.storageQuotaOverrideBytes`,
+        summary: (p) => `${p?.bytes == null ? 'entfernt' : `${Math.round(Number(p.bytes) / 1024 ** 3)} GB`}: ${String(p?.reason || '').slice(0, 200)}`,
+        run: async ({ db, uid }, params) => {
+            const id = typeof params?.id === 'string' ? params.id.trim().slice(0, 128) : '';
+            const reason = typeof params?.reason === 'string' ? params.reason.trim() : '';
+            const bytes = params?.bytes == null ? null : Number(params.bytes);
+            if (!id) throw new AdminInputError('id fehlt');
+            if (reason.length < 10) throw new AdminInputError('Begründung (mind. 10 Zeichen) ist Pflicht');
+            if (bytes !== null && !(Number.isInteger(bytes) && bytes >= 1024 ** 3 && bytes <= 10 * 1024 ** 4)) throw new AdminInputError('Override zwischen 1 GB und 10 TB');
+            if (!(await db.collection('tenants').doc(id).get()).exists) throw new AdminInputError('Workspace nicht gefunden');
+            await db.collection('tenants').doc(id).collection('entitlements').doc('plan').set({
+                storageQuotaOverrideBytes: bytes === null ? FieldValue.delete() : bytes,
+                storageQuotaOverrideBy: `platform-admin:${uid}`, storageQuotaOverrideReason: reason, storageQuotaOverrideAt: FieldValue.serverTimestamp(),
+            }, { merge: true });
+            return { ok: true };
         },
     },
     /** Grace cutover date (admin_config/billing.cutoverAt), read by the billing Functions. */
