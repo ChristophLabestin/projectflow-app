@@ -107,6 +107,31 @@
 .avatar--2 { background: rgba(var(--status-done-rgb), 0.16); color: var(--color-status-done-text); }
 .avatar--3 { background: rgba(var(--status-review-rgb), 0.18); color: var(--color-status-review-text); }
 
+// ================================================================ Stage (frame for product fragments)
+.stage {
+    position: relative;
+    padding: clamp(10px, 3.4vw, 44px);
+    border-radius: var(--radius-2xl);
+
+    @media (max-width: 640px) {
+        border-radius: var(--radius-xl);
+    }
+    background: linear-gradient(180deg, var(--color-surface-hover-light), var(--color-surface-hover));
+    box-shadow: inset 0 0 0 1px var(--color-surface-border);
+    isolation: isolate;
+
+    &::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        z-index: -1;
+        border-radius: inherit;
+        background-image: radial-gradient(rgba(var(--color-text-main-rgb), 0.07) 1px, transparent 1px);
+        background-size: 18px 18px;
+        mask-image: radial-gradient(ellipse 80% 70% at 50% 40%, #000 20%, transparent 80%);
+    }
+}
+
 // ================================================================ Hero
 .hero {
     position: relative;
@@ -296,7 +321,7 @@
 .app-window__body {
     display: grid;
     grid-template-columns: minmax(170px, 22%) 1fr;
-    min-height: clamp(300px, 36vw, 520px);
+    min-height: clamp(300px, 32vw, 460px);
 }
 
 .app-side {
@@ -476,7 +501,8 @@
 }
 
 .task-row__title {
-    flex: 1;
+    flex: 0 1 auto;
+    margin-right: auto;
     min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -521,14 +547,14 @@
 }
 
 .float--notif {
-    top: 14%;
-    right: -3%;
-    max-width: 290px;
+    top: -28px;
+    right: -36px;
+    max-width: 300px;
 }
 
 .float--timer {
-    left: -4%;
-    bottom: 22%;
+    left: -40px;
+    bottom: 20px;
 
     b {
         font-family: var(--font-mono);
@@ -539,8 +565,13 @@
 }
 
 .float--done {
-    right: 6%;
-    bottom: -5%;
+    right: 48px;
+    bottom: -28px;
+}
+
+@media (max-width: 1320px) {
+    .float--notif { right: -12px; }
+    .float--timer { left: -12px; }
 }
 
 .ring {
@@ -661,22 +692,29 @@
 
 .journey__stage {
     position: relative;
-    display: grid;
-    grid-template-columns: 4px minmax(0, 1fr);
-    gap: 20px;
 }
 
-.journey__rail {
-    border-radius: var(--radius-full);
-    background: var(--color-surface-border);
-    overflow: hidden;
+// Step indicator: four short bars, the active one is dark.
+.journey__dots {
+    display: none;
+}
+
+.motion.is-ready .journey__dots {
+    display: flex;
+    gap: 6px;
+    margin-top: 32px;
 
     i {
-        display: block;
-        height: 100%;
-        background: var(--color-primary);
-        transform-origin: top;
-        transform: scaleY(1);
+        width: 28px;
+        height: 4px;
+        border-radius: var(--radius-full);
+        background: var(--color-surface-border);
+        transition: background-color var(--dur-2) var(--ease-out), width var(--dur-3) var(--ease-out);
+
+        &.is-active {
+            width: 48px;
+            background: var(--color-primary);
+        }
     }
 }
 
@@ -772,13 +810,19 @@ html:not(.is-ready) .panel__indicator {
     gap: 10px;
 
     li {
+        display: flex;
+        align-items: center;
+        gap: 12px;
         height: 56px;
+        padding: 0 14px;
         border-radius: 12px;
-        background:
-            linear-gradient(var(--color-surface-border), var(--color-surface-border)) 48px 20px / 40% 7px no-repeat,
-            linear-gradient(var(--color-surface-hover), var(--color-surface-hover)) 48px 33px / 22% 6px no-repeat,
-            var(--color-surface-hover-light);
         border: 1px solid var(--color-surface-border);
+        background: var(--color-surface-card);
+        color: var(--color-text-muted);
+        font-weight: 500;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
 }
 
@@ -966,9 +1010,6 @@ html:not(.is-ready) .panel__indicator {
         grid-template-columns: minmax(0, 1fr);
     }
 
-    .journey__rail {
-        display: none;
-    }
 
     .motion.is-ready .journey__stage {
         order: -1;
@@ -992,6 +1033,17 @@ html:not(.is-ready) .panel__indicator {
 
     .panel__tab span {
         display: none;
+    }
+
+    .travel-card__title,
+    .travel-card__meta {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .travel-card__title {
+        width: auto;
     }
 
     .panel__tab .icon {

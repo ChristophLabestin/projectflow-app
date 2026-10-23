@@ -1,6 +1,6 @@
 import type { SiteCopy } from '../content/site';
 import { icon, logo } from './icons';
-import { esc, links } from './layout';
+import { esc, headline, links } from './layout';
 import { sectionsRest } from './home-sections';
 
 const prioClass = (prio: string) => `prio prio--${prio}`;
@@ -8,7 +8,7 @@ const prioClass = (prio: string) => `prio prio--${prio}`;
 const sectionHead = (eyebrow: string, title: string, text?: string, id?: string) => `
     <header class="section-head" data-reveal>
         <p class="eyebrow">${esc(eyebrow)}</p>
-        <h2 class="section-title"${id ? ` id="${id}"` : ''}>${esc(title)}</h2>
+        <h2 class="section-title"${id ? ` id="${id}"` : ''}>${headline(title)}</h2>
         ${text ? `<p class="section-text">${esc(text)}</p>` : ''}
     </header>`;
 
@@ -64,7 +64,7 @@ const hero = (t: SiteCopy) => `
     </div>
     <div class="container hero__copy">
         <p class="eyebrow hero-in" style="--i:0">${esc(t.hero.eyebrow)}</p>
-        <h1 class="hero__title" id="hero-title">${t.hero.title.map((w, i, all) => `<span class="word"><span class="hero-in" style="--i:${i + 1}">${esc(w)}</span></span>${w.endsWith('.') && i < all.length - 1 ? '<span class="hero__break"></span>' : ''}`).join(' ')}</h1>
+        <h1 class="hero__title" id="hero-title">${t.hero.title.map((w, i, all) => `<span class="word"><span class="hero-in" style="--i:${i + 1}">${headline(w)}</span></span>${w.endsWith('.') && i < all.length - 1 ? '<span class="hero__break"></span>' : ''}`).join(' ')}</h1>
         <p class="hero__lead hero-in" style="--i:${t.hero.title.length + 1}">${esc(t.hero.lead)}</p>
         <div class="hero__ctas hero-in" style="--i:${t.hero.title.length + 2}">
             <a class="btn btn--primary btn--lg" href="${links.register}" data-magnetic>${esc(t.hero.primary)}${icon('arrowRight')}</a>
@@ -99,16 +99,18 @@ const journey = (t: SiteCopy) => {
     <div class="container">${sectionHead(j.eyebrow, j.title, undefined, 'journey-title')}</div>
     <div class="journey__pin" data-journey>
         <div class="container journey__grid">
+            <div class="journey__copy">
             <ol class="journey__steps">
                 ${j.steps.map((s, i) => `
                 <li class="journey__step" data-step="${i}">
                     <span class="journey__num">${icon(stepIcons[i])}<span>${String(i + 1).padStart(2, '0')} · ${esc(s.label)}</span></span>
-                    <h3>${esc(s.title)}</h3>
+                    <h3>${headline(s.title)}</h3>
                     <p>${esc(s.text)}</p>
                 </li>`).join('')}
             </ol>
-            <div class="journey__stage" aria-hidden="true">
-                <div class="journey__rail"><i data-journey-rail></i></div>
+            <div class="journey__dots" aria-hidden="true">${j.steps.map((_, i) => `<i data-journey-dot="${i}"></i>`).join('')}</div>
+            </div>
+            <div class="journey__stage stage" aria-hidden="true">
                 <div class="panel">
                     <div class="panel__tabs">
                         <span class="panel__indicator" data-journey-indicator></span>
@@ -117,7 +119,7 @@ const journey = (t: SiteCopy) => {
                     <div class="panel__body">
                         <div class="capture-bar" data-journey-capture>${icon('plus')}<span class="capture-bar__text" data-journey-typed>${esc(j.task)}</span><kbd>↵</kbd></div>
                         <ul class="ghost-list" data-journey-ghosts>
-                            <li></li><li></li><li></li>
+                            ${j.others.map((o) => `<li><span class="checkbox"><i class="checkbox__fill"></i><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></span><span>${esc(o)}</span></li>`).join('')}
                         </ul>
                         <div class="travel-card" data-journey-card>
                             <span class="travel-card__focus" data-journey-focus></span>
