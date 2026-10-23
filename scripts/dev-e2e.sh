@@ -10,6 +10,8 @@
 #   PORT=3005 bash scripts/dev-e2e.sh               # other app port
 #   E2E_LOGIN=outsider bash scripts/dev-e2e.sh      # sign in as the outsider instead
 #   E2E_FUNCTIONS=0 bash scripts/dev-e2e.sh         # skip the Functions emulator
+#   E2E_LEGAL=1 bash scripts/dev-e2e.sh             # seed legal docs v1 (consent gate active) and
+#                                                   # make the demo owner a platform admin (/admin/legal)
 #
 # Emulator accounts (emulator only):
 #   demo@projectflow.test     / projectflow-demo     (seeded workspace owner)
@@ -66,6 +68,13 @@ done
 
 FIRESTORE_EMULATOR_HOST="127.0.0.1:$FIRESTORE_PORT" FIREBASE_AUTH_EMULATOR_HOST="127.0.0.1:$AUTH_PORT" \
     node scripts/seed-emulator.mjs
+
+if [[ "${E2E_LEGAL:-0}" == "1" ]]; then
+    GCLOUD_PROJECT="$PROJECT_ID" FIRESTORE_EMULATOR_HOST="127.0.0.1:$FIRESTORE_PORT" \
+        node functions/scripts/import-legal-docs.mjs legal/v1 --publish-initial
+    GCLOUD_PROJECT="$PROJECT_ID" FIREBASE_AUTH_EMULATOR_HOST="127.0.0.1:$AUTH_PORT" \
+        node functions/scripts/grant-platform-admin.mjs demo@projectflow.test
+fi
 
 curl -s -X POST "http://127.0.0.1:$AUTH_PORT/identitytoolkit.googleapis.com/v1/accounts:signUp?key=demo-api-key" \
     -H 'Content-Type: application/json' \

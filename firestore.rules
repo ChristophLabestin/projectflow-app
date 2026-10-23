@@ -147,6 +147,42 @@ service cloud.firestore {
       allow read: if true;
     }
 
+    // ---- Versioned legal documents (contract: brain/plans/legal-consent-contract.md)
+    // Published index + immutable versions are public (landing page, iOS, signed-out
+    // /legal pages). Drafts are platform-admin only. All writes go through Cloud
+    // Functions (saveLegalDraft / publishLegalDraft), never the client.
+    match /legal_documents/{type} {
+      allow read: if true;
+      allow write: if false;
+
+      match /versions/{version} {
+        allow read: if true;
+        allow write: if false;
+      }
+
+      match /drafts/{draftId} {
+        allow read: if authed() && request.auth.token.platformAdmin == true;
+        allow write: if false;
+      }
+    }
+
+    // Per-user consent record: readable by its owner, written only by the
+    // acceptLegalDocuments / declineLegalDocuments callables (current version only).
+    match /legal_acceptances/{userId} {
+      allow get: if authed() && request.auth.uid == userId;
+      allow list, write: if false;
+
+      match /events/{eventId} {
+        allow read: if authed() && request.auth.uid == userId;
+        allow write: if false;
+      }
+    }
+
+    // Mail send jobs and per-recipient logs: Admin SDK only.
+    match /legal_mail_jobs/{document=**} {
+      allow read, write: if false;
+    }
+
     // Global user profiles
     match /users/{userId} {
       // Profiles (name, avatar, email) are fetched by uid for co-workers; listing

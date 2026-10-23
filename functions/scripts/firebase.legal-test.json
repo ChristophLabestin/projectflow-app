@@ -1,0 +1,8 @@
+{
+    "emulators": {
+        "firestore": { "host": "127.0.0.1", "port": 8821 },
+        "ui": { "enabled": false },
+        "hub": { "port": 8822 },
+        "logging": { "port": 8823 }
+    }
+}

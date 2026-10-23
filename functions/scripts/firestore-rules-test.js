@@ -76,6 +76,13 @@ const seedData = async (testEnv) => {
         await set(`${T}/notificationDeliveryLogs/logMember`, { notificationId: 'nMember', userId: 'memberA', channel: 'fcm', status: 'sent' });
         await set(`${T}/notificationDeliveryLogs/logOwner`, { notificationId: 'nOwner', userId: 'ownerA', channel: 'fcm', status: 'sent' });
 
+        await set('legal_documents/terms', { type: 'terms', currentVersion: 1, versions: [] });
+        await set('legal_documents/terms/versions/1', { type: 'terms', version: 1, status: 'published' });
+        await set('legal_documents/terms/drafts/current', { type: 'terms', title: { de: 'Entwurf', en: 'Draft' } });
+        await set('legal_acceptances/memberA', { uid: 'memberA', docs: { terms: { version: 1 } } });
+        await set('legal_acceptances/memberA/events/e1', { type: 'terms', version: 1, decision: 'accepted' });
+        await set('legal_mail_jobs/terms_v1', { type: 'terms', version: 1, open: false });
+
         await set('tenants/tenantB', { tenantId: 'tenantB', name: 'Tenant B', ownerId: 'ownerB' });
         await set('tenants/tenantB/members/ownerB', { uid: 'ownerB', role: 'Owner' });
     });
@@ -245,6 +252,34 @@ const run = async () => {
             member.doc(`${T}/notificationDeliveryLogs/logOwner`).get());
         await check('member cannot write delivery logs', 'deny', () =>
             member.doc(`${T}/notificationDeliveryLogs/logMember`).update({ status: 'failed' }));
+
+        // Legal documents + consent (writes only via Cloud Functions).
+        const anon = testEnv.unauthenticatedContext().firestore();
+        const platformAdmin = testEnv.authenticatedContext('platformAdminA', { platformAdmin: true }).firestore();
+        await check('signed-out reads legal index', 'allow', () => anon.doc('legal_documents/terms').get());
+        await check('signed-out reads published version', 'allow', () => anon.doc('legal_documents/terms/versions/1').get());
+        await check('signed-out lists versions', 'allow', () => anon.collection('legal_documents/terms/versions').get());
+        await check('signed-out cannot read draft', 'deny', () => anon.doc('legal_documents/terms/drafts/current').get());
+        await check('member cannot read draft', 'deny', () => member.doc('legal_documents/terms/drafts/current').get());
+        await check('platform admin reads draft', 'allow', () => platformAdmin.doc('legal_documents/terms/drafts/current').get());
+        await check('platform admin cannot write draft directly', 'deny', () =>
+            platformAdmin.doc('legal_documents/terms/drafts/current').set({ type: 'terms' }));
+        await check('platform admin cannot publish directly', 'deny', () =>
+            platformAdmin.doc('legal_documents/terms/versions/2').set({ type: 'terms', version: 2 }));
+        await check('member cannot change published version', 'deny', () =>
+            member.doc('legal_documents/terms/versions/1').update({ status: 'draft' }));
+        await check('member cannot move currentVersion', 'deny', () => member.doc('legal_documents/terms').update({ currentVersion: 9 }));
+        await check('member reads own consent', 'allow', () => member.doc('legal_acceptances/memberA').get());
+        await check('member reads own consent events', 'allow', () => member.collection('legal_acceptances/memberA/events').get());
+        await check('owner cannot read member consent', 'deny', () => owner.doc('legal_acceptances/memberA').get());
+        await check('nobody lists consents', 'deny', () => platformAdmin.collection('legal_acceptances').get());
+        await check('member cannot write own consent', 'deny', () =>
+            member.doc('legal_acceptances/memberA').set({ uid: 'memberA', docs: { terms: { version: 99 } } }));
+        await check('new user cannot create consent', 'deny', () =>
+            outsider.doc('legal_acceptances/outsiderA').set({ uid: 'outsiderA', docs: { terms: { version: 1 } } }));
+        await check('member cannot forge consent event', 'deny', () =>
+            member.collection('legal_acceptances/memberA/events').add({ type: 'terms', version: 1, decision: 'accepted' }));
+        await check('platform admin cannot read mail jobs', 'deny', () => platformAdmin.doc('legal_mail_jobs/terms_v1').get());
     } finally {
         await testEnv.cleanup();
     }
