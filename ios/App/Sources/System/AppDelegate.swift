@@ -28,6 +28,11 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
     weak var model: AppModel?
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
+        // First, so MetricKit can deliver the last crash; does nothing unless the user opted in.
+        CrashReporter.applyConsent()
+        #if DEBUG
+        CrashReporter.crashIfRequested()
+        #endif
         PFFont.registerIfNeeded()
         PFFirebase.configure(Self.backend)
         AppIntentBridge.bootstrap()

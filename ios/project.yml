@@ -27,6 +27,9 @@ settings:
     SUPPORTS_MACCATALYST: NO
     # Push environment written into the app entitlements: sandbox APNs for local builds, production for archives.
     PF_APS_ENVIRONMENT: development
+    # Public Sentinel DSN (pk_…, bound to the bundle id) for crash reports; empty = reporter off. The secret key for
+    # dSYM uploads never goes here (see scripts/upload-dsyms.sh).
+    PF_SENTINEL_DSN: ""
   configs:
     Release:
       PF_APS_ENVIRONMENT: production
@@ -43,6 +46,9 @@ packages:
   GoogleSignIn:
     url: https://github.com/google/GoogleSignIn-iOS
     from: 10.0.0
+  SentinelKit:
+    url: https://github.com/ChristophLabestin/sentinel-swift.git
+    from: 0.1.0
 targets:
   ProjectFlow:
     type: application
@@ -82,6 +88,8 @@ targets:
         product: FirebaseAuth
       - package: GoogleSignIn
         product: GoogleSignIn
+      - package: SentinelKit
+        product: SentinelKit
       - target: ProjectFlowWidgets
       - target: ProjectFlowShare
       - target: ProjectFlowNotificationService
@@ -164,3 +172,9 @@ schemes:
       config: Debug
     archive:
       config: Release
+      # Uploads the archive's dSYMs to Sentinel (release = MARKETING_VERSION). Log: ~/Library/Logs/ProjectFlow/dsym-upload.log
+      postActions:
+        - name: Upload dSYMs to Sentinel
+          settingsTarget: ProjectFlow
+          script: |
+            "${PROJECT_DIR}/scripts/upload-dsyms.sh" "${ARCHIVE_DSYMS_PATH}" "${MARKETING_VERSION}"

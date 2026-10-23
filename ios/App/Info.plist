@@ -11,6 +11,7 @@
 	<key>CFBundlePackageType</key><string>$(PRODUCT_BUNDLE_PACKAGE_TYPE)</string>
 	<key>CFBundleShortVersionString</key><string>$(MARKETING_VERSION)</string>
 	<key>CFBundleVersion</key><string>$(CURRENT_PROJECT_VERSION)</string>
+	<key>PFSentinelDSN</key><string>$(PF_SENTINEL_DSN)</string>
 	<key>CFBundleLocalizations</key><array><string>de</string><string>en</string></array>
 	<key>CFBundleURLTypes</key>
 	<array>

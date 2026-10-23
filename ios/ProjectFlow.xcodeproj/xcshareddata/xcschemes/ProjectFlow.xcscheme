@@ -91,5 +91,23 @@
    <ArchiveAction
       buildConfiguration = "Release"
       revealArchiveInOrganizer = "YES">
+      <PostActions>
+         <ExecutionAction
+            ActionType = "Xcode.IDEStandardExecutionActionsCore.ExecutionActionType.ShellScriptAction">
+            <ActionContent
+               title = "Upload dSYMs to Sentinel"
+               scriptText = "&quot;${PROJECT_DIR}/scripts/upload-dsyms.sh&quot; &quot;${ARCHIVE_DSYMS_PATH}&quot; &quot;${MARKETING_VERSION}&quot;&#10;">
+               <EnvironmentBuildable>
+                  <BuildableReference
+                     BuildableIdentifier = "primary"
+                     BlueprintIdentifier = "FF6C32C2BACA16AA8A92D07A"
+                     BuildableName = "ProjectFlow.app"
+                     BlueprintName = "ProjectFlow"
+                     ReferencedContainer = "container:ProjectFlow.xcodeproj">
+                  </BuildableReference>
+               </EnvironmentBuildable>
+            </ActionContent>
+         </ExecutionAction>
+      </PostActions>
    </ArchiveAction>
 </Scheme>

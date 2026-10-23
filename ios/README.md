@@ -24,6 +24,16 @@ xcodebuild -project ios/ProjectFlow.xcodeproj -scheme ProjectFlow \
   sign-in screen, `-pfHoldLaunch` keeps the cold-start scene on screen, `-pfShowOnboarding` (DEBUG) forces the first-sign-in welcome onboarding (name + optional photo → about → team → how → notifications) for the signed-in user.
 - `Debug`/`Release` use `App/Resources/Firebase/GoogleService-Info.plist` (project `projectflow-labestin`).
 
+### Crash reports (Labestin Sentinel)
+
+Opt-in only (`FirstRunState.crashReportsEnabled`) via `App/Sources/System/CrashReporter.swift`; SentinelKit comes from the
+private repo `ChristophLabestin/sentinel-swift`. The public DSN (`pk_…`, from the ProjectFlow project page → card "Labor")
+goes into the build setting `PF_SENTINEL_DSN` in `project.yml`; empty keeps the reporter off. Release = `MARKETING_VERSION`.
+Archiving uploads dSYMs via `scripts/upload-dsyms.sh` (needs Node ≥ 23, the labestin-digital monorepo for the CLI, and
+`SENTINEL_SECRET_KEY=sk_…` in `~/.config/projectflow/sentinel.env` — never in git; otherwise the upload is skipped).
+Local test against the Sentinel emulators: launch with `SIMCTL_CHILD_PF_SENTINEL_DSN=<emulator dsn>` and `-PFCrashTest`,
+relaunch, then `sentinel-dev-project.mjs status` (see the `manager-setup` skill).
+
 ## Layout
 
 | Path | Content |

@@ -25,10 +25,13 @@ nonisolated enum FirstRunState {
         set { UserDefaults.standard.set(newValue, forKey: languageKey) }
     }
 
-    /// Opt-in for anonymous crash reports (default off). Read by the crash reporter once one is integrated.
+    /// Opt-in for anonymous crash reports (default off). Setting it starts or stops `CrashReporter` right away.
     static var crashReportsEnabled: Bool {
         get { UserDefaults.standard.bool(forKey: crashKey) }
-        set { UserDefaults.standard.set(newValue, forKey: crashKey) }
+        set {
+            UserDefaults.standard.set(newValue, forKey: crashKey)
+            CrashReporter.applyConsent()
+        }
     }
 
     static func acceptPrivacy() { accept(privacyKey, version: privacyVersion) }
@@ -36,6 +39,7 @@ nonisolated enum FirstRunState {
 
     static func reset() {
         for key in [languageKey, crashKey, privacyKey, termsKey] { UserDefaults.standard.removeObject(forKey: key) }
+        CrashReporter.applyConsent()
     }
 
     private static func accept(_ key: String, version: String) {

@@ -41,6 +41,7 @@
 		2402A9BA6CEC4F8E8D650F24 /* ExtensionStrings.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20B9649DFA960D9AA3B09B1 /* ExtensionStrings.swift */; };
 		240F1BD55EB301BBBE2661B4 /* ProjectFlowShare.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 830BDE5F5C6CAD9936D3FC4E /* ProjectFlowShare.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		27868D6BD87F5688E89D652E /* WorkItemActions.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADA588D640F94EA3DE37F4AD /* WorkItemActions.swift */; };
+		27BD138D2E87ECB67CB0397F /* SentinelKit in Frameworks */ = {isa = PBXBuildFile; productRef = 8680B0DB498B4193218F269F /* SentinelKit */; };
 		288C81A6BED0634E26AAE076 /* PersonalTaskMove.swift in Sources */ = {isa = PBXBuildFile; fileRef = 66B2397A7A74AC093FA14641 /* PersonalTaskMove.swift */; };
 		2897BCBC3337D6FEDF07C767 /* OnboardingSurvey.swift in Sources */ = {isa = PBXBuildFile; fileRef = 244E3BBFC7644105E695F68C /* OnboardingSurvey.swift */; };
 		2CC1D968E42F515A2E740B79 /* SystemStrings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 288A008F6C9B89C7BC73E1BD /* SystemStrings.swift */; };
@@ -87,6 +88,7 @@
 		6096756ADB91D97BCAB6CE4A /* ProjectsSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5BE496472FD14B31BF69754B /* ProjectsSupport.swift */; };
 		637FB0B82088B9EDBC053E42 /* ProjectTeamView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5611CB7B16B036FE38D3CF7A /* ProjectTeamView.swift */; };
 		640DF259E028900127483AF0 /* TodayStrings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2676FD47E57BFFD0F7B1DA3E /* TodayStrings.swift */; };
+		65D6DE2B6E29596D11B7C3B3 /* CrashReporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = F551D7D7A0B692DD8FBB608A /* CrashReporter.swift */; };
 		6642A40543C5FCF6D6CCE9F4 /* Placeholders.swift in Sources */ = {isa = PBXBuildFile; fileRef = 628EBD19697DF3A716AD24BA /* Placeholders.swift */; };
 		66568920952B2EF6612EEDC5 /* FocusStrings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94D914FB290C581CA3F4120B /* FocusStrings.swift */; };
 		670F3E03F9F3F68B770A3014 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = C1819A83080BFD074FCC0B19 /* PrivacyInfo.xcprivacy */; };
@@ -403,6 +405,7 @@
 		F20B9649DFA960D9AA3B09B1 /* ExtensionStrings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExtensionStrings.swift; sourceTree = "<group>"; };
 		F2560A4D40FD23E8295FAC1E /* ProjectSettingsStrings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectSettingsStrings.swift; sourceTree = "<group>"; };
 		F401CC5F28A86B0F4B0C5C47 /* AuthStrings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthStrings.swift; sourceTree = "<group>"; };
+		F551D7D7A0B692DD8FBB608A /* CrashReporter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CrashReporter.swift; sourceTree = "<group>"; };
 		F801426F42AF8C5AB9B8912E /* ProjectFlow.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = ProjectFlow.entitlements; sourceTree = "<group>"; };
 		F87D8765D82F284CCB4F651D /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		FC0C8A43283A498FFE420F3A /* SharedSessionStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedSessionStore.swift; sourceTree = "<group>"; };
@@ -433,6 +436,7 @@
 				4993A897E4D481BCEEECB915 /* FirebaseMessaging in Frameworks */,
 				16E77E76AEA0589EDED9993E /* FirebaseAuth in Frameworks */,
 				6B49FA707F29A97971413497 /* GoogleSignIn in Frameworks */,
+				27BD138D2E87ECB67CB0397F /* SentinelKit in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -670,6 +674,7 @@
 				2D1985111B7FB6BAF88DEC42 /* AppDelegate.swift */,
 				8AF3C0E96E7BBFC77A33D2A2 /* AppIntentBridge.swift */,
 				67A4BEC589BD8555BA02A24A /* AppShortcuts.xcstrings */,
+				F551D7D7A0B692DD8FBB608A /* CrashReporter.swift */,
 				6B919D08E2EE3DCF129E3D79 /* DesignCatalogScreen.swift */,
 				CE7EA9AC6E3F84CB9E0B96F1 /* LiveActivityBridge.swift */,
 				84F39D816700BAECFB6EB9FF /* Localizable.xcstrings */,
@@ -992,6 +997,7 @@
 				7F8BCA3C2BC2D1F0233FEA57 /* FirebaseMessaging */,
 				B7D94F4D8DEABAFC7314806D /* FirebaseAuth */,
 				F9EDDD28D9D07FFEF70C6A0B /* GoogleSignIn */,
+				8680B0DB498B4193218F269F /* SentinelKit */,
 			);
 			productName = ProjectFlow;
 			productReference = 939AE0BDE889F1161652064A /* ProjectFlow.app */;
@@ -1037,6 +1043,7 @@
 			packageReferences = (
 				DB395E993DE245DE7A4EA095 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
 				B952F679DF3F0D0468875329 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */,
+				130765F3A8CF797337BF5AFD /* XCRemoteSwiftPackageReference "sentinel-swift" */,
 				EA16C933CED5F775572DD253 /* XCLocalSwiftPackageReference "Packages/ProjectFlowKit" */,
 			);
 			preferredProjectObjectVersion = 77;
@@ -1160,6 +1167,7 @@
 				436B64C66A1DCFD105A166D8 /* CaptureModel.swift in Sources */,
 				BAE3C3DFE614C4C74ACC9E3A /* CaptureStrings.swift in Sources */,
 				002AB9D2C2A605C07F2FCCAF /* CommentsSection.swift in Sources */,
+				65D6DE2B6E29596D11B7C3B3 /* CrashReporter.swift in Sources */,
 				F05A3338F37560482A9A3172 /* DeepLinks.swift in Sources */,
 				9601B2E5BDC08C0464B91042 /* DesignCatalogScreen.swift in Sources */,
 				832A97B4DE39398BB501E293 /* ExtensionStrings.swift in Sources */,
@@ -1366,6 +1374,7 @@
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
 				PF_APS_ENVIRONMENT = development;
+				PF_SENTINEL_DSN = "";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
 				SUPPORTS_MACCATALYST = NO;
@@ -1525,6 +1534,7 @@
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PF_APS_ENVIRONMENT = production;
+				PF_SENTINEL_DSN = "";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
 				SUPPORTS_MACCATALYST = NO;
@@ -1654,6 +1664,7 @@
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
 				PF_APS_ENVIRONMENT = development;
+				PF_SENTINEL_DSN = "";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
 				SUPPORTS_MACCATALYST = NO;
@@ -1801,6 +1812,14 @@
 /* End XCLocalSwiftPackageReference section */
 
 /* Begin XCRemoteSwiftPackageReference section */
+		130765F3A8CF797337BF5AFD /* XCRemoteSwiftPackageReference "sentinel-swift" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/ChristophLabestin/sentinel-swift.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 0.1.0;
+			};
+		};
 		B952F679DF3F0D0468875329 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/google/GoogleSignIn-iOS";
@@ -1844,6 +1863,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = DB395E993DE245DE7A4EA095 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
 			productName = FirebaseMessaging;
+		};
+		8680B0DB498B4193218F269F /* SentinelKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 130765F3A8CF797337BF5AFD /* XCRemoteSwiftPackageReference "sentinel-swift" */;
+			productName = SentinelKit;
 		};
 		9F06AC3B6186753189A0058B /* PFDesign */ = {
 			isa = XCSwiftPackageProductDependency;
