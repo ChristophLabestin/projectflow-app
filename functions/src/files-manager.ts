@@ -102,9 +102,10 @@ export const getTenantFileUrls = functions.region(REGION).https.onCall(async (da
 
 const moveFirebaseObject = async (path: string | undefined, fromScope: string, toScope: string) => {
     if (!path) return path;
-    const marker = `/files/files/${fromScope}/`;
-    if (!path.includes(marker)) return path;
-    const next = path.replace(marker, `/files/files/${toScope}/`);
+    // tenants/{t}/files/{module}/{scope}/… — legacy media/attachments use other module segments.
+    const match = /^(tenants\/[^/]+\/files\/[^/]+\/)([^/]+)(\/.+)$/.exec(path);
+    if (!match || match[2] !== fromScope) return path;
+    const next = `${match[1]}${toScope}${match[3]}`;
     await fileBucket().file(path).move(next);
     return next;
 };

@@ -62,7 +62,8 @@ export const toFileItem = (id: string, data: DocumentData): FileItem | null => {
     const status = data.status === 'trashed' ? 'trashed' : data.status === 'ready' ? 'ready' : null;
     if (!status) return null;
     const projectId = str(data.projectId) || null;
-    const legacy = data.module !== 'files';
+    // Migrated media/desktop attachments carry `listed` and are managed like new files.
+    const legacy = data.module !== 'files' && data.listed !== true;
     let parent = data.parent as FileItem['parent'] | undefined;
     if (!parent) {
         const entityType = str(data.entityType);

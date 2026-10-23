@@ -67,3 +67,17 @@ test('quota', () => {
     assert.equal(files.quotaAllows(90, 100, 10), true);
     assert.equal(files.quotaAllows(91, 100, 10), false);
 });
+
+test('legacy rows get file-manager fields', () => {
+    const media = files.legacyFileFields({ module: 'media', fileName: 'a/b.png', projectId: 'p1' }, { uploaderName: 'Ann' });
+    assert.equal(media.parent.type, 'project', 'project media stays project-scoped');
+    assert.equal(files.legacyFileFields({ module: 'media', fileName: 'w.png' }).parent.type, 'workspace');
+    assert.equal(media.name, 'a-b.png');
+    assert.equal(media.uploaderName, 'Ann');
+    const att = files.legacyFileFields({ module: 'project', entityType: 'task-attachment', entityId: 't1', projectId: 'p1', fileName: 'x.pdf' }, { parentTitle: 'Task' });
+    assert.deepEqual(att.parent, { type: 'task', id: 't1', projectId: 'p1', rootType: 'task', rootId: 't1', title: 'Task' });
+    assert.equal(files.legacyFileFields({ module: 'project', entityType: 'cover', entityId: 'p1', projectId: 'p1' }), null);
+    assert.equal(files.legacyFileFields({ module: 'profile', entityType: 'avatar' }), null);
+    assert.equal(files.legacyFileFields({ module: 'media', listed: true }), null, 'already migrated');
+    assert.equal(files.legacyFileFields({ module: 'project', entityType: 'task-attachment', entityId: 't1' }), null, 'needs project');
+});

@@ -148,3 +148,46 @@ export const resolveQuotaBytes = (plan: Record<string, unknown> | undefined) => 
     const value = Number(plan?.storageQuotaBytes);
     return Number.isFinite(value) && value > 0 ? value : DEFAULT_WORKSPACE_QUOTA_BYTES;
 };
+
+export const LEGACY_ATTACHMENT_TYPES = ['task-attachment', 'initiative-attachment'];
+
+/**
+ * File-manager fields for pre-file-manager rows: media library assets (workspace scope) and
+ * desktop task/initiative attachments. Covers, icons, avatars etc. stay system assets (null).
+ * `module` is kept so the media picker (listTenantFiles module 'media') keeps finding its assets.
+ */
+export const legacyFileFields = (
+    row: Record<string, unknown>,
+    extra: { uploaderName?: string; parentTitle?: string } = {},
+) => {
+    if (row.listed === true || row.module === 'files') return null;
+    const entityType = str(row.entityType);
+    const entityId = str(row.entityId);
+    const projectId = str(row.projectId) || null;
+    let parent: FileParent;
+    if (row.module === 'media') {
+        parent = projectId
+            ? { type: 'project', id: projectId, projectId, rootType: 'project', rootId: projectId, title: '' }
+            : { type: 'workspace', id: 'workspace', projectId: null, rootType: 'workspace', rootId: 'workspace', title: '' };
+    } else if (LEGACY_ATTACHMENT_TYPES.includes(entityType) && entityId && projectId) {
+        const type: FileParentType = entityType === 'task-attachment' ? 'task' : 'initiative';
+        parent = { type, id: entityId, projectId, rootType: type, rootId: entityId, title: (extra.parentTitle || '').slice(0, 200) };
+    } else {
+        return null;
+    }
+    const name = sanitizeFileName(row.name || row.fileName) || 'file';
+    return {
+        listed: true,
+        parent,
+        name,
+        nameLower: name.toLowerCase(),
+        folder: sanitizeFolder(row.folder),
+        tags: sanitizeTags(row.tags),
+        version: Number(row.version) || 1,
+        versions: Array.isArray(row.versions) ? row.versions : [],
+        versionBytes: Number(row.versionBytes) || 0,
+        uploaderName: str(row.uploaderName) || extra.uploaderName || '',
+        trashedAt: null,
+        trashedBy: null,
+    };
+};

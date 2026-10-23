@@ -22,6 +22,8 @@ import {
     canPurgeFile,
     canReadScope,
     isBlockedFileType,
+    LEGACY_ATTACHMENT_TYPES,
+    legacyFileFields,
     normalizeParent,
     quotaAllows,
     resolveQuotaBytes,
@@ -1610,6 +1612,20 @@ export const finalizeTenantFileUpload = functions.region(REGION).https.onCall(as
         providerRef: verification.providerRef,
         createdBy: actorId,
     };
+
+    // Media and desktop attachments show up in the file manager right away (brain/plans/files-concept.md).
+    const token = (context.auth?.token || {}) as Record<string, unknown>;
+    let parentTitle = '';
+    if (LEGACY_ATTACHMENT_TYPES.includes(fileRecord.entityType) && fileRecord.projectId && fileRecord.entityId) {
+        const collection = fileRecord.entityType === 'task-attachment' ? 'tasks' : 'initiatives';
+        const parentSnap = await db.doc(`tenants/${tenantId}/projects/${fileRecord.projectId}/${collection}/${fileRecord.entityId}`).get().catch(() => null);
+        parentTitle = normalizeString(parentSnap?.data()?.title);
+    }
+    const managedFields = legacyFileFields(fileRecord as unknown as Record<string, unknown>, {
+        uploaderName: normalizeString(token.name) || normalizeString(token.email),
+        parentTitle,
+    });
+    if (managedFields) Object.assign(fileRecord, managedFields);
 
     await fileRef.set({
         ...fileRecord,

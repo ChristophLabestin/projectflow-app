@@ -23,8 +23,10 @@ Ziel: Dateien an Aufgaben, Projekten, Kommentaren und Wiki-Seiten anhängen; ein
 - `status: ready | trashed`, `trashedAt`, `trashedBy`; endgültig gelöscht = Dokument + Objekte weg.
 - `uploaderName` (denormalisiert für Liste/Filter).
 - Storage-Pfad Firebase: `tenants/{t}/files/files/{projectId|global}/{parentType}/{parentId}/{ts}_{uuid}_{name}`.
-- Legacy-Medien (`module: 'media'`) und Desktop-Anhänge werden in der Übersicht abgeleitet angezeigt
-  (`parent` aus `entityType/entityId`). Migration (Felder `listed/parent` nachtragen) nur nach Rückfrage.
+- Medien (`module: 'media'`, `module` bleibt für die Medienauswahl) und Desktop-Anhänge bekommen beim
+  Finalisieren `listed/parent/name…` (`legacyFileFields`) und sind damit normal verwaltbar. Altbestand:
+  `node functions/scripts/migrate-files-to-manager.mjs [--apply]` (idempotent). Lauf 2026-10-23 in Prod:
+  0 Dateien (im neuen Projekt gab es wegen fehlendem Bucket-CORS nie Browser-Uploads) → nichts zu migrieren.
 
 ## Rechte
 - Datei erbt die Rechte ihres Objekts: `projectId != null` → `canAccessProjectById` (Nicht-Gäste
@@ -77,5 +79,5 @@ Ziel: Dateien an Aufgaben, Projekten, Kommentaren und Wiki-Seiten anhängen; ein
 `file.deleted` — aus den Callables, sobald `brain/plans/activity-events-contract.md` auf main ist.
 
 ## Offene Folgepunkte
-- Waisen beim Löschen von Aufgabe/Projekt (Trigger → Papierkorb). Migration Legacy-Medien/Anhänge.
+- Waisen beim Löschen von Aufgabe/Projekt (Trigger → Papierkorb).
 - iOS-Anbindung über die iOS-Session (gleiche Callables).

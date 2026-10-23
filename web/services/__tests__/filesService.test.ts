@@ -22,6 +22,8 @@ describe('filesService', () => {
         expect(attachment?.parent).toMatchObject({ type: 'task', rootId: 't9' });
         expect(attachment?.legacy).toBe(true);
         expect(toFileItem('d', { status: 'deleted' })).toBeNull();
+        expect(toFileItem('mm', { module: 'media', listed: true, status: 'ready', projectId: null, fileName: 'a.png',
+            parent: { type: 'workspace', id: 'workspace', projectId: null, rootType: 'workspace', rootId: 'workspace' } })?.legacy).toBe(false);
     });
 
     it('classifies kinds and formats sizes', () => {
