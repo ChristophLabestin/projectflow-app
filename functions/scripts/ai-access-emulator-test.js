@@ -33,7 +33,14 @@ const mcp = async (token, method, params = {}) => {
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json', Accept: 'application/json, text/event-stream' },
         body: JSON.stringify({ jsonrpc: '2.0', id: 1, method, params })
     });
-    return { status: res.status, body: await res.json().catch(() => null) };
+    // 2026-07-28 requests get JSON; legacy (no protocol meta) requests get one SSE `message` event.
+    const text = await res.text();
+    const data = text.startsWith('event:') || text.startsWith('data:')
+        ? text.split('\n').filter((line) => line.startsWith('data:')).map((line) => line.slice(5).trim()).join('')
+        : text;
+    let body = null;
+    try { body = JSON.parse(data); } catch { body = null; }
+    return { status: res.status, body };
 };
 
 (async () => {
@@ -86,12 +93,38 @@ const mcp = async (token, method, params = {}) => {
     // MCP: role in whoami, filtered + fully annotated tools
     const list = await mcp('pfat_owner', 'tools/list');
     const tools = list.body?.result?.tools || [];
-    check('mcp tools/list', list.status === 200 && tools.length > 20, `status=${list.status} tools=${tools.length}`);
+    check('mcp tools/list', list.status === 200 && tools.length === 29, `status=${list.status} tools=${tools.length}`);
     check('all tools fully annotated', tools.every((t) => ['readOnlyHint', 'destructiveHint', 'idempotentHint', 'openWorldHint'].every((k) => typeof t.annotations?.[k] === 'boolean')));
     check('delete_task is destructive', tools.find((t) => t.name === 'delete_task')?.annotations?.destructiveHint === true);
     const who = await mcp('pfat_member', 'tools/call', { name: 'whoami', arguments: {} });
     const whoText = who.body?.result?.content?.[0]?.text || '';
     check('whoami reports role and drops projects:delete for members', /"role":\s*"Member"/.test(whoText) && !whoText.includes('projects:delete'), whoText.slice(0, 120));
+
+    // Compact AI views: search + my_today
+    const day = (offset) => new Date(Date.now() + offset * 86400000).toLocaleDateString('en-CA', { timeZone: 'Europe/Berlin' });
+    const taskBase = { tenantId: T, assigneeIds: ['owner'], isCompleted: false, status: 'Open', createdAt: admin.firestore.Timestamp.now() };
+    await db.doc(`tenants/${T}/projects/p1/tasks/t-login`).set({ ...taskBase, title: 'Fix login bug', dueDate: day(-1), priority: 'High' });
+    await db.doc(`tenants/${T}/projects/p1/tasks/t-notes`).set({ ...taskBase, title: 'Write release notes', dueDate: day(0) });
+    await db.doc(`tenants/${T}/projects/p2/tasks/t-later`).set({ ...taskBase, title: 'Plan Q4 login revamp', dueDate: day(30) });
+    const found = await mcp('pfat_owner', 'tools/call', { name: 'search', arguments: { query: 'login' } });
+    const foundBody = JSON.parse(found.body?.result?.content?.[0]?.text || '{}');
+    check('search finds tasks across projects', foundBody.tasks?.length === 2 && foundBody.tasks.every((t) => t.projectTitle), JSON.stringify(foundBody).slice(0, 140));
+    const today = await mcp('pfat_owner', 'tools/call', { name: 'my_today', arguments: {} });
+    const todayBody = JSON.parse(today.body?.result?.content?.[0]?.text || '{}');
+    check('my_today groups overdue / today / later', todayBody.counts?.overdue === 1 && todayBody.counts?.today === 1 && todayBody.counts?.later === 1,
+        JSON.stringify(todayBody.counts || todayBody).slice(0, 140));
+    const shortQuery = await api('pfat_owner', 'GET', '/search?q=a');
+    check('search rejects 1-char queries', shortQuery.status === 400);
+
+    // Official MCP client (2025-era initialize handshake) against the v2 server
+    const { Client } = require('@modelcontextprotocol/sdk/client/index.js');
+    const { StreamableHTTPClientTransport } = require('@modelcontextprotocol/sdk/client/streamableHttp.js');
+    const sdkClient = new Client({ name: 'ai-access-test', version: '1' });
+    await sdkClient.connect(new StreamableHTTPClientTransport(new URL(`${BASE}/mcp`), { requestInit: { headers: { Authorization: 'Bearer pfat_owner' } } }));
+    const sdkTools = await sdkClient.listTools();
+    const sdkWho = await sdkClient.callTool({ name: 'whoami', arguments: {} });
+    check('official client: initialize + tools/list + tools/call', sdkTools.tools.length === 29 && /"role":\s*"Owner"/.test(sdkWho.content?.[0]?.text || ''), `tools=${sdkTools.tools.length}`);
+    await sdkClient.close();
 
     // ---------------------------------------------------------------------
     // OAuth 2.1 (DCR + PKCE + consent) and personal access tokens

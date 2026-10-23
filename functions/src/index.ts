@@ -217,7 +217,7 @@ export {
 };
 export * from './passkeys';
 export * from './desktopAuth';
-export { mcp } from './mcp-server';
+export { mcp, mcpServer } from './mcp-server';
 export { transferWorkspaceOwnership, deleteWorkspace } from './workspace-lifecycle';
 export { exportMyData, deleteMyAccount } from './account-data';
 export { deleteProject } from './project-delete';

@@ -11,8 +11,9 @@
  * validation and activity logging therefore behave exactly like the API.
  */
 import * as functions from 'firebase-functions/v1';
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
+import { onRequest } from 'firebase-functions/v2/https';
+import { toNodeHandler } from '@modelcontextprotocol/node';
+import { createMcpHandler, McpServer } from '@modelcontextprotocol/server';
 import { z } from 'zod';
 
 import { db } from './init';
@@ -333,6 +334,36 @@ const buildServer = (token: string, info: TokenInfo) => {
             return textResult({ ...task.payload.task, subtasks: subtasks.payload?.subtasks || [] });
         });
 
+        server.registerTool('search', {
+            title: 'Search workspace',
+            annotations: ANNOTATIONS.read,
+            description: 'Find projects and open tasks by text (title/description) across the projects you can see. Start here instead of listing everything.',
+            inputSchema: {
+                query: z.string().min(2).max(100).describe('Search text, at least 2 characters.'),
+                includeDone: z.boolean().optional().describe('Also search completed tasks and closed projects. Default false.'),
+                limit: z.number().int().min(1).max(50).optional().describe('Max hits per kind, default 20.')
+            }
+        }, async (args) => {
+            const query: Record<string, string> = { q: args.query, limit: String(args.limit || 20) };
+            if (args.includeDone) query.includeDone = 'true';
+            const result = await callApi(token, 'GET', '/search', { query });
+            if (result.status >= 400) return apiError(result);
+            const { projects, tasks, truncated } = result.payload;
+            return textResult(compact({ projects, tasks, truncated: truncated || undefined }));
+        });
+
+        server.registerTool('my_today', {
+            title: 'My day',
+            annotations: ANNOTATIONS.read,
+            description: 'Your current focus plus your open assigned tasks: overdue, due today and the next 7 days (in your time zone).',
+            inputSchema: {}
+        }, async () => {
+            const result = await callApi(token, 'GET', '/me/today');
+            if (result.status >= 400) return apiError(result);
+            const { success: _success, ...today } = result.payload;
+            return textResult(compact(today));
+        });
+
         server.registerTool('list_codex_sessions', {
             title: 'List Codex sessions',
             annotations: ANNOTATIONS.read,
@@ -623,7 +654,13 @@ export const protectedResourceMetadata = (req: any) => ({
     resource_documentation: 'https://getprojectflow.com/docs/mcp'
 });
 
-export const mcp = functions.region(REGION).runWith({ memory: '512MB', timeoutSeconds: 120 }).https.onRequest(async (req, res) => {
+const mcpHandler = toNodeHandler(createMcpHandler((ctx: any) => {
+    const context = ctx?.authInfo?.extra?.projectflow as { token: string; info: TokenInfo } | undefined;
+    if (!context) throw new Error('MCP request without resolved caller');
+    return buildServer(context.token, context.info);
+}, { responseMode: 'json', onerror: (error: unknown) => console.error('MCP handler error', error) }));
+
+const handleMcpRequest = async (req: any, res: any) => {
     res.set('Access-Control-Allow-Origin', '*');
     res.set('Access-Control-Allow-Headers', 'Authorization, Content-Type, Accept, Mcp-Session-Id, Mcp-Protocol-Version');
     res.set('Access-Control-Expose-Headers', 'Mcp-Session-Id, WWW-Authenticate');
@@ -680,23 +717,27 @@ export const mcp = functions.region(REGION).runWith({ memory: '512MB', timeoutSe
 
     // tools/list only shows what the token may actually do: scopes ∩ role ceiling ∩ workspace AI policy.
     const tokenScopes = Array.isArray(caller.tokenData.permissions) ? caller.tokenData.permissions : [];
-    const server = buildServer(token, {
+    const info: TokenInfo = {
         tenantId: caller.tenantId,
         tokenData: caller.tokenData,
         role,
         permissions: new Set<string>(effectiveScopes({ tokenScopes, role, policy, kind }))
-    });
-    const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined, enableJsonResponse: true });
-    res.on('close', () => {
-        void transport.close();
-        void server.close();
-    });
+    };
+    // The SDK builds one McpServer per request (stateless, 2026-07-28 + legacy `initialize` fallback);
+    // the resolved caller travels in authInfo.extra.
+    (req as any).auth = { token, clientId: caller.credentialId, scopes: [...info.permissions], extra: { projectflow: { token, info } } };
 
     try {
-        await server.connect(transport);
-        await transport.handleRequest(req as any, res as any, req.body);
+        await mcpHandler(req as any, res as any, req.body);
     } catch (error) {
         console.error('MCP request failed', error);
         if (!res.headersSent) jsonRpcError(res, 500, 'Internal server error.');
     }
-});
+};
+
+/** Legacy Gen1 endpoint (direct cloudfunctions.net URL); Hosting `/mcp` points to `mcpServer`. */
+export const mcp = functions.region(REGION).runWith({ memory: '512MB', timeoutSeconds: 120 }).https.onRequest(handleMcpRequest);
+
+/** Gen2 (Cloud Run): one instance serves up to 80 concurrent requests, so the in-memory rate limiter and warm caches hold. */
+export const mcpServer = onRequest({ region: REGION, memory: '512MiB', timeoutSeconds: 120, concurrency: 80 }, handleMcpRequest);
+

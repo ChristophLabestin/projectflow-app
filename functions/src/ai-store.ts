@@ -48,3 +48,34 @@ export const writeAiAudit = async (entry: AiAuditEntry) => {
         expireAt: Timestamp.fromMillis(Date.now() + AI_AUDIT_RETENTION_DAYS * 24 * 60 * 60 * 1000)
     });
 };
+
+/** Writes per workspace and UTC day across all machine clients (abuse brake, not a billing meter). */
+export const DAILY_WRITE_QUOTA = 5000;
+const usageCache = new Map<string, { day: string; count: number; at: number }>();
+
+const utcDay = (now = new Date()) => now.toISOString().slice(0, 10);
+
+/**
+ * Counts one machine-client write and tells whether the workspace is over its daily quota. The count is
+ * re-read at most once a minute per instance, so the quota is approximate (a few writes may slip over).
+ */
+export const takeDailyWrite = async (tenantId: string): Promise<boolean> => {
+    const day = utcDay();
+    const ref = db.doc(`tenants/${tenantId}/ai_usage/${day}`);
+    let cached = usageCache.get(tenantId);
+    if (!cached || cached.day !== day || Date.now() - cached.at > 60 * 1000) {
+        const snapshot = await ref.get();
+        cached = { day, count: Number(snapshot.data()?.writes || 0), at: Date.now() };
+    }
+    if (cached.count >= DAILY_WRITE_QUOTA) {
+        usageCache.set(tenantId, cached);
+        return false;
+    }
+    cached.count += 1;
+    usageCache.set(tenantId, cached);
+    await ref.set({
+        writes: FieldValue.increment(1),
+        expireAt: Timestamp.fromMillis(Date.now() + 40 * 24 * 60 * 60 * 1000)
+    }, { merge: true }).catch((error) => console.error('AI usage counter failed', { tenantId, message: error?.message }));
+    return true;
+};

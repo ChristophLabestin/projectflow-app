@@ -148,7 +148,7 @@ Zusätzlich `…/mcp/readonly` als Read-only-Endpunkt (wie Linear/GitHub) für v
 | ✅ P0 Sofort-Fixes | S1 (blog-Rechte, Web-Session `7809af7b`), S3 (Tenant-Scans raus), S2 (Ersteller-Mitgliedschaft prüfen), Annotations S5 — `7a5ef35d`, main | S |
 | ✅ P1 Principal & Policy | `ai-access.ts` (Scopes ∩ Rolle ∩ Policy, Gast-Projektfilter) in `authRequest` + `/mcp`, Policy `ai_config/policy` + Callables, Rate-Limit (In-Instanz), Audit `ai_audit` (TTL 180 T), `lastUsedAt` gedrosselt. Tages-Quote je Tenant → P3 | M |
 | ✅ P2 OAuth-AS | Metadata (RFC 8414/9728), CIMD+DCR, authorize/token/revoke, PKCE S256, Refresh-Rotation + Reuse-Erkennung, Consent-Seite `/oauth/consent`, PATs `pfp_`, Verbindungen listen/widerrufen — `brain/operations/projectflow-oauth.md` | L |
-| P3 MCP v2 | SDK v1→v2 (Spec 2026-07-28 + Fallback), Gen2-Function, Domain `mcp.getprojectflow.com`, neue Tools (search, my_today), outputSchema, Legacy-Alias | M |
+| ✅ P3 MCP v2 | SDK v2 (2026-07-28 + Legacy-Fallback), Gen2 `mcpServer` (Concurrency 80), Tools `search` + `my_today`, Tages-Quote je Tenant (5000 Writes), Activity „via <Client>“, Domain vorbereitet (DNS beim User). `outputSchema`/`structuredContent` bewusst weggelassen (verdoppelt Tokens) | M |
 | P4 Web-UI | Consent-Screen, „KI & Integrationen“ (Client-Kacheln, Snippets, Deeplinks), Verbundene Apps, PATs, Policy, Audit-Ansicht, i18n de/en | L |
 | P5 Doku | Öffentliche Install-Seite (Landing), Brain-Docs, Plugin-READMEs | S |
 | P6 iOS (optional) | Liste verbundener Apps + Widerruf in den Einstellungen | S |

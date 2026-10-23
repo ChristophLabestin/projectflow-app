@@ -50,17 +50,17 @@
     "rewrites": [
       {
         "source": "/mcp",
-        "function": "mcp",
+        "function": "mcpServer",
         "region": "europe-west3"
       },
       {
         "source": "/.well-known/oauth-protected-resource",
-        "function": "mcp",
+        "function": "mcpServer",
         "region": "europe-west3"
       },
       {
         "source": "/.well-known/oauth-protected-resource/**",
-        "function": "mcp",
+        "function": "mcpServer",
         "region": "europe-west3"
       },
       {

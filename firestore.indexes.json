@@ -290,6 +290,12 @@
       "indexes": []
     },
     {
+      "collectionGroup": "ai_usage",
+      "fieldPath": "expireAt",
+      "ttl": true,
+      "indexes": []
+    },
+    {
       "collectionGroup": "ai_audit",
       "fieldPath": "expireAt",
       "ttl": true,

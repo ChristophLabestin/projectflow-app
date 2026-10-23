@@ -140,6 +140,7 @@ const run = async () => {
         await check('owner cannot write ai policy directly', 'deny', () =>
             owner.doc(`${T}/ai_config/policy`).set({ enabled: false }));
         await check('member cannot read ai policy directly', 'deny', () => member.doc(`${T}/ai_config/policy`).get());
+        await check('owner cannot reset ai usage', 'deny', () => owner.doc(`${T}/ai_usage/2026-10-23`).set({ writes: 0 }));
         for (const collection of ['ai_grants', 'ai_tokens', 'oauth_clients', 'oauth_codes', 'oauth_requests']) {
             await check(`owner cannot read ${collection}`, 'deny', () => owner.doc(`${collection}/x`).get());
             await check(`owner cannot write ${collection}`, 'deny', () => owner.doc(`${collection}/x`).set({ uid: 'ownerA' }));
