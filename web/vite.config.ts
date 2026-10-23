@@ -1,17 +1,39 @@
 import path from 'path';
-import { defineConfig } from 'vite';
+import { defineConfig, loadEnv, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
 import { configDefaults } from 'vitest/config';
 
+// Production builds without the Firebase web config ship a blank app ("auth/invalid-api-key"), e.g. when
+// deployed from a checkout without web/.env.local. Fail the build instead of deploying it.
+const REQUIRED_PRODUCTION_ENV = [
+    'VITE_FIREBASE_API_KEY',
+    'VITE_FIREBASE_AUTH_DOMAIN',
+    'VITE_FIREBASE_PROJECT_ID',
+    'VITE_FIREBASE_APP_ID'
+];
+
+const requireFirebaseConfig = (env: Record<string, string>): Plugin => ({
+    name: 'projectflow-require-firebase-config',
+    apply: 'build',
+    buildStart() {
+        const missing = REQUIRED_PRODUCTION_ENV.filter((key) => !env[key]?.trim());
+        if (missing.length) {
+            this.error(`Missing Firebase config for the production build: ${missing.join(', ')}. `
+                + 'Set them in web/.env.local (or the CI secrets) before building/deploying.');
+        }
+    }
+});
+
 export default defineConfig(({ mode }) => {
     const isProd = mode === 'production';
+    const env = loadEnv(mode, __dirname, 'VITE_');
     return {
       cacheDir: '.vite',
       server: {
         port: 3000,
         host: '0.0.0.0',
       },
-      plugins: [react()],
+      plugins: [react(), ...(isProd ? [requireFirebaseConfig(env)] : [])],
       // Some deps/legacy code read process.env.*; resolve to an empty object instead of a runtime shim.
       define: { 'process.env': {} },
       // Strip noisy debug logging from production bundles. console.warn/error are
