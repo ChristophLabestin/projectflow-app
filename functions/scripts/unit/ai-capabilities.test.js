@@ -73,6 +73,7 @@ test('askCora prompt has no free instruction slot and clips context', () => {
     const prompt = buildAskCoraPrompt('What is late?', 'x'.repeat(ASK_CORA_LIMITS.context + 5000), 'en');
     assert.ok(prompt.length < ASK_CORA_LIMITS.context + 2000);
     assert.match(prompt, /Respond in English/);
+    assert.match(buildAskCoraPrompt('q', 'c', 'de', new Date('2026-10-23T12:00:00Z')), /Today is 2026-10-23\./);
     assert.throws(() => buildAskCoraPrompt('', 'ctx', 'en'), CapabilityInputError);
 });
 
