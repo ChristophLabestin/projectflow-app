@@ -11,6 +11,8 @@ struct TaskDetailScreen: View {
     let ref: TaskRef
 
     @Environment(AppModel.self) var model
+
+    @Environment(\.pfSideRegionWidth) private var sideRegion
     @Environment(PFPresenter.self) var presenter
     @State var store: TaskDetailStore
     @State var project: ProjectStore
@@ -108,7 +110,7 @@ struct TaskDetailScreen: View {
     private func content(_ task: WorkTask) -> some View {
         ScrollView {
             VStack(alignment: .leading, spacing: PFSpace.m) {
-                Color.clear.frame(height: topInset + 48)
+                Color.clear.frame(height: topInset + PFLayout.topBarClearance(sideRegion: sideRegion))
                 header(task)
                 workbench(task)
                 subtasksCard(task)

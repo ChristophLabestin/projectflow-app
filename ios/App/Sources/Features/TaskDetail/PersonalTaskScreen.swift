@@ -11,6 +11,8 @@ struct PersonalTaskScreen: View {
     let taskId: String
 
     @Environment(AppModel.self) private var model
+
+    @Environment(\.pfSideRegionWidth) private var sideRegion
     @Environment(PFPresenter.self) private var presenter
     @State private var titleDraft = ""
     @State private var topInset: CGFloat = 0
@@ -67,7 +69,7 @@ struct PersonalTaskScreen: View {
         let actions = WorkItemActions(model: model)
         return ScrollView {
             VStack(alignment: .leading, spacing: PFSpace.m) {
-                Color.clear.frame(height: topInset + 48)
+                Color.clear.frame(height: topInset + PFLayout.topBarClearance(sideRegion: sideRegion))
                 VStack(alignment: .leading, spacing: 10) {
                     HStack(spacing: 6) {
                         Image(systemName: "lock.fill").font(.system(size: 10, weight: .bold)).foregroundStyle(PFColor.textMuted)

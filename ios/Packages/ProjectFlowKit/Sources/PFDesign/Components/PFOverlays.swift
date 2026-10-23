@@ -29,6 +29,8 @@ public struct PFPeekAction: Identifiable {
 
 @Observable
 public final class PFPresenter {
+    /// Accessibility label of the side-region close button on sheets (set by the app from its copy).
+    public var closeLabel = "Close"
     public struct Sheet: Identifiable {
         public let id = UUID()
         let detents: [PFDetent]
@@ -130,6 +132,15 @@ struct PFSheetContent: View {
     @State private var footerHeight: CGFloat = 0
     @State private var keyboardHeight: CGFloat = 0
     @State private var footer: PFSheetFooterBox?
+    @State private var trailingInset: CGFloat = 0
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(\.dismiss) private var dismiss
+    @Environment(PFPresenter.self) private var presenter
+
+    /// iPhone Duo outer display: the sheet keeps a side region too; a close button sits at its bottom.
+    private var sideRegion: CGFloat {
+        PFLayout.sideRegionWidth(trailingInset: trailingInset, isCompact: horizontalSizeClass == .compact)
+    }
 
     var body: some View {
         ScrollView {
@@ -158,6 +169,14 @@ struct PFSheetContent: View {
                             .ignoresSafeArea(edges: .bottom)
                     }
                     .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { footerHeight = $0 }
+            }
+        }
+        .onGeometryChange(for: CGFloat.self) { $0.safeAreaInsets.trailing } action: { trailingInset = $0 }
+        .overlay {
+            if sideRegion > 0, sheet.dismissable {
+                PFSideColumn(side: sideRegion) {
+                    PFIconButton("xmark", label: presenter.closeLabel, style: .glass) { dismiss() }
+                }
             }
         }
         .onPreferenceChange(PFSheetFooterKey.self) { value in

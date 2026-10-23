@@ -9,6 +9,9 @@ public extension EnvironmentValues {
     /// Height of the shell's floating bottom chrome (focus bar, dock). `NavigationStack` destinations don't
     /// get the shell's `safeAreaInset`, so screens with their own floating action add this themselves.
     @Entry var pfBottomChromeHeight: CGFloat = 0
+    /// Width of the system side region on the trailing edge (iPhone Duo outer display: status bar, Dynamic
+    /// Island, camera), 0 elsewhere. Set by the app shell; drives the side rail and the side control column.
+    @Entry var pfSideRegionWidth: CGFloat = 0
 }
 
 public enum PFLayout {
@@ -18,6 +21,65 @@ public enum PFLayout {
     public static let minLaneWidth: CGFloat = 260
     /// Smallest top safe area screens get (status-bar-less displays such as the iPhone Duo outer display).
     public static let minTopMargin: CGFloat = 14
+
+    /// Side region present? Compact width plus a trailing inset wide enough for a rail (plain iPhones: 0).
+    public static func sideRegionWidth(trailingInset: CGFloat, isCompact: Bool) -> CGFloat {
+        isCompact && trailingInset >= 60 ? trailingInset : 0
+    }
+
+    /// Room a title-less `PFTopBar` takes above a page's content: none when its buttons moved to the side region.
+    public static func topBarClearance(sideRegion: CGFloat) -> CGFloat {
+        sideRegion > 0 ? 4 : 48
+    }
+
+    /// Gap that puts a rail-wide column in the side region with equal space to the screen edge (right,
+    /// bottom) and to the content's page gutter (left), so it sits concentric in the rounded corner.
+    public static func sideGap(_ side: CGFloat) -> CGFloat {
+        ((side + PFSpace.page - PFDock.railWidth) / 2).rounded()
+    }
+}
+
+// MARK: - Side control column (iPhone Duo outer display)
+
+/// Controls a page hands to the side region: toolbar buttons stacked, back/close always lowest.
+struct PFSideControlsKey: PreferenceKey {
+    static let defaultValue: PFSideControls? = nil
+    static func reduce(value: inout PFSideControls?, nextValue: () -> PFSideControls?) {
+        value = value ?? nextValue()
+    }
+}
+
+struct PFSideControls {
+    let view: AnyView
+}
+
+/// The stacked column, placed bottom-trailing in the side region.
+struct PFSideColumn<Content: View>: View {
+    let side: CGFloat
+    @ViewBuilder let content: Content
+
+    var body: some View {
+        let gap = PFLayout.sideGap(side)
+        VStack(spacing: 10) { content }
+            .frame(width: PFDock.railWidth)
+            .padding(.trailing, gap)
+            // The 44 pt buttons sit centred in the rail-wide column; lift them by the same side margin so the
+            // lowest one keeps equal distance to the bottom and the right screen edge.
+            .padding(.bottom, gap + (PFDock.railWidth - 44) / 2)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
+            .ignoresSafeArea()
+    }
+}
+
+extension View {
+    /// Shows the side controls a page's `PFTopBar` handed over (pushed pages only).
+    func pfSideControlsHost(side: CGFloat) -> some View {
+        overlayPreferenceValue(PFSideControlsKey.self) { controls in
+            if side > 0, let controls {
+                PFSideColumn(side: side) { controls.view }
+            }
+        }
+    }
 }
 
 public extension View {

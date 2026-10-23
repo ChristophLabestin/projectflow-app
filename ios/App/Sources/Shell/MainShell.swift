@@ -19,7 +19,8 @@ struct MainShell: View {
     /// edge. The dock moves into it as a vertical rail — like Apple's own side controls — instead of taking
     /// height at the bottom of the short outer display. Plain iPhones have no such inset and keep the bottom dock.
     private var sideRegionWidth: CGFloat? {
-        !isWide && safeInsets.trailing >= 60 ? safeInsets.trailing : nil
+        let width = PFLayout.sideRegionWidth(trailingInset: safeInsets.trailing, isCompact: !isWide)
+        return width > 0 ? width : nil
     }
 
     var body: some View {
@@ -54,6 +55,7 @@ struct MainShell: View {
                 .safeAreaInset(edge: .bottom, spacing: 0) { bottomChrome }
                 // Pushed screens don't receive the inset above, so floating actions read its height here.
                 .environment(\.pfBottomChromeHeight, bottomChromeHeight)
+                .environment(\.pfSideRegionWidth, sideRegionWidth ?? 0)
             }
             .background(PFCanvas())
 
@@ -70,16 +72,15 @@ struct MainShell: View {
             }
         }
         .overlay(alignment: .bottomTrailing) {
-            if let side = sideRegionWidth, !router.isFocusRoomOpen {
-                // Same gap to the screen edge (right and bottom) as to the content's right edge, so the
-                // rail sits concentric in the rounded corner.
-                let gap = ((side + PFSpace.page - PFDock.railWidth) / 2).rounded()
+            // Pushed pages hand the side region to their own controls (back lowest), like the dock hides on iPhone.
+            if let side = sideRegionWidth, !router.isFocusRoomOpen, !router.isDeep {
+                let gap = PFLayout.sideGap(side)
                 dock(axis: .vertical, listToggle: false, showsFocus: true)
-                .padding(.trailing, gap)
-                .padding(.bottom, gap)
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
-                .ignoresSafeArea()
-                .transition(.opacity)
+                    .padding(.trailing, gap)
+                    .padding(.bottom, gap)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
+                    .ignoresSafeArea()
+                    .transition(.opacity)
             }
         }
         .onGeometryChange(for: EdgeInsets.self) { $0.safeAreaInsets } action: { safeInsets = $0 }
@@ -94,7 +95,7 @@ struct MainShell: View {
     private var bottomChrome: some View {
         @Bindable var router = model.router
         VStack(spacing: 10) {
-            if let focus = model.profile?.focus, !router.isFocusRoomOpen, sideRegionWidth == nil {
+            if let focus = model.profile?.focus, !router.isFocusRoomOpen, sideRegionWidth == nil || router.isDeep {
                 focusBar(focus)
                     .frame(maxWidth: isWide ? 560 : nil)
                 .transition(.move(edge: .bottom).combined(with: .opacity))

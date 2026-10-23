@@ -37,6 +37,7 @@ public struct PFNavigator<Route: Hashable, Root: View, Destination: View>: View 
     let root: Root
     let destination: (Route) -> Destination
     @State private var topInset: CGFloat = 60
+    @Environment(\.pfSideRegionWidth) private var sideRegion
 
     /// Displays without a top status bar (iPhone Duo outer display: status bar and camera sit in the side
     /// region) report a top inset of 0; headers would touch the rounded screen edge. Top it up to a minimum.
@@ -56,6 +57,7 @@ public struct PFNavigator<Route: Hashable, Root: View, Destination: View>: View 
                 .toolbar(.hidden, for: .navigationBar)
                 .navigationDestination(for: Route.self) { route in
                     destination(route)
+                        .pfSideControlsHost(side: sideRegion)
                         .safeAreaPadding(.top, extraTop)
                         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
                         .background(PFCanvas())
@@ -72,6 +74,7 @@ public struct PFTopBar<Trailing: View>: View {
     let backLabel: String
     let onBack: (() -> Void)?
     let trailing: Trailing
+    @Environment(\.pfSideRegionWidth) private var sideRegion
 
     public init(title: String? = nil, backLabel: String = "Back", onBack: (() -> Void)? = nil, @ViewBuilder trailing: () -> Trailing) {
         self.title = title
@@ -81,6 +84,34 @@ public struct PFTopBar<Trailing: View>: View {
     }
 
     public var body: some View {
+        if sideRegion > 0, let onBack {
+            // iPhone Duo outer display: back and the trailing buttons stack in the side region (back lowest,
+            // under the thumb); only the title stays up here.
+            HStack(spacing: PFSpace.xs) {
+                if let title { titleCapsule(title) }
+                Spacer(minLength: 0)
+            }
+            .frame(minHeight: 44)
+            .padding(.horizontal, PFSpace.page)
+            .padding(.top, 4)
+            .preference(key: PFSideControlsKey.self, value: PFSideControls(view: AnyView(
+                VStack(spacing: 10) {
+                    trailing
+                    PFIconButton("chevron.left", label: backLabel, action: onBack)
+                }
+            )))
+        } else {
+            bar
+        }
+    }
+
+    private func titleCapsule(_ title: String) -> some View {
+        Text(title).pfText(.section).foregroundStyle(PFColor.textMain).lineLimit(1)
+            .padding(.horizontal, 14).frame(minHeight: 40)
+            .pfGlass(in: .capsule, interactive: false)
+    }
+
+    private var bar: some View {
         HStack(spacing: PFSpace.xs) {
             if let onBack {
                 PFIconButton("chevron.left", label: backLabel, action: onBack)
