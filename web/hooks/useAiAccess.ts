@@ -47,3 +47,19 @@ export const useAiAccess = (): AiAccess => {
     if (ownKey) return { status: 'own-key', canUse: true };
     return { status: plan.aiAddonAvailable ? 'addon-required' : 'plan-required', canUse: false };
 };
+
+/**
+ * Maps AI error codes from callables / aiAssist (HTTP 402 or SSE error events) to an access status, so a failed
+ * request can render the same <AiPlanHint /> as the up-front check. Unknown codes → null (show the normal error).
+ */
+export const aiAccessFromError = (code: string | null | undefined): AiAccessStatus | null => {
+    switch (code) {
+        case 'ai-addon-required':
+            return 'addon-required';
+        case 'ai-plan-required':
+        case 'ai-not-enabled':
+            return 'plan-required';
+        default:
+            return null;
+    }
+};
