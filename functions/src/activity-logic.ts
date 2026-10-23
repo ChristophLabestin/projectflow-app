@@ -46,7 +46,27 @@ export interface ActivityActor {
     /** AI client name ("Claude", "ChatGPT") for kind 'ai'. */
     client?: string;
     automationId?: string;
+    /** Flow run that caused this write (kind 'automation'). */
+    automationRunId?: string;
+    /** Automation chain depth (1 = flow reacting to a non-automation event, max 3). */
+    automationDepth?: number;
 }
+
+/** Origin of an event, used by Flows to detect chains / loops. */
+export interface ActivityCause {
+    kind: ActorKind;
+    id: string | null;
+    automationRunId?: string;
+    /** 0 for user / ai / system; automation depth otherwise. */
+    depth: number;
+}
+
+export const causeOf = (actor: ActivityActor): ActivityCause => ({
+    kind: actor.kind,
+    id: actor.kind === 'automation' ? actor.automationId || null : actor.id,
+    ...(actor.automationRunId ? { automationRunId: actor.automationRunId } : {}),
+    depth: actor.kind === 'automation' ? actor.automationDepth || 1 : 0
+});
 
 export interface ActivityObject {
     type: string;
@@ -70,6 +90,8 @@ export interface WriteVia {
     client?: string;
     id?: string;
     name?: string;
+    runId?: string;
+    depth?: number;
 }
 
 const str = (value: unknown): string => (typeof value === 'string' ? value.trim() : '');
@@ -96,14 +118,23 @@ export const freshWriteVia = (before: Json | null, after: Json): WriteVia | null
         kind,
         ...(str(via.client) ? { client: str(via.client) } : {}),
         ...(str(via.id) ? { id: str(via.id) } : {}),
-        ...(str(via.name) ? { name: str(via.name) } : {})
+        ...(str(via.name) ? { name: str(via.name) } : {}),
+        ...(str(via.runId) ? { runId: str(via.runId) } : {}),
+        ...(typeof via.depth === 'number' && via.depth > 0 ? { depth: Math.min(Math.floor(via.depth), 10) } : {})
     };
 };
 
 /** Combine the resolved user (may be empty) with a `writeVia` stamp into the event actor. */
 export const buildActor = (user: { id: string; name: string; photoURL?: string } | null, via: WriteVia | null): ActivityActor => {
     if (via?.kind === 'automation') {
-        return { kind: 'automation', id: null, name: via.name || 'Automation', ...(via.id ? { automationId: via.id } : {}) };
+        return {
+            kind: 'automation',
+            id: null,
+            name: via.name || 'Automation',
+            ...(via.id ? { automationId: via.id } : {}),
+            ...(via.runId ? { automationRunId: via.runId } : {}),
+            ...(via.depth ? { automationDepth: via.depth } : {})
+        };
     }
     if (via?.kind === 'ai') {
         return {

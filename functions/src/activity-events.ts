@@ -9,6 +9,7 @@ import {
     ActivityChanges,
     ActivityEventType,
     ActivityObject,
+    causeOf,
     domainOf,
     sanitizeValue
 } from './activity-logic';
@@ -44,6 +45,7 @@ export const emitActivityEvent = async (tenantId: string, input: ActivityEventIn
         type: input.type,
         domain: domainOf(input.type),
         actor,
+        cause: sanitizeValue(causeOf(input.actor)),
         actorId: input.actor.kind === 'user' || input.actor.kind === 'ai' ? input.actor.id || null : null,
         object: sanitizeValue(input.object),
         projectId: input.projectId || null,

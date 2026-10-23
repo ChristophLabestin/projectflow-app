@@ -2,7 +2,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const {
-    planTaskEvents, planProjectEvents, planSubtaskEvents, planCommentEvent, freshWriteVia, buildActor, domainOf, sanitizeValue
+    planTaskEvents, planProjectEvents, causeOf, planSubtaskEvents, planCommentEvent, freshWriteVia, buildActor, domainOf, sanitizeValue
 } = require('../../lib/activity-logic');
 
 const types = (events) => events.map((e) => e.type);
@@ -72,4 +72,14 @@ test('domainOf and sanitizeValue', () => {
     assert.equal(sanitizeValue(undefined), null);
     assert.equal(sanitizeValue('x'.repeat(600)).length, 500);
     assert.equal(sanitizeValue(new Array(40).fill(1)).length, 25);
+});
+
+test('automation run id and depth flow into actor and cause', () => {
+    const via = freshWriteVia(null, { writeVia: { kind: 'automation', id: 'f1', name: 'Flow', runId: 'r1', depth: 2, at: { seconds: 1, nanoseconds: 0 } } });
+    assert.deepEqual(via, { kind: 'automation', id: 'f1', name: 'Flow', runId: 'r1', depth: 2 });
+    const actor = buildActor(null, via);
+    assert.equal(actor.automationRunId, 'r1');
+    assert.equal(actor.automationDepth, 2);
+    assert.deepEqual(causeOf(actor), { kind: 'automation', id: 'f1', automationRunId: 'r1', depth: 2 });
+    assert.deepEqual(causeOf(buildActor({ id: 'u1', name: 'A' }, null)), { kind: 'user', id: 'u1', depth: 0 });
 });
