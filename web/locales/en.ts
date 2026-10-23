@@ -963,6 +963,8 @@ const en = {
     'legalAdmin.field.changeType': "Type of change",
     'legalAdmin.field.effectiveAt': "Effective from (optional)",
     'legalAdmin.field.effectiveAtHint': "Empty = effective immediately on publish. Emails go out when the version takes effect.",
+    'legalAdmin.field.machineGraceDays': 'API/MCP grace period (days)',
+    'legalAdmin.field.machineGraceDaysHint': 'Personal tokens, OAuth connections and workspace API tokens of users who have not accepted stop working this many days after the version takes effect (HTTP 403).',
     'legalAdmin.field.notifyByEmail': "Also notify users by email",
     'legalAdmin.changeType.requiresAcceptance': "Acceptance required",
     'legalAdmin.changeType.requiresAcceptanceHint': "Users must accept before they can continue (blocking). Email to all users.",

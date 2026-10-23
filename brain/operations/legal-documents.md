@@ -24,7 +24,9 @@ iOS. Client contract: [../plans/legal-consent-contract.md](../plans/legal-consen
    - Imprint: always "inform only", never mailed.
 5. Optional **Gültig ab** (future date): the version is published (visible in the archive as
    "künftig") but gates/mails start only at that time (scheduler checks every 15 min).
-6. **Veröffentlichen** → confirmation dialog → the version is immutable. Retrying is safe
+6. For `requiresAcceptance`: **Übergangsfrist für API/MCP** (default 14 days) — after it, tokens of
+   users who have not accepted get HTTP 403 until they accept in the app.
+7. **Veröffentlichen** → confirmation dialog → the version is immutable. Retrying is safe
    (idempotent via `baseVersion`).
 
 ## Monitoring

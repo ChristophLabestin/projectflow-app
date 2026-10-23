@@ -335,8 +335,8 @@ const authRequest = async (
 
     const validation = await validateAPIToken(token, permission);
     if (!validation.valid || !validation.tokenData) {
-        if (validation.error === 'Insufficient permissions') {
-            forbidden(res, validation.error);
+        if (validation.error === 'Insufficient permissions' || validation.status === 403) {
+            forbidden(res, validation.error || 'Forbidden.');
             return null;
         }
         unauthorized(res, validation.error || 'Invalid API token.');

@@ -28,7 +28,12 @@ export type VersionMeta = {
     effectiveAtMs: number;
     publishedAtMs: number;
     summary: Localized;
+    /** Days after effectiveAt during which API/MCP tokens keep working without consent (default 14). */
+    machineGraceDays?: number;
 };
+
+export const DEFAULT_MACHINE_GRACE_DAYS = 14;
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 export type AcceptedDocs = Partial<Record<LegalType, { version: number }>>;
 
@@ -91,6 +96,29 @@ export const evaluateGate = (
     return result;
 };
 
+/**
+ * Machine access (/mcp, /api tokens): a missing consent only blocks once the grace period of
+ * the version that requires it has passed. Returns the earliest blocking item or null.
+ */
+export const machineAccessBlock = (
+    docs: Array<{ type: LegalType; versions: VersionMeta[] }>,
+    accepted: AcceptedDocs | null | undefined,
+    nowMs: number,
+): { type: LegalType; version: number; blockedSinceMs: number } | null => {
+    const gate = evaluateGate(docs, accepted, nowMs);
+    for (const item of gate.blocking) {
+        // Initial consent: the oldest version counts; updates: the newest requiresAcceptance change.
+        const trigger = item.acceptedVersion == null
+            ? item.changes[item.changes.length - 1]
+            : item.changes.find((change) => change.changeType === 'requiresAcceptance');
+        if (!trigger) continue;
+        const graceDays = trigger.machineGraceDays ?? DEFAULT_MACHINE_GRACE_DAYS;
+        const blockedSinceMs = trigger.effectiveAtMs + graceDays * DAY_MS;
+        if (nowMs >= blockedSinceMs) return { type: item.type, version: item.version, blockedSinceMs };
+    }
+    return null;
+};
+
 // ---------------------------------------------------------------------------
 // Draft validation
 // ---------------------------------------------------------------------------
@@ -107,6 +135,7 @@ export type DraftInput = {
     changeType: LegalChangeType;
     effectiveAtMs: number | null;
     notifyByEmail: boolean;
+    machineGraceDays: number;
 };
 
 const localized = (value: any, max: number, field: string, allowEmpty = false): Localized => {
@@ -133,7 +162,10 @@ export const normalizeDraft = (data: any): DraftInput => {
         effectiveAtMs = parsed;
     }
     const imprint = type === 'imprint';
+    const grace = data.machineGraceDays == null || data.machineGraceDays === '' ? DEFAULT_MACHINE_GRACE_DAYS : Number(data.machineGraceDays);
+    if (!Number.isInteger(grace) || grace < 0 || grace > 365) throw new Error('machineGraceDays is invalid');
     return {
+        machineGraceDays: grace,
         type,
         title: localized(data.title, MAX_TITLE_LENGTH, 'title'),
         content: localized(data.content, MAX_CONTENT_LENGTH, 'content'),

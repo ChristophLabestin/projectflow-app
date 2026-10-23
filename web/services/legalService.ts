@@ -37,6 +37,7 @@ export type LegalDraft = {
     changeType: LegalChangeType;
     effectiveAtMs: number | null;
     notifyByEmail: boolean;
+    machineGraceDays: number;
     baseVersion: number | null;
     updatedAtMs: number;
 };
@@ -123,6 +124,7 @@ export const fetchLegalDraft = async (type: LegalType): Promise<LegalDraft | nul
         changeType: data.changeType === 'requiresAcceptance' ? 'requiresAcceptance' : 'notifyOnly',
         effectiveAtMs: data.effectiveAt ? timestampToMs(data.effectiveAt) : null,
         notifyByEmail: data.notifyByEmail === true,
+        machineGraceDays: Number.isInteger(data.machineGraceDays) ? data.machineGraceDays : 14,
         baseVersion: typeof data.baseVersion === 'number' ? data.baseVersion : null,
         updatedAtMs: timestampToMs(data.updatedAt),
     };
@@ -153,6 +155,7 @@ export type SaveDraftPayload = {
     changeType: LegalChangeType;
     effectiveAt: string | null;
     notifyByEmail: boolean;
+    machineGraceDays: number;
 };
 
 export const saveLegalDraft = async (payload: SaveDraftPayload) => {
