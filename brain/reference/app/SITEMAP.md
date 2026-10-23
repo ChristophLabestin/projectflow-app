@@ -19,9 +19,14 @@ These routes must remain accessible without being logged in.
 - [x] `/register` — Registration page (shares Login component; hero fixed black in dark mode)
 - [x] `/auth/action` — Auth action handler (email verification, password reset, etc.) (SCSS + i18n pass)
 - [x] `/legal/:type` — Legal pages (e.g., privacy policy, terms, imprint) (SCSS + i18n pass)
+- [x] `/download` — Public desktop app download page (`DownloadPage`): detects macOS/Windows, offers the matching installer from the latest GitHub Release (direct file link, no GitHub page), install steps, features, requirements, FAQ.
 - [x] `/invite/:tenantId/:inviteId` — Accept a workspace invitation (email or link; `screens/AcceptInvite.tsx`). Replaced `/invite/:tenantId`, `/invite-project/:projectId`, `/join/:inviteLinkId` and `/join-workspace/:inviteLinkId` on 2026-09-26.
 - [x] `/feedback/initiative/:token` — Public initiative feedback form with required-field validation that creates linked initiative tasks from customer submissions
 - [x] `/ui` — Component Style Guide (Dev only). Includes tokens, typography, buttons, cards, inputs, date/time, media library, badges, checkboxes/toggles, max-width container categories, Level of Depth guidance, and next standardization candidates.
+- [x] `/desktop/quick-access` — Desktop app only (Electron shell, `desktop/`): content of the Quick Access pop-out window (`QuickAccessWindow` → `PinnedTasksModal variant="window"`). Rendered inside `RootLayout` without `AppLayout` and without global overlays; in a normal browser it redirects to `/`.
+- [x] `/desktop/capture` — Desktop only: Quick Capture panel (`QuickCaptureWindow`), opened by the global shortcut.
+- [x] `/desktop/day?mode=start|close` — Desktop only: day start / day close window (`DesktopDayWindow`, plan logic from `utils/dayPlan`).
+- [x] `/desktop/tray` — Desktop only: menu bar panel (`DesktopTrayPanel`): focus timer + controls, inline capture, Today / Pinned / Inbox, next meeting, quick actions.
 
 ---
 

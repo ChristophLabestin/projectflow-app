@@ -43,6 +43,7 @@ Teilweise erzwungen über `.claude/token-guard.json` (Hook). Bewusster Einmal-By
 - `web/context/`, `web/hooks/`, `web/services/`, `web/utils/`, `web/types/` provide shared state, data access, helpers, and typings.
 - `web/locales/` stores i18n dictionaries; `web/assets/` stores static files; `functions/` contains Firebase Cloud Functions (`functions/src` -> `functions/lib`).
 - `ios/` is the SwiftUI app (XcodeGen `project.yml`, package `Packages/ProjectFlowKit`, widgets/share/notification extensions).
+- `desktop/` is the Electron desktop app around the hosted web app (concept `brain/plans/desktop-electron-concept.md`; releases via `.github/workflows/desktop-release.yml`).
 
 ## Build, Test, and Development Commands
 - `cd web && npm install` installs web dependencies.
@@ -55,6 +56,7 @@ Teilweise erzwungen über `.claude/token-guard.json` (Hook). Bewusster Einmal-By
 - `cd web && npm run test:e2e` runs Playwright E2E tests (expects a running web server or PLAYWRIGHT_BASE_URL).
 - `cd web && npm run deploy` builds and deploys hosting (requires Firebase CLI).
 - Cloud Functions: `cd functions && npm run build|serve|deploy|lint`.
+- Desktop app: `bash scripts/dev-desktop.sh` (signed in against emulators), `npm --prefix desktop run build` (typecheck + bundle); release = tag `v<desktop version>` (see `brain/commands-and-environment.md`).
 - After completing a task, run the build for the surface you touched:
   - Web app work: `cd web && npm run build`.
   - iOS app work: `cd ios && xcodegen generate`, then `xcodebuild -project ios/ProjectFlow.xcodeproj -scheme ProjectFlow -destination 'platform=iOS Simulator,name=ProjectFlow iPhone 18 Pro' -derivedDataPath .xcodebuild build` (conventions in `ios/README.md`).

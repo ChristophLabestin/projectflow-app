@@ -13,6 +13,8 @@ import { subscribeUserStatusPreference } from '../services/domain/userStatusServ
 import { subscribeProjectTasks } from '../services/domain/tasksService';
 import { isProjectExcludedFromHealth } from '../services/healthService';
 import { isClientProject } from '../config/projectTemplates';
+import { getDesktopBridge } from '../services/desktop';
+import { DesktopAppPromo } from './desktop/DesktopAppPromo';
 
 const Sidebar = lazy(() => import('./Sidebar').then((module) => ({ default: module.Sidebar })));
 const TopBar = lazy(() => import('./TopBar').then((module) => ({ default: module.TopBar })));
@@ -164,6 +166,12 @@ export const AppLayout = () => {
         return () => unsub();
     }, [user?.uid]);
 
+    // Desktop app: recently opened projects feed the Dock menu / Windows jump list.
+    useEffect(() => {
+        if (!projectId || !project?.title || project.id !== projectId) return;
+        getDesktopBridge()?.addRecent?.({ path: `/project/${projectId}`, title: project.title });
+    }, [projectId, project?.id, project?.title]);
+
     useEffect(() => {
         if (!project?.companyProjectId) {
             setCompanyProject(null);
@@ -268,7 +276,7 @@ export const AppLayout = () => {
     }, [location.pathname, project, companyProject, taskTitle, t]);
 
     return (
-        <div className="flex h-screen w-full bg-surface overflow-hidden relative">
+        <div className="flex app-viewport-height w-full bg-surface overflow-hidden relative">
             {/* Sidebar Desktop — collapsed, it floats over the content (which
                 keeps its place via --app-content-inset-left) so wide boards can
                 scroll out behind it. */}
@@ -338,6 +346,8 @@ export const AppLayout = () => {
 
                 {/* Main Scroll Area */}
                 <main className={`app-main-scroll dotted-bg ${(isFullWidthRoute || contentWide) ? 'app-main-scroll--full' : 'app-main-scroll--standard'}`}>
+                    {/* Browser on macOS / Windows: offer the desktop app once a release exists */}
+                    <DesktopAppPromo />
                     <div className={(isFullWidthRoute || contentWide) ? 'w-full h-full' : 'max-w-7xl mx-auto h-full'}>
                         <Outlet context={{ setTaskTitle, statusPreference, contentWide, setContentWide }} />
                     </div>
@@ -357,6 +367,7 @@ export const AppLayout = () => {
 
             {/* First sign-in: workspace name, solo/team, invites */}
             <WelcomeDialog />
+
 
             {/* Global Project Create Modal */}
             {isProjectCreateModalOpen && (

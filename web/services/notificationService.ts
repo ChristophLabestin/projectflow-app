@@ -17,6 +17,7 @@ import { httpsCallable } from 'firebase/functions';
 import { db, auth, app, firebaseConfig, functions as cloudFunctions } from './firebase';
 import type { Notification } from '../types';
 import { getCachedTenantId } from './internal/workspaceDataCore';
+import { isDesktop } from './desktop';
 
 export interface WebNotificationDiagnostics {
     browserNotificationsSupported: boolean;
@@ -94,6 +95,11 @@ export const registerWebPushToken = async (): Promise<WebNotificationDiagnostics
     const user = auth.currentUser;
     if (!user) {
         throw new Error('No signed-in user.');
+    }
+
+    // The desktop app shows notifications natively (FCM web push does not work in Electron).
+    if (isDesktop()) {
+        throw new Error('The desktop app shows notifications natively; web push is not needed here.');
     }
 
     const diagnostics = await getWebNotificationDiagnostics();

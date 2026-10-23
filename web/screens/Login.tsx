@@ -9,6 +9,7 @@ import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
 import { WorkspaceConnecting } from '../context/WorkspaceContext';
 import { loginWithPasskey, preparePasskeyLogin, shouldAutoPrompt } from '../services/passkeyService';
+import { isDesktop } from '../services/desktop';
 import { COMPANY_NAME } from '../config/company';
 import { AppleLogo } from '../components/ui/AppleLogo';
 import './login.scss';
@@ -36,7 +37,10 @@ export const Login = () => {
     const redirectUrl = requestedRedirect || '/';
     const inviteTenantId = (location.state as any)?.inviteTenantId;
     const hasRedirectContext = requestedRedirect !== '' && requestedRedirect !== location.pathname;
-    const passkeyAvailable = authScreenTranslationsReady && !isRegister && !showMfaStep && shouldAutoPrompt();
+    // Desktop app (Electron): no platform authenticator for passkeys and Google blocks embedded OAuth,
+    // so only email/password (+ MFA) is offered there until the system-browser handoff exists.
+    const isDesktopApp = isDesktop();
+    const passkeyAvailable = authScreenTranslationsReady && !isRegister && !showMfaStep && !isDesktopApp && shouldAutoPrompt();
 
     useEffect(() => {
         void loadAuthScreenTranslations();
@@ -281,7 +285,7 @@ export const Login = () => {
     // Auto-prompt effect
     useEffect(() => {
         // Only auto-prompt if checking for login, not register, and not already redirected
-        if (authScreenTranslationsReady && !isRegister && !auth.currentUser && !showMfaStep && shouldAutoPrompt()) {
+        if (authScreenTranslationsReady && !isRegister && !auth.currentUser && !showMfaStep && !isDesktopApp && shouldAutoPrompt()) {
             handlePasskeySignIn(true);
         }
     }, [authScreenTranslationsReady, isRegister, showMfaStep]); // Run once on mount/mode switch if conditions met
@@ -463,7 +467,11 @@ export const Login = () => {
                         </div>
                     )}
 
-                    {!isRegister && !showMfaStep && (
+                    {!isRegister && !showMfaStep && isDesktopApp && (
+                        <p className="login-page__desktop-hint">{t('login.desktop.oauthHint')}</p>
+                    )}
+
+                    {!isRegister && !showMfaStep && !isDesktopApp && (
                         <>
                             <div className="login-page__divider">{t('login.divider.orContinue')}</div>
 

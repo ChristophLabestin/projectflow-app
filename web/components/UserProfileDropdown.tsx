@@ -6,6 +6,7 @@ import { useLanguage } from '../context/LanguageContext';
 import { SettingsModal } from './SettingsModal';
 import { subscribeUserStatusPreference, updateUserStatusPreference } from '../services/domain/userStatusService';
 import { initialOf } from '../utils/initials';
+import { DESKTOP_DOWNLOAD_PATH, useDesktopDownload } from '../services/desktopDownloads';
 
 /**
  * User Profile Dropdown for the Topbar
@@ -13,6 +14,7 @@ import { initialOf } from '../utils/initials';
  */
 export const UserProfileDropdown: React.FC = () => {
     const [isOpen, setIsOpen] = useState(false);
+    const desktopOffer = useDesktopDownload();
     const [isStatusSelectorOpen, setIsStatusSelectorOpen] = useState(false);
     const [statusPreference, setStatusPreference] = useState<'online' | 'busy' | 'idle' | 'offline'>('online');
     const [showSettingsModal, setShowSettingsModal] = useState(false);
@@ -253,6 +255,16 @@ export const UserProfileDropdown: React.FC = () => {
                             <span className="material-symbols-outlined text-[20px] text-muted">task_alt</span>
                             <span className="text-sm font-medium">{t('user.personalTasks')}</span>
                         </Link>
+                        {desktopOffer && (
+                            <Link
+                                to={DESKTOP_DOWNLOAD_PATH}
+                                onClick={() => setIsOpen(false)}
+                                className="flex items-center gap-3 px-4 py-2.5 hover:bg-surface-hover text-main transition-colors"
+                            >
+                                <span className="material-symbols-outlined text-[20px] text-muted">{desktopOffer.os === 'mac' ? 'laptop_mac' : 'laptop_windows'}</span>
+                                <span className="text-sm font-medium">{t('desktop.promo.menuItem').replace('{platform}', desktopOffer.os === 'mac' ? 'Mac' : 'Windows')}</span>
+                            </Link>
+                        )}
                     </div>
 
                     {/* Logout Section */}
