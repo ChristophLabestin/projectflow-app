@@ -64,10 +64,10 @@ struct WorkFiltersSheet: View {
 
             VStack(spacing: 0) {
                 pickerRow(.project, "square.stack.3d.up", L10n.t("work.filter.project"), value: projectValue)
-                if expanded == .project { projectOptions }
+                disclosure(open: expanded == .project, height: projectOptionsHeight) { projectOptions }
                 PFRowDivider()
                 pickerRow(.priority, "chart.bar", L10n.t("work.filter.priority"), value: priorityValue)
-                if expanded == .priority { priorityOptions }
+                disclosure(open: expanded == .priority, height: priorityOptionsHeight) { priorityOptions }
                 PFRowDivider()
                 switchRow("lock", L10n.t("work.filter.personalSwitch"), isOn: $filters.includePersonal)
                 PFRowDivider()
@@ -99,9 +99,24 @@ struct WorkFiltersSheet: View {
 
     /// Four rows plus the taller of the two opened sections (projects show at most five rows, then scroll).
     private var reservedHeight: CGFloat {
-        let projectRows = projects.isEmpty ? 0.7 : CGFloat(min(projects.count, 5))
-        let opened = max(projectRows, 4) * optionHeight + PFSpace.xs
-        return 4 * rowHeight + 3 + opened
+        4 * rowHeight + 3 + max(projectOptionsHeight, priorityOptionsHeight)
+    }
+
+    private var projectOptionsHeight: CGFloat {
+        (projects.isEmpty ? 0.7 : CGFloat(min(projects.count, 5))) * optionHeight + PFSpace.xs
+    }
+
+    private var priorityOptionsHeight: CGFloat { 4 * optionHeight + PFSpace.xs }
+
+    /// Accordion: the options stay mounted and their clip grows from the row downwards, so the list is uncovered
+    /// top to bottom in the same motion that pushes the rows below (no separate fade).
+    private func disclosure<Content: View>(open: Bool, height: CGFloat, @ViewBuilder _ content: () -> Content) -> some View {
+        content()
+            .frame(height: height, alignment: .top)
+            .frame(height: open ? height : 0, alignment: .top)
+            .clipped()
+            .allowsHitTesting(open)
+            .accessibilityHidden(!open)
     }
 
     // MARK: Rows
@@ -184,7 +199,6 @@ struct WorkFiltersSheet: View {
             }
             .frame(maxHeight: optionHeight * 5)
             .scrollBounceBehavior(.basedOnSize)
-            .transition(.opacity)
         }
     }
 
@@ -200,7 +214,6 @@ struct WorkFiltersSheet: View {
             }
         }
         .padding(.bottom, PFSpace.xs)
-        .transition(.opacity)
     }
 
     private func switchRow(_ systemImage: String, _ title: String, isOn: Binding<Bool>) -> some View {
