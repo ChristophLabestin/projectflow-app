@@ -10,27 +10,16 @@ Status: 2026-10-23, in Umsetzung (`landing/`). Ersetzt `brain/reference/app/LAND
   (Pläne sind noch nicht öffentlich bepreist). Nur Features, die im Produkt existieren.
 - H1 DE „Ruhe im Projekt. Tempo in der Umsetzung.“ / EN „Calm projects. Fast execution.“
 
-## Abschnittsfolge
-1. **Nav** (sticky, frosted ab Scroll > 8 px): Logo, Produkt, Plattformen, Sicherheit, DE/EN, Login, „Kostenlos starten“.
-2. **Hero**: Headline Wort für Wort, Subline, 2 CTAs (magnetisch). Darunter das App-Fenster
-   (Sidebar + Heute-Ansicht) in Perspektive (rotateX 22° → 0° beim Scrollen), drei schwebende
-   Fragmente auf eigenen Tiefen (Benachrichtigung, Fokus-Timer, abgehakte Aufgabe). Cursor kippt
-   das Fenster um max. 3°.
-3. **Scroll-Story „Der Weg einer Aufgabe“** (pinned, 4 Schritte): Erfassen (Inbox / Quick Capture)
-   → Planen (Heute) → Fokus (Timer läuft) → Erledigt (Checkbox, Projekt-Fortschritt steigt).
-   Links Schritttext mit Fortschrittsleiste, rechts die Bühne, auf der eine Karte wandert.
-4. **Board füllt sich** (scrubbed): Spalten Backlog/Offen/In Arbeit/Review/Erledigt, Karten fallen
-   gestaffelt ein, Fortschrittszähler zählt hoch. Text: Projekte, Boards, Initiativen, Sprints.
-5. **Task-Workbench**: Detail-Fragment mit Unteraufgaben (abhaken), Beziehungen (blockiert von /
-   verwandt), Aktivität. Hover hebt Beziehungslinien hervor.
-6. **Notification Center**: Meldungen treffen gestaffelt ein, Gruppen Heute/Gestern, Ungelesen-Zähler.
-7. **KI-Assistenz**: Zusammenfassung/Unteraufgaben-Vorschlag tippt sich, klar als Assistenz markiert.
-8. **Teams & Sicherheit**: Workspaces mit Rollen (Owner/Admin/Member/Gast), externe Projekt-Mitwirkende,
-   Passkey-Login, Zwei-Faktor (TOTP), Google/GitHub. Passkey-Prompt als Fragment.
-9. **Plattformen**: Web, Desktop (macOS/Windows: Quick Access, Menüleiste/Tray, Badges),
-   iPhone (Widgets, Live Activity, Teilen) inkl. iPhone Duo. Geräte-Trio mit Parallax.
-10. **Schluss-CTA** + **Footer** (Produkt, Plattformen, Rechtliches, Sprache, ©).
-Unterseiten: Impressum, Datenschutz, AGB (DE/EN), 404.
+## Abschnittsfolge (v2, 2026-10-23 – dichter, ohne Pin-Szenen)
+Jede Sektion = Kopf (Titel links, Text rechts) + ein dichter Inhaltsblock; Abstand nur über `--section-space`.
+1. **Hero**: Headline, Lead, 2 CTAs, App-Fenster (Heute) sichtbar über dem Fold, 2 schwebende Fragmente,
+   darunter ein Proof-Streifen (Heute & Fokus · Projekte & Boards · Teams & Rollen · Web/Desktop/iPhone).
+2. **So arbeitest du** (`#flow`): 4 Schritt-Karten nebeneinander (Erfassen → Planen → Fokus → Erledigt) mit
+   Mini-UI, Verbindungslinie füllt sich beim Scrollen. Ersetzt die frühere gepinnte Scroll-Story.
+3. **Funktionen** (`#features`): Bento-Grid – Board (groß), Workbench, Notification Center, KI-Assistenz, Initiativen & Sprints.
+4. **Teams & Sicherheit** (`#security`, dunkles Band): Rollenliste, Passkey-Prompt, 4 Punkte.
+5. **Plattformen** (`#platforms`): 3 Karten (Web, Desktop, iPhone) + Integrations-Streifen (MCP-Clients → `/docs/mcp`).
+6. **FAQ** (`#faq`), 7. **CTA**, Footer. Unterseiten: Rechtsseiten (Legal-API), `/docs/mcp`, 404.
 
 ## Motion-System (Tokens in `landing/src/styles/_motion.scss`, gespiegelt in `src/js/motion.ts`)
 | Token | Wert | Einsatz |

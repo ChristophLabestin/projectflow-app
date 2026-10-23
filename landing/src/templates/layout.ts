@@ -66,7 +66,7 @@ const header = (page: PageDef, t: SiteCopy): string => {
     const anchor = (id: string) => (page.kind === 'home' ? `#${id}` : `${home === '/' ? '' : home}/#${id}`);
     const other = otherLang(page.lang);
     const navItems = [
-        ['journey', t.nav.product],
+        ['features', t.nav.product],
         ['platforms', t.nav.platforms],
         ['security', t.nav.security],
     ];
@@ -116,7 +116,7 @@ const footer = (page: PageDef, t: SiteCopy): string => {
             <a class="brand" href="${home}" aria-label="${esc(t.a11y.home)}">${logo('brand__logo')}<span class="brand__name">ProjectFlow</span></a>
             <p>${esc(t.footer.tagline)}</p>
         </div>
-        ${col(t.footer.product, [[`${base}/#journey`, f.journey], [`${base}/#board`, f.board], [`${base}/#workbench`, f.workbench], [`${base}/#security`, f.security], [urlFor('docsMcp', page.lang), f.docs]])}
+        ${col(t.footer.product, [[`${base}/#flow`, f.flow], [`${base}/#features`, f.features], [`${base}/#security`, f.security], [`${base}/#faq`, f.faq], [urlFor('docsMcp', page.lang), f.docs]])}
         ${col(t.footer.platforms, [[links.app, f.web], [links.download, f.desktop], [`${base}/#platforms`, f.ios]])}
         ${col(t.footer.legal, [[legalUrl('imprint', page.lang), f.imprint], [legalUrl('privacy', page.lang), f.privacy], [legalUrl('terms', page.lang), f.terms]])}
     </div>
