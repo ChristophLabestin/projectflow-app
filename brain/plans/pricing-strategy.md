@@ -1,6 +1,7 @@
 # Pricing-Strategie ProjectFlow (Vorschlag)
 
-Status: 2026-10-23, Entwurf zur Entscheidung durch den Owner. Nichts davon ist live: Bezahlpläne sind im Code noch
+Status: 2026-10-23 – **vom Owner bestätigt:** Team 10 € jährlich / 12 € monatlich, Free bis 3 Projekte, Team bis 50 Mitglieder
+(übernommen in `APP_CONCEPT.md §3`). Noch offen: Gründungspreis, Stichtag Bezahlstart, Organization-Preis final. Nichts davon ist live: Bezahlpläne sind im Code noch
 nicht umgesetzt (kein Stripe/Checkout, Plan-Limits aus `APP_CONCEPT.md §3` werden nicht erzwungen; einzig erzwungen
 ist das KI-Kontingent pro Nutzer: 1 Mio. Tokens + 50 Bilder/Monat, `functions/src/ai-service.ts`).
 Die Landing zeigt die Preise als „geplant“ (Preview-Channel), bis der Owner sie bestätigt.
@@ -69,8 +70,8 @@ Begründungen:
 5. Rechtstexte: AGB-Abschnitt Entgelte/Laufzeit, Datenschutz um Zahlungsdienstleister ergänzen (über `/admin/legal`).
 6. Landing: Preise von „geplant“ auf live stellen; In-App-Billing-Seite (`settings → billing`).
 
-## 7. Offene Entscheidungen für den Owner
-- Preisniveau Team 10/12 € bestätigen (Alternative: 8/10 € für schnelleres Wachstum).
-- Free: 3 Projekte vs. 1 Projekt (Konzept). Team-Limit 50 vs. 20.
-- Gründungspreis ja/nein, Höhe und Dauer.
+## 7. Entscheidungen
+- ✅ 2026-10-23: Team 10 €/12 €, Free bis 3 Projekte, Team bis 50 Mitglieder.
+- Offen: Gründungspreis ja/nein, Höhe und Dauer (bis dahin nicht auf der Website).
+- Offen: Organization-Preis (Vorschlag ab 18 €) und SSO-Umsetzung.
 - Ab wann zahlen Beta-Workspaces (Stichtag + Vorlaufzeit von mind. 30 Tagen Ankündigung).

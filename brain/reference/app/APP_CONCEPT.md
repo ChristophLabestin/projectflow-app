@@ -87,12 +87,12 @@ ProjectFlow is intentionally designed with **three subscription tiers**. Plan en
 
 ### 3.1 Plan Overview
 
-#### Starter (Solo)
+#### Starter (Solo) — public name „Free“, 0 €
 Target: individuals, freelancers, self-employed users.
 
 Rules:
 - Intended for **single-person usage only**.
-- **Max 1 project** per tenant.
+- **Max 3 projects** per tenant (owner decision 2026-10-23, was 1).
 - **No workspace invitations** (cannot invite members).
 - **Cannot join other workspaces** (cannot become a member of another tenant).
 - **AI features are not included**.
@@ -100,12 +100,12 @@ Rules:
 
 Everything else is not restricted unless explicitly specified elsewhere.
 
-#### Professional (Team)
+#### Professional (Team) — public name „Team“, 10 €/seat/month billed yearly, 12 € monthly
 Target: teams and growing companies.
 
 Rules:
 - **Unlimited projects**.
-- Workspace can have **up to 20 workspace members**.
+- Workspace can have **up to 50 workspace members** (owner decision 2026-10-23, was 20).
 - **Seat-based licensing**:
   - Each workspace member must have at least a **Professional** license (one license per user).
 - **Unlimited external project collaborators** per project (no tenant membership required for externals).
@@ -118,7 +118,7 @@ AI features included in Professional are based on:
 - Text/assistant features: **Gemini 3.0 Flash**
 - Image generation and image rework: **Gemini 3.0 Flash Nano Banana**
 
-#### Organization (Enterprise)
+#### Organization (Enterprise) — from 18 €/seat/month billed yearly, from 10 seats (proposal)
 Target: larger organizations requiring centralized identity/security and customized governance.
 
 Organization includes everything in **Professional**, plus:
