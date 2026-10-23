@@ -202,13 +202,10 @@ struct PlanningEditorScaffold<Content: View>: View {
     var body: some View {
         VStack(alignment: .leading, spacing: PFSpace.s) {
             PFSheetHeader(eyebrow, title: title)
-            ScrollView {
-                VStack(alignment: .leading, spacing: PFSpace.m) { content }
-                    .padding(.horizontal, PFSpace.page)
-                    .padding(.bottom, PFSpace.s)
-            }
-            .scrollIndicators(.hidden)
-            .scrollDismissesKeyboard(.interactively)
+            // The sheet itself scrolls (and avoids the keyboard), so the form is plain content.
+            VStack(alignment: .leading, spacing: PFSpace.m) { content }
+                .padding(.horizontal, PFSpace.page)
+                .padding(.bottom, PFSpace.s)
             HStack(spacing: PFSpace.s) {
                 if let deleteTitle, let onDelete {
                     PFButton(deleteTitle, systemImage: "trash", kind: .ghost, action: onDelete)

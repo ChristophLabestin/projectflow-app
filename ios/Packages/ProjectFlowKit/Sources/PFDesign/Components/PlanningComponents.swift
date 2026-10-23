@@ -122,7 +122,7 @@ public struct PlanningTimeline: View {
             }
             .scrollIndicators(.hidden)
             .task(id: entries.map(\.id)) {
-                if let focusId { proxy.scrollTo(focusId, anchor: .leading) }
+                if let focusId, focusId != entries.first?.id { proxy.scrollTo(focusId, anchor: UnitPoint(x: 0.05, y: 0.5)) }
             }
         }
     }

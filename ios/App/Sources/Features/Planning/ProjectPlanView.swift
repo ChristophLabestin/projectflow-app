@@ -82,7 +82,7 @@ struct ProjectPlanView: View {
     private func presentMilestone(_ milestone: Milestone) {
         let store = store
         let canEdit = canEdit
-        presenter.present(detents: [.large]) {
+        presenter.present(detents: [.fraction(0.62), .large]) {
             MilestoneDetailSheet(projectId: store.projectId, milestoneId: milestone.id, store: store, canEdit: canEdit)
         }
     }
@@ -453,23 +453,20 @@ struct MilestoneDetailSheet: View {
                     .padding(.horizontal, PFSpace.page)
                 }
                 if canEdit { statusButtons(milestone) }
-                ScrollView {
-                    if linked.isEmpty {
-                        Text(L10n.t("planning.milestone.noTasks")).pfText(.meta).foregroundStyle(PFColor.textMuted)
-                            .frame(maxWidth: .infinity, alignment: .leading).padding(.horizontal, PFSpace.page)
-                    } else {
-                        PFRowCard {
-                            ForEach(linked) { task in
-                                WorkItemRow(item: .task(task), showsProject: false) {
-                                    presenter.dismiss()
-                                    model.router.push(.task(task.ref))
-                                }
+                if linked.isEmpty {
+                    Text(L10n.t("planning.milestone.noTasks")).pfText(.meta).foregroundStyle(PFColor.textMuted)
+                        .frame(maxWidth: .infinity, alignment: .leading).padding(.horizontal, PFSpace.page)
+                } else {
+                    PFRowCard {
+                        ForEach(linked) { task in
+                            WorkItemRow(item: .task(task), showsProject: false) {
+                                presenter.dismiss()
+                                model.router.push(.task(task.ref))
                             }
                         }
-                            .padding(.horizontal, PFSpace.m)
                     }
+                    .padding(.horizontal, PFSpace.m)
                 }
-                .scrollIndicators(.hidden)
                 if canEdit {
                     PFButton(L10n.t("common.edit"), systemImage: "pencil", kind: .secondary, fullWidth: true) {
                         let tasks = store.tasks

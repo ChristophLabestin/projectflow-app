@@ -277,6 +277,7 @@ struct TaskLabelsSheet: View {
                 .disabled(newName.trimmingCharacters(in: .whitespaces).isEmpty || isAdding)
                 .opacity(newName.trimmingCharacters(in: .whitespaces).isEmpty ? 0.45 : 1)
         }
+        .padding(.horizontal, PFSpace.xxs)
     }
 
     private func add() {
