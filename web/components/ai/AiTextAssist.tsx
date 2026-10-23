@@ -2,6 +2,8 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useLanguage } from '../../context/LanguageContext';
 import type { AiFieldKind, AiWriteAction } from '../../services/aiAssistClient';
 import { useAiWrite } from './core/useAiWrite';
+import { useAiAccess } from '../../hooks/useAiAccess';
+import { AiPlanHint } from '../billing/AiPlanHint';
 import './ai-text-assist.scss';
 
 /**
@@ -45,6 +47,9 @@ export const AiTextAssist: React.FC<AiTextAssistProps> = ({
 }) => {
     const { t } = useLanguage();
     const writer = useAiWrite({ field, itemTitle, projectTitle });
+    // Plan gate (billing contract): without the AI add-on / own key show a hint instead of actions.
+    const access = useAiAccess();
+    const blocked = access.status === 'addon-required' || access.status === 'plan-required';
     const { enabled, suggestion, error } = writer;
     const [menuOpen, setMenuOpen] = useState(false);
     const phase: Phase = menuOpen ? 'menu' : writer.phase;
@@ -141,7 +146,9 @@ export const AiTextAssist: React.FC<AiTextAssistProps> = ({
                         <p className="ai-text-assist__scope">
                             {range ? t('ai.spark.scope.selection') : empty ? t('ai.spark.scope.empty') : t('ai.spark.scope.all')}
                         </p>
-                        {empty && !range ? (
+                        {blocked ? (
+                            <AiPlanHint status={access.status} compact />
+                        ) : empty && !range ? (
                             <button type="button" role="menuitem" className="ai-text-assist__item" onClick={() => run('draft')}>
                                 <span className="material-symbols-outlined" aria-hidden="true">{ACTION_ICONS.draft}</span>
                                 {t('ai.action.draft')}
@@ -181,7 +188,7 @@ export const AiTextAssist: React.FC<AiTextAssistProps> = ({
                         {phase === 'running' && <span className="ai-text-assist__status">{t('ai.spark.writing')}</span>}
                     </div>
                     {phase === 'error'
-                        ? <p className="ai-text-assist__error" role="alert">{error}</p>
+                        ? (writer.planStatus ? <AiPlanHint status={writer.planStatus} compact /> : <p className="ai-text-assist__error" role="alert">{error}</p>)
                         : <p className="ai-text-assist__text">{suggestion || '…'}</p>}
                     <div className="ai-text-assist__actions">
                         {phase === 'running' && (

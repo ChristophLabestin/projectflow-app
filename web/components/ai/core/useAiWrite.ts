@@ -3,6 +3,7 @@ import { useLanguage } from '../../../context/LanguageContext';
 import { useInAppAi } from '../../../hooks/useInAppAi';
 import { AiAssistError, streamAiAssist, type AiFieldKind, type AiWriteAction } from '../../../services/aiAssistClient';
 import { aiErrorMessage } from './aiErrors';
+import { aiAccessFromError, type AiAccessStatus } from '../../../hooks/useAiAccess';
 
 /**
  * Headless writing assistant for one text field (UI-independent): runs a write action on the whole
@@ -23,6 +24,8 @@ export const useAiWrite = (target: AiWriteTarget) => {
     const [phase, setPhase] = useState<AiWritePhase>('idle');
     const [suggestion, setSuggestion] = useState('');
     const [error, setError] = useState('');
+    /** Set when the server refused for plan reasons → render <AiPlanHint status={planStatus} />. */
+    const [planStatus, setPlanStatus] = useState<AiAccessStatus | null>(null);
     const abortRef = useRef<AbortController | null>(null);
     const lastRef = useRef<{ action: AiWriteAction; text: string; instruction?: string; range: { start: number; end: number } | null } | null>(null);
 
@@ -39,6 +42,7 @@ export const useAiWrite = (target: AiWriteTarget) => {
         lastRef.current = { action, text: value, instruction: options.instruction, range };
         setSuggestion('');
         setError('');
+        setPlanStatus(null);
         setPhase('running');
         try {
             const result = await streamAiAssist({
@@ -51,7 +55,9 @@ export const useAiWrite = (target: AiWriteTarget) => {
             setPhase('done');
         } catch (caught) {
             if (controller.signal.aborted) return;
-            setError(aiErrorMessage(caught instanceof AiAssistError ? caught.code : 'internal', t));
+            const code = caught instanceof AiAssistError ? caught.code : 'internal';
+            setPlanStatus(aiAccessFromError(code));
+            setError(aiErrorMessage(code, t));
             setPhase('error');
         }
     }, [tenantId, target.field, target.itemTitle, target.projectTitle, t]);
@@ -74,7 +80,8 @@ export const useAiWrite = (target: AiWriteTarget) => {
         setPhase('idle');
         setSuggestion('');
         setError('');
+        setPlanStatus(null);
     }, []);
 
-    return { enabled, phase, suggestion, error, run, retry, applyTo, reset, range: lastRef.current?.range ?? null };
+    return { enabled, phase, suggestion, error, planStatus, run, retry, applyTo, reset, range: lastRef.current?.range ?? null };
 };

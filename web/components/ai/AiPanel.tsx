@@ -4,6 +4,8 @@ import { useLanguage } from '../../context/LanguageContext';
 import { useAiPanel } from '../../context/AiPanelContext';
 import { AiActionCard } from './AiActionCard';
 import { useAiConversation } from './core/useAiConversation';
+import { useAiAccess } from '../../hooks/useAiAccess';
+import { AiPlanHint } from '../billing/AiPlanHint';
 import { AiMessageText } from './AiMessageText';
 import './ai-panel.scss';
 
@@ -26,7 +28,9 @@ export const AiPanel: React.FC = () => {
     const { t } = useLanguage();
     const location = useLocation();
     const { enabled, open, draft, closePanel, getContext } = useAiPanel();
-    const { messages, running, steps, error, chips, context, send: sendMessage, stop, reset: resetConversation } =
+    const access = useAiAccess();
+    const blocked = access.status === 'addon-required' || access.status === 'plan-required';
+    const { messages, running, steps, error, planStatus, chips, context, send: sendMessage, stop, reset: resetConversation } =
         useAiConversation({ active: open, getContext, screenKey: location.pathname });
     const [input, setInput] = useState('');
     const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -86,7 +90,8 @@ export const AiPanel: React.FC = () => {
             </div>
 
             <div ref={listRef} className="ai-panel__messages" aria-live="polite">
-                {messages.length === 0 && (
+                {blocked && <AiPlanHint status={access.status} />}
+                {!blocked && messages.length === 0 && (
                     <div className="ai-panel__empty">
                         <p>{t('ai.panel.intro')}</p>
                         <div className="ai-panel__suggestions">
@@ -115,7 +120,7 @@ export const AiPanel: React.FC = () => {
                         })}
                     </ul>
                 )}
-                {error && <p className="ai-panel__error" role="alert">{error}</p>}
+                {error && (planStatus ? <AiPlanHint status={planStatus} /> : <p className="ai-panel__error" role="alert">{error}</p>)}
             </div>
 
             <form className="ai-panel__composer" onSubmit={(event) => { event.preventDefault(); send(input); }}>
@@ -139,7 +144,7 @@ export const AiPanel: React.FC = () => {
                         <span className="material-symbols-outlined" aria-hidden="true">stop</span>
                     </button>
                 ) : (
-                    <button type="submit" className="ai-panel__send" disabled={!input.trim()} aria-label={t('ai.panel.send')}>
+                    <button type="submit" className="ai-panel__send" disabled={!input.trim() || blocked} aria-label={t('ai.panel.send')}>
                         <span className="material-symbols-outlined" aria-hidden="true">arrow_upward</span>
                     </button>
                 )}
