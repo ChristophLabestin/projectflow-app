@@ -325,6 +325,11 @@ Concept: `brain/plans/help-center-rework.md`.
 - `components/wiki/LinkedDocsPanel` — task detail "Linked docs" (link/unlink, new project page for the task).
 - Strings: `locales/wiki-{en,de}.ts` via `useWikiT` (lazy chunk). Styles `screens/wiki/wiki.scss`, `components/wiki/linked-docs-panel.scss`.
 - Service entry for other features: `createWikiPageFromMarkdown(tenantId, { space, title, markdown, parentId?, icon?, linkedTaskRefs? })` in `services/wiki/wikiService.ts`.
+## File manager (`web/components/files/`, 2026-10-23)
+- `FileAttachments` — attachment panel for one object (`parent: { type, id, projectId, title }`): drag & drop, paste, picker, list with preview/actions. Used in task detail; wiki docs use `type: 'doc'`.
+- `FilesBrowser` — list/grid with search, filters (type, project, object, uploader, time), sort, trash; used by `/files` and `/project/:id/files`.
+- `FileRow` (row/card), `FileThumb`, `useFileDrop`, `useThumbnailUrls` (`fileHooks.tsx`), `FilePreviewModal` (image/PDF/video/audio/text + versions), `useFileActions` (menu options + rename/move/version/trash/purge modals; purge uses the shared confirm dialog), `FileEmbed` (render a stored `fileId`).
+- Data: `web/services/filesService.ts` (subscriptions, `uploadFiles`, `getFileUrls`, commands). Styles: `src/styles/components/_files.scss`, `screens/files-page.scss`.
 
 ## Notes for future components
 - When adding a reusable component, update this file and ensure it uses tokens from `brain/reference/app/STYLING.md`.

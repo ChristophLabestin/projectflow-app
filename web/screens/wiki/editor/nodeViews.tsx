@@ -2,6 +2,7 @@ import React from 'react';
 import { NodeViewContent, NodeViewWrapper, type NodeViewProps } from '@tiptap/react';
 import { useNavigate } from 'react-router-dom';
 import { useOptionalWikiData } from '../WikiDataContext';
+import { FileEmbed as ManagedFile } from '../../../components/files/FileEmbed';
 import { fileIcon, formatBytes } from '../wikiFiles';
 import { getHost } from './host';
 import type { CalloutTone } from './extensions';
@@ -205,6 +206,21 @@ export const FileView: React.FC<NodeViewProps> = ({ node, updateAttributes, edit
             setBusy(false);
         }
     };
+
+    const fileId = node.attrs.fileId as string | null;
+    const tenantId = useOptionalWikiData()?.tenantId;
+    if (fileId && tenantId) {
+        return (
+            <NodeViewWrapper className={`wiki-file is-managed${selected ? ' is-selected' : ''}`} contentEditable={false} data-drag-handle="">
+                <div className="wiki-file__managed"><ManagedFile tenantId={tenantId} fileId={fileId} /></div>
+                {editor.isEditable && (
+                    <button type="button" className="wiki-icon-btn wiki-file__remove" aria-label={t('wiki.common.remove')} title={t('wiki.common.remove')} onClick={() => deleteNode()}>
+                        <span className="material-symbols-outlined">close</span>
+                    </button>
+                )}
+            </NodeViewWrapper>
+        );
+    }
 
     if (!url) {
         return (

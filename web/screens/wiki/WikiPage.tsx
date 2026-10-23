@@ -27,7 +27,7 @@ import { collectHeadings, scrollToPos } from './editor/nodeViews';
 import { useWikiData } from './WikiDataContext';
 import { WikiMenu } from './WikiMenu';
 import { DocGlyph } from './WikiSidebar';
-import { createPlaceholderFileProvider } from './wikiFiles';
+import { createWikiFileProvider } from './wikiFiles';
 import { IconPicker, WikiAiDialog, WikiLinkTaskDialog, WikiVersionsDrawer, type WikiAiMode } from './WikiDialogs';
 import { useWikiT } from './useWikiT';
 
@@ -95,7 +95,7 @@ export const WikiPage: React.FC<WikiPageProps> = ({ meta, docs, prefs, basePath,
     useMotionOnChange(contentRef, meta.id, 'rise');
 
     const fileProvider = React.useMemo(
-        () => createPlaceholderFileProvider({ tenantId, projectId: meta.projectId, docId: meta.id }),
+        () => createWikiFileProvider({ tenantId, projectId: meta.projectId, docId: meta.id, title: metaRef.current.title }),
         [meta.id, meta.projectId, tenantId],
     );
 
@@ -281,8 +281,7 @@ export const WikiPage: React.FC<WikiPageProps> = ({ meta, docs, prefs, basePath,
         t,
         pickImage: async () => {
             try {
-                const file = await fileProvider.pick({ accept: 'image/*' });
-                return file?.url ? { src: file.url, alt: file.name } : null;
+                return await fileProvider.pick({ accept: 'image/*' });
             } catch (error) {
                 console.error('wiki image upload failed', error);
                 showError(t('wiki.file.error'));

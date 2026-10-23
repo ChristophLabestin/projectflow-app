@@ -1,7 +1,6 @@
-// File embedding for wiki pages. The `wikiFile` block stores a WikiFileRef; where the
-// bytes live is the provider's business. Until the "Dateien" session ships its file model,
-// the placeholder provider uploads through the existing tenant file service
-// (createTenantFileUploadSession → tenants/{t}/files/{fileId}).
+// File embedding for wiki pages via the workspace file manager (brain/plans/files-concept.md,
+// "Schnittstelle für das Wiki"): files hang on `parent { type: 'doc', id, projectId }`, the page
+// stores only the fileId and renders it with <FileEmbed> (signed URLs expire, rights follow the doc).
 import { getTenantFileDownloadUrl, uploadTenantFile } from '../../services/fileStorageService';
 
 export interface WikiFileRef {
@@ -29,19 +28,20 @@ const chooseFile = (accept?: string) => new Promise<File | null>((resolve) => {
     input.click();
 });
 
-export const createPlaceholderFileProvider = (ctx: { tenantId: string; projectId: string | null; docId: string }): WikiFileProvider => ({
+export const createWikiFileProvider = (ctx: { tenantId: string; projectId: string | null; docId: string; title: string }): WikiFileProvider => ({
     pick: async ({ accept }) => {
         const file = await chooseFile(accept);
         if (!file) return null;
         const stored = await uploadTenantFile({
             tenantId: ctx.tenantId,
-            module: 'wiki',
+            module: 'files',
             entityType: 'doc',
             entityId: ctx.docId,
             projectId: ctx.projectId || undefined,
+            parent: { type: 'doc', id: ctx.docId, projectId: ctx.projectId, title: ctx.title },
             file,
         });
-        return { fileId: stored.id, name: stored.fileName, size: stored.sizeBytes, mimeType: stored.mimeType, url: stored.downloadUrl };
+        return { fileId: stored.id, name: stored.fileName, size: stored.sizeBytes, mimeType: stored.mimeType, url: null };
     },
     resolve: async (fileId) => {
         const result = await getTenantFileDownloadUrl({ tenantId: ctx.tenantId, fileId }).catch(() => null);

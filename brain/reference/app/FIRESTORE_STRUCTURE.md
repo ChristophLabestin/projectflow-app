@@ -258,6 +258,8 @@ User prefs: `/tenants/{tenantId}/users/{uid}/prefs/wiki` — `{ favorites: docId
   - S3: `bucket`, `key`, `region`, `endpoint`, `forcePathStyle`
   - Google Drive: `fileId`, `folderId`
 - `createdBy`, `createdAt`, `updatedAt`
+- File manager rows (`module: 'files'`, 2026-10-23, brain/plans/files-concept.md): `listed: true`, `parent { type: task|initiative|project|comment|doc|workspace, id, projectId, rootType, rootId, title }`, `name`, `nameLower`, `folder`, `tags[]`, `version`, `versions[]` (older `{ version, fileName, sizeBytes, mimeType, provider, providerRef, createdBy, createdAt }`), `versionBytes`, `uploaderName`, `status: ready|trashed`, `trashedAt`, `trashedBy`.
+- Read access: `projectId` set → project access (guests only their projects, queries must filter `projectId ==`); `projectId` null → non-guests. Firebase objects: `tenants/{t}/files/files/{projectId|global}/{parentType}/{parentId}/…`, Storage rules mirror the same scope.
 
 #### ↳ 📂 **`file_upload_drafts`** *(Transient upload sessions; Functions-only)*
 **Path:** `/tenants/{tenantId}/file_upload_drafts/{draftId}`

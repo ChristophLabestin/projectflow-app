@@ -325,6 +325,12 @@ Important:
   - `ai.image.generate` / `ai.image.rework`
   - quota + overage policy
 
+### 8.8.1 Files & documents (file manager, 2026-10-23)
+- A file inherits its object's access: project files follow project access (non-guests see all projects, guests only projects with them in `memberIds`); workspace files (`projectId: null`) are visible to non-guests only. Enforced in Firestore (`files`) and Storage (`tenants/{t}/files/{module}/{scope}/**`).
+- Upload: anyone who can see the object (guests in their projects). Rename/move/new version/trash/restore: uploader, project owner, workspace Owner/Admin. Permanent delete: uploader or Owner/Admin (only from the trash).
+- Limits (server-side): 50 MB per file, workspace quota `entitlements/plan.storageQuotaBytes` (default 5 GB, counts all versions and trash), blocklist for executables/scripts/HTML/SVG.
+- Legacy media (`module: 'media'`) keeps `tenant.media.*` for upload; reading follows the workspace scope.
+
 ---
 
 ## 8.8.1 Wiki & Docs (2026-10-23)

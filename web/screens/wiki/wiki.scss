@@ -1840,6 +1840,28 @@
 }
 
 .wiki-file__meta { color: var(--color-text-subtle); font-size: 12px; }
+
+// File-manager embeds bring their own card; the wiki only adds a remove button.
+.wiki-file.is-managed {
+    position: relative;
+    display: block;
+    padding: 0;
+    background: transparent;
+    box-shadow: none;
+
+    &:hover .wiki-file__remove, &.is-selected .wiki-file__remove { opacity: 1; }
+}
+
+.wiki-file__managed { min-width: 0; }
+
+.wiki-file__remove {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background: var(--color-surface-paper);
+    box-shadow: var(--shadow-sm);
+    opacity: 0;
+}
 .wiki-file__error { color: var(--color-error); font-size: 12px; }
 
 .wiki-file__actions {

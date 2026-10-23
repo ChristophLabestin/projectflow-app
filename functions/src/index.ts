@@ -53,6 +53,14 @@ import {
     saveWorkspaceFileStorageConfig,
     testWorkspaceFileStorageConnection,
 } from './file-storage';
+import {
+    getTenantFileUrls,
+    getWorkspaceFileQuota,
+    purgeTenantFile,
+    restoreTenantFile,
+    trashTenantFile,
+    updateTenantFile,
+} from './files-manager';
 
 
 
@@ -113,6 +121,12 @@ export {
     disconnectGoogleDriveStorage,
     createTenantFileUploadSession,
     finalizeTenantFileUpload,
+    getTenantFileUrls,
+    getWorkspaceFileQuota,
+    purgeTenantFile,
+    restoreTenantFile,
+    trashTenantFile,
+    updateTenantFile,
     listTenantFiles,
     getTenantFirebaseStorageDownloadUrl,
     getTenantFileDownloadUrl,

@@ -259,6 +259,24 @@
       ],
       "port": 3101,
       "autoPort": false
+    },
+    {
+      "name": "web-e2e-files",
+      "runtimeExecutable": "env",
+      "runtimeArgs": [
+        "PORT=3111",
+        "AUTH_PORT=9811",
+        "FIRESTORE_PORT=8811",
+        "STORAGE_PORT=9812",
+        "FUNCTIONS_PORT=5811",
+        "npm",
+        "run",
+        "dev:e2e",
+        "--prefix",
+        "web"
+      ],
+      "port": 3111,
+      "autoPort": false
     }
   ]
 }

@@ -15,7 +15,8 @@ export interface WikiMentionItem extends SuggestionItem {
 /** Everything the editor needs from the page around it. */
 export interface WikiEditorHost {
     t: WikiT;
-    pickImage: () => Promise<{ src: string; alt?: string } | null>;
+    /** Uploads an image through the file manager; inserted as a `wikiFile` block. */
+    pickImage: () => Promise<WikiFileRef | null>;
     pickFile: () => Promise<WikiFileRef | null>;
     searchMentions: (query: string) => Promise<WikiMentionItem[]>;
     defaultProjectId: string | null;

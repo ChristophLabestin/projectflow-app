@@ -168,7 +168,7 @@ const slashItems = (editor: Editor): SlashItem[] => {
         item('image', media, 'image', ['image', 'bild', 'photo', 'picture'], (e, r) => {
             e.chain().focus().deleteRange(r).run();
             void host.pickImage().then((image) => {
-                if (image) e.chain().focus().setImage({ src: image.src, alt: image.alt }).run();
+                if (image) e.chain().focus().insertContent({ type: 'wikiFile', attrs: image }).run();
             });
         }),
         item('file', media, 'attach_file', ['file', 'datei', 'attachment', 'anhang', 'pdf'], (e, r) =>
