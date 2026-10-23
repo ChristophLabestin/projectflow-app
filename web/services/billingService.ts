@@ -16,6 +16,12 @@ export const createBillingPortal = async (tenantId: string, language: string) =>
     return (await call({ tenantId, origin: window.location.origin, language })).data.url;
 };
 
+/** Creates (idempotently) the caller's personal workspace personal_{uid}; call after every sign-in (contract §7). */
+export const ensurePersonalWorkspace = async (language: string) => {
+    const call = httpsCallable<{ language: string }, { tenantId: string; created: boolean }>(functions, 'ensurePersonalWorkspace');
+    return (await call({ language })).data;
+};
+
 export type PersonalAiKeyStatus = { hasKey: boolean; last4: string | null };
 
 /** Own OpenAI key for AI on the Free plan; the key itself never comes back. */
@@ -26,7 +32,7 @@ export const personalAiKey = async (action: 'get' | 'set' | 'clear', key?: strin
 
 /** Contract error codes (brain/plans/billing-entitlements-contract.md §3); each has `billing.errors.<code>`. */
 export const BILLING_ERROR_CODES = [
-    'plan-project-limit', 'plan-project-locked', 'plan-invites-disabled', 'plan-member-limit',
+    'plan-project-limit', 'plan-project-locked', 'plan-invites-disabled', 'plan-member-limit', 'plan-workspace-type-mismatch',
     'ai-not-enabled', 'ai-addon-required', 'ai-plan-required',
     'ai-addon-unavailable', 'ai-addon-needs-subscription', 'ai-addon-invalid-member',
     'billing-not-configured', 'billing-already-subscribed', 'billing-price-missing', 'billing-no-customer',

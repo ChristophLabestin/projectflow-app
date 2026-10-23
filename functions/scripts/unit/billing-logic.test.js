@@ -57,3 +57,19 @@ test('only test keys are accepted', () => {
     assert.equal(billing.isTestKey('sk_test_123'), true);
     assert.equal(billing.isTestKey('sk_live_123'), false);
 });
+
+test('personal workspaces: Free start, never invite, never Team', () => {
+    assert.equal(billing.personalWorkspaceId('u1'), 'personal_u1');
+    assert.equal(billing.initialEntitlement(Date.now(), Date.now(), 'personal').status, 'free');
+    const personal = billing.limitsFor({ plan: 'personal', status: 'active', workspaceType: 'personal' });
+    assert.equal(personal.projectLimit, null);
+    assert.equal(personal.invitesAllowed, false);
+    assert.equal(personal.memberLimit, 1);
+    assert.equal(personal.aiAddonAvailable, true);
+    assert.equal(billing.planForType('team', 'personal'), 'personal');
+    assert.equal(billing.planForType('personal', 'team'), 'team');
+    assert.equal(billing.planForType('free', 'personal'), 'free');
+    assert.equal(billing.limitsFor({ plan: 'team', status: 'exempt', workspaceType: 'personal' }).invitesAllowed, false);
+    assert.deepEqual(billing.mapStripeStatus('active', 'personal'), { status: 'active', plan: 'personal' });
+    assert.equal(billing.isPersonalLookupKey('personal_yearly'), true);
+});

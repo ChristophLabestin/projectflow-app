@@ -2,7 +2,9 @@
  * Plan entitlements for display/guards in the web app. Authoritative copy: functions/src/billing-logic.ts
  * (keep both in sync); enforcement lives in Firestore rules and Cloud Functions.
  */
-export type PlanId = 'free' | 'team' | 'organization';
+export type PlanId = 'free' | 'team' | 'organization' | 'personal';
+/** Contract §7: every user has one personal workspace (personal_{uid}); it never becomes Team. */
+export type WorkspaceType = 'personal' | 'team';
 export type BillingStatus = 'trialing' | 'active' | 'past_due' | 'grace' | 'free' | 'canceled' | 'exempt';
 export type BillingInterval = 'month' | 'year';
 
@@ -10,11 +12,15 @@ export const FREE_PROJECT_LIMIT = 3;
 export const TEAM_MEMBER_LIMIT = 50;
 /** Net prices per seat and month (EUR). */
 export const TEAM_PRICE = { month: 12, year: 10 } as const;
+/** Personal plan, net per month (EUR). */
+export const PERSONAL_PRICE = { month: 5, year: 4 } as const;
+export const PERSONAL_STORAGE_GB = 10;
 /** AI add-on, net per user and month (EUR), Team/Organization only. */
 export const AI_ADDON_PRICE = 10;
 
 export type Entitlements = {
     plan: PlanId;
+    workspaceType: WorkspaceType;
     status: BillingStatus;
     seats: number;
     billingInterval: BillingInterval | null;
@@ -44,10 +50,12 @@ const toDate = (value: unknown): Date | null => {
 
 /** A missing entitlement doc is a legacy workspace in grace (= Team), exactly like the rules. */
 export const parseEntitlements = (data: Record<string, unknown> | undefined): Entitlements => {
-    const plan: PlanId = data?.plan === 'free' || data?.plan === 'organization' ? data.plan : 'team';
+    const plan: PlanId = data?.plan === 'free' || data?.plan === 'organization' || data?.plan === 'personal' ? data.plan : 'team';
+    const workspaceType: WorkspaceType = data?.workspaceType === 'personal' ? 'personal' : 'team';
     const status = (typeof data?.status === 'string' ? data.status : 'grace') as BillingStatus;
     return {
         plan,
+        workspaceType,
         status,
         seats: Number(data?.seats || 0),
         billingInterval: data?.billingInterval === 'month' || data?.billingInterval === 'year' ? data.billingInterval : null,
