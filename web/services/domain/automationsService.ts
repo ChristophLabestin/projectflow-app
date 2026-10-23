@@ -122,7 +122,7 @@ export interface FlowDefinition {
     templateId?: string | null;
 }
 
-export type FlowRunStatus = 'running' | 'waiting' | 'succeeded' | 'failed' | 'skipped_limit' | 'cancelled';
+export type FlowRunStatus = 'running' | 'waiting' | 'succeeded' | 'failed' | 'skipped_limit' | 'skipped_suspended' | 'cancelled';
 
 export interface Flow extends FlowDefinition {
     id: string;

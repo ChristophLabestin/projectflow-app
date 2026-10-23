@@ -4351,6 +4351,7 @@ const de = {
     'flows.runStatus.succeeded': "Erfolgreich",
     'flows.runStatus.failed': "Fehlgeschlagen",
     'flows.runStatus.skipped_limit': "Übersprungen (Limit)",
+    'flows.runStatus.skipped_suspended': "Übersprungen (Workspace gesperrt)",
     'flows.runStatus.cancelled': "Abgebrochen",
     'flows.status.Backlog': "Backlog",
     'flows.status.Todo': "Zu erledigen",

@@ -31,6 +31,7 @@ const STATUS_ICON: Record<string, string> = {
     running: 'progress_activity',
     waiting: 'hourglass_top',
     skipped_limit: 'block',
+    skipped_suspended: 'block',
     cancelled: 'cancel',
 };
 

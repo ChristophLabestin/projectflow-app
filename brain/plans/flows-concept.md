@@ -147,6 +147,8 @@ Projektzugang sehen Projekt-Flows und deren Protokoll (lesend).
 - Indexe: `automations (enabled, trigger.type)`, `automation_runs (automationId, startedAt desc)`,
   `automation_runs (status, resumeAt)`.
 
+**Gesperrte Workspaces** (`tenants/{t}.suspendedAt`, Admin-Konsole, Helper `tenant-status.ts`): keine Event-Runs, Zeitpläne verbrauchen den Slot ohne Lauf, laufende/wartende Runs enden als `skipped_suspended`, alle Flow-Callables antworten `failed-precondition`.
+
 ## 5a. KI in Flows (Paket 5, 2026-10-23, User-Vorgabe „Decisions API + Structured Outputs als Standard“)
 - **Bausteine** `functions/src/ai-decide.ts`: `aiDecide` (Decisions API `POST /v1/decisions`, `gpt-6-luna`, per
   `client.post`, weil das SDK `decisions` noch nicht kennt) und `aiGenerate` (Responses, `text.format` json_schema

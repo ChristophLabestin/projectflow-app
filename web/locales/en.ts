@@ -4352,6 +4352,7 @@ const en = {
     'flows.runStatus.succeeded': "Succeeded",
     'flows.runStatus.failed': "Failed",
     'flows.runStatus.skipped_limit': "Skipped (limit)",
+    'flows.runStatus.skipped_suspended': "Skipped (workspace suspended)",
     'flows.runStatus.cancelled': "Cancelled",
     'flows.status.Backlog': "Backlog",
     'flows.status.Todo': "To do",
