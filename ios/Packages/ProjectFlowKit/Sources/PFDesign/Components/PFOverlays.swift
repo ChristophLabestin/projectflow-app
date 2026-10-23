@@ -135,6 +135,12 @@ struct PFSheetContent: View {
     @State private var trailingInset: CGFloat = 0
     @State private var bottomSafe: CGFloat = 0
     @State private var hasMeasured = false
+    /// Fitted sheets resize by moving the *selected* detent (that animates; swapping the detent set jumps).
+    /// `shownFit` is the height on screen; during a resize the old height stays in the set to glide from.
+    @State private var shownFit: CGFloat?
+    @State private var transitionFrom: CGFloat?
+    @State private var resizeTask: Task<Void, Never>?
+    @State private var sheetSelection: PresentationDetent?
     @State private var contentBottomInset: CGFloat = PFSpace.l
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(\.dismiss) private var dismiss
@@ -158,13 +164,8 @@ struct PFSheetContent: View {
                 }
                 .padding(.top, 26)
                 .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { height in
-                    // Later changes (e.g. strip ↔ month) animate the sheet height instead of jumping.
-                    if hasMeasured {
-                        withAnimation(PFMotion.respecting(PFMotion.smooth)) { contentHeight = height + 8 }
-                    } else {
-                        contentHeight = height + 8
-                        hasMeasured = true
-                    }
+                    contentHeight = height + 8
+                    hasMeasured = true
                 }
         }
         .scrollBounceBehavior(.basedOnSize)
@@ -220,7 +221,12 @@ struct PFSheetContent: View {
         .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in
             keyboardHeight = 0
         }
-        .presentationDetents(Set(sheet.detents.map(detent)))
+        .presentationDetents(detentSet, selection: detentSelection)
+        .onChange(of: fitHeight) { old, _ in
+            // Pin the sheet at its current height until the coalesced resize glides it to the new one.
+            if shownFit == nil, hasMeasured { shownFit = old }
+            resizeFit()
+        }
         // System sheet chrome (material, corner radius, insets, grabber) — only the content is ProjectFlow's.
         .presentationDragIndicator(.visible)
         .presentationBackground {
@@ -256,9 +262,39 @@ struct PFSheetContent: View {
         contentHeight + footerHeight + keyboardHeight - (extendsIntoBottomSafeArea ? bottomSafe + 8 : 0)
     }
 
+    private var detentSet: Set<PresentationDetent> {
+        var set = Set(sheet.detents.map(detent))
+        if isFitted, let transitionFrom { set.insert(.height(transitionFrom)) }
+        return set
+    }
+
+    private var detentSelection: Binding<PresentationDetent> {
+        Binding(
+            get: { isFitted ? .height(shownFit ?? fitHeight) : (sheetSelection ?? detent(sheet.detents[0])) },
+            set: { value in if !isFitted { sheetSelection = value } }
+        )
+    }
+
+    /// Coalesces the height steps of one content change (a frame), then glides the sheet to the final height.
+    private func resizeFit() {
+        guard isFitted, hasMeasured else { return }
+        resizeTask?.cancel()
+        resizeTask = Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(20))
+            guard !Task.isCancelled else { return }
+            let target = fitHeight
+            guard let from = shownFit, abs(from - target) > 1 else { shownFit = target; return }
+            transitionFrom = from
+            withAnimation(PFMotion.respecting(PFMotion.smooth)) { shownFit = target }
+            try? await Task.sleep(for: .milliseconds(500))
+            guard !Task.isCancelled else { return }
+            transitionFrom = nil
+        }
+    }
+
     private func detent(_ value: PFDetent) -> PresentationDetent {
         switch value {
-        case .fit: .height(fitHeight)
+        case .fit: .height(shownFit ?? fitHeight)
         case .fraction(let f): .fraction(f)
         case .large: .large
         }

@@ -15,7 +15,9 @@ struct DateSheet: View {
     @Environment(PFPresenter.self) private var presenter
     @State private var selection: Date?
     /// Day strip or whole month; remembered between sheets.
-    @AppStorage("pf.dateSheet.month") private var showsMonth = false
+    @AppStorage("pf.dateSheet.month") private var prefersMonth = false
+    /// Local mirror so the switch runs in an animation transaction (AppStorage writes don't animate).
+    @State private var showsMonth = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: PFSpace.m) {
@@ -25,7 +27,8 @@ struct DateSheet: View {
                     PFIconButton(showsMonth ? "calendar.day.timeline.left" : "calendar",
                                  label: L10n.t(showsMonth ? "taskDetail.date.strip" : "taskDetail.date.month"), style: .raised, size: 36) {
                         PFHaptics.selection()
-                        withAnimation(PFMotion.respecting(PFMotion.snappy)) { showsMonth.toggle() }
+                        withAnimation(PFMotion.respecting(PFMotion.smooth)) { showsMonth.toggle() }
+                        prefersMonth = showsMonth
                     }
                     .padding(.trailing, PFSpace.page)
                 }
@@ -43,7 +46,10 @@ struct DateSheet: View {
             }
             .padding(.horizontal, PFSpace.page)
         }
-        .onAppear { selection = initial.flatMap { Formatting.date($0) } }
+        .onAppear {
+            selection = initial.flatMap { Formatting.date($0) }
+            showsMonth = prefersMonth
+        }
     }
 }
 

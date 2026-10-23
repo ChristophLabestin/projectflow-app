@@ -239,7 +239,7 @@ public struct PFDateStrip: View {
                 }
             }
             if showsMonth {
-                monthGrid.transition(.opacity)
+                monthGrid.transition(.opacity.combined(with: .move(edge: .top)))
             } else {
                 ScrollView(.horizontal) {
                     HStack(spacing: 6) {
