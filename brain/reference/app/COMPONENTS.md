@@ -274,6 +274,11 @@ Ports of the iOS brand motion (`PFBrandScene.swift`) and `desktop/assets/splash.
 - `BrandScene` (`variant` screen/inline, `label`): loading scene (field + mark + staggered name + track, `role="status"`). Used by the root auth loading and `WorkspaceConnecting` (screen) and `RoutePending` (inline).
 - `playCompletionBurst(element)`: one-shot burst of the four dots from an element's centre, fixed on `<body>` so it survives rows moving groups; used by `TaskRow`'s complete check. Skipped under reduced motion.
 
+## Activity & insights (2026-10-23)
+- `components/activity/ActivityFeed.tsx` — shared feed for `/activity` and `/project/:id/activity` (`projectId` prop). Reads `tenants/{t}/activity` via `services/domain/activityStreamService.ts`; text via `utils/activityStreamText.ts` (i18n `activity.types.<type>`), icons via `config/activityTypes.ts`. Guests are scoped to their projects automatically.
+- `screens/WorkspaceInsights.tsx` — Recharts (lazy `charts` chunk) on the precomputed snapshot; aggregation in `utils/insightsAggregate.ts`.
+- Sidebar "Arbeitsbereich" order: Projects, Documents*, Wiki*, Flows*, Activity, Insights (no guests), Team, Media (*gated by `WORKSPACE_AREAS` in `config/features.ts`).
+
 ## Motion primitives (`web/components/motion/`, 2026-10-23)
 - `usePresence`, `useFlipList`, `useMotionOnChange`, `useSlidingIndicator`, `AnimatedNumber`, `MOTION` (JS token mirror). Rules and CSS utilities: STYLING.md §4.1; live demo `/ui` → Motion (`screens/style-guide/MotionShowcase.tsx`).
 - `AppLayout` runs `useMotionOnChange(…, location.pathname, 'route')` on the outlet wrapper: route content fades/rises in without remounting.

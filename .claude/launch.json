@@ -243,19 +243,40 @@
       "autoPort": false
     },
     {
-      "name": "web-files",
-      "runtimeExecutable": "bash",
+      "name": "web-e2e-activity",
+      "runtimeExecutable": "env",
       "runtimeArgs": [
-        "scripts/dev-e2e.sh"
+        "PORT=3101",
+        "AUTH_PORT=9801",
+        "FIRESTORE_PORT=8801",
+        "STORAGE_PORT=9802",
+        "FUNCTIONS_PORT=5801",
+        "npm",
+        "run",
+        "dev:e2e",
+        "--prefix",
+        "web"
+      ],
+      "port": 3101,
+      "autoPort": false
+    },
+    {
+      "name": "web-e2e-files",
+      "runtimeExecutable": "env",
+      "runtimeArgs": [
+        "PORT=3111",
+        "AUTH_PORT=9811",
+        "FIRESTORE_PORT=8811",
+        "STORAGE_PORT=9812",
+        "FUNCTIONS_PORT=5811",
+        "npm",
+        "run",
+        "dev:e2e",
+        "--prefix",
+        "web"
       ],
       "port": 3111,
-      "env": {
-        "PORT": "3111",
-        "AUTH_PORT": "9811",
-        "FIRESTORE_PORT": "8811",
-        "STORAGE_PORT": "9812",
-        "FUNCTIONS_PORT": "5811"
-      }
+      "autoPort": false
     }
   ]
 }

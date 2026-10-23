@@ -8,14 +8,18 @@ import { legalUrl, urlFor, type Lang } from './pages';
 const check = (checked = false, attrs = '') =>
     `<span class="checkbox${checked ? ' is-checked' : ''}"${attrs}><i class="checkbox__fill"></i><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></span>`;
 
+/** Title split into masked words for the scroll reveal (screen readers get the plain text via aria-label). */
+const words = (title: string) =>
+    title.split(' ').map((w) => `<span class="w"><span>${headline(w)}</span></span>`).join(' ');
+
 /** Section header: title left, supporting text right (stacks on small screens). */
 const head = (id: string, eyebrow: string, title: string, text?: string) => `
-    <header class="sec-head" data-reveal>
+    <header class="sec-head">
         <div>
-            <p class="eyebrow">${esc(eyebrow)}</p>
-            <h2 class="sec-title" id="${id}-title">${headline(title)}</h2>
+            <p class="eyebrow" data-fade>${esc(eyebrow)}</p>
+            <h2 class="sec-title" id="${id}-title" aria-label="${esc(title)}" data-words><span aria-hidden="true">${words(title)}</span></h2>
         </div>
-        ${text ? `<p class="sec-text">${esc(text)}</p>` : ''}
+        ${text ? `<p class="sec-text" data-fade>${esc(text)}</p>` : ''}
     </header>`;
 
 /* ------------------------------------------------------------------ hero */
@@ -128,18 +132,39 @@ const flow = (t: SiteCopy) => {
     ];
     return `
 <section class="section flow" id="flow" aria-labelledby="flow-title">
+    <div class="flow__pin" data-flow-pin>
+        <div class="container flow__top">
+            ${head('flow', f.eyebrow, f.title, f.text)}
+            <ol class="flow__progress" aria-hidden="true">
+                ${f.steps.map((s, i) => `<li><span>${String(i + 1).padStart(2, '0')}</span>${esc(s.label)}<i><s data-flow-progress="${i}"></s></i></li>`).join('')}
+            </ol>
+        </div>
+        <div class="flow__viewport">
+            <ol class="flow__track" data-flow-track>
+                ${f.steps.map((s, i) => `
+                <li class="flow__panel" data-flow-panel>
+                    <div class="flow__copy">
+                        <span class="flow__num">${String(i + 1).padStart(2, '0')}</span>
+                        <p class="flow__label">${esc(s.label)}</p>
+                        <h3>${esc(s.title)}</h3>
+                        <p>${esc(s.text)}</p>
+                    </div>
+                    <div class="flow__visual" aria-hidden="true">${visuals[i]}</div>
+                </li>`).join('')}
+            </ol>
+        </div>
+    </div>
+</section>`;
+};
+
+/* ------------------------------------------------------------------ statement (scroll-lit text) */
+
+const statement = (t: SiteCopy) => {
+    const hl = new Set(t.statement.highlight);
+    return `
+<section class="statement" aria-label="${esc(t.statement.text)}">
     <div class="container">
-        ${head('flow', f.eyebrow, f.title, f.text)}
-        <ol class="flow__steps" data-flow>
-            <li class="flow__line" aria-hidden="true"><i data-flow-line></i></li>
-            ${f.steps.map((s, i) => `
-            <li class="flow__step" data-reveal>
-                <div class="flow__visual" aria-hidden="true">${visuals[i]}</div>
-                <p class="flow__label"><span class="flow__num">${i + 1}</span>${esc(s.label)}</p>
-                <h3>${esc(s.title)}</h3>
-                <p>${esc(s.text)}</p>
-            </li>`).join('')}
-        </ol>
+        <p class="statement__text" aria-hidden="true" data-statement>${t.statement.text.split(' ').map((w) => `<span${hl.has(w) ? ' class="is-hl"' : ''}>${headline(w)}</span>`).join(' ')}</p>
     </div>
 </section>`;
 };
@@ -153,7 +178,7 @@ const features = (t: SiteCopy) => {
     let n = 0;
     const toneIcon: Record<string, IconName> = { mention: 'at', assign: 'userPlus', done: 'check' };
     const tile = (cls: string, title: string, text: string, visual: string) => `
-        <article class="tile tile--${cls}" data-reveal>
+        <article class="tile tile--${cls}" data-tile data-spot>
             <div class="tile__copy"><h3>${esc(title)}</h3><p>${esc(text)}</p></div>
             <div class="tile__visual" aria-hidden="true">${visual}</div>
         </article>`;
@@ -213,11 +238,12 @@ const security = (t: SiteCopy) => {
     const s = t.security;
     const pointIcons: IconName[] = ['key', 'shield', 'users', 'globe'];
     return `
-<section class="section security theme-dark" id="security" aria-labelledby="security-title">
+<section class="section security theme-dark" id="security" aria-labelledby="security-title" data-spotlight>
+    <div class="security__veil" aria-hidden="true" data-veil></div>
     <div class="container">
         ${head('security', s.eyebrow, s.title, s.text)}
         <div class="security__grid">
-            <ul class="roles" data-reveal>
+            <ul class="roles" data-roles>
                 ${s.roles.map((r, i) => `<li><span class="role role--${i}">${esc(r.name)}</span><span>${esc(r.text)}</span></li>`).join('')}
             </ul>
             <div class="passkey" aria-hidden="true" data-passkey data-reveal>
@@ -228,7 +254,7 @@ const security = (t: SiteCopy) => {
                 <div><b>${esc(s.passkeyTitle)}</b><p>${esc(s.passkeyText)}</p></div>
                 <span class="passkey__status" data-passkey-status>${icon('lock')}${esc(s.passkeyOk)}</span>
             </div>
-            <ul class="sec-points" data-reveal>
+            <ul class="sec-points" data-stagger>
                 ${s.points.map((p, i) => `<li>${icon(pointIcons[i])}<div><h3>${esc(p.title)}</h3><p>${esc(p.text)}</p></div></li>`).join('')}
             </ul>
         </div>
@@ -269,7 +295,7 @@ const platforms = (t: SiteCopy, lang: Lang) => {
         ${head('platforms', p.eyebrow, p.title, p.text)}
         <ul class="pf-cards">
             ${p.items.map((item, i) => `
-            <li class="pf-card" data-reveal>
+            <li class="pf-card" data-pf data-spot>
                 <div class="pf-card__visual pf-card__visual--${item.key}" aria-hidden="true">${visuals[i]}</div>
                 <div class="pf-card__body">
                     <h3><span class="pf-card__icon">${icon(icons[i])}</span>${esc(item.title)}</h3>
@@ -283,7 +309,9 @@ const platforms = (t: SiteCopy, lang: Lang) => {
                 <h3>${icon('sparkles')}${esc(p.integrationsTitle)}</h3>
                 <p>${esc(p.integrationsText)}</p>
             </div>
-            <ul class="integrations__list">${p.integrations.map((name) => `<li>${esc(name)}</li>`).join('')}</ul>
+            <div class="marquee" aria-label="${esc(p.integrations.join(', '))}" role="img">
+                <ul class="marquee__track" aria-hidden="true">${[...p.integrations, ...p.integrations].map((name) => `<li>${esc(name)}</li>`).join('')}</ul>
+            </div>
             <a class="btn btn--ghost btn--sm" href="${urlFor('docsMcp', lang)}">${esc(p.integrationsCta)}${icon('arrowRight')}</a>
         </div>
     </div>
@@ -314,8 +342,8 @@ const faq = (t: SiteCopy, lang: Lang) => {
 const cta = (t: SiteCopy) => `
 <section class="cta" aria-labelledby="cta-title">
     <div class="container">
-        <div class="cta__card theme-dark" data-reveal>
-            <div class="cta__mark" aria-hidden="true">${logo('cta__logo')}</div>
+        <div class="cta__card theme-dark" data-cta data-spot>
+            <div class="cta__mark" aria-hidden="true" data-cta-mark>${logo('cta__logo')}</div>
             <div class="cta__copy">
                 <h2 class="sec-title" id="cta-title">${headline(t.cta.title)}</h2>
                 <p>${esc(t.cta.text)}</p>
@@ -329,4 +357,4 @@ const cta = (t: SiteCopy) => `
 </section>`;
 
 export const homeBody = (t: SiteCopy, lang: Lang): string =>
-    [hero(t), flow(t), features(t), security(t), platforms(t, lang), faq(t, lang), cta(t)].join('\n');
+    ['<div class="scroll-progress" data-scroll-progress aria-hidden="true"></div>', hero(t), statement(t), flow(t), features(t), security(t), platforms(t, lang), faq(t, lang), cta(t)].join('\n');

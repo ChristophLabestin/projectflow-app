@@ -14,7 +14,7 @@ import { acceptWorkspaceInvite, sendInvitation } from './invitations';
 import { requestWaitlist, confirmWaitlist } from './waitlist';
 import { requestNewsletterSignup, confirmNewsletterSignup } from './newsletter-public';
 import { sendContactFormEmail } from './contact';
-import { askCora, generateImage, editImage, callGemini } from './ai-service';
+import { askCora, generateImage, editImage, runAiCapability } from './ai-service';
 import { getInitiativeFeedbackForm, saveInitiativeFeedbackConfig, submitInitiativeFeedback } from './initiative-feedback';
 import { getProjectIntakeForm, saveProjectIntakeConfig, submitProjectIntake } from './project-intake';
 import { autoStartSprints, dailyHealthSnapshots } from './scheduler';
@@ -86,7 +86,7 @@ export {
     askCora,
     generateImage,
     editImage,
-    callGemini,
+    runAiCapability,
     saveInitiativeFeedbackConfig,
     getInitiativeFeedbackForm,
     submitInitiativeFeedback,
@@ -154,6 +154,7 @@ export {
 } from './legal';
 // iOS backend work package (contracts C1-C5): side-effect triggers, reminders, nudges, Live Activity sync.
 export { onTaskWritten, onSubtaskWritten, onCommentCreated, onProjectWritten } from './task-triggers';
+export { computeWorkspaceInsights, refreshWorkspaceInsights, generateWeeklyInsightsReport } from './insights';
 export { deliverReminders } from './reminders';
 export { sendNudges } from './nudges';
 export { onUserFocusChanged } from './live-activity';

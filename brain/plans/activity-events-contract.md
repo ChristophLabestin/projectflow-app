@@ -25,13 +25,14 @@ await emitActivityEvent(tenantId, {
 | `v` | `1` | schema version |
 | `type` | string | `<domain>.<verb>` lower_snake, e.g. `task.status_changed` |
 | `domain` | string | prefix of `type` (`task`, `comment`, `project`, `file`, `doc`, `automation`, …) — used by the type filter |
-| `actor` | map | `{ kind: 'user'\|'ai'\|'automation'\|'system', id: string\|null, name, photoURL?, client?, automationId? }` |
+| `actor` | map | `{ kind: 'user'\|'ai'\|'automation'\|'system', id: string\|null, name, photoURL?, client?, automationId?, automationRunId?, automationDepth? }` |
+| `cause` | map | `{ kind, id, automationRunId?, depth }` — origin for chain/loop detection; `id` = flow id for automations, user uid otherwise; `depth` 0 for non-automation, else the flow chain depth (1–3) |
 | `actorId` | string\|null | user uid (for `ai`: the connecting user); `null` for automation/system. Flattened for queries |
 | `object` | map | `{ type, id, title, parentType?, parentId? }` — `title` is a snapshot at event time |
 | `projectId` | string\|null | **required for anything project-scoped**; drives read access |
 | `projectTitle` | string? | snapshot |
 | `changes` | map? | `{ [field]: { from, to } }` for field changes (JSON-safe values; dates as `YYYY-MM-DD`/ISO) |
-| `meta` | map? | type-specific, flat, small |
+| `meta` | map? | type-specific, flat, small. Optional `meta.path` = in-app route the feed opens on click (use it for files/docs/flows) |
 | `source` | string | writer id, e.g. `onTaskWritten`, `files.upload` |
 | `createdAt` | Timestamp | server time |
 | `expireAt` | Timestamp | `createdAt + 365 days` → Firestore TTL deletes it |
@@ -70,7 +71,8 @@ Actor display: `kind: 'ai'` renders "Name via Claude"; `automation` renders the 
 4. Never put secrets, full comment/document bodies or personal data beyond names in `meta`.
 5. Machine writes to task/project docs set `writeVia` on the doc in the same write:
    `{ kind: 'ai', client: 'Claude', at: serverTimestamp() }` or
-   `{ kind: 'automation', id: flowId, name: flowName, at: serverTimestamp() }`. Triggers attribute
+   `{ kind: 'automation', id: flowId, name: flowName, runId, depth, at: serverTimestamp() }`
+   (`runId`/`depth` → `actor.automationRunId`/`automationDepth` and `cause`). Triggers attribute
    the event to that actor when `writeVia.at` changed in the write. **Flows: always set it**, and
    skip running automations for events with `actor.kind === 'automation'` from the same flow
    (loop guard).
