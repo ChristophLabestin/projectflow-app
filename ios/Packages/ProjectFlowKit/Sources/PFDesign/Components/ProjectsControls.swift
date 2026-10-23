@@ -247,6 +247,8 @@ struct PFBottomFloatModifier<Floating: View>: ViewModifier {
             .background {
                 LinearGradient(stops: [.init(color: PFColor.canvas.opacity(0), location: 0), .init(color: PFColor.canvas.opacity(0.94), location: 0.42), .init(color: PFColor.canvas, location: 1)], startPoint: .top, endPoint: .bottom)
                     .allowsHitTesting(false)
+                    // Down to the screen edge, so no content peeks out under the action (not under the keyboard).
+                    .ignoresSafeArea(.container, edges: .bottom)
             }
     }
 }
