@@ -150,11 +150,13 @@ Zusätzlich `…/mcp/readonly` als Read-only-Endpunkt (wie Linear/GitHub) für v
 | ✅ P2 OAuth-AS | Metadata (RFC 8414/9728), CIMD+DCR, authorize/token/revoke, PKCE S256, Refresh-Rotation + Reuse-Erkennung, Consent-Seite `/oauth/consent`, PATs `pfp_`, Verbindungen listen/widerrufen — `brain/operations/projectflow-oauth.md` | L |
 | ✅ P3 MCP v2 | SDK v2 (2026-07-28 + Legacy-Fallback), Gen2 `mcpServer` (Concurrency 80), Tools `search` + `my_today`, Tages-Quote je Tenant (5000 Writes), Activity „via <Client>“, Domain vorbereitet (DNS beim User). `outputSchema`/`structuredContent` bewusst weggelassen (verdoppelt Tokens) | M |
 | ✅ P4 Web-UI | Consent-Screen, Tab „KI & Integrationen“ (`AiIntegrationsPanel`: Client-Kacheln + Schnipsel + One-Click Cursor/VS Code, Verbundene Apps, PATs, Policy, KI-Aktivität), Legacy-Tab „API & MCP“ nur noch für Owner, i18n de/en | L |
-| P5 Doku | Öffentliche Install-Seite (Landing), Brain-Docs, Plugin-READMEs | S |
-| P6 iOS (optional) | Liste verbundener Apps + Widerruf in den Einstellungen | S |
-| P7 Listings (optional) | Claude-Connector-Verzeichnis, ChatGPT-Apps, Cursor-/VS-Code-MCP-Verzeichnisse | S |
+| ◐ P5 Doku | Quelle `brain/operations/mcp-install-guide.md`, Brain-Docs, Codex-Plugin-README erledigt; öffentliche Seite `getprojectflow.com/docs/mcp` (Landing-Session) offen — `resource_documentation` zeigt schon darauf | S |
+| ☐ P6 iOS (optional) | Liste verbundener Apps + Widerruf (Callables `listAiConnections`/`revokeAiConnection`) — an iOS-Session übergeben | S |
+| ☐ P7 Listings (optional) | Claude-Connector-Verzeichnis, ChatGPT-Apps, Cursor-/VS-Code-Verzeichnisse — braucht Konten/Einreichung durch den User | S |
 
 Reihenfolge: P0 → P1 → P2+P3 parallel → P4 → P5/P6/P7.
+
+**Domain `mcp.getprojectflow.com` (User):** Firebase Console → Hosting → Site `projectflow-labestin` → „Benutzerdefinierte Domain hinzufügen“ → `mcp.getprojectflow.com` (keine Weiterleitung). Die DNS-Einträge, die der Assistent anzeigt, beim DNS-Anbieter anlegen (üblich: `TXT mcp` zur Verifizierung und `A mcp → 199.36.158.100`). Das Zertifikat kommt automatisch. Im Code ist nichts weiter nötig: Resource und Metadaten richten sich nach dem aufgerufenen Host (`MCP_RESOURCES` in `oauth-core.ts`). Danach in `aiClients.ts`/Install-Guide die URL umstellen.
 
 ## 10. Offene Entscheidungen (mit Empfehlung)
 
