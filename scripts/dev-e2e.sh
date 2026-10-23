@@ -9,6 +9,7 @@
 #   bash scripts/dev-e2e.sh                         # app on :3000
 #   PORT=3005 bash scripts/dev-e2e.sh               # other app port
 #   E2E_LOGIN=outsider bash scripts/dev-e2e.sh      # sign in as the outsider instead
+#   E2E_LOGIN=none bash scripts/dev-e2e.sh          # start signed out (login screen QA)
 #   E2E_FUNCTIONS=0 bash scripts/dev-e2e.sh         # skip the Functions emulator
 #   E2E_LEGAL=1 bash scripts/dev-e2e.sh             # seed legal docs v1 (consent gate active) and
 #                                                   # make the demo owner a platform admin (/admin/legal)
@@ -34,6 +35,7 @@ LOG="$ROOT/.firebase-e2e.log"
 
 case "${E2E_LOGIN:-demo}" in
     outsider) LOGIN_EMAIL="outsider@projectflow.test"; LOGIN_PASSWORD="pf-outsider-e2e" ;;
+    none)     LOGIN_EMAIL="";                          LOGIN_PASSWORD="" ;;
     *)        LOGIN_EMAIL="demo@projectflow.test";     LOGIN_PASSWORD="projectflow-demo" ;;
 esac
 
@@ -84,7 +86,7 @@ curl -s -X POST "http://127.0.0.1:$AUTH_PORT/identitytoolkit.googleapis.com/v1/a
     -H 'Content-Type: application/json' \
     -d '{"email":"outsider@projectflow.test","password":"pf-outsider-e2e","displayName":"Outside Tester"}' > /dev/null
 
-echo "App: http://localhost:$PORT (signed in as $LOGIN_EMAIL)"
+echo "App: http://localhost:$PORT (signed in as ${LOGIN_EMAIL:-nobody})"
 VITE_EMULATOR_AUTH_PORT="$AUTH_PORT" VITE_EMULATOR_FIRESTORE_PORT="$FIRESTORE_PORT" \
 VITE_EMULATOR_STORAGE_PORT="$STORAGE_PORT" VITE_EMULATOR_FUNCTIONS_PORT="$FUNCTIONS_PORT" \
 VITE_E2E_AUTO_LOGIN_EMAIL="$LOGIN_EMAIL" VITE_E2E_AUTO_LOGIN_PASSWORD="$LOGIN_PASSWORD" \

@@ -195,3 +195,4 @@ Living log of pitfalls, edge cases, and workflow surprises discovered while work
 - `2026-10-23 | Web | Editing a locale file in dev shows raw keys` - Vite HMR of `web/locales/en.ts`/`de.ts` leaves the running app rendering raw keys (`nav.dashboard`) until a full reload; it is not a broken locale file. Reload before judging i18n in the preview.
 - `2026-10-23 | Web | Viewport breakpoints lie inside the app shell` - Tailwind `sm/lg` and SCSS `@media` use the window width, not the content width next to the sidebar or a detail panel; Team cards collapsed to 40 px with the panel open. Use auto-fill grids (see STYLING §7).
 
+- `2026-10-23 | E2E emulator | login screen QA needs a signed-out start` - `scripts/dev-e2e.sh` auto-signs in (`VITE_E2E_AUTO_LOGIN_*`) after `authStateReady`, so deleting the auth IndexedDB just logs you back in. Use `E2E_LOGIN=none` (launch config `web-e2e-web-session-signed-out`) and delete `firebaseLocalStorageDb` once in the tab.
