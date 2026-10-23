@@ -148,14 +148,6 @@ struct AuthFlowView: View {
                     Task { await run { try await passkey.signIn(auth: model.auth, email: email.isEmpty ? nil : email) } }
                 }
             }
-            #if EMULATOR
-            PFButton(L10n.t("auth.demo"), systemImage: "wand.and.stars", kind: .ghost, size: .medium, fullWidth: true) {
-                email = "demo@projectflow.test"
-                password = "projectflow-demo"
-                mode = .signIn
-                submit()
-            }
-            #endif
             Text(L10n.t("auth.legal")).pfText(.caption).foregroundStyle(PFColor.textMuted)
                 .frame(maxWidth: .infinity)
                 .multilineTextAlignment(.center)
