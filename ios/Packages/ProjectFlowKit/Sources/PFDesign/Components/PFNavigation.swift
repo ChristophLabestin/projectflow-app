@@ -138,6 +138,8 @@ public struct PFDock: View {
 
     private static let searchId = "__search"
     private static let accessoryId = "__accessory"
+    /// Outer width of the vertical rail (58 pt items + 6 pt frost padding each side).
+    public static let railWidth: CGFloat = 70
 
     /// `axis: .vertical` turns the dock into a side rail (iPhone Duo opened); `accessory` adds one extra
     /// toggle after search (the rail's list-column switch).
@@ -186,7 +188,7 @@ public struct PFDock: View {
         }
         .padding(6)
         .pfFrost(in: RoundedRectangle(cornerRadius: 26, style: .continuous))
-        .padding(vertical ? .vertical : .horizontal, PFSpace.m)
+        .padding(.horizontal, vertical ? 0 : PFSpace.m)
         .animation(reduceMotion ? .easeInOut(duration: 0.15) : PFMotion.snappy, value: activeId)
     }
 
@@ -276,11 +278,15 @@ public struct PFFocusBar: View {
     let subtitle: String
     let completeLabel: String
     let isBlocked: Bool
+    let axis: Axis
     let onOpen: () -> Void
     let onComplete: () -> Void
 
-    public init(title: String, subtitle: String, completeLabel: String, isBlocked: Bool = false,
+    /// `axis: .vertical` is the compact form that stacks above the side rail (iPhone Duo outer display):
+    /// pulse + focus glyph opens the room, the check completes; title and status are spoken, not shown.
+    public init(title: String, subtitle: String, completeLabel: String, isBlocked: Bool = false, axis: Axis = .horizontal,
                 onOpen: @escaping () -> Void, onComplete: @escaping () -> Void) {
+        self.axis = axis
         self.title = title
         self.subtitle = subtitle
         self.completeLabel = completeLabel
@@ -290,6 +296,43 @@ public struct PFFocusBar: View {
     }
 
     public var body: some View {
+        if axis == .vertical { vertical } else { horizontal }
+    }
+
+    private var vertical: some View {
+        VStack(spacing: 8) {
+            Button(action: onOpen) {
+                VStack(spacing: 6) {
+                    PFPulseDot(color: isBlocked ? PFColor.danger : PFColor.primary)
+                    Image(systemName: "scope")
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundStyle(PFColor.textMain)
+                }
+                .frame(width: 58, height: 58)
+                .contentShape(.rect)
+            }
+            .buttonStyle(.pfPressable)
+            .accessibilityLabel("\(title), \(subtitle)")
+            Button {
+                PFHaptics.success()
+                onComplete()
+            } label: {
+                Image(systemName: "checkmark")
+                    .font(.system(size: 15, weight: .bold))
+                    .foregroundStyle(PFColor.onPrimary)
+                    .frame(width: 44, height: 44)
+                    .background(PFColor.primary, in: .circle)
+            }
+            .buttonStyle(.pfPressable)
+            .accessibilityLabel(completeLabel)
+        }
+        .padding(.vertical, 7)
+        .frame(width: PFDock.railWidth)
+        .pfFrost(in: RoundedRectangle(cornerRadius: 26, style: .continuous))
+        .accessibilityElement(children: .contain)
+    }
+
+    private var horizontal: some View {
         HStack(spacing: 12) {
             Button(action: onOpen) {
                 HStack(spacing: 12) {

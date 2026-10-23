@@ -71,10 +71,21 @@ struct MainShell: View {
         }
         .overlay(alignment: .bottomTrailing) {
             if let side = sideRegionWidth, !router.isFocusRoomOpen {
-                dock(axis: .vertical, listToggle: false)
-                    .frame(width: side)
-                    .offset(x: side)
-                    .transition(.opacity)
+                // Same gap to the screen edge (right and bottom) as to the content's right edge, so the
+                // rail sits concentric in the rounded corner.
+                let gap = ((side + PFSpace.page - PFDock.railWidth) / 2).rounded()
+                VStack(spacing: 10) {
+                    if let focus = model.profile?.focus {
+                        focusBar(focus, axis: .vertical)
+                            .transition(.move(edge: .trailing).combined(with: .opacity))
+                    }
+                    dock(axis: .vertical, listToggle: false)
+                }
+                .padding(.trailing, gap)
+                .padding(.bottom, gap)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
+                .ignoresSafeArea()
+                .transition(.opacity)
             }
         }
         .onGeometryChange(for: EdgeInsets.self) { $0.safeAreaInsets } action: { safeInsets = $0 }
@@ -89,16 +100,9 @@ struct MainShell: View {
     private var bottomChrome: some View {
         @Bindable var router = model.router
         VStack(spacing: 10) {
-            if let focus = model.profile?.focus, !router.isFocusRoomOpen {
-                PFFocusBar(
-                    title: focus.title,
-                    subtitle: FocusController.subtitle(for: focus),
-                    completeLabel: L10n.t("focus.complete"),
-                    isBlocked: focus.status == .blocked,
-                    onOpen: { router.isFocusRoomOpen = true },
-                    onComplete: { Task { await FocusController(model: model).complete() } }
-                )
-                .frame(maxWidth: isWide ? 560 : nil)
+            if let focus = model.profile?.focus, !router.isFocusRoomOpen, sideRegionWidth == nil {
+                focusBar(focus, axis: .horizontal)
+                    .frame(maxWidth: isWide ? 560 : nil)
                 .transition(.move(edge: .bottom).combined(with: .opacity))
             }
             if !router.isDeep && hasBottomDock {
@@ -113,6 +117,18 @@ struct MainShell: View {
     }
 
     /// Bottom dock on iPhone, side rail when opened or in the closed Duo's side region. The rail's extra toggle folds the list column away.
+    private func focusBar(_ focus: PFModel.FocusState, axis: Axis) -> some View {
+        PFFocusBar(
+            title: focus.title,
+            subtitle: FocusController.subtitle(for: focus),
+            completeLabel: L10n.t("focus.complete"),
+            isBlocked: focus.status == .blocked,
+            axis: axis,
+            onOpen: { model.router.isFocusRoomOpen = true },
+            onComplete: { Task { await FocusController(model: model).complete() } }
+        )
+    }
+
     private var hasBottomDock: Bool { !isWide && sideRegionWidth == nil }
 
     private func dock(axis: Axis, listToggle: Bool) -> some View {

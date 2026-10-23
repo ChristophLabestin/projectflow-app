@@ -105,6 +105,10 @@ Sheets weiterhin `PFPresenter`.
 - Randabstände außen: oben gibt es keine Safe Area (Statusleiste seitlich) → `PFNavigator` garantiert
   14 pt (`PFLayout.minTopMargin`, auf normalen iPhones wirkungslos); Seitenleisten-Items 58 pt breit, damit
   die Leiste in der ~84 pt breiten Seitenregion rundum Luft hat.
+- Seitenleiste außen: gleicher Abstand rechts und unten zum Bildschirmrand wie links zum Inhalt
+  (`(Seitenregion + 20 − 70) / 2` ≈ 18 pt), damit sie konzentrisch in der Ecke sitzt. Die Fokusleiste wird
+  außen zur kompakten Kapsel über der Tab-Leiste (`PFFocusBar(axis: .vertical)`: Puls + Fokus-Symbol öffnet
+  den Fokusraum, Haken erledigt; Titel/Status nur für VoiceOver).
 - Nebenbei behoben: „Als erledigt markieren“ im Aufgaben-Detail lag auf allen iPhones hinter der Fokusleiste
   (gepushte Seiten sehen das `safeAreaInset` der Shell nicht) → `pfBottomChromeHeight`.
 - Nebenbei behoben: `PFBoard` rechnete Drag-Treffer mit 85 % statt der gezeichneten 82 % Bahnbreite.
