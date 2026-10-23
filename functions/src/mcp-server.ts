@@ -16,6 +16,8 @@ import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/
 import { z } from 'zod';
 
 import { db } from './init';
+import { checkWorkspaceAccess, effectiveScopes, normalizeRole, type PrincipalKind, RATE_LIMITS } from './ai-access';
+import { aiRateLimiter, loadAiPolicy } from './ai-store';
 import { checkApiTokenUsable, findApiToken } from './authUtils';
 import { handleProjectflowApiRoute } from './projectflow-api';
 
@@ -135,7 +137,7 @@ const ANNOTATIONS = {
     destroy: { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: false }
 } as const;
 
-type TokenInfo = { tenantId: string; tokenData: any; permissions: Set<string> };
+type TokenInfo = { tenantId: string; tokenData: any; role: string; permissions: Set<string> };
 
 const buildServer = (token: string, info: TokenInfo) => {
     const server = new McpServer(
@@ -157,6 +159,7 @@ const buildServer = (token: string, info: TokenInfo) => {
             workspaceId: info.tenantId,
             workspaceName: tenant?.data()?.name,
             tokenName: info.tokenData.name,
+            role: info.role,
             permissions: [...info.permissions].sort(),
             projectScope: info.tokenData.projectScope || undefined
         }));
@@ -616,10 +619,28 @@ export const mcp = functions.region(REGION).runWith({ memory: '512MB', timeoutSe
         return;
     }
 
+    const role = normalizeRole(usable.role);
+    const kind: PrincipalKind = found.tokenData.kind || 'workspace-token';
+    const policy = await loadAiPolicy(found.tenantId);
+    const access = role ? checkWorkspaceAccess({ role, policy, kind }) : { ok: false as const, error: 'Not a member of this workspace.' };
+    if (!role || !access.ok) {
+        jsonRpcError(res, 403, access.ok ? 'Not a member of this workspace.' : access.error);
+        return;
+    }
+    const retryAfter = aiRateLimiter.take(`mcp:${found.tokenRef.id}`, RATE_LIMITS.request);
+    if (retryAfter > 0) {
+        res.set('Retry-After', String(retryAfter));
+        jsonRpcError(res, 429, `Rate limit exceeded. Retry in ${retryAfter}s.`);
+        return;
+    }
+
+    // tools/list only shows what the token may actually do: scopes ∩ role ceiling ∩ workspace AI policy.
+    const tokenScopes = Array.isArray(found.tokenData.permissions) ? found.tokenData.permissions : [];
     const server = buildServer(token, {
         tenantId: found.tenantId,
         tokenData: found.tokenData,
-        permissions: new Set<string>(Array.isArray(found.tokenData.permissions) ? found.tokenData.permissions : [])
+        role,
+        permissions: new Set<string>(effectiveScopes({ tokenScopes, role, policy, kind }))
     });
     const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined, enableJsonResponse: true });
     res.on('close', () => {

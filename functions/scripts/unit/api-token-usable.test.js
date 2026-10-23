@@ -11,8 +11,8 @@ const deps = {
 const at = (iso) => ({ toDate: () => new Date(iso) });
 
 test('allowed: creator is owner or member, not expired', async () => {
-    assert.deepEqual(await checkApiTokenUsable({ createdBy: 'owner' }, 't1', deps), { ok: true });
-    assert.deepEqual(await checkApiTokenUsable({ createdBy: 'member', expiresAt: at('2099-01-01') }, 't1', deps), { ok: true });
+    assert.deepEqual(await checkApiTokenUsable({ createdBy: 'owner' }, 't1', deps), { ok: true, role: 'Owner' });
+    assert.deepEqual(await checkApiTokenUsable({ createdBy: 'member', expiresAt: at('2099-01-01') }, 't1', deps), { ok: true, role: 'Member' });
 });
 
 test('denied: expired token', async () => {

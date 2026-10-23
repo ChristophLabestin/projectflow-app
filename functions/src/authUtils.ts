@@ -2,6 +2,7 @@ import * as admin from 'firebase-admin';
 import * as crypto from 'crypto';
 import { db } from './init';
 import { FieldValue } from 'firebase-admin/firestore';
+import { shouldTouchLastUsed } from './ai-access';
 
 /**
  * Hash a token using SHA-256 (must match client-side implementation)
@@ -45,7 +46,7 @@ export const findApiToken = async (token: string): Promise<{
     return doc && tenantId ? { tokenRef: doc.ref, tokenData: doc.data(), tenantId } : null;
 };
 
-export type ApiTokenUsable = { ok: true } | { ok: false; error: string };
+export type ApiTokenUsable = { ok: true; role: string } | { ok: false; error: string };
 
 /**
  * A workspace API token is only usable while it is unexpired and its creator is still a full
@@ -66,7 +67,7 @@ export const checkApiTokenUsable = async (
     if (!creator) return { ok: false, error: 'Token has no owner. Create a new token.' };
     const role = await deps.getMemberRole(tenantId, creator);
     if (!role || role === 'Guest') return { ok: false, error: 'Token creator is no longer a member of this workspace.' };
-    return { ok: true };
+    return { ok: true, role };
 };
 
 /**
@@ -75,7 +76,7 @@ export const checkApiTokenUsable = async (
 export const validateAPIToken = async (
     token: string,
     requiredPermission: ApiPermission
-): Promise<{ valid: boolean; tokenData?: any; tenantId?: string; error?: string }> => {
+): Promise<{ valid: boolean; tokenData?: any; tenantId?: string; tokenId?: string; memberRole?: string; error?: string }> => {
     try {
         // 1. Firebase ID tokens (signed-in app users) are only accepted for
         //    workspace-scoped PM endpoints. The caller must still verify the
@@ -114,15 +115,19 @@ export const validateAPIToken = async (
                 return { valid: false, error: 'Insufficient permissions' };
             }
 
-            // Update lastUsedAt
-            await tokenRef.update({
-                lastUsedAt: FieldValue.serverTimestamp()
-            });
+            // lastUsedAt at most every 5 minutes (one write per call adds up for agents).
+            if (shouldTouchLastUsed(tokenData.lastUsedAt, new Date())) {
+                await tokenRef.update({
+                    lastUsedAt: FieldValue.serverTimestamp()
+                });
+            }
 
             return {
                 valid: true,
                 tokenData,
-                tenantId
+                tenantId,
+                tokenId: tokenRef.id,
+                memberRole: usable.role
             };
         }
 
