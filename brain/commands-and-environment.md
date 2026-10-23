@@ -20,6 +20,8 @@ Last updated: 2026-06-04
 - Vitest watch: `cd web && npm run test`
 - Vitest once: `cd web && npm run test:run`
 - Playwright E2E: `cd web && npm run test:e2e`
+- **Pre-deploy smoke test (mandatory before every hosting deploy of the app):** `bash scripts/predeploy-smoke.sh` — production build (emulator mode) + `vite preview` + seeded emulators on own ports (4291 / 9871 / 8871 / 9873 / 5871), Playwright `web/e2e/smoke.spec.ts` signs in as the demo owner and opens the main routes (dashboard, tasks, calendar, projects, project overview/tasks/task detail, files, wiki, flows, activity, insights, settings, billing). Fails on console errors, uncaught exceptions, error boundary/route error page or a stuck loader. Exit ≠ 0 = do not deploy. Uses the system Chrome locally (`SMOKE_CHANNEL=chrome`), CI installs Chromium. Log: `.predeploy-smoke.log`.
+- Deploy order: `git fetch && git merge origin/main` → `cd web && npm run build` → `bash scripts/predeploy-smoke.sh` → `firebase deploy --only hosting --project projectflow-labestin`.
 - Firebase hosting deploy: `cd web && npm run deploy`
 
 ## Local Emulator Workflow (seeded demo data)

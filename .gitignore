@@ -190,3 +190,4 @@ ios/Packages/ProjectFlowKit/Package.resolved
 
 # Local Functions emulator secret overrides (never commit)
 functions/.secret.local
+.predeploy-smoke.log

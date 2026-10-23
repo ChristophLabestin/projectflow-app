@@ -91,3 +91,40 @@ jobs:
       - name: Rules tests
         run: npm run test:rules
         working-directory: functions
+
+  smoke:
+    name: Pre-deploy smoke (production build + emulators)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            web/package-lock.json
+            functions/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - name: Install web
+        run: npm ci
+        working-directory: web
+      - name: Install functions
+        run: npm ci
+        working-directory: functions
+      - name: Install Firebase CLI
+        run: npm install -g firebase-tools
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+        working-directory: web
+      - name: Smoke test
+        run: bash scripts/predeploy-smoke.sh
+        env:
+          SMOKE_CHANNEL: ''
+      - name: Smoke log
+        if: failure()
+        run: tail -n 120 .predeploy-smoke.log
+
