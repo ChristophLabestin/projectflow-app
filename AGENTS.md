@@ -1,8 +1,38 @@
 # Repository Guidelines
 
+ProjectFlow is a multi-tenant project management app for execution, structured ideation
+through Flows, optional operational modules, permissions, AI assistance, and Codex
+session tracking. Surfaces: React/TypeScript/Vite web app (`web/`), Firebase Cloud
+Functions (`functions/`), native iOS app (`ios/`, rebuilt from scratch on 2026-10-22; concept
+`brain/plans/ios-app-concept.md`, conventions `ios/README.md`; `swift/` is the legacy app).
+
+## Token-Budget (gemessen 2026-10-23: 45 Tage, 50 Sessions, 589M effektive Tokens)
+Teilweise erzwungen über `.claude/token-guard.json` (Hook). Bewusster Einmal-Bypass:
+`CLAUDE_ALLOW_IMAGE_READ=1` (Bilder) bzw. `CLAUDE_TOKEN_GUARD=0` (alles).
+- Kontext: Ø 324k Tokens pro Turn, 23 % der Turns über 500k; Cache-Reads sind 76 % der Kosten.
+  Neue Aufgabe → neue Session; Zwischenstand in `brain/handoff.md` statt im Verlauf mitschleppen.
+- Bilder = 25 % des Tool-Outputs (803 Bilder, davon 167 PNG-Reads aus `/tmp`). Bild-Reads sind
+  gesperrt. Browser (Claude_Browser 271, claude-in-chrome 208 Bilder): Route/Selektoren aus dem
+  Code ableiten, Aktionen in `browser_batch` bündeln, Zustand über `read_page`/`find`/`get_page_text`
+  prüfen, Screenshots mit `scale: 0.5`, einer als Nachweis am Ende. `Claude_Browser__computer`-
+  Screenshots werden automatisch auf scale 0.5 gesetzt.
+- iOS-Simulator (115 Bilder): Tap-Ziele aus dem SwiftUI-Code ableiten, Eingaben bündeln, Screenshot
+  nur nach einem zu prüfenden Zustandswechsel und als Abschluss — nie nach jedem Tap, nie
+  `simctl io screenshot` + Read. Ablauf für beide: Skill `pf-ui-check`.
+- Reads: 66 % ohne offset/limit, 179 Mehrfach-Reads (`brain/plans/ios-app-concept.md` 14× in einer
+  Session). Erst `rg -n`, dann Read mit offset/limit; Dateien über 500 Zeilen (85 Quelldateien)
+  werden ohne offset/limit blockiert. Brain-/Plan-Docs: `rg -n '^## '`, dann nur den Abschnitt.
+- 38 Re-Reads nach eigenem Edit: Edit/Write melden Fehler selbst — nicht nachlesen.
+- Bash: `sed` 0.9M Tokens (1008 Aufrufe, Ø 894) → `sed -n`-Bereiche höchstens 120 Zeilen.
+  Einzelne `grep`/`rg`/`cat` ohne Begrenzung werden nach 120/250 Zeilen gekappt.
+- Generierte Ordner (`node_modules`, `web/dist`, `functions/lib`, `swift/build`, `.xcodebuild`,
+  `package-lock.json`) sind für Read gesperrt.
+- Pflichtchecks (Build der berührten Surface, visuelle Prüfung, Live-Reproduktion) gelten
+  unverändert — sie werden günstiger erfüllt, nicht übersprungen.
+
 ## Brain First
 - The living project knowledge base is `brain/`.
-- Start every substantive session with `brain/README.md`, `brain/current-focus.md`, `brain/handoff.md`, and `brain/agent-operating-manual.md`.
+- Start every substantive session with `brain/README.md`, `brain/current-focus.md`, `brain/handoff.md`, and `brain/agent-operating-manual.md`; then open the smallest relevant durable file (see "Start Here" in `brain/README.md`).
 - Former root docs and the old `docs/` folder have moved into `brain/reference/`, `brain/plans/`, `brain/operations/`, `brain/audits/`, and `brain/web/`.
 - Keep root Markdown intentionally sparse; put durable project knowledge in the smallest correct Brain file.
 
@@ -12,6 +42,7 @@
 - `web/styles/` contains SCSS tokens and global styles (`web/styles/_tokens.scss`, `web/styles/index.scss`).
 - `web/context/`, `web/hooks/`, `web/services/`, `web/utils/`, `web/types/` provide shared state, data access, helpers, and typings.
 - `web/locales/` stores i18n dictionaries; `web/assets/` stores static files; `functions/` contains Firebase Cloud Functions (`functions/src` -> `functions/lib`).
+- `ios/` is the SwiftUI app (XcodeGen `project.yml`, package `Packages/ProjectFlowKit`, widgets/share/notification extensions).
 
 ## Build, Test, and Development Commands
 - `cd web && npm install` installs web dependencies.
@@ -29,6 +60,7 @@
   - iOS app work: `cd ios && xcodegen generate`, then `xcodebuild -project ios/ProjectFlow.xcodeproj -scheme ProjectFlow -destination 'platform=iOS Simulator,name=ProjectFlow iPhone 18 Pro' -derivedDataPath .xcodebuild build` (conventions in `ios/README.md`).
 - After changing Cloud Functions, deploy only the functions you touched (for example: `cd functions && firebase deploy --only functions:callGemini`).
 - After changing Firestore rules or indexes, deploy them to Firebase (for example: `firebase deploy --only firestore:rules` or `firebase deploy --only firestore:indexes`).
+- Full command and environment reference: `brain/commands-and-environment.md`.
 - Keep reasoning/output minimal while running builds; return to normal detail after builds succeed.
 
 ## Coding Style & Naming Conventions
@@ -37,6 +69,9 @@
 - Component files use PascalCase (`Button.tsx`), hooks use `useX`, SCSS files use kebab-case (`project-board.scss`).
 - User-facing strings belong in `web/locales/en.ts` and `web/locales/de.ts` (no hardcoded copy).
 - Avoid native browser dialogs; prefer shared modal/confirmation components.
+- Prefer reusable components (update `brain/reference/app/COMPONENTS.md`); keep routing centralized
+  (update `brain/reference/app/SITEMAP.md`).
+- Follow `brain/reference/app/PERMISSIONS.md` and `brain/reference/app/APP_CONCEPT.md` for permissions and product rules.
 
 ## Testing Guidelines
 - No root test runner is configured yet; coverage is not enforced.

@@ -1,0 +1,25 @@
+{
+  "permissions": {
+    "deny": [
+      "Read(**/node_modules/**)",
+      "Read(**/package-lock.json)",
+      "Read(web/dist/**)",
+      "Read(functions/lib/**)",
+      "Read(swift/build/**)",
+      "Read(.xcodebuild/**)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Read|Bash|mcp__.*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 ~/.claude/skills/token-diet/scripts/token-guard.py"
+          }
+        ]
+      }
+    ]
+  }
+}
