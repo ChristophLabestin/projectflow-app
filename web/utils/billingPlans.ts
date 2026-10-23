@@ -110,3 +110,9 @@ export const toPlanState = (ent: Entitlements): PlanState => ({
     can: (feature, projectId) => canUse(ent, feature, projectId),
     aiEnabledFor: (uid) => aiEnabledFor(ent, uid),
 });
+
+/**
+ * Whether online upgrades (Stripe Checkout) work yet. Until the billing contract exposes a live flag this is a
+ * build switch; while off, upgrade buttons say "coming soon" instead of failing with billing-not-configured.
+ */
+export const isCheckoutAvailable = () => import.meta.env.VITE_BILLING_CHECKOUT_ENABLED === 'true';

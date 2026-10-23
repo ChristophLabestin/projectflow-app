@@ -286,6 +286,17 @@ Ports of the iOS brand motion (`PFBrandScene.swift`) and `desktop/assets/splash.
 - `AppLayout` runs `useMotionOnChange(…, location.pathname, 'route')` on the outlet wrapper: route content fades/rises in without remounting.
 - `ui/Modal` keeps itself mounted for its exit via `usePresence` (`.ui-modal.is-exiting`); `common/Modal` enters with keyframes, exits with transitions; `GlobalToast` is a live region (`status`/`alert`).
 
+## Plan & billing UI (`web/components/billing/`, 2026-10-23)
+Contract: `brain/plans/billing-entitlements-contract.md`. Data: `useEntitlements(tenantId)` (one shared Firestore listener per workspace) / `useActivePlan()` → `{ plan, tenantId, isOwner }`.
+- `PlanHint` (`message`, `title?`, `icon?`, `tone` info/warning, `compact?`): the one way to explain a limit; owners get "Plans & upgrade" (`?openSettings=billing`), others "ask the owner".
+- `PlanLimitDialog` (`kind` projects/invites/members): shown by `AppLayout` instead of the project wizard when `plan.can('createProject')` is false — covers every "New project" entry point; the project import uses the same path.
+- `PlanStatusPill` (top bar): only when something needs attention — trial countdown (urgent ≤ 3 days), beta grace ending (≤ 30 days), payment failed, read-only projects.
+- `ProjectPlanGate`: `PlanHint` above locked projects (read-only after falling back to Free; nothing deleted).
+- Invite modal: Free → hint instead of the form; Team member limit → inline hint, member invites disabled, guests still allowed.
+- Project list: usage chip "3 of 3 projects · 1 read-only" on Free.
+- AI: `useAiAccess()` → `{ status: loading|enabled|own-key|addon-required|plan-required, canUse }` + `AiPlanHint` (for the in-app AI entry points). `resetOwnAiKeyCheck()` after key changes.
+- Errors: always `planErrorMessage(error, t)` (`billing.errors.<code>`). Upgrade buttons: `isCheckoutAvailable()` (`VITE_BILLING_CHECKOUT_ENABLED`) until the contract exposes a live flag — otherwise "Online upgrade coming soon".
+
 ## Notification Center (`web/components/notifications/`, 2026-10-23)
 
 - `NotificationDropdown` (`components/NotificationDropdown.tsx`): sidebar bell with unread badge (active workspace + other workspaces) and a popover **portaled to `<body>`** (fixed, beside the sidebar flush with the bottom of `.snav-card`, or flipped below/above the trigger; Escape/outside click close). One-line header: All/Unread filter tabs (replace the visible title; dialog aria-label keeps it) plus icon buttons (mark all read, notification settings → `SettingsModal` tab `notifications`, lazy), "Unread in other workspaces" (switches workspace → `/notifications`), grouped list, "View all" footer.

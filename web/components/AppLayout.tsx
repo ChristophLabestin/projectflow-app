@@ -19,6 +19,8 @@ import { getDesktopBridge } from '../services/desktop';
 import { PlatformAnnouncement } from './platform/PlatformAnnouncement';
 import { AiPanelProvider } from '../context/AiPanelContext';
 import { AiPanel } from './ai/AiPanel';
+import { PlanLimitDialog } from './billing/PlanLimitDialog';
+import { useActivePlan } from '../hooks/useEntitlements';
 
 const Sidebar = lazy(() => import('./SidebarNavigator').then((module) => ({ default: module.SidebarNavigator })));
 const TopBar = lazy(() => import('./TopBar').then((module) => ({ default: module.TopBar })));
@@ -35,6 +37,7 @@ export const AppLayout = () => {
         isTaskCreateModalOpen, closeTaskCreateModal, taskCreateProjectId, taskCreateAllowProjectSelect,
         isProjectCreateModalOpen, closeProjectCreateModal
     } = useUIState();
+    const { plan: activePlan } = useActivePlan();
     const location = useLocation();
     const isFullWidthRoute = location.pathname.includes('/marketing')
         || location.pathname.includes('/activity')
@@ -309,7 +312,11 @@ export const AppLayout = () => {
 
 
             {/* Global Project Create Modal */}
-            {isProjectCreateModalOpen && (
+            {/* Free plan full: explain the limit instead of opening a form the rules would reject. */}
+            {isProjectCreateModalOpen && activePlan && !activePlan.can('createProject') && (
+                <PlanLimitDialog isOpen kind="projects" onClose={closeProjectCreateModal} />
+            )}
+            {isProjectCreateModalOpen && (!activePlan || activePlan.can('createProject')) && (
                 <Suspense fallback={null}>
                     <CreateProjectModal
                         isOpen={isProjectCreateModalOpen}

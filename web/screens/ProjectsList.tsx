@@ -43,6 +43,8 @@ import { calculateCompanyLinkedProjectRollup } from '../utils/startupProjects';
 import './projects-list.scss';
 import { parseDateValue } from '../utils/taskDates';
 import { ProjectPortfolioList } from '../components/projects/ProjectPortfolioList';
+import { useActivePlan } from '../hooks/useEntitlements';
+import '../components/billing/plan-hint.scss';
 
 // --- Types ---
 export type ProjectMetrics = {
@@ -532,6 +534,8 @@ export const ProjectsList: React.FC = () => {
     const { showSuccess, showError, showInfo } = useToast();
     const confirm = useConfirm();
     const { openProjectCreateModal } = useUIState();
+    const { plan } = useActivePlan();
+    const projectLimit = plan?.limits.projects ?? null;
     const [focusProjectId, setFocusProjectId] = useState<string | null>(null);
     const canManageTemplates = hasPermission('tenant.settings.edit') || can('canManageWorkspace') || isOwner;
     const [overviewLayoutResetComplete, setOverviewLayoutResetComplete] = useState(false);
@@ -860,6 +864,11 @@ export const ProjectsList: React.FC = () => {
     };
 
     const handleOpenImportModal = () => {
+        // Free plan full: the shared create flow explains the limit (AppLayout shows PlanLimitDialog).
+        if (plan && !plan.can('createProject')) {
+            openProjectCreateModal();
+            return;
+        }
         resetImportState();
         setImportModalOpen(true);
     };
@@ -1646,6 +1655,15 @@ export const ProjectsList: React.FC = () => {
                     />
                 </div>
                 <div className="projects-toolbar__actions">
+                    {projectLimit !== null && plan && (
+                        <span
+                            className={`plan-usage${plan.can('createProject') ? '' : ' plan-usage--full'}`}
+                            title={t('billing.usage.projectsHint')}
+                        >
+                            {t('billing.facts.projects').replace('{count}', String(Math.min(plan.usage.projects, projectLimit))).replace('{limit}', String(projectLimit))}
+                            {plan.lockedProjectIds.length > 0 && ` · ${t('billing.pill.readOnly').replace('{count}', String(plan.lockedProjectIds.length))}`}
+                        </span>
+                    )}
                     {canManageTemplates && (
                         <Button
                             variant="ghost"
