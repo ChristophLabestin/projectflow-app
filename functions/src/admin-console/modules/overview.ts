@@ -4,6 +4,7 @@ import { int, toMs } from '../types';
 import { dayKeys } from './crashes';
 import { listDirectory, reviewTenantIds } from './directory';
 import { loadPricing } from './ops';
+import { loadBilling } from './billing';
 
 const DAY = 86_400_000;
 
@@ -129,6 +130,12 @@ export const overviewHandlers: HandlerMap = {
                 if ((platform === 'desktop' || platform === 'web') && latest?.appVersion) versions[platform][latest.appVersion] = (versions[platform][latest.appVersion] || 0) + 1;
             });
 
+            const tenantIds = (await db.collection('tenants').select().get()).docs.map((d) => d.id).filter((t) => !reviewTenants.has(t));
+            const billing = Array.from((await loadBilling(db, tenantIds)).values());
+            const plans: Record<string, number> = {};
+            const statuses: Record<string, number> = {};
+            billing.forEach((b) => { plans[b.plan] = (plans[b.plan] || 0) + 1; statuses[b.status] = (statuses[b.status] || 0) + 1; });
+
             const crashTotal = crashes.web.reduce((a, b) => a + b, 0) + crashes.ios.reduce((a, b) => a + b, 0);
             const dauAvg = actorsPerDay.reduce((a, s) => a + s.size, 0) / Math.max(1, days);
 
@@ -154,6 +161,11 @@ export const overviewHandlers: HandlerMap = {
                 mcp: { active: liveGrants.length, kinds: grantKinds, clients: grantClients },
                 legal: { termsVersion, termsAccepted, acceptanceRate: users.length && termsVersion ? termsAccepted / users.length : null },
                 versions,
+                billing: {
+                    mrr: billing.reduce((a, b) => a + b.mrr, 0), paying: billing.filter((b) => b.mrr > 0).length, seats: billing.reduce((a, b) => a + (b.mrr > 0 ? b.seats : 0), 0),
+                    aiAddonSeats: billing.reduce((a, b) => a + (b.mrr > 0 ? b.aiAddonSeats : 0), 0), plans, statuses,
+                    trialsEndingSoon: billing.filter((b) => b.status === 'trialing' && b.trialEndsAt && b.trialEndsAt - now < 7 * DAY).length,
+                },
             };
             cache = { key: cacheKey, at: now, value };
             return value;

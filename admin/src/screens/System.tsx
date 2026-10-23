@@ -66,6 +66,27 @@ const AnnouncementCard: React.FC = () => {
     );
 };
 
+const CutoverCard: React.FC = () => {
+    const { confirm, toast } = useUi();
+    const { data, reload } = useAdminQuery<{ cutoverAt: number | null; updatedAt: number | null }>('billing.config');
+    const [value, setValue] = useState('');
+    useEffect(() => setValue(toInput(data?.cutoverAt ?? null)), [data]);
+    const save = async (clear = false) => {
+        const ms = clear ? null : new Date(value).getTime();
+        if (!(await confirm({ title: clear ? 'Grace-Stichtag entfernen?' : `Grace-Stichtag auf ${new Date(ms!).toLocaleString('de-DE')} setzen?`, message: 'Ab diesem Zeitpunkt endet die Beta-Grace für Bestandsworkspaces ohne Abo (Billing-Functions, billing-entitlements-contract.md). Wird protokolliert.', danger: true, confirmLabel: clear ? 'Entfernen' : 'Setzen' }))) return;
+        try { await adminApi('billing.setCutover', { cutoverAt: ms }); toast('Stichtag gespeichert'); reload(); } catch (err: any) { toast(err.message, 'error'); }
+    };
+    return (
+        <Card title="Billing: Grace-Stichtag" subtitle={data?.cutoverAt ? `Gesetzt: ${dateTime(data.cutoverAt)}` : 'Nicht gesetzt'}>
+            <div className="ac-row">
+                <input className="ac-input" type="datetime-local" value={value} onChange={(e) => setValue(e.target.value)} />
+                <button className="ac-btn ac-btn--primary" disabled={!value || new Date(value).getTime() === data?.cutoverAt} onClick={() => save()}>Setzen</button>
+                {data?.cutoverAt && <button className="ac-btn" onClick={() => save(true)}>Entfernen</button>}
+            </div>
+        </Card>
+    );
+};
+
 const PricingCard: React.FC<{ pricing: Status['pricing']; onSaved: () => void }> = ({ pricing, onSaved }) => {
     const { toast } = useUi();
     const [form, setForm] = useState(pricing);
@@ -125,6 +146,7 @@ export const SystemScreen: React.FC = () => {
                     ))}
                 </div>
                 <AnnouncementCard />
+                <CutoverCard />
                 <div className="ac-grid ac-grid--2">
                     <PricingCard pricing={data.pricing} onSaved={reload} />
                     <Card title="KI-Limits (Env, global)" subtitle="Gesetzt über Functions-Umgebung (ai-service.ts)">

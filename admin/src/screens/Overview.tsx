@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Activity, Bot, Bug, Building2, FileCheck2, FolderKanban, Plug, Users } from 'lucide-react';
+import { Activity, Bot, Bug, Building2, Euro, FileCheck2, FolderKanban, Plug, Users } from 'lucide-react';
 import { useAdminQuery } from '../lib/useAsync';
-import { compact, dateTime, num, pct, usd } from '../lib/format';
+import { compact, dateTime, eur, num, pct, usd } from '../lib/format';
 import { AreaChart, BarList, Legend, Meter } from '../ui/charts';
 import { Card, ErrorNote, PageHead, Segmented, Skeleton, Stat } from '../ui/primitives';
 
@@ -16,6 +16,7 @@ type Overview = {
     mcp: { active: number; kinds: Record<string, number>; clients: Record<string, number> };
     legal: { termsVersion: number; termsAccepted: number; acceptanceRate: number | null };
     versions: Record<'ios' | 'desktop' | 'web', Record<string, number>>;
+    billing: { mrr: number; paying: number; seats: number; aiAddonSeats: number; plans: Record<string, number>; statuses: Record<string, number>; trialsEndingSoon: number };
 };
 
 const sum = (v: number[]) => v.reduce((a, b) => a + b, 0);
@@ -44,6 +45,7 @@ export const Overview: React.FC = () => {
             {loading && !data ? <Skeleton rows={14} /> : data && (
                 <div className="ac-stack">
                     <div className="ac-grid ac-grid--stats">
+                        <Stat icon={<Euro size={13} />} label="MRR (netto)" value={eur(data.billing.mrr)} meta={`${num(data.billing.paying)} zahlend · ${num(data.billing.seats)} Plätze · ${num(data.billing.aiAddonSeats)} KI-Pakete`} />
                         <Stat icon={<Users size={13} />} label="Nutzer" value={num(data.users.total)} meta={`+${num(sum(data.users.signups))} im Zeitraum`} change={halfChange(data.users.signups)} series={data.users.signups} />
                         <Stat icon={<Activity size={13} />} label="DAU / WAU / MAU" value={`${num(data.users.dau)} / ${num(data.users.wau)} / ${num(data.users.mau)}`} meta={`Stickiness ${pct(data.users.mau ? data.users.dau / data.users.mau : null, 0)}`} series={data.users.activeDaily} color="var(--ac-chart-3)" />
                         <Stat icon={<Building2 size={13} />} label="Workspaces" value={num(data.workspaces.total)} meta={`+${num(sum(data.workspaces.created))} neu`} change={halfChange(data.workspaces.created)} series={data.workspaces.created} color="var(--ac-chart-2)" />
@@ -69,10 +71,14 @@ export const Overview: React.FC = () => {
                         </Card>
                     </div>
 
-                    <div className="ac-grid ac-grid--3">
+                    <div className="ac-grid ac-grid--2">
                         <Card title="Login-Methoden" subtitle={`${num(data.users.mfa)} mit 2FA · ${num(data.users.disabled)} gesperrt`}>
                             <BarList items={entries(data.users.providers).map((e) => ({ ...e, label: PROVIDER[e.label] || e.label }))} />
                             <div style={{ marginTop: 10 }}><div className="ac-row" style={{ justifyContent: 'space-between', marginBottom: 4 }}><span className="ac-muted">2FA-Quote</span><b>{pct(data.users.total ? data.users.mfa / data.users.total : 0, 0)}</b></div><Meter value={data.users.total ? data.users.mfa / data.users.total : 0} /></div>
+                        </Card>
+                        <Card title="Pläne & Abo-Status" subtitle={data.billing.trialsEndingSoon ? `${data.billing.trialsEndingSoon} Tests enden in 7 Tagen` : undefined}>
+                            <BarList items={entries(data.billing.plans)} />
+                            <div style={{ marginTop: 10 }}><BarList items={entries(data.billing.statuses)} /></div>
                         </Card>
                         <Card title="MCP-Clients"><BarList items={entries(data.mcp.clients)} /></Card>
                         <Card title="Client-Versionen" subtitle="iOS: Geräte der letzten 60 Tage · Web/Desktop: letzte Zustimmung">

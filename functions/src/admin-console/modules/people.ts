@@ -7,6 +7,7 @@ import { DEFAULT_MONTHLY_CREDITS, monthKey } from '../../ai-credits';
 import { revokeGrant } from '../../ai-tokens';
 import type { HandlerMap } from '../types';
 import { AdminInputError, int, str, toMs } from '../types';
+import { billingOf, loadBilling } from './billing';
 import { plain } from './content';
 import { invalidateDirectory, listDirectory, listRealUsers, reviewTenantIds, toDirectoryUser } from './directory';
 
@@ -228,6 +229,7 @@ export const peopleHandlers: HandlerMap = {
             policies.forEach((d) => { if (d.id === 'policy' && d.get('enabled') === false) entry(tenantOfRef(d.ref)).aiEnabled = false; });
             const [users, review] = await Promise.all([listDirectory(), reviewTenantIds(db)]);
             const emailOf = new Map(users.map((u) => [u.uid, u.email]));
+            const billing = await loadBilling(db, tenants.docs.filter((d) => !review.has(d.id)).map((d) => d.id));
             return {
                 workspaces: tenants.docs.filter((d) => !review.has(d.id)).map((d) => ({
                     id: d.id,
@@ -236,6 +238,7 @@ export const peopleHandlers: HandlerMap = {
                     ownerEmail: emailOf.get(d.get('ownerId')) || null,
                     createdAt: toMs(d.get('createdAt')),
                     suspendedAt: toMs(d.get('suspendedAt')),
+                    billing: billing.get(d.id) ?? null,
                     ...(stats.get(d.id) ?? { members: 0, guests: 0, projects: 0, lastProjectUpdate: null, grants: 0, aiEnabled: true }),
                 })),
             };
@@ -281,6 +284,11 @@ export const peopleHandlers: HandlerMap = {
                 aiPolicy: { ...normalizeAiPolicy(policy.data()), monthlyCredits: policy.get('monthlyCredits') ?? null },
                 credits: await loadCredits(ref),
                 flows: await loadFlows(ref, tenant),
+                billing: await (async () => {
+                    const [plan, customer] = await Promise.all([ref.collection('entitlements').doc('plan').get(), db.collection('billing_customers').doc(id).get()]);
+                    const d = plan.data();
+                    return { ...billingOf(d), memberLimit: d?.memberLimit ?? null, projectLimit: d?.projectLimit ?? null, projectCount: d?.projectCount ?? null, lockedProjects: (d?.lockedProjectIds || []).length, aiMemberIds: (d?.aiMemberIds || []).length, stripeSubscriptionId: d?.stripeSubscriptionId || null, customerId: customer.get('customerId') || null };
+                })(),
                 grants: grants.docs.map(grantOut),
                 machineWrites: usage.docs.map((d) => ({ day: d.id, writes: Number(d.get('writes') || 0) })),
                 apiTokens: apiTokens.docs.map((d) => ({ id: d.id, name: d.get('name') || '', createdAt: toMs(d.get('createdAt')), lastUsedAt: toMs(d.get('lastUsedAt')), expiresAt: toMs(d.get('expiresAt')), permissions: d.get('permissions') || [] })),

@@ -67,3 +67,6 @@ await db.collection('ai_tokens').doc('seed-token-claude').set({ type: 'access', 
 await db.doc(`users/${demo.uid}/devices/seed-iphone`).set({ platform: 'ios', fcmToken: 'seed', appVersion: '1.0', locale: 'de_DE', timezone: 'Europe/Berlin', updatedAt: admin.firestore.Timestamp.now() });
 await db.doc('newsletter_subscribers/lead@example.com').set({ email: 'lead@example.com', status: 'active', source: 'landing_page', subscribedAt: admin.firestore.Timestamp.fromMillis(now - 2 * DAY) });
 console.log('Seeded AI usage, 2 MCP grants, 1 device, 1 subscriber.');
+await db.doc(`tenants/${tenantId}/entitlements/plan`).set({ plan: 'team', status: 'active', seats: 4, aiAddonSeats: 1, billingInterval: 'month', cancelAtPeriodEnd: false, currentPeriodEnd: admin.firestore.Timestamp.fromMillis(now + 20 * DAY), stripeSubscriptionId: 'sub_seed' });
+await db.doc(`billing_customers/${tenantId}`).set({ customerId: 'cus_seed' });
+console.log('Seeded billing (team, 4 seats + 1 AI = 58 € MRR).');
