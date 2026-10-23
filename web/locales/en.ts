@@ -4026,6 +4026,10 @@ const en = {
     'activity.types.file.moved': 'moved a file',
     'activity.types.file.trashed': 'moved a file to the trash',
     'activity.types.file.restored': 'restored a file',
+    'insights.report.saveWiki': 'Save as wiki page',
+    'insights.report.savingWiki': 'Saving…',
+    'insights.report.openWiki': 'Open wiki page',
+    'insights.report.wikiTitle': 'Weekly report {week}',
 };
 
 export default en;

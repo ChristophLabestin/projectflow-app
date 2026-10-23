@@ -4025,6 +4025,10 @@ const de = {
     'activity.types.file.moved': 'hat eine Datei verschoben',
     'activity.types.file.trashed': 'hat eine Datei in den Papierkorb verschoben',
     'activity.types.file.restored': 'hat eine Datei wiederhergestellt',
+    'insights.report.saveWiki': 'Als Wiki-Seite speichern',
+    'insights.report.savingWiki': 'Speichere …',
+    'insights.report.openWiki': 'Wiki-Seite öffnen',
+    'insights.report.wikiTitle': 'Wochenbericht {week}',
 };
 
 export default de;
