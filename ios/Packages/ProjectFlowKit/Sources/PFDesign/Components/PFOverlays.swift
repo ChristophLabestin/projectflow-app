@@ -52,19 +52,25 @@ public final class PFPresenter {
     public func present<Content: View>(detents: [PFDetent] = [.fit], dismissable: Bool = true,
                                        onDismiss: (@MainActor () -> Void)? = nil, @ViewBuilder content: () -> Content) {
         let sheet = Sheet(detents: detents.isEmpty ? [.fit] : detents, content: AnyView(content()), onDismiss: onDismiss, dismissable: dismissable)
-        withAnimation(PFMotion.respecting(PFMotion.snappy)) { sheets.append(sheet) }
+        sheets.append(sheet)
     }
 
     public func dismiss() {
         guard let last = sheets.last else { return }
-        withAnimation(PFMotion.respecting(PFMotion.snappy)) { _ = sheets.popLast() }
+        _ = sheets.popLast()
         last.onDismiss?()
     }
 
     public func dismissAll() {
-        let all = sheets
-        withAnimation(PFMotion.respecting(PFMotion.snappy)) { sheets.removeAll() }
-        all.reversed().forEach { $0.onDismiss?() }
+        dismiss(from: 0)
+    }
+
+    /// Removes the sheet at `index` and everything stacked above it (used when the system dismisses a sheet).
+    func dismiss(from index: Int) {
+        guard index < sheets.count else { return }
+        let removed = Array(sheets[index...])
+        sheets.removeSubrange(index...)
+        removed.reversed().forEach { $0.onDismiss?() }
     }
 
     public func showPeek<Preview: View>(actions: [PFPeekAction], @ViewBuilder preview: () -> Preview) {
@@ -77,7 +83,8 @@ public final class PFPresenter {
     }
 }
 
-/// Renders presented sheets and the peek overlay. Place once at the app root, above everything.
+/// Hosts presented sheets (native SwiftUI sheets, so dragging, detents and dismissal feel like iOS)
+/// and the custom peek overlay. Place once at the app root.
 public struct PFPresenterHost: View {
     @Bindable var presenter: PFPresenter
 
@@ -85,10 +92,9 @@ public struct PFPresenterHost: View {
 
     public var body: some View {
         ZStack {
-            ForEach(Array(presenter.sheets.enumerated()), id: \.element.id) { index, sheet in
-                PFSheetView(sheet: sheet, isTop: index == presenter.sheets.count - 1, presenter: presenter)
-                    .zIndex(Double(index) * 2 + 1)
-            }
+            Color.clear
+                .allowsHitTesting(false)
+                .modifier(PFSheetLayer(presenter: presenter, index: 0))
             if let peek = presenter.peek {
                 PFPeekView(peek: peek, presenter: presenter).zIndex(1000)
             }
@@ -97,77 +103,51 @@ public struct PFPresenterHost: View {
     }
 }
 
-struct PFSheetView: View {
-    let sheet: PFPresenter.Sheet
-    let isTop: Bool
+/// Presents `presenter.sheets[index]` as a native sheet; the sheet's content presents the next layer,
+/// so stacked sheets work like nested system sheets.
+struct PFSheetLayer: ViewModifier {
     let presenter: PFPresenter
-    @State private var drag: CGFloat = 0
-    @State private var detentIndex = 0
-    @State private var contentHeight: CGFloat = 0
-    @State private var appeared = false
+    let index: Int
 
-    var body: some View {
-        GeometryReader { proxy in
-            let maxHeight = proxy.size.height * 0.94
-            let height = resolvedHeight(sheet.detents[min(detentIndex, sheet.detents.count - 1)], max: maxHeight)
-            ZStack(alignment: .bottom) {
-                PFColor.scrim
-                    .opacity(isTop ? 1 : 0.4)
-                    .ignoresSafeArea()
-                    .onTapGesture { if sheet.dismissable { presenter.dismiss() } }
-                    .transition(.opacity)
-                    .accessibilityHidden(true)
-
-                VStack(spacing: 0) {
-                    grabber
-                    sheet.content
-                        .frame(maxWidth: .infinity, alignment: .top)
-                        .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { contentHeight = $0 + 28 }
-                }
-                .frame(height: min(height, maxHeight), alignment: .top)
-                .frame(maxWidth: .infinity)
-                .background(PFColor.card, in: UnevenRoundedRectangle(topLeadingRadius: PFRadius.surface, topTrailingRadius: PFRadius.surface, style: .continuous))
-                .background(alignment: .bottom) { PFColor.card.frame(height: proxy.safeAreaInsets.bottom + 40).offset(y: proxy.safeAreaInsets.bottom + 20) }
-                .shadow(color: .black.opacity(0.18), radius: 30, y: -6)
-                .offset(y: max(drag, -24) + (drag < 0 ? drag * 0.1 : 0))
-                .transition(.move(edge: .bottom))
-                .accessibilityAction(.escape) { if sheet.dismissable { presenter.dismiss() } }
-                .accessibilityAddTraits(.isModal)
+    func body(content: Content) -> some View {
+        content.sheet(isPresented: Binding(
+            get: { presenter.sheets.count > index },
+            set: { presented in if !presented { presenter.dismiss(from: index) } }
+        )) {
+            if index < presenter.sheets.count {
+                PFSheetContent(sheet: presenter.sheets[index])
+                    .modifier(PFSheetLayer(presenter: presenter, index: index + 1))
+                    .environment(presenter)
             }
         }
     }
+}
 
-    private var grabber: some View {
-        Capsule()
-            .fill(PFColor.hairlineStrong)
-            .frame(width: 40, height: 5)
-            .frame(maxWidth: .infinity, minHeight: 28)
-            .contentShape(.rect)
-            .gesture(
-                DragGesture()
-                    .onChanged { drag = $0.translation.height }
-                    .onEnded { value in
-                        let predicted = value.predictedEndTranslation.height
-                        if predicted > 220 || value.translation.height > 160, sheet.dismissable {
-                            drag = 0
-                            presenter.dismiss()
-                        } else if predicted < -120, detentIndex < sheet.detents.count - 1 {
-                            withAnimation(PFMotion.snappy) { detentIndex += 1; drag = 0 }
-                        } else if predicted > 120, detentIndex > 0 {
-                            withAnimation(PFMotion.snappy) { detentIndex -= 1; drag = 0 }
-                        } else {
-                            withAnimation(PFMotion.snappy) { drag = 0 }
-                        }
-                    }
-            )
-            .accessibilityHidden(true)
+struct PFSheetContent: View {
+    let sheet: PFPresenter.Sheet
+    @State private var fitHeight: CGFloat = 320
+
+    var body: some View {
+        ScrollView {
+            sheet.content
+                .frame(maxWidth: .infinity, alignment: .top)
+                .padding(.top, 22)
+                .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { fitHeight = $0 + 8 }
+        }
+        .scrollBounceBehavior(.basedOnSize)
+        .scrollDismissesKeyboard(.interactively)
+        .presentationDetents(Set(sheet.detents.map(detent)))
+        .presentationDragIndicator(.visible)
+        .presentationCornerRadius(PFRadius.surface)
+        .presentationBackground(PFColor.card)
+        .interactiveDismissDisabled(!sheet.dismissable)
     }
 
-    private func resolvedHeight(_ detent: PFDetent, max: CGFloat) -> CGFloat {
-        switch detent {
-        case .fit: contentHeight > 0 ? contentHeight : max * 0.5
-        case .fraction(let f): max * f
-        case .large: max
+    private func detent(_ value: PFDetent) -> PresentationDetent {
+        switch value {
+        case .fit: .height(fitHeight)
+        case .fraction(let f): .fraction(f)
+        case .large: .large
         }
     }
 }

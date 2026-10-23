@@ -1,7 +1,7 @@
 import SwiftUI
 import Observation
 
-// MARK: - Navigator (custom stack, replaces NavigationStack)
+// MARK: - Navigator (SwiftUI NavigationStack with ProjectFlow chrome)
 
 @Observable
 public final class PFNavigationModel<Route: Hashable> {
@@ -11,40 +11,31 @@ public final class PFNavigationModel<Route: Hashable> {
 
     public func push(_ route: Route) {
         PFHaptics.soft()
-        withAnimation(PFMotion.respecting(PFMotion.snappy)) { path.append(route) }
+        path.append(route)
     }
 
     public func pop() {
         guard !path.isEmpty else { return }
-        withAnimation(PFMotion.respecting(PFMotion.snappy)) { _ = path.popLast() }
+        _ = path.popLast()
     }
 
     public func popToRoot() {
         guard !path.isEmpty else { return }
-        withAnimation(PFMotion.respecting(PFMotion.snappy)) { path.removeAll() }
+        path.removeAll()
     }
 
     public func replace(with routes: [Route]) {
-        withAnimation(PFMotion.respecting(PFMotion.snappy)) { path = routes }
-    }
-
-    /// Removes the top screen without animation (used after an interactive edge-swipe finished it).
-    func popWithoutAnimation() {
-        var transaction = Transaction()
-        transaction.disablesAnimations = true
-        withTransaction(transaction) { _ = path.popLast() }
+        path = routes
     }
 }
 
-/// Stack navigator with its own transitions: the new screen slides in from the trailing edge while
-/// the screen below drifts left and dims (parallax). Edge-swipe from the leading edge pops
-/// interactively; VoiceOver's escape gesture pops too. Screens below stay alive (state preserved).
+/// Page navigation is native SwiftUI (`NavigationStack`): system push/pop transitions and the
+/// edge/full-screen swipe back feel exactly like iOS. The system navigation bar is hidden — every
+/// screen draws its own ProjectFlow header (`PFTopBar` or a feature header).
 public struct PFNavigator<Route: Hashable, Root: View, Destination: View>: View {
     @Bindable var model: PFNavigationModel<Route>
     let root: Root
     let destination: (Route) -> Destination
-    @State private var drag: CGFloat = 0
-    @State private var width: CGFloat = 390
 
     public init(model: PFNavigationModel<Route>, @ViewBuilder root: () -> Root, @ViewBuilder destination: @escaping (Route) -> Destination) {
         self.model = model
@@ -53,62 +44,16 @@ public struct PFNavigator<Route: Hashable, Root: View, Destination: View>: View 
     }
 
     public var body: some View {
-        let depth = model.path.count
-        ZStack {
-            layer(level: 0, depth: depth) { root }
-            ForEach(Array(model.path.enumerated()), id: \.offset) { index, route in
-                layer(level: index + 1, depth: depth) {
+        NavigationStack(path: $model.path) {
+            root
+                .toolbar(.hidden, for: .navigationBar)
+                .navigationDestination(for: Route.self) { route in
                     destination(route)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
                         .background(PFCanvas())
+                        .toolbar(.hidden, for: .navigationBar)
                 }
-                .transition(.move(edge: .trailing))
-                .zIndex(Double(index + 1))
-            }
         }
-        .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { width = max($0, 1) }
-        .overlay(alignment: .leading) {
-            if depth > 0 {
-                Color.clear
-                    .frame(width: 22)
-                    .contentShape(.rect)
-                    .gesture(edgeSwipe)
-                    .accessibilityHidden(true)
-            }
-        }
-    }
-
-    private func layer<V: View>(level: Int, depth: Int, @ViewBuilder content: () -> V) -> some View {
-        let isTop = level == depth
-        let isBelowTop = level == depth - 1
-        let progress = min(max(drag / width, 0), 1)
-        return content()
-            .offset(x: isTop && level > 0 ? drag : (isBelowTop ? -width * 0.28 * (1 - progress) : 0))
-            .overlay {
-                if isBelowTop {
-                    Color.black.opacity(0.12 * (1 - progress)).ignoresSafeArea().allowsHitTesting(false)
-                }
-            }
-            .shadow(color: .black.opacity(isTop && level > 0 ? 0.12 : 0), radius: 16, x: -4)
-            .opacity(level < depth - 1 ? 0 : 1)
-            .allowsHitTesting(isTop)
-            .accessibilityHidden(!isTop)
-            .accessibilityAction(.escape) { if isTop && level > 0 { model.pop() } }
-    }
-
-    private var edgeSwipe: some Gesture {
-        DragGesture(minimumDistance: 8, coordinateSpace: .global)
-            .onChanged { value in drag = max(value.translation.width, 0) }
-            .onEnded { value in
-                let shouldPop = value.translation.width > width * 0.33 || value.predictedEndTranslation.width > width * 0.6
-                if shouldPop {
-                    withAnimation(PFMotion.snappy) { drag = width } completion: {
-                        model.popWithoutAnimation()
-                        drag = 0
-                    }
-                } else {
-                    withAnimation(PFMotion.snappy) { drag = 0 }
-                }
-            }
     }
 }
 

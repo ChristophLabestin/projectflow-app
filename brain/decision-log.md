@@ -4,6 +4,10 @@ Last updated: 2026-06-04
 
 ## Decision Entries
 
+- 2026-10-23: iOS — native SwiftUI mechanics for sheets and page navigation, custom visuals.
+  - Rationale: owner wants sheets and navigation pages to feel natural ("sollten schon von SwiftUI sein") while the navigation bar and all chrome stay custom ("custom navbar, nicht native").
+  - Decision: `PFNavigator` wraps `NavigationStack` (system bar hidden, own headers); `PFPresenter` presents native `.sheet`s with detents; the bottom navigation bar (`PFDock`), headers, focus bar and controls are custom (own frosted surface instead of system Liquid Glass).
+
 - 2026-10-22: iOS app uses its own UI components instead of native SwiftUI controls.
   - Rationale: owner wants innovative, intuitive, immersive custom UI elements.
   - Decision: custom dock, focus bar, navigator, sheets, swipe rows, peek, segments, chips, date strip, switches, toasts on top of SwiftUI primitives and `glassEffect`; native only for text input, scroll containers and system integrations. Implementation contracts in [plans/ios-implementation-contracts.md](./plans/ios-implementation-contracts.md).

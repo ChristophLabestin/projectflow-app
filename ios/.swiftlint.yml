@@ -30,6 +30,6 @@ custom_rules:
     severity: error
   no_native_controls:
     name: "No native controls"
-    regex: '\b(List|Form|NavigationStack|NavigationView|TabView|Toggle|Picker|DatePicker|Menu)\s*[\(\{]|\.(sheet|alert|confirmationDialog|contextMenu|toolbar|navigationTitle)\('
-    message: "Use the PFDesign components instead of native SwiftUI controls (see ios/README.md)."
+    regex: '\b(List|Form|NavigationView|TabView|Toggle|Picker|DatePicker|Menu)\s*[\(\{]|\.(alert|confirmationDialog|contextMenu|navigationTitle)\('
+    message: "Use the PFDesign components instead of native SwiftUI controls (see ios/README.md). Sheets and page navigation go through PFPresenter / PFNavigator (native underneath)."
     severity: error

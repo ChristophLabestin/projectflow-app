@@ -34,12 +34,17 @@ xcodebuild -project ios/ProjectFlow.xcodeproj -scheme ProjectFlow \
 
 ## Rules
 
+- **Native mechanics, custom look.** Sheets (`PFPresenter.present`, backed by SwiftUI `.sheet` + detents) and
+  page navigation (`PFNavigator`, backed by `NavigationStack`, system bar hidden) are native SwiftUI so
+  dragging, swipe-back and transitions feel like iOS. Everything visible (navigation bar/dock, headers,
+  buttons, controls, sheet content) is ProjectFlow's own design.
 - **No native controls.** Build UI from `PFDesign` components (`PFButton`, `PFIconButton`, `PFPill`,
   `PFRingCheck`, `PFPrioritySignal`, `PFDayBand`, `PFAvatar(Stack)`, `PFHealthRing`, `PFProgressBar`,
   `PFSegmented`, `PFChip(Row)`, `PFSwitch`, `PFTextField`, `PFDateStrip`, `PFSwipeRow`, `PFCardList`,
   `PFEmptyState`, `PFSkeleton`, `PFToast`, `PFPresenter` sheets + `pfPeek`, `PFNavigator`, `PFTopBar`,
   `PFDock`, `PFFocusBar`). No `List`, `Form`, `NavigationStack`, `TabView`, `Toggle`, `Picker`,
-  `DatePicker`, `Menu`, `.sheet`, `.alert`, `.contextMenu`, `.toolbar`. Allowed natives: text input
+  `DatePicker`, `Menu`, `.alert`, `.contextMenu`, system navigation bars/`.navigationTitle`; present sheets
+  and push pages only through `PFPresenter` / `PFNavigator`. Allowed natives: text input
   (styled plain), `ScrollView`/`LazyVStack`, gestures, shapes, `Canvas`, system integrations.
 - **Colours only via `PFColor`** (tokens from `web/styles/_tokens.scss`), text via `.pfText(_:)`.
 - **Copy only via `L10n.t`** with keys in the feature's `<Feature>Strings.swift` (DE + EN). Reuse web
