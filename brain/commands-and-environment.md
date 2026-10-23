@@ -62,7 +62,7 @@ Deploy only touched functions when possible, for example: `cd functions && fireb
 - Against a running dev server: `npm --prefix desktop run dev` (`PF_DESKTOP_URL`, default `http://localhost:3000`). Against production: `npm --prefix desktop start`.
 - Typecheck + bundle: `npm --prefix desktop run build`. Unsigned app bundle: `npm --prefix desktop run pack` (`release/`); installers `dist:mac` / `dist:win` need signing credentials.
 - App + tray icons are generated from `desktop/assets/glyph.svg`: `cd desktop && npx electron scripts/render-icons.cjs && iconutil -c icns assets/icon.iconset -o assets/icon.icns && rm -r assets/icon.iconset`.
-- macOS dev: `npm --prefix desktop install` / `run build` brand `node_modules/electron/dist/Electron.app` as ProjectFlow (`scripts/brand-dev-app.cjs`: name, icon, bundle id, ad-hoc re-sign), so menu bar and Dock do not say "Electron".
+- macOS dev: `npm --prefix desktop install` / `run build` brand the dev Electron bundle as ProjectFlow (`scripts/brand-dev-app.cjs`: renames it to `ProjectFlow.app`, name, icon, bundle id, ad-hoc re-sign), so menu bar and Dock do not say "Electron".
 
 ## Firestore Commands
 
