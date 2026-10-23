@@ -295,11 +295,13 @@ struct PersonalTaskScreen: View {
                 PFButton(L10n.t("common.reopen"), systemImage: "arrow.uturn.backward", kind: .secondary, size: .large, fullWidth: true) {
                     if let item { Task { await WorkItemActions(model: model).toggleComplete(item) } }
                 }
+                .offset(y: PFLayout.pageActionDrop)
             } else {
                 PFButton(L10n.t("taskDetail.actions.markDone"), systemImage: "checkmark", kind: .primary, size: .large, fullWidth: true) {
                     if let item { Task { await WorkItemActions(model: model).toggleComplete(item) } }
                 }
                 .shadow(color: .black.opacity(0.28), radius: 18, y: 8)
+                .offset(y: PFLayout.pageActionDrop)
             }
         }
     }

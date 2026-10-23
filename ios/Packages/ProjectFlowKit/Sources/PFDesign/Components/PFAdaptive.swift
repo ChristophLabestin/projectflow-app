@@ -19,6 +19,9 @@ public enum PFLayout {
     public static let readableWidth: CGFloat = 720
     /// Narrowest a board lane gets before the board shows fewer lanes.
     public static let minLaneWidth: CGFloat = 260
+    /// How far a page's full-width bottom action (task "Mark as done"/"Reopen") sits below the regular float
+    /// position, closer to the home indicator.
+    public static let pageActionDrop: CGFloat = 12
     /// Smallest top safe area screens get (status-bar-less displays such as the iPhone Duo outer display).
     public static let minTopMargin: CGFloat = 14
 
