@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useLanguage } from '../../context/LanguageContext';
 import { AI_DATA_CHANGED_EVENT, applyAiProposal, undoAiProposal } from '../../services/aiActions';
 import type { AiProposalPreview } from '../../services/aiAssistClient';
+import './ai-ds.scss';
 
 /**
  * A change the assistant prepared (P3). Nothing happens until „Übernehmen“; afterwards the change can be
@@ -19,7 +20,14 @@ const formatValue = (value: unknown, t: (key: string) => string): string => {
     return String(value);
 };
 
-export const AiActionCard: React.FC<{ proposal: AiProposalPreview }> = ({ proposal }) => {
+export interface AiActionCardProps {
+    proposal: AiProposalPreview;
+    /** Demo/testing: replace the real callables (style guide). */
+    onApply?: () => Promise<{ canUndo: boolean; createdId: string | null }>;
+    onUndo?: () => Promise<unknown>;
+}
+
+export const AiActionCard: React.FC<AiActionCardProps> = ({ proposal, onApply, onUndo }) => {
     const { t } = useLanguage();
     const [state, setState] = useState<State>('pending');
     const [canUndo, setCanUndo] = useState(false);
@@ -30,7 +38,7 @@ export const AiActionCard: React.FC<{ proposal: AiProposalPreview }> = ({ propos
         setState('applying');
         setError('');
         try {
-            const result = await applyAiProposal(proposal.id);
+            const result = onApply ? await onApply() : await applyAiProposal(proposal.id);
             setCanUndo(result.canUndo);
             setCreatedId(result.createdId);
             setState('applied');
@@ -44,7 +52,7 @@ export const AiActionCard: React.FC<{ proposal: AiProposalPreview }> = ({ propos
     const undo = async () => {
         setState('undoing');
         try {
-            await undoAiProposal(proposal.id);
+            await (onUndo ? onUndo() : undoAiProposal(proposal.id));
             setState('undone');
             announceChange(proposal.target.projectId, proposal.target.taskId);
         } catch (caught: any) {
