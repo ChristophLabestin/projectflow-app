@@ -263,7 +263,6 @@ export const askCora = functions.region('europe-west3').runWith({ secrets: ['OPE
         const response: any = await client.responses.create({
             model: TEXT_MODEL,
             input: finalPrompt,
-            temperature: 0.4,
             text: {
                 format: {
                     type: 'json_schema',
@@ -405,8 +404,8 @@ export const runAiCapability = functions.region('europe-west3').runWith({ secret
     try {
         const request: any = {
             model: TEXT_MODEL,
-            input: spec.input,
-            temperature: spec.temperature
+            input: spec.input
+            // No `temperature`: gpt-5 models reject it (400). `spec.temperature` applies once a model supports it.
         };
         if (spec.instructions) {
             request.instructions = spec.instructions;
