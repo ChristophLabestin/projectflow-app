@@ -350,3 +350,11 @@ Concept: `brain/plans/help-center-rework.md`.
 - `AiTextAssist`: ✦ for any textarea (wrap the field: `<AiTextAssist value onApply field itemTitle projectTitle>`). Writing actions on the whole text or the selection (draft, write out, shorten, rephrase, list, tone, fix, translate, custom instruction), streamed suggestion below the field, written back only on „Übernehmen“; ⌘J/Ctrl+J inside the field opens the menu; errors are shown inline. Renders just the children unless the workspace has `inAppAi` + `inAppEnabled`. `className="ai-text-assist--compact"` for single-line composers. Used in TaskCreateModal, EditTaskModal, CommentSection, ProjectEditModal.
 - `useInAppAi` (`web/hooks/`): availability of the in-app AI for the active workspace (cached policy; `forgetInAppAi` after settings changes).
 - `streamAiAssist` (`web/services/aiAssistClient.ts`): SSE client for the `aiAssist` function (`/api/assist` in production, function URL in the emulator).
+
+## Admin console (`admin/src/ui`, not shared with web)
+
+`DataTable` (sort, column picker persisted per table id, CSV export with formula guard, j/k/↑/↓ + Enter), `Drawer`,
+`useUi()` (`confirm({ requireText })` typed confirmation, toasts), `charts.tsx` (`Sparkline`, `AreaChart` with bars/hover,
+`BarList`, `Meter`; plain SVG, no chart library), `primitives.tsx` (`Badge`, `Card`, `Stat`, `Segmented`, `Tabs`, `PageHead`).
+Shell: `shell/Layout.tsx` (sidebar from `shell/nav.ts`, `g <key>` shortcuts, ⇧D theme), `shell/CommandPalette.tsx` (⌘K, user search).
+

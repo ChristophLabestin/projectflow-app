@@ -72,6 +72,10 @@ Akzent = Brand-Mark und Status-Dots.
 3. Übersicht, Nutzer & Workspaces.
 4. KI & MCP, System, Feinschliff.
 
+## Stand 2026-10-23
+
+Pakete 1–4 sind live (Site `projectflow-admin`). Offen: Feature-Flags (`inAppAi`), Ankündigungsbanner und Workspace-Sperre warten auf eine Produktentscheidung (Rückfrage beim Orchestrator), die Domain `admin.getprojectflow.com` richtet der User ein.
+
 ## Betrieb
 
 - Dev: `npm --prefix admin run dev` (Port 3141; `.env.local` mit `VITE_FIREBASE_*` wie `web/`).
