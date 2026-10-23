@@ -10,6 +10,12 @@ import { normalizeFocus } from './focus-logic';
 import { matchesQuery, normalizeQuery, planToday, toTaskRef } from './mcp-views';
 import { resolveNotificationPrefs } from './notification-prefs';
 import { DEFAULT_TIMEZONE } from './tz-utils';
+import { planWriteBlock } from './billing';
+
+const PLAN_BLOCK_MESSAGES = {
+    'plan-project-limit': 'The Free plan includes up to 3 projects. Upgrade to Team for unlimited projects.',
+    'plan-project-locked': 'This project is read-only on the Free plan. Upgrade to Team to edit it again.',
+} as const;
 import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 
 type ApiContext = {
@@ -452,6 +458,18 @@ const authRequest = async (
                 projectId: projectId || null
             };
             req.__pfAudit = audit;
+        }
+    }
+
+    // Plan limits (brain/plans/billing-entitlements-contract.md): the API writes with the Admin SDK, so
+    // the rules' project limit and read-only projects are re-checked here. Deleting stays allowed.
+    if (!permission.endsWith(':read') && permission !== 'projects:delete') {
+        const blocked = projectId
+            ? await planWriteBlock(tenantId, 'write-project', projectId)
+            : permission === 'projects:write' ? await planWriteBlock(tenantId, 'create-project') : null;
+        if (blocked) {
+            res.status(403).json({ success: false, error: PLAN_BLOCK_MESSAGES[blocked], code: blocked });
+            return null;
         }
     }
 

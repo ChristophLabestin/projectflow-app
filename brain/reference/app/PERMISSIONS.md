@@ -53,7 +53,10 @@ Permissions cannot override entitlements.
   `lockedProjectIds` (delete still allowed); invitation create and non-bootstrap member create only with `invitesAllowed`.
   A missing doc = legacy grace = Team (no limits).
 - Functions: `sendInvitation` / `acceptWorkspaceInvite` check `invitesAllowed` and `memberLimit` (guests are not seats);
-  `consumeAiQuota` requires AI via a Team/trial/grace membership or the user's own OpenAI key; `aiAssist` requires a workspace with AI.
+  AI is per user: trial/grace = all full members, paid Team/Organization = users in `aiMemberIds` (AI add-on), else the
+  user's own OpenAI key (`consumeAiQuota` → `ai-not-enabled`; `aiAssist` → `ai-addon-required`/`ai-plan-required`).
+  The REST API/MCP re-checks the project limit and read-only projects (Admin SDK bypasses rules). MCP itself needs no add-on.
+  Contract: `brain/plans/billing-entitlements-contract.md`.
 - Billing actions (`createBillingCheckout`, `createBillingPortal`) are **Owner-only** for now; Admins/Members see the
   billing tab read-only, guests do not see it. `tenant.billing.*`/`tenant.plan.*` nodes are not evaluated yet.
 

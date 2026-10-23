@@ -10,6 +10,8 @@ export const FREE_PROJECT_LIMIT = 3;
 export const TEAM_MEMBER_LIMIT = 50;
 /** Net prices per seat and month (EUR). */
 export const TEAM_PRICE = { month: 12, year: 10 } as const;
+/** AI add-on, net per user and month (EUR), Team/Organization only. */
+export const AI_ADDON_PRICE = 10;
 
 export type Entitlements = {
     plan: PlanId;
@@ -23,7 +25,11 @@ export type Entitlements = {
     memberLimit: number | null;
     projectLimit: number | null;
     invitesAllowed: boolean;
+    /** AI for every full member (trial and beta grace only). */
     aiIncluded: boolean;
+    aiAddonAvailable: boolean;
+    aiAddonSeats: number;
+    aiMemberIds: string[];
     projectCount: number;
     lockedProjectIds: string[];
     hasSubscription: boolean;
@@ -52,7 +58,11 @@ export const parseEntitlements = (data: Record<string, unknown> | undefined): En
         memberLimit: data && 'memberLimit' in data ? (data.memberLimit as number | null) : TEAM_MEMBER_LIMIT,
         projectLimit: plan === 'free' ? Number(data?.projectLimit ?? FREE_PROJECT_LIMIT) : null,
         invitesAllowed: data?.invitesAllowed !== false,
-        aiIncluded: data?.aiIncluded !== false && plan !== 'free',
+        // Missing doc = legacy grace: AI for everyone (same as functions/src/billing-logic.ts).
+        aiIncluded: data ? plan !== 'free' && (status === 'trialing' || status === 'grace') : true,
+        aiAddonAvailable: plan !== 'free',
+        aiAddonSeats: Number(data?.aiAddonSeats || 0),
+        aiMemberIds: Array.isArray(data?.aiMemberIds) ? (data.aiMemberIds as string[]) : [],
         projectCount: Number(data?.projectCount || 0),
         lockedProjectIds: Array.isArray(data?.lockedProjectIds) ? (data.lockedProjectIds as string[]) : [],
         hasSubscription: Boolean(data?.stripeSubscriptionId),
@@ -64,3 +74,39 @@ export const daysLeft = (until: Date | null, now = Date.now()) =>
 
 export const canCreateProject = (ent: Entitlements) =>
     ent.projectLimit === null || ent.projectCount < ent.projectLimit;
+
+export type PlanFeature = 'createProject' | 'invite' | 'editProject' | 'aiAddon';
+
+/** Server AI for this user (contract: brain/plans/billing-entitlements-contract.md). */
+export const aiEnabledFor = (ent: Entitlements, uid: string | null | undefined) =>
+    ent.aiIncluded || (ent.aiAddonAvailable && Boolean(uid) && ent.aiMemberIds.includes(uid as string));
+
+export const canUse = (ent: Entitlements, feature: PlanFeature, projectId?: string) => {
+    switch (feature) {
+        case 'createProject':
+            return canCreateProject(ent);
+        case 'invite':
+            return ent.invitesAllowed;
+        case 'editProject':
+            return !projectId || !ent.lockedProjectIds.includes(projectId);
+        case 'aiAddon':
+            return ent.aiAddonAvailable && ent.hasSubscription;
+        default:
+            return false;
+    }
+};
+
+export type PlanState = Entitlements & {
+    limits: { members: number | null; projects: number | null };
+    usage: { projects: number; seats: number; aiAddonSeats: number };
+    can: (feature: PlanFeature, projectId?: string) => boolean;
+    aiEnabledFor: (uid: string | null | undefined) => boolean;
+};
+
+export const toPlanState = (ent: Entitlements): PlanState => ({
+    ...ent,
+    limits: { members: ent.memberLimit, projects: ent.projectLimit },
+    usage: { projects: ent.projectCount, seats: ent.seats, aiAddonSeats: ent.aiAddonSeats },
+    can: (feature, projectId) => canUse(ent, feature, projectId),
+    aiEnabledFor: (uid) => aiEnabledFor(ent, uid),
+});

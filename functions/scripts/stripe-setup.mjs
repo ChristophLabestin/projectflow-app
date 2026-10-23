@@ -13,10 +13,24 @@ const WEBHOOK_URL = process.env.STRIPE_WEBHOOK_URL
     || 'https://europe-west3-projectflow-labestin.cloudfunctions.net/stripeWebhook';
 const APP_URL = process.env.APP_URL || 'https://app.getprojectflow.com';
 
-const PRICES = [
-    { lookup_key: 'team_monthly', unit_amount: 1200, interval: 'month', nickname: 'Team monthly (12 €/seat)' },
-    { lookup_key: 'team_yearly', unit_amount: 12000, interval: 'year', nickname: 'Team yearly (10 €/seat/month)' },
-];
+const PRODUCTS = {
+    team: {
+        name: 'ProjectFlow Team',
+        description: 'Per seat. Unlimited projects, up to 50 members.',
+        prices: [
+            { lookup_key: 'team_monthly', unit_amount: 1200, interval: 'month', nickname: 'Team monthly (12 €/seat)' },
+            { lookup_key: 'team_yearly', unit_amount: 12000, interval: 'year', nickname: 'Team yearly (10 €/seat/month)' },
+        ],
+    },
+    ai_addon: {
+        name: 'ProjectFlow AI add-on',
+        description: 'Per user with AI. 1M tokens + 50 images per month.',
+        prices: [
+            { lookup_key: 'ai_addon_monthly', unit_amount: 1000, interval: 'month', nickname: 'AI add-on monthly (10 €/user)' },
+            { lookup_key: 'ai_addon_yearly', unit_amount: 12000, interval: 'year', nickname: 'AI add-on yearly (10 €/user/month)' },
+        ],
+    },
+};
 const EVENTS = [
     'checkout.session.completed',
     'customer.subscription.created',
@@ -25,32 +39,32 @@ const EVENTS = [
     'invoice.payment_failed',
 ];
 
-const existing = await stripe.prices.list({ lookup_keys: PRICES.map((p) => p.lookup_key), active: true, expand: ['data.product'] });
-let product = existing.data[0]?.product;
-if (!product) {
-    product = await stripe.products.create({
-        name: 'ProjectFlow Team',
-        description: 'Per seat. Unlimited projects, up to 50 members, AI included.',
-        metadata: { plan: 'team' },
-    });
-    console.log('Created product', product.id);
-}
 const prices = {};
-for (const def of PRICES) {
-    let price = existing.data.find((p) => p.lookup_key === def.lookup_key);
-    if (!price) {
-        price = await stripe.prices.create({
-            product: product.id,
-            currency: 'eur',
-            unit_amount: def.unit_amount,
-            recurring: { interval: def.interval },
-            lookup_key: def.lookup_key,
-            nickname: def.nickname,
-            tax_behavior: 'exclusive',
-        });
-        console.log('Created price', def.lookup_key, price.id);
+const productIds = {};
+for (const [plan, def] of Object.entries(PRODUCTS)) {
+    const existing = await stripe.prices.list({ lookup_keys: def.prices.map((p) => p.lookup_key), active: true, expand: ['data.product'] });
+    let product = existing.data[0]?.product;
+    if (!product) {
+        product = await stripe.products.create({ name: def.name, description: def.description, metadata: { plan } });
+        console.log('Created product', plan, product.id);
     }
-    prices[def.lookup_key] = price.id;
+    productIds[plan] = product.id;
+    for (const priceDef of def.prices) {
+        let price = existing.data.find((p) => p.lookup_key === priceDef.lookup_key);
+        if (!price) {
+            price = await stripe.prices.create({
+                product: product.id,
+                currency: 'eur',
+                unit_amount: priceDef.unit_amount,
+                recurring: { interval: priceDef.interval },
+                lookup_key: priceDef.lookup_key,
+                nickname: priceDef.nickname,
+                tax_behavior: 'exclusive',
+            });
+            console.log('Created price', priceDef.lookup_key, price.id);
+        }
+        prices[priceDef.lookup_key] = price.id;
+    }
 }
 
 // Customer portal: payment method, invoices, seat interval switch, cancel at period end.
@@ -64,7 +78,8 @@ const portalFeatures = {
         enabled: true,
         default_allowed_updates: ['price'],
         proration_behavior: 'create_prorations',
-        products: [{ product: product.id, prices: Object.values(prices) }],
+        // Interval switch for single-item subscriptions; the AI add-on quantity is managed in the app.
+        products: [{ product: productIds.team, prices: [prices.team_monthly, prices.team_yearly] }],
     },
 };
 const portalParams = {

@@ -4,9 +4,20 @@ const assert = require('node:assert/strict');
 const billing = require('../../lib/billing-logic');
 
 test('missing entitlement doc is treated as Team (legacy grace)', () => {
-    assert.deepEqual(billing.limitsFor(undefined), billing.PLAN_LIMITS.team);
+    assert.deepEqual(billing.limitsFor(undefined), { ...billing.PLAN_LIMITS.team, aiIncluded: true });
     assert.equal(billing.limitsFor({ plan: 'free' }).projectLimit, 3);
     assert.equal(billing.limitsFor({ plan: 'free' }).aiIncluded, false);
+});
+
+test('AI: trial/grace for everyone, paid Team only via the per-user add-on, never on Free', () => {
+    assert.equal(billing.aiEnabledFor(undefined, 'u1'), true);
+    assert.equal(billing.aiEnabledFor({ plan: 'team', status: 'trialing' }, 'u1'), true);
+    assert.equal(billing.aiEnabledFor({ plan: 'team', status: 'grace' }, 'u1'), true);
+    assert.equal(billing.aiEnabledFor({ plan: 'team', status: 'active', aiMemberIds: ['u2'] }, 'u1'), false);
+    assert.equal(billing.aiEnabledFor({ plan: 'team', status: 'active', aiMemberIds: ['u1'] }, 'u1'), true);
+    assert.equal(billing.aiEnabledFor({ plan: 'free', status: 'free', aiMemberIds: ['u1'] }, 'u1'), false);
+    assert.equal(billing.isAiAddonLookupKey('ai_addon_yearly'), true);
+    assert.equal(billing.isAiAddonLookupKey('team_yearly'), false);
 });
 
 test('maps Stripe statuses', () => {

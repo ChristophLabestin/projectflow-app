@@ -1,6 +1,7 @@
 # Billing-Umsetzung (Stripe, Test-Modus)
 
 Stand: 2026-10-23 · Quelle der Preise: [pricing-strategy.md](./pricing-strategy.md), Regeln: `reference/app/APP_CONCEPT.md §3`.
+Feld- und Fehlercode-Vertrag für Web/iOS/Admin: [billing-entitlements-contract.md](./billing-entitlements-contract.md).
 Nicht enthalten (Owner-Follow-ups): USt./OSS, Live-Schlüssel, AGB/Datenschutz, Gründungspreis, Organization/SSO.
 
 ## Datenmodell
@@ -20,7 +21,7 @@ Nicht enthalten (Owner-Follow-ups): USt./OSS, Live-Schlüssel, AGB/Datenschutz, 
 | Vollmitglieder | 1 | bis 50 (Gäste/Externe zählen nicht) |
 | Projekte | 3 (darüber schreibgeschützt) | unbegrenzt |
 | Einladungen | nein | ja |
-| KI | nur eigener OpenAI-Schlüssel | 1 Mio. Tokens + 50 Bilder je Platz/Monat (bestehende Server-Quote) |
+| KI | nur eigener OpenAI-Schlüssel | Test/Grace: alle Mitglieder; danach **KI-Paket 10 €/Nutzer/Monat** pro zugewiesenem Nutzer (1 Mio. Tokens + 50 Bilder, bestehende Server-Quote) |
 
 ## Abläufe
 1. **Neuer Workspace** → Trigger `onTenantCreatedBilling`: 14 Tage Team-Test (`status: trialing`, ohne Karte).
@@ -35,10 +36,16 @@ Nicht enthalten (Owner-Follow-ups): USt./OSS, Live-Schlüssel, AGB/Datenschutz, 
 7. **Downgrade auf Free**: nichts wird gelöscht. Die 3 zuletzt aktualisierten Projekte bleiben schreibbar, der Rest kommt
    in `lockedProjectIds` (Regeln: nur lesen). Zusätzliche Mitglieder bleiben, neue Einladungen sind gesperrt.
 8. **Plätze**: Trigger auf `members` passt die Abo-Menge an (Proration), Gäste zählen nicht.
+9. **KI-Paket**: zweites Abo-Item (Lookup-Keys `ai_addon_monthly`/`ai_addon_yearly`, Intervall wie Team). Callable
+   `setAiAddonMembers` (Owner) setzt `aiMemberIds`, die Item-Menge folgt der Liste; verlässt ein Mitglied den Workspace,
+   verliert es das Paket. Wird die Menge im Portal verkleinert, bleiben die ersten N Zuweisungen.
+10. **Eigener OpenAI-Schlüssel**: `ai_user_keys/{uid}.secret` = AES-256-GCM mit Secret `AI_KEY_ENCRYPTION_KEY`; nur
+   `personalAiKey` schreibt, nur die KI-Callables entschlüsseln. Gilt für jeden Nutzer ohne Server-KI (Free und Team ohne Paket).
 
 ## Durchsetzung
 - Firestore-Regeln: Projekt anlegen nur unter `projectLimit` (Zähler `projectCount`, per Trigger gepflegt),
   Schreiben in gesperrten Projekten verboten, Einladungen/Mitglieder anlegen nur mit `invitesAllowed`.
+- REST-API/MCP/KI-Tools (`projectflow-api.ts` → `authRequest`): Projektlimit und gesperrte Projekte (403 mit `code`).
 - Functions: `sendInvitation`/`acceptWorkspaceInvite` prüfen `invitesAllowed` und `memberLimit`;
   `consumeAiQuota` prüft KI-Berechtigung (Team-Mitgliedschaft *oder* eigener Schlüssel); In-App-Assistent prüft den Workspace.
 - Web: `useEntitlements` + Billing-Tab (`settings → billing`), Hinweise bei Projektanlage, Einladung, gesperrtem Projekt.

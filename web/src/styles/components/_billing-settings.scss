@@ -164,3 +164,12 @@
         text-decoration: underline;
     }
 }
+
+.billing-settings__members {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 8px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
