@@ -61,6 +61,9 @@ enum PlanningStrings {
         "planning.initiative.attach": "Aufgaben zuordnen", "planning.initiative.attach.title": "Aufgaben der Initiative",
         "planning.initiative.attach.done": "Zuordnung gesichert",
         "planning.initiative.otherInitiative": "In „{name}“",
+        // Personal tasks
+        "planning.personal.move": "In Projekt verschieben", "planning.personal.noProjects": "Keine Projekte, in die du Aufgaben schreiben kannst.",
+        "planning.personal.moved": "Nach „{project}“ verschoben",
         // Feedback form
         "planning.feedback.title": "Feedback-Formular", "planning.feedback.on": "Öffentlicher Link ist aktiv",
         "planning.feedback.off": "Noch nicht eingerichtet", "planning.feedback.share": "Link teilen",
@@ -129,6 +132,9 @@ enum PlanningStrings {
         "planning.initiative.attach": "Assign tasks", "planning.initiative.attach.title": "Tasks of the initiative",
         "planning.initiative.attach.done": "Assignment saved",
         "planning.initiative.otherInitiative": "In “{name}”",
+        // Personal tasks
+        "planning.personal.move": "Move to project", "planning.personal.noProjects": "No projects you can add tasks to.",
+        "planning.personal.moved": "Moved to “{project}”",
         // Feedback form
         "planning.feedback.title": "Feedback form", "planning.feedback.on": "Public link is active",
         "planning.feedback.off": "Not set up yet", "planning.feedback.share": "Share link",

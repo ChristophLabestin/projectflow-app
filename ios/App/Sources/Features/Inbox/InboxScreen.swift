@@ -55,9 +55,15 @@ struct InboxScreen: View {
         HStack(alignment: .center) {
             Text(L10n.t("tab.inbox")).pfText(.display).foregroundStyle(PFColor.textMain)
             Spacer()
-            if unreadCount > 0 {
-                PFIconButton("checkmark.circle", label: L10n.t("notifications.actions.markAllRead"), style: .glass) { markAllRead() }
-                    .transition(.scale.combined(with: .opacity))
+            HStack(spacing: PFSpace.xs) {
+                if unreadCount > 0 {
+                    PFIconButton("checkmark.circle", label: L10n.t("notifications.actions.markAllRead"), style: .glass) { markAllRead() }
+                        .transition(.scale.combined(with: .opacity))
+                }
+                if !(workspace?.inbox.isEmpty ?? true) {
+                    PFIconButton("trash", label: L10n.t("notifications.actions.clearAll"), style: .glass) { confirmClearAll() }
+                        .transition(.scale.combined(with: .opacity))
+                }
             }
         }
         .padding(.top, PFSpace.xs)
@@ -101,7 +107,7 @@ struct InboxScreen: View {
 
     private func row(_ item: InboxItem, proxy: ScrollViewProxy) -> some View {
         let task = task(for: item)
-        return PFSwipeRow(leading: readAction(item), trailing: laterActions(item, task)) {
+        return PFSwipeRow(leading: readAction(item), trailing: laterActions(item, task) + [deleteAction(item)]) {
             InboxEntryView(
                 item: item,
                 task: task,
@@ -138,6 +144,10 @@ struct InboxScreen: View {
                       systemImage: item.read ? "circle" : "checkmark", tint: PFColor.success) {
             setRead(item, !item.read)
         }
+    }
+
+    private func deleteAction(_ item: InboxItem) -> PFSwipeAction {
+        PFSwipeAction(L10n.t("notifications.actions.delete"), systemImage: "trash", tint: PFColor.danger) { delete(item) }
     }
 
     private func laterActions(_ item: InboxItem, _ task: WorkTask?) -> [PFSwipeAction] {
@@ -177,6 +187,32 @@ struct InboxScreen: View {
     private func setRead(_ item: InboxItem, _ read: Bool) {
         guard let actions = model.actions else { return }
         Task { await model.perform { try await actions.markRead(item, read) } }
+    }
+
+    private func delete(_ item: InboxItem) {
+        guard let actions = model.actions else { return }
+        Task {
+            if await model.perform({ try await actions.deleteNotification(item) }) {
+                PFHaptics.success()
+                model.toasts.show(PFToast(L10n.t("notifications.toast.delete"), style: .success))
+            }
+        }
+    }
+
+    private func confirmClearAll() {
+        guard let inbox = workspace?.inbox, !inbox.isEmpty else { return }
+        model.presenter.present(detents: [.fit]) {
+            ProjectConfirmSheet(title: L10n.t("notifications.clearConfirm.title"), message: L10n.t("notifications.clearConfirm.message"),
+                                confirmTitle: L10n.t("notifications.clearConfirm.confirm")) {
+                guard let actions = model.planning else { return }
+                Task {
+                    if await model.perform({ try await actions.deleteAllNotifications(inbox) }) {
+                        PFHaptics.success()
+                        model.toasts.show(PFToast(L10n.t("notifications.toast.clearAll"), style: .success))
+                    }
+                }
+            }
+        }
     }
 
     private func markAllRead() {

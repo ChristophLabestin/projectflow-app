@@ -441,20 +441,21 @@ public struct PlanningActions {
 
     /// Applies "Smart verteilen": sets `scheduledDate` per task (own project tasks, co-assignee tasks and
     /// personal tasks alike) and assigns formerly unassigned tasks to me.
-    public func applySchedule(_ changes: [(ref: TaskRef?, personalId: String?, day: FlexDate, assignToMe: Bool)]) async throws {
+    /// A nil `day` clears the planned day (used to undo).
+    public func applySchedule(_ changes: [(ref: TaskRef?, personalId: String?, day: FlexDate?, assignToMe: Bool)]) async throws {
         for chunk in stride(from: 0, to: changes.count, by: 200).map({ Array(changes[$0..<min($0 + 200, changes.count)]) }) {
             let batch = PFFirebase.db.batch()
             for change in chunk {
                 if let ref = change.ref {
                     var data = stamp
-                    data["scheduledDate"] = change.day.webString
+                    data["scheduledDate"] = change.day?.webString ?? FieldValue.delete()
                     if change.assignToMe {
                         data["assigneeIds"] = [uid]
                         data["assigneeId"] = uid
                     }
                     batch.updateData(data, forDocument: PFPath.task(ref))
                 } else if let personalId = change.personalId {
-                    batch.updateData(["scheduledDate": change.day.webString], forDocument: PFPath.personalTasks(tenantId, uid).document(personalId))
+                    batch.updateData(["scheduledDate": change.day?.webString ?? FieldValue.delete()], forDocument: PFPath.personalTasks(tenantId, uid).document(personalId))
                 }
             }
             try await batch.commit()

@@ -10,15 +10,15 @@ import PFModel
 final class WorkNavigator {
     static let shared = WorkNavigator()
 
-    enum Mode: String, Hashable { case list, week }
+    enum Mode: String, Hashable { case list, week, month }
 
     var mode: Mode = .list
 
     init() {
         #if DEBUG
-        // QA: `-pfWorkMode week` opens Arbeit in the week view (used for screenshots).
+        // QA: `-pfWorkMode week|month` opens Arbeit in the week or month view (used for screenshots).
         let arguments = ProcessInfo.processInfo.arguments
-        if let index = arguments.firstIndex(of: "-pfWorkMode"), arguments.count > index + 1, arguments[index + 1] == "week" { mode = .week }
+        if let index = arguments.firstIndex(of: "-pfWorkMode"), arguments.count > index + 1, let preset = Mode(rawValue: arguments[index + 1]) { mode = preset }
         #endif
     }
     /// "YYYY-MM-DD" the week view should scroll to when `requestToken` changes.

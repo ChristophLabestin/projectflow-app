@@ -228,6 +228,9 @@ struct PersonalTaskScreen: View {
         if !task.isCompleted {
             items.append(.init(title: isFocused ? L10n.t("taskDetail.focus.open") : L10n.t("common.startFocus"), systemImage: "scope") { startFocus() })
         }
+        items.append(.init(title: L10n.t("planning.personal.move"), systemImage: "arrow.right.square") {
+            PersonalTaskMove.present(model: model, taskId: taskId, title: task.title) { isDeleting = true }
+        })
         items.append(.init(title: L10n.t("taskDetail.delete.action"), systemImage: "trash", destructive: true) {
             presenter.present(detents: [.fit]) {
                 ProjectConfirmSheet(title: L10n.t("taskDetail.confirm.delete.title"), message: L10n.t("taskDetail.confirm.delete.message", ["title": task.title]),
