@@ -11,13 +11,17 @@
  * validation and activity logging therefore behave exactly like the API.
  */
 import * as functions from 'firebase-functions/v1';
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
+import { onRequest } from 'firebase-functions/v2/https';
+import { toNodeHandler } from '@modelcontextprotocol/node';
+import { createMcpHandler, McpServer } from '@modelcontextprotocol/server';
 import { z } from 'zod';
 
 import { db } from './init';
 import { checkWorkspaceAccess, effectiveScopes, normalizeRole, type PrincipalKind, RATE_LIMITS } from './ai-access';
 import { aiRateLimiter, loadAiPolicy } from './ai-store';
+import { isAiToken, resolveAiToken } from './ai-tokens';
+import { issuerFor, mcpResourceFor, protectedResourceMetadataUrl } from './oauth-config';
+import { audienceMatches, DEFAULT_OAUTH_SCOPES, OAUTH_SCOPES } from './oauth-core';
 import { checkApiTokenUsable, findApiToken } from './authUtils';
 import { handleProjectflowApiRoute } from './projectflow-api';
 
@@ -330,6 +334,36 @@ const buildServer = (token: string, info: TokenInfo) => {
             return textResult({ ...task.payload.task, subtasks: subtasks.payload?.subtasks || [] });
         });
 
+        server.registerTool('search', {
+            title: 'Search workspace',
+            annotations: ANNOTATIONS.read,
+            description: 'Find projects and open tasks by text (title/description) across the projects you can see. Start here instead of listing everything.',
+            inputSchema: {
+                query: z.string().min(2).max(100).describe('Search text, at least 2 characters.'),
+                includeDone: z.boolean().optional().describe('Also search completed tasks and closed projects. Default false.'),
+                limit: z.number().int().min(1).max(50).optional().describe('Max hits per kind, default 20.')
+            }
+        }, async (args) => {
+            const query: Record<string, string> = { q: args.query, limit: String(args.limit || 20) };
+            if (args.includeDone) query.includeDone = 'true';
+            const result = await callApi(token, 'GET', '/search', { query });
+            if (result.status >= 400) return apiError(result);
+            const { projects, tasks, truncated } = result.payload;
+            return textResult(compact({ projects, tasks, truncated: truncated || undefined }));
+        });
+
+        server.registerTool('my_today', {
+            title: 'My day',
+            annotations: ANNOTATIONS.read,
+            description: 'Your current focus plus your open assigned tasks: overdue, due today and the next 7 days (in your time zone).',
+            inputSchema: {}
+        }, async () => {
+            const result = await callApi(token, 'GET', '/me/today');
+            if (result.status >= 400) return apiError(result);
+            const { success: _success, ...today } = result.payload;
+            return textResult(compact(today));
+        });
+
         server.registerTool('list_codex_sessions', {
             title: 'List Codex sessions',
             annotations: ANNOTATIONS.read,
@@ -581,13 +615,64 @@ const jsonRpcError = (res: any, status: number, message: string, headers: Record
     res.status(status).json({ jsonrpc: '2.0', error: { code: status === 401 ? -32001 : -32000, message }, id: null });
 };
 
-export const mcp = functions.region(REGION).runWith({ memory: '512MB', timeoutSeconds: 120 }).https.onRequest(async (req, res) => {
+type McpCaller = { tenantId: string; tokenData: any; role: string; kind: PrincipalKind; credentialId: string; resource: string | null };
+
+/** Workspace API tokens (`pfat_`) and user-bound AI tokens (`pfo_` OAuth, `pfp_` personal). */
+const resolveMcpCaller = async (token: string): Promise<McpCaller | { error: string; status?: 403 }> => {
+    if (isAiToken(token)) {
+        const resolved = await resolveAiToken(token).catch((error) => {
+            console.error('MCP AI token lookup failed', error);
+            return null;
+        });
+        if (!resolved) return { error: 'Invalid or expired access token.' };
+        if ('error' in resolved) return { error: resolved.error, status: resolved.status };
+        return {
+            tenantId: resolved.tenantId,
+            tokenData: resolved.tokenData,
+            role: resolved.memberRole,
+            kind: resolved.tokenData.kind,
+            credentialId: resolved.tokenId,
+            resource: resolved.tokenData.resource
+        };
+    }
+    const found = await findApiToken(token).catch((error) => {
+        console.error('MCP token lookup failed', error);
+        return null;
+    });
+    if (!found) return { error: 'Invalid API token.' };
+    const usable = await checkApiTokenUsable(found.tokenData, found.tenantId);
+    if (!usable.ok) return { error: usable.error, status: usable.status };
+    return { tenantId: found.tenantId, tokenData: found.tokenData, role: usable.role, kind: 'workspace-token', credentialId: found.tokenRef.id, resource: null };
+};
+
+export const protectedResourceMetadata = (req: any) => ({
+    resource: mcpResourceFor(req),
+    authorization_servers: [issuerFor(req)],
+    scopes_supported: [...OAUTH_SCOPES],
+    bearer_methods_supported: ['header'],
+    resource_name: 'ProjectFlow',
+    resource_documentation: 'https://getprojectflow.com/docs/mcp'
+});
+
+const mcpHandler = toNodeHandler(createMcpHandler((ctx: any) => {
+    const context = ctx?.authInfo?.extra?.projectflow as { token: string; info: TokenInfo } | undefined;
+    if (!context) throw new Error('MCP request without resolved caller');
+    return buildServer(context.token, context.info);
+}, { responseMode: 'json', onerror: (error: unknown) => console.error('MCP handler error', error) }));
+
+const handleMcpRequest = async (req: any, res: any) => {
     res.set('Access-Control-Allow-Origin', '*');
     res.set('Access-Control-Allow-Headers', 'Authorization, Content-Type, Accept, Mcp-Session-Id, Mcp-Protocol-Version');
-    res.set('Access-Control-Expose-Headers', 'Mcp-Session-Id');
+    res.set('Access-Control-Expose-Headers', 'Mcp-Session-Id, WWW-Authenticate');
     if (req.method === 'OPTIONS') {
-        res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
+        res.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
         res.status(204).send('');
+        return;
+    }
+    // RFC 9728 protected resource metadata (OAuth discovery for MCP clients).
+    if (req.method === 'GET' && /\/\.well-known\/oauth-protected-resource(\/mcp)?\/?$/.test(String(req.path || ''))) {
+        res.set('Cache-Control', 'public, max-age=300');
+        res.status(200).json(protectedResourceMetadata(req));
         return;
     }
     // Stateless server: no server-initiated streams and no sessions to delete.
@@ -599,35 +684,32 @@ export const mcp = functions.region(REGION).runWith({ memory: '512MB', timeoutSe
 
     const header = String(req.headers.authorization || '');
     const token = header.startsWith('Bearer ') ? header.slice(7).trim() : '';
-    const unauthorizedHeaders = { 'WWW-Authenticate': 'Bearer realm="ProjectFlow", error="invalid_token"' };
+    const challenge = `Bearer realm="ProjectFlow", resource_metadata="${protectedResourceMetadataUrl(req)}", scope="${DEFAULT_OAUTH_SCOPES.join(' ')}"`;
     if (!token) {
-        jsonRpcError(res, 401, 'Missing API token. Create one in ProjectFlow → Settings → API and send it as "Authorization: Bearer <token>".', unauthorizedHeaders);
+        jsonRpcError(res, 401, 'Sign in to ProjectFlow (OAuth) or send a ProjectFlow token as "Authorization: Bearer <token>".', { 'WWW-Authenticate': challenge });
         return;
     }
 
-    const found = await findApiToken(token).catch((error) => {
-        console.error('MCP token lookup failed', error);
-        return null;
-    });
-    if (!found) {
-        jsonRpcError(res, 401, 'Invalid API token.', unauthorizedHeaders);
+    const caller = await resolveMcpCaller(token);
+    if ('error' in caller) {
+        if (caller.status === 403) { jsonRpcError(res, 403, caller.error); return; } // legal consent missing
+        jsonRpcError(res, 401, caller.error, { 'WWW-Authenticate': `${challenge}, error="invalid_token"` });
         return;
     }
-    const usable = await checkApiTokenUsable(found.tokenData, found.tenantId);
-    if (!usable.ok) {
-        jsonRpcError(res, 401, usable.error, unauthorizedHeaders);
+    if (!audienceMatches(caller.resource, mcpResourceFor(req))) {
+        jsonRpcError(res, 401, 'This token was issued for a different resource.', { 'WWW-Authenticate': `${challenge}, error="invalid_token"` });
         return;
     }
 
-    const role = normalizeRole(usable.role);
-    const kind: PrincipalKind = found.tokenData.kind || 'workspace-token';
-    const policy = await loadAiPolicy(found.tenantId);
+    const role = normalizeRole(caller.role);
+    const kind = caller.kind;
+    const policy = await loadAiPolicy(caller.tenantId);
     const access = role ? checkWorkspaceAccess({ role, policy, kind }) : { ok: false as const, error: 'Not a member of this workspace.' };
     if (!role || !access.ok) {
         jsonRpcError(res, 403, access.ok ? 'Not a member of this workspace.' : access.error);
         return;
     }
-    const retryAfter = aiRateLimiter.take(`mcp:${found.tokenRef.id}`, RATE_LIMITS.request);
+    const retryAfter = aiRateLimiter.take(`mcp:${caller.credentialId}`, RATE_LIMITS.request);
     if (retryAfter > 0) {
         res.set('Retry-After', String(retryAfter));
         jsonRpcError(res, 429, `Rate limit exceeded. Retry in ${retryAfter}s.`);
@@ -635,24 +717,28 @@ export const mcp = functions.region(REGION).runWith({ memory: '512MB', timeoutSe
     }
 
     // tools/list only shows what the token may actually do: scopes ∩ role ceiling ∩ workspace AI policy.
-    const tokenScopes = Array.isArray(found.tokenData.permissions) ? found.tokenData.permissions : [];
-    const server = buildServer(token, {
-        tenantId: found.tenantId,
-        tokenData: found.tokenData,
+    const tokenScopes = Array.isArray(caller.tokenData.permissions) ? caller.tokenData.permissions : [];
+    const info: TokenInfo = {
+        tenantId: caller.tenantId,
+        tokenData: caller.tokenData,
         role,
         permissions: new Set<string>(effectiveScopes({ tokenScopes, role, policy, kind }))
-    });
-    const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined, enableJsonResponse: true });
-    res.on('close', () => {
-        void transport.close();
-        void server.close();
-    });
+    };
+    // The SDK builds one McpServer per request (stateless, 2026-07-28 + legacy `initialize` fallback);
+    // the resolved caller travels in authInfo.extra.
+    (req as any).auth = { token, clientId: caller.credentialId, scopes: [...info.permissions], extra: { projectflow: { token, info } } };
 
     try {
-        await server.connect(transport);
-        await transport.handleRequest(req as any, res as any, req.body);
+        await mcpHandler(req as any, res as any, req.body);
     } catch (error) {
         console.error('MCP request failed', error);
         if (!res.headersSent) jsonRpcError(res, 500, 'Internal server error.');
     }
-});
+};
+
+/** Legacy Gen1 endpoint (direct cloudfunctions.net URL); Hosting `/mcp` points to `mcpServer`. */
+export const mcp = functions.region(REGION).runWith({ memory: '512MB', timeoutSeconds: 120 }).https.onRequest(handleMcpRequest);
+
+/** Gen2 (Cloud Run): one instance serves up to 80 concurrent requests, so the in-memory rate limiter and warm caches hold. */
+export const mcpServer = onRequest({ region: REGION, memory: '512MiB', timeoutSeconds: 120, concurrency: 80 }, handleMcpRequest);
+

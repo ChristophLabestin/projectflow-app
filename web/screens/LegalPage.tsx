@@ -31,7 +31,8 @@ const LegalPage: React.FC = () => {
     const showDiff = searchParams.get('diff') === '1';
 
     useEffect(() => {
-        if (slug === 'impressum') navigate('/legal/imprint', { replace: true });
+        const canonical = legalTypeFromSlug(slug);
+        if (canonical && canonical !== slug) navigate(`/legal/${canonical}${window.location.search}`, { replace: true });
     }, [slug, navigate]);
 
     useEffect(() => {

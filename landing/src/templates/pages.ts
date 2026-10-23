@@ -18,7 +18,7 @@ export const APP_URL = 'https://app.getprojectflow.com';
  * 'app-link': footer links go to app.getprojectflow.com/legal/<type> (fallback until the API is live).
  * 'api': the landing renders /impressum etc. itself from GET /api/legal/<type>?lang=… at runtime.
  */
-export const LEGAL_SOURCE = 'app-link' as 'app-link' | 'api';
+export const LEGAL_SOURCE = 'api' as 'app-link' | 'api';
 export type LegalKind = 'imprint' | 'privacy' | 'terms';
 export const legalApiUrl = (kind: LegalKind, lang: Lang) => `${APP_URL}/api/legal/${kind}?lang=${lang}`;
 export const legalAppUrl = (kind: LegalKind) => `${APP_URL}/legal/${kind}`;

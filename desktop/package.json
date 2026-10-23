@@ -1,7 +1,7 @@
 {
   "name": "projectflow-desktop",
   "productName": "ProjectFlow",
-  "version": "0.1.0",
+  "version": "0.1.2",
   "private": true,
   "description": "ProjectFlow desktop app",
   "main": "dist/main.js",
@@ -133,7 +133,7 @@
       "artifactName": "ProjectFlow-linux.${ext}"
     },
     "afterPack": "./scripts/after-pack.cjs",
-    "copyright": "\u00a9 Labestin Digital",
+    "copyright": "© Labestin Digital",
     "publish": [
       {
         "provider": "github",

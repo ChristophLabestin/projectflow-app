@@ -193,12 +193,12 @@ export const DesktopBridge = () => {
                 case 'auth-code': {
                     const code = typeof data?.code === 'string' ? data.code : '';
                     const verifier = typeof data?.verifier === 'string' ? data.verifier : '';
-                    if (!code || !verifier || auth.currentUser) break;
+                    if (!code || !verifier) break;
                     redeemDesktopAuthCode(code, verifier)
                         .then(() => { if (window.location.pathname === '/login' || window.location.pathname === '/register') handlers.navigate('/'); })
                         .catch((error) => {
                             console.error('Desktop sign-in handoff failed', error);
-                            handlers.showError(handlers.t('login.desktop.browserFailed'));
+                            handlers.showError(handlers.t(error?.code === 'auth/user-mismatch' ? 'login.desktop.accountMismatch' : 'login.desktop.browserFailed'));
                         });
                     break;
                 }

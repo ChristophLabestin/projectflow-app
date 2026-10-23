@@ -28,6 +28,7 @@ These routes must remain accessible without being logged in.
 - [x] `/desktop/day?mode=start|close` — Desktop only: day start / day close window (`DesktopDayWindow`, plan logic from `utils/dayPlan`).
 - [x] `/desktop/tray` — Desktop only: menu bar panel (`DesktopTrayPanel`): focus timer + controls, inline capture, Today / Pinned / Inbox, next meeting, quick actions.
 - [x] `/desktop/auth?challenge=…` — Browser page of the desktop OAuth handoff (`DesktopAuthHandoff`): after web sign-in it creates a one-time code and opens `projectflow://auth`.
+- [x] `/oauth/consent?request=…` — OAuth consent for AI/MCP clients (`OAuthConsent`): signed-in user picks one workspace and the scopes, then returns to the client with a code (server: `functions/src/oauth-server.ts`). Hosting rewrites `/oauth/authorize|token|register|revoke` and `/.well-known/oauth-*` go to the functions `oauth` / `mcp`, not to the SPA.
 - [x] `?openSettings=account|security|notifications|preferences` — any signed-in route: opens the personal settings modal on that tab (`SettingsUrlOpener`; used by the desktop app to link accounts in the browser).
 
 ---
@@ -136,7 +137,7 @@ Social module and Marketing dashboard/ads/email/recipients were removed 2026-10-
 ## Landing (getprojectflow.com, separate app in `landing/`)
 Static pages rendered at build time from `landing/src/templates/pages.ts` (Firebase site `getprojectflow`, cleanUrls):
 - `/` (DE) · `/en` (EN) — home: hero, journey (pinned scroll story), board, workbench, notifications, AI, security, platforms, CTA
-- Legal: no texts in the landing. `LEGAL_SOURCE` in `landing/src/templates/pages.ts`: `app-link` (current) links to `app.getprojectflow.com/legal/<type>`; `api` builds `/impressum` · `/en/imprint`, `/datenschutz` · `/en/privacy`, `/agb` · `/en/terms` as shells that load `GET /api/legal/<type>?lang=` (`landing/src/js/legal.ts`). Source texts: `legal/<type>.<lang>.md` (imported as drafts by `functions/scripts/import-legal-docs.mjs`)
+- Legal: no texts in the landing. `LEGAL_SOURCE` in `landing/src/templates/pages.ts`: `app-link` links to `app.getprojectflow.com/legal/<type>`; `api` (current since 2026-10-23) builds `/impressum` · `/en/imprint`, `/datenschutz` · `/en/privacy`, `/agb` · `/en/terms` as shells that load `GET /api/legal/<type>?lang=` (`landing/src/js/legal.ts`). Source texts: `legal/<type>.<lang>.md` (imported as drafts by `functions/scripts/import-legal-docs.mjs`)
 - `404.html` — bilingual not-found
 - `/sitemap.xml`, `/robots.txt`, `/og-de.png`, `/og-en.png`
 CTAs point to the app: `/register`, `/login`, `/download`. Concept: `brain/plans/landing-page-concept.md`.

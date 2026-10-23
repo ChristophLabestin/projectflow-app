@@ -1,11 +1,11 @@
 import type { SiteCopy } from '../content/site';
 import { icon, logo } from './icons';
-import { esc, links } from './layout';
+import { esc, headline, links } from './layout';
 
 const head = (eyebrow: string, title: string, text: string, id: string) => `
     <header class="section-head" data-reveal>
         <p class="eyebrow">${esc(eyebrow)}</p>
-        <h2 class="section-title" id="${id}">${esc(title)}</h2>
+        <h2 class="section-title" id="${id}">${headline(title)}</h2>
         <p class="section-text">${esc(text)}</p>
     </header>`;
 
@@ -23,7 +23,7 @@ const workbench = (t: SiteCopy) => {
                 ${w.points.map((p) => `<li><h3>${esc(p.title)}</h3><p>${esc(p.text)}</p></li>`).join('')}
             </ul>
         </div>
-        <div class="workbench__ui" aria-hidden="true" data-parallax="-40">
+        <div class="workbench__ui stage" aria-hidden="true">
             <div class="detail" data-reveal>
                 <div class="detail__head">
                     <span class="pill pill--progress"><i class="dot dot--in-progress"></i>${esc(w.status)}</span>
@@ -68,10 +68,10 @@ const notify = (t: SiteCopy) => {
                 ${n.points.map((p) => `<li>${icon('check')}${esc(p)}</li>`).join('')}
             </ul>
         </div>
-        <div class="notify__ui" aria-hidden="true">
+        <div class="notify__ui stage" aria-hidden="true">
             <div class="notif-panel" data-notify>
                 <div class="notif-panel__head">
-                    <b>${esc(n.panelTitle)}</b>
+                    <b><span class="bell" data-bell>${icon('bell')}<em data-bell-count>4</em></span>${esc(n.panelTitle)}</b>
                     <span class="seg"><span class="is-active">${esc(n.all)}</span><span>${esc(n.unread)} <em data-unread>4</em></span></span>
                 </div>
                 <p class="notif-panel__group">${esc(n.today)}</p>
@@ -86,7 +86,6 @@ const notify = (t: SiteCopy) => {
                     </li>`).join('')}
                 </ul>
             </div>
-            <div class="bell" data-bell>${icon('bell')}<em data-bell-count>4</em></div>
         </div>
     </div>
 </section>`;
@@ -96,9 +95,12 @@ const ai = (t: SiteCopy) => {
     const a = t.ai;
     return `
 <section class="ai section" id="ai" aria-labelledby="ai-title">
-    <div class="container ai__inner">
-        ${head(a.eyebrow, a.title, a.text, 'ai-title')}
-        <div class="ai__ui" aria-hidden="true" data-ai>
+    <div class="container split">
+        <div class="split__copy">
+            ${head(a.eyebrow, a.title, a.text, 'ai-title')}
+            <p class="fineprint" data-reveal>${esc(a.note)}</p>
+        </div>
+        <div class="ai__ui stage" aria-hidden="true" data-ai>
             <div class="ai__prompt">${icon('sparkles')}<span data-ai-prompt>${esc(a.prompt)}</span></div>
             <div class="ai__answer">
                 <span class="pill pill--ai">${icon('sparkles')}${esc(a.badge)}</span>
@@ -107,7 +109,6 @@ const ai = (t: SiteCopy) => {
                 <span class="btn btn--primary btn--sm ai__accept">${icon('check')}${esc(a.accept)}</span>
             </div>
         </div>
-        <p class="fineprint ai__note" data-reveal>${esc(a.note)}</p>
     </div>
 </section>`;
 };
@@ -146,44 +147,43 @@ const platforms = (t: SiteCopy) => {
     const p = t.platforms;
     const hrefs = [links.app, links.download, ''];
     const icons = ['globe', 'monitor', 'phone'] as const;
+    const visuals = [
+        // Web: a small board with real cards
+        `<div class="pf-web">${t.board.columns.slice(1, 4).map((col, c) => `
+            <div class="pf-web__col"><p><i class="dot dot--${['open', 'in-progress', 'review'][c]}"></i>${esc(col)}</p>
+            ${t.board.cards[c + 1].map((card) => `<span>${esc(card)}</span>`).join('')}</div>`).join('')}</div>`,
+        // Desktop: menu bar with focus timer + quick capture window
+        `<div class="pf-desk">
+            <div class="pf-desk__menubar">${logo('pf-desk__logo')}<span>${icon('timer')}24:13</span></div>
+            <div class="capture-pop">
+                <p>${icon('command')}${esc(p.capture)}</p>
+                <div class="capture-pop__field">${icon('plus')}<span data-capture-text>${esc(p.captureSample)}</span><i class="caret"></i></div>
+                <small>${esc(p.captureHint)}</small>
+            </div>
+        </div>`,
+        // iPhone: widget + live activity
+        `<div class="phone">
+            <div class="phone__island"></div>
+            <div class="phone__widget">
+                <p>${icon('sun')}${esc(p.widgetTitle)}<span>${esc(p.widgetCount)}</span></p>
+                ${t.app.tasks.slice(0, 3).map((task, i) => `<div class="phone__row">${check(i === 0)}<span>${esc(task.title)}</span></div>`).join('')}
+            </div>
+            <div class="phone__live">${icon('timer')}<span>${esc(t.app.focusTask)}</span><b>24:13</b></div>
+        </div>`,
+    ];
     return `
 <section class="platforms section" id="platforms" aria-labelledby="platforms-title">
     <div class="container">
         ${head(p.eyebrow, p.title, p.text, 'platforms-title')}
-        <div class="devices" aria-hidden="true" data-devices>
-            <div class="device device--desktop" data-depth="0.4">
-                <div class="device__bar"><span></span><span></span><span></span></div>
-                <div class="device__screen">
-                    <div class="mini-board">
-                        ${[5, 3, 4, 2].map((n, c) => `<div class="mini-board__col">${'<i></i>'.repeat(n - c % 2)}</div>`).join('')}
-                    </div>
-                </div>
-            </div>
-            <div class="device device--capture" data-depth="1">
-                <div class="capture-pop">
-                    <p>${icon('command')}${esc(p.capture)}</p>
-                    <div class="capture-pop__field">${icon('plus')}<span data-capture-text>${esc(p.captureSample)}</span><i class="caret"></i></div>
-                    <small>${esc(p.captureHint)}</small>
-                </div>
-            </div>
-            <div class="device device--phone" data-depth="0.7">
-                <div class="phone">
-                    <div class="phone__island"></div>
-                    <div class="phone__widget">
-                        <p>${icon('sun')}${esc(p.widgetTitle)}<span>${esc(p.widgetCount)}</span></p>
-                        ${t.app.tasks.slice(0, 3).map((task, i) => `<div class="phone__row">${check(i === 0)}<span>${esc(task.title)}</span></div>`).join('')}
-                    </div>
-                    <div class="phone__live">${icon('timer')}<span>${esc(t.app.focusTask)}</span><b>24:13</b></div>
-                </div>
-            </div>
-        </div>
-        <ul class="platform-cards" data-reveal-group>
+        <ul class="platform-cards" data-devices>
             ${p.items.map((item, i) => `
             <li class="platform-card" data-reveal>
-                <span class="platform-card__icon">${icon(icons[i])}</span>
-                <h3>${esc(item.title)}</h3>
-                <p>${esc(item.text)}</p>
-                ${hrefs[i] ? `<a class="link-arrow" href="${hrefs[i]}">${esc(item.cta)}${icon('arrowRight')}</a>` : `<span class="soon">${esc(item.cta)}</span>`}
+                <div class="platform-card__visual platform-card__visual--${item.key}" aria-hidden="true"><div data-depth="${[0.3, 0.5, 0.7][i]}">${visuals[i]}</div></div>
+                <div class="platform-card__body">
+                    <h3><span class="platform-card__icon">${icon(icons[i])}</span>${esc(item.title)}</h3>
+                    <p>${esc(item.text)}</p>
+                    ${hrefs[i] ? `<a class="link-arrow" href="${hrefs[i]}">${esc(item.cta)}${icon('arrowRight')}</a>` : `<span class="soon">${esc(item.cta)}</span>`}
+                </div>
             </li>`).join('')}
         </ul>
     </div>
@@ -195,7 +195,7 @@ const cta = (t: SiteCopy) => `
     <div class="container">
         <div class="cta__card theme-dark" data-reveal>
             <div class="cta__logo" aria-hidden="true" data-parallax="-30">${logo('cta__mark')}</div>
-            <h2 class="section-title" id="cta-title">${esc(t.cta.title)}</h2>
+            <h2 class="section-title" id="cta-title">${headline(t.cta.title)}</h2>
             <p class="section-text">${esc(t.cta.text)}</p>
             <div class="cta__actions">
                 <a class="btn btn--primary btn--lg" href="${links.register}" data-magnetic>${esc(t.cta.primary)}${icon('arrowRight')}</a>

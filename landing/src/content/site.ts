@@ -70,6 +70,7 @@ const de = {
         running: 'läuft',
         completed: 'Erledigt',
         projectProgress: 'Projektfortschritt',
+        others: ['Angebot an Nordlicht senden', 'Sprint-Review vorbereiten', 'Icons für Onboarding exportieren'],
     },
     board: {
         eyebrow: 'Projekte & Boards',
@@ -304,6 +305,7 @@ const en: SiteCopy = {
         running: 'running',
         completed: 'Done',
         projectProgress: 'Project progress',
+        others: ['Send proposal to Nordlicht', 'Prepare sprint review', 'Export onboarding icons'],
     },
     board: {
         eyebrow: 'Projects & boards',

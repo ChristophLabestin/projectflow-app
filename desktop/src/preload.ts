@@ -18,6 +18,7 @@ import {
     type QuickAccessAction,
     type QuickAccessState,
     type TitleBarTheme,
+    type UpdateState,
     type TraySnapshot,
     type WindowAction,
     type WindowKind
@@ -86,8 +87,11 @@ if (location.origin === appOrigin) {
         onWindowPayload: (callback: (payload: Record<string, unknown>) => void) => subscribe(IPC.windowPayload, callback),
         getUpcomingEvents: (): Promise<UpcomingEvent[]> => ipcRenderer.invoke(IPC.upcomingEvents),
         appAction: (action: AppAction) => ipcRenderer.send(IPC.appAction, action),
-        signInExternally: (): Promise<boolean> => ipcRenderer.invoke(IPC.signInExternally),
+        signInExternally: (provider?: string): Promise<boolean> => ipcRenderer.invoke(IPC.signInExternally, provider),
         indexSpotlight: (items: unknown[]) => ipcRenderer.send(IPC.indexSpotlight, items),
-        openInBrowser: (path: string) => ipcRenderer.send(IPC.openInBrowser, path)
+        openInBrowser: (path: string) => ipcRenderer.send(IPC.openInBrowser, path),
+        getUpdateState: (): Promise<UpdateState> => ipcRenderer.invoke(IPC.updateState),
+        onUpdateStateChange: (callback: (state: UpdateState) => void) => subscribe(IPC.updateStateChanged, callback),
+        applyUpdate: () => ipcRenderer.send(IPC.updateAction)
     });
 }

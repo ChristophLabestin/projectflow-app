@@ -6,7 +6,7 @@
 //
 // Files: <dir>/<type>.<lang>.md with type = privacy|terms|imprint, lang = de|en (both languages
 // required per type; missing types are skipped). Optional change summary: <dir>/<type>.summary.<lang>.md.
-// The first "# " heading becomes the title. Repo layout: legal/v1 (initial texts), legal/ (next version).
+// The first "# " heading becomes the title; a leading "_Last updated: …_" line is dropped. Repo layout: legal/v1 (initial texts), legal/ (next version).
 // Uses application default credentials (gcloud auth application-default login); set
 // FIRESTORE_EMULATOR_HOST to target an emulator. Project: GCLOUD_PROJECT or projectflow-labestin.
 import fs from 'node:fs';
@@ -37,7 +37,11 @@ const { Timestamp } = admin.firestore;
 const read = (file) => (fs.existsSync(file) ? fs.readFileSync(file, 'utf8').trim() : null);
 const splitTitle = (markdown) => {
     const match = /^#\s+(.+)\n+/.exec(markdown);
-    return match ? { title: match[1].trim(), content: markdown.slice(match[0].length).trim() } : { title: '', content: markdown };
+    const title = match ? match[1].trim() : '';
+    // A leading "_Zuletzt aktualisiert: …_" / "_Last updated: …_" line is dropped: the version's
+    // effectiveAt is shown instead.
+    const content = (match ? markdown.slice(match[0].length) : markdown).replace(/^_[^_\n]+_\s*\n+/, '').trim();
+    return { title, content };
 };
 const INITIAL_SUMMARY = {
     de: 'Erste Fassung im neuen Versionssystem. Bitte bestätigen Sie die geltende Fassung.',

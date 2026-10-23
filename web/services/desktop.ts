@@ -12,7 +12,8 @@ export type DesktopCapability =
     | 'tray-panel'
     | 'external-auth'
     | 'spotlight'
-    | 'open-in-browser';
+    | 'open-in-browser'
+    | 'updates';
 
 export type DesktopCommand =
     | 'new-task'
@@ -87,6 +88,15 @@ export interface DesktopTraySnapshot {
     pinned: { id: string; title: string; path: string | null }[];
 }
 
+/** `ready` = downloaded, a restart installs it; `available` = this build can only download it manually. */
+export interface DesktopUpdateState {
+    status: 'none' | 'available' | 'ready';
+    version?: string;
+}
+
+/** OAuth providers the desktop app hands off to the system browser. */
+export type DesktopAuthProvider = 'google' | 'github' | 'apple';
+
 export interface DesktopBridge {
     apiVersion: number;
     capabilities: DesktopCapability[];
@@ -123,10 +133,14 @@ export interface DesktopBridge {
     getUpcomingEvents?(): Promise<{ id: string; title: string; start: string; end: string }[]>;
     appAction?(action: 'show-main' | 'quick-access' | 'capture' | 'settings' | 'day-close' | 'quit'): void;
     // Since capability 'external-auth': opens the sign-in page in the system browser (OAuth handoff).
-    signInExternally?(): Promise<boolean>;
+    signInExternally?(provider?: DesktopAuthProvider): Promise<boolean>;
     // Since capability 'spotlight': replaces the Spotlight index (macOS); [] clears it.
     // Since capability 'open-in-browser': opens an app path in the system browser.
     openInBrowser?(path: string): void;
+    // Since capability 'updates': app update indicator (title bar / menu bar panel).
+    getUpdateState?(): Promise<DesktopUpdateState>;
+    onUpdateStateChange?(callback: (state: DesktopUpdateState) => void): () => void;
+    applyUpdate?(): void;
     indexSpotlight?(items: { id: string; title: string; subtitle?: string; keywords?: string[] }[]): void;
 }
 

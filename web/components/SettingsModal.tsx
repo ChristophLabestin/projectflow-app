@@ -1,3 +1,4 @@
+import { AiIntegrationsPanel } from './settings/AiIntegrationsPanel';
 import { McpConnectPanel } from './settings/McpConnectPanel';
 import { AccountDataSection } from './settings/AccountDataSection';
 import React, { useState, useEffect } from 'react';
@@ -16,7 +17,6 @@ import {
     EmailAuthProvider,
     updatePassword,
     linkWithCredential,
-    reauthenticateWithPopup,
     GithubAuthProvider,
     GoogleAuthProvider,
     OAuthProvider,
@@ -33,6 +33,7 @@ import { Checkbox } from './ui/Checkbox';
 import { NotificationSettingsPanel } from './settings/NotificationSettingsPanel';
 import { DesktopSettingsPanel } from './settings/DesktopSettingsPanel';
 import { getDesktopBridge, hasDesktopCapability, isDesktop } from '../services/desktop';
+import { reauthenticateWithProvider } from '../services/reauth';
 import { AppleLogo } from './ui/AppleLogo';
 import { AnimatePresence } from 'framer-motion';
 import { Modal } from './ui/Modal';
@@ -59,10 +60,10 @@ import {
 import { getTenant, updateTenant } from '../services/domain/workspaceService';
 import { clearGithubToken, getAIUsage, getGithubToken, getUserProfile, setGithubToken, updateUserData } from '../services/domain/usersService';
 
-type SettingsTab = 'account' | 'preferences' | 'notifications' | 'desktop' | 'security' | 'general' | 'roles' | 'api' | 'billing' | 'email' | 'integrations' | 'prebeta'
+type SettingsTab = 'account' | 'preferences' | 'notifications' | 'desktop' | 'security' | 'general' | 'roles' | 'api' | 'ai' | 'billing' | 'email' | 'integrations' | 'prebeta'
     | WorkspaceSettingsSection;
 
-const WORKSPACE_TABS: SettingsTab[] = ['workspace', 'members', 'roles', 'general', 'api', 'danger'];
+const WORKSPACE_TABS: SettingsTab[] = ['workspace', 'members', 'roles', 'general', 'ai', 'api', 'danger'];
 
 interface SettingsModalProps {
     isOpen: boolean;
@@ -415,9 +416,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
             } catch (linkError: any) {
                 if (linkError.code === 'auth/requires-recent-login') {
                     if (currentProviders.includes('github.com')) {
-                        await reauthenticateWithPopup(user, new GithubAuthProvider());
+                        await reauthenticateWithProvider(user, new GithubAuthProvider());
                     } else if (currentProviders.includes('google.com')) {
-                        await reauthenticateWithPopup(user, new GoogleAuthProvider());
+                        await reauthenticateWithProvider(user, new GoogleAuthProvider());
                     }
                     await linkWithPopup(user, new GoogleAuthProvider());
                 } else {
@@ -454,9 +455,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
             } catch (linkError: any) {
                 if (linkError.code === 'auth/requires-recent-login') {
                     if (currentProviders.includes('github.com')) {
-                        await reauthenticateWithPopup(user, new GithubAuthProvider());
+                        await reauthenticateWithProvider(user, new GithubAuthProvider());
                     } else if (currentProviders.includes('google.com')) {
-                        await reauthenticateWithPopup(user, new GoogleAuthProvider());
+                        await reauthenticateWithProvider(user, new GoogleAuthProvider());
                     }
                     await linkWithPopup(user, createAppleProvider());
                 } else {
@@ -501,15 +502,18 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
                         // Re-authenticate with OAuth providers if available
                         const currentProviders = user.providerData.map(p => p.providerId);
                         if (currentProviders.includes('github.com')) {
-                            await reauthenticateWithPopup(user, new GithubAuthProvider());
+                            await reauthenticateWithProvider(user, new GithubAuthProvider());
                         } else if (currentProviders.includes('google.com')) {
-                            await reauthenticateWithPopup(user, new GoogleAuthProvider());
+                            await reauthenticateWithProvider(user, new GoogleAuthProvider());
+                        } else if (currentProviders.includes('apple.com')) {
+                            await reauthenticateWithProvider(user, createAppleProvider());
                         } else {
                             // If they only have password, they'd need to re-auth with password
                             // For now we'll throw, as we don't have an "old password" field yet
                             throw updateError;
                         }
-                        await updatePassword(user, newPassword);
+                        // The desktop re-authentication replaces the User object.
+                        await updatePassword(auth.currentUser ?? user, newPassword);
                     } else {
                         throw updateError;
                     }
@@ -526,18 +530,20 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
                     if (linkError.code === 'auth/requires-recent-login') {
                         const currentProviders = user.providerData.map(p => p.providerId);
                         if (currentProviders.includes('github.com')) {
-                            await reauthenticateWithPopup(user, new GithubAuthProvider());
+                            await reauthenticateWithProvider(user, new GithubAuthProvider());
                         } else if (currentProviders.includes('google.com')) {
-                            await reauthenticateWithPopup(user, new GoogleAuthProvider());
+                            await reauthenticateWithProvider(user, new GoogleAuthProvider());
+                        } else if (currentProviders.includes('apple.com')) {
+                            await reauthenticateWithProvider(user, createAppleProvider());
                         }
-                        await linkWithCredential(user, credential);
+                        await linkWithCredential(auth.currentUser ?? user, credential);
                     } else {
                         throw linkError;
                     }
                 }
             }
 
-            setProviders(user.providerData.map(p => p.providerId));
+            setProviders((auth.currentUser ?? user).providerData.map(p => p.providerId));
             setShowSetPassword(false);
             setIsChangingPassword(false);
             setNewPassword('');
@@ -1211,7 +1217,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
                 { id: 'roles' as SettingsTab, label: t('workspaceSettings.tabs.roles'), icon: 'badge' },
                 { id: 'general' as SettingsTab, label: t('workspaceSettings.tabs.services'), icon: 'mail' },
             ] : []),
-            { id: 'api', label: t('workspaceSettings.tabs.api'), icon: 'key' },
+            { id: 'ai', label: t('workspaceSettings.tabs.ai'), icon: 'smart_toy' },
+            ...(workspaceRole === 'Owner' ? [{ id: 'api' as SettingsTab, label: t('workspaceSettings.tabs.api'), icon: 'key' }] : []),
             { id: 'danger', label: t('workspaceSettings.tabs.danger'), icon: 'warning' },
         ]
         : [
@@ -1962,6 +1969,16 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
                                 )}
                             </section>
                         </div>
+                    </div>
+                );
+            case 'ai':
+                return (
+                    <div className="space-y-6 animate-fade-in">
+                        <div className="mb-8">
+                            <h2 className="text-2xl font-display font-bold text-main">{t('aiSettings.title')}</h2>
+                            <p className="text-muted text-sm mt-1">{t('aiSettings.subtitle')}</p>
+                        </div>
+                        <AiIntegrationsPanel tenantId={tenantId || getActiveTenantId() || ''} role={workspaceRole} />
                     </div>
                 );
             case 'api':

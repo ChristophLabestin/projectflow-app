@@ -50,7 +50,47 @@
     "rewrites": [
       {
         "source": "/mcp",
-        "function": "mcp",
+        "function": "mcpServer",
+        "region": "europe-west3"
+      },
+      {
+        "source": "/.well-known/oauth-protected-resource",
+        "function": "mcpServer",
+        "region": "europe-west3"
+      },
+      {
+        "source": "/.well-known/oauth-protected-resource/**",
+        "function": "mcpServer",
+        "region": "europe-west3"
+      },
+      {
+        "source": "/.well-known/oauth-authorization-server",
+        "function": "oauth",
+        "region": "europe-west3"
+      },
+      {
+        "source": "/.well-known/oauth-authorization-server/**",
+        "function": "oauth",
+        "region": "europe-west3"
+      },
+      {
+        "source": "/oauth/authorize",
+        "function": "oauth",
+        "region": "europe-west3"
+      },
+      {
+        "source": "/oauth/token",
+        "function": "oauth",
+        "region": "europe-west3"
+      },
+      {
+        "source": "/oauth/register",
+        "function": "oauth",
+        "region": "europe-west3"
+      },
+      {
+        "source": "/oauth/revoke",
+        "function": "oauth",
         "region": "europe-west3"
       },
       {

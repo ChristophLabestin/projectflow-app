@@ -10,7 +10,7 @@ const TOKEN_ENV = 'PROJECTFLOW_API_TOKEN';
 /** Where MCP clients reach this deployment (hosting rewrite, or the functions emulator locally). */
 export const getMcpUrl = () => {
     if (import.meta.env.VITE_USE_FIREBASE_EMULATORS === 'true') {
-        return `http://127.0.0.1:5001/${firebaseConfig.projectId}/europe-west3/mcp`;
+        return `http://127.0.0.1:${import.meta.env.VITE_EMULATOR_FUNCTIONS_PORT || 5001}/${firebaseConfig.projectId}/europe-west3/mcp`;
     }
     const { hostname, origin } = window.location;
     return hostname === 'localhost' || hostname === '127.0.0.1' ? 'https://app.getprojectflow.com/mcp' : `${origin}/mcp`;

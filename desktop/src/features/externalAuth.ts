@@ -12,12 +12,13 @@ import { sendCommand, showMainWindow } from '../windows/mainWindow';
 const PENDING_TTL_MS = 15 * 60 * 1000;
 let pending: { verifier: string; startedAt: number } | null = null;
 
-export const startExternalSignIn = async () => {
+export const startExternalSignIn = async (provider?: unknown) => {
     const verifier = randomBytes(32).toString('base64url');
     const challenge = createHash('sha256').update(verifier).digest('base64url');
     pending = { verifier, startedAt: Date.now() };
     const url = new URL('/desktop/auth', APP_ORIGIN);
     url.searchParams.set('challenge', challenge);
+    if (typeof provider === 'string' && /^(google|github|apple)$/.test(provider)) url.searchParams.set('provider', provider);
     await shell.openExternal(url.toString());
     return true;
 };

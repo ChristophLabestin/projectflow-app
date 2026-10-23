@@ -3,6 +3,8 @@ import * as crypto from 'crypto';
 import { db } from './init';
 import { FieldValue } from 'firebase-admin/firestore';
 import { shouldTouchLastUsed } from './ai-access';
+import { isAiToken, resolveAiToken } from './ai-tokens';
+import { checkMachineLegalConsent, type MachineConsentResult } from './legal-machine-access';
 
 /**
  * Hash a token using SHA-256 (must match client-side implementation)
@@ -46,7 +48,7 @@ export const findApiToken = async (token: string): Promise<{
     return doc && tenantId ? { tokenRef: doc.ref, tokenData: doc.data(), tenantId } : null;
 };
 
-export type ApiTokenUsable = { ok: true; role: string } | { ok: false; error: string };
+export type ApiTokenUsable = { ok: true; role: string } | { ok: false; error: string; status?: 403 };
 
 /**
  * A workspace API token is only usable while it is unexpired and its creator is still a full
@@ -56,9 +58,14 @@ export type ApiTokenUsable = { ok: true; role: string } | { ok: false; error: st
 export const checkApiTokenUsable = async (
     tokenData: any,
     tenantId: string,
-    deps: { getMemberRole: (tenantId: string, uid: string) => Promise<string | null>; now: () => Date } = {
+    deps: {
+        getMemberRole: (tenantId: string, uid: string) => Promise<string | null>;
+        now: () => Date;
+        checkConsent?: (uid: string) => Promise<MachineConsentResult>;
+    } = {
         getMemberRole: (t, uid) => getWorkspaceMemberRole(t, uid),
-        now: () => new Date()
+        now: () => new Date(),
+        checkConsent: (uid) => checkMachineLegalConsent(uid)
     }
 ): Promise<ApiTokenUsable> => {
     const expiresAt = tokenData?.expiresAt?.toDate?.();
@@ -67,6 +74,8 @@ export const checkApiTokenUsable = async (
     if (!creator) return { ok: false, error: 'Token has no owner. Create a new token.' };
     const role = await deps.getMemberRole(tenantId, creator);
     if (!role || role === 'Guest') return { ok: false, error: 'Token creator is no longer a member of this workspace.' };
+    const consent = deps.checkConsent ? await deps.checkConsent(creator) : { ok: true as const };
+    if (!consent.ok) return { ok: false, error: consent.error, status: 403 };
     return { ok: true, role };
 };
 
@@ -76,8 +85,25 @@ export const checkApiTokenUsable = async (
 export const validateAPIToken = async (
     token: string,
     requiredPermission: ApiPermission
-): Promise<{ valid: boolean; tokenData?: any; tenantId?: string; tokenId?: string; memberRole?: string; error?: string }> => {
+): Promise<{ valid: boolean; tokenData?: any; tenantId?: string; tokenId?: string; memberRole?: string; error?: string; status?: 403 }> => {
     try {
+        // 0. User-bound AI credentials (OAuth access tokens, personal access tokens).
+        if (isAiToken(token)) {
+            const resolved = await resolveAiToken(token);
+            if (!resolved) return { valid: false, error: 'Invalid token' };
+            if ('error' in resolved) return { valid: false, error: resolved.error, status: resolved.status };
+            if (!resolved.tokenData.permissions.includes(requiredPermission)) {
+                return { valid: false, error: 'Insufficient permissions' };
+            }
+            return {
+                valid: true,
+                tokenData: resolved.tokenData,
+                tenantId: resolved.tenantId,
+                tokenId: resolved.tokenId,
+                memberRole: resolved.memberRole
+            };
+        }
+
         // 1. Firebase ID tokens (signed-in app users) are only accepted for
         //    workspace-scoped PM endpoints. The caller must still verify the
         //    user's membership in the requested tenant (see requireWorkspaceMember).
@@ -107,7 +133,7 @@ export const validateAPIToken = async (
 
             const usable = await checkApiTokenUsable(tokenData, tenantId);
             if (!usable.ok) {
-                return { valid: false, error: usable.error };
+                return { valid: false, error: usable.error, status: usable.status };
             }
 
             // Check permissions

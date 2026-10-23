@@ -29,6 +29,7 @@ import { QuickCaptureWindow } from './screens/QuickCaptureWindow';
 import { DesktopDayWindow } from './screens/DesktopDayWindow';
 import { DesktopTrayPanel } from './screens/DesktopTrayPanel';
 import { DesktopAuthHandoff } from './screens/DesktopAuthHandoff';
+import { OAuthConsent } from './screens/OAuthConsent';
 import { SettingsUrlOpener } from './components/settings/SettingsUrlOpener';
 import { DESKTOP_QUICK_ACCESS_PATH, desktopWindowKind, isDesktop } from './services/desktop';
 import { ErrorPage } from './screens/ErrorPage';
@@ -239,6 +240,8 @@ export const AppRouter = () => {
                     <Route path="/desktop/day" element={<LegalConsentGate><DesktopDayWindow /></LegalConsentGate>} />
                     <Route path="/desktop/tray" element={<LegalConsentGate><DesktopTrayPanel /></LegalConsentGate>} />
                     <Route path="/desktop/auth" element={<DesktopAuthHandoff />} />
+                    {/* Consent first, then authorize: the gate keeps ?request=… (it never navigates). /desktop/auth stays ungated: it only hands a sign-in code to the desktop app, whose windows are gated. */}
+                    <Route path="/oauth/consent" element={<LegalConsentGate><OAuthConsent /></LegalConsentGate>} />
                     {/* Public project intake was removed; old share links land on the app start. */}
                     <Route path="/feedback/project/:token" element={<Navigate to="/" replace />} />
 

@@ -4,7 +4,11 @@ import * as crypto from 'crypto';
 import { getAuthToken, getWorkspaceMemberRole, type ApiPermission, validateAPIToken } from './authUtils';
 import { db } from './init';
 import { canReachProject, checkWorkspaceAccess, effectiveScopes, normalizeRole, type PrincipalKind, RATE_LIMITS } from './ai-access';
-import { type AiAuditEntry, aiRateLimiter, loadAiPolicy, writeAiAudit } from './ai-store';
+import { type AiAuditEntry, aiRateLimiter, loadAiPolicy, takeDailyWrite, writeAiAudit } from './ai-store';
+import { normalizeFocus } from './focus-logic';
+import { matchesQuery, normalizeQuery, planToday, toTaskRef } from './mcp-views';
+import { resolveNotificationPrefs } from './notification-prefs';
+import { DEFAULT_TIMEZONE } from './tz-utils';
 import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 
 type ApiContext = {
@@ -335,8 +339,8 @@ const authRequest = async (
 
     const validation = await validateAPIToken(token, permission);
     if (!validation.valid || !validation.tokenData) {
-        if (validation.error === 'Insufficient permissions') {
-            forbidden(res, validation.error);
+        if (validation.error === 'Insufficient permissions' || validation.status === 403) {
+            forbidden(res, validation.error || 'Forbidden.');
             return null;
         }
         unauthorized(res, validation.error || 'Invalid API token.');
@@ -406,6 +410,12 @@ const authRequest = async (
         if (retryAfter > 0) {
             res.set?.('Retry-After', String(retryAfter));
             res.status(429).json({ success: false, error: `Rate limit exceeded. Retry in ${retryAfter}s.`, retryAfter });
+            return null;
+        }
+
+        if (isWrite && !(await takeDailyWrite(tenantId))) {
+            res.set?.('Retry-After', '3600');
+            res.status(429).json({ success: false, error: 'This workspace reached its daily limit for AI writes. Try again tomorrow.' });
             return null;
         }
 
@@ -580,7 +590,7 @@ const createProject = async (req: any, res: any) => {
     await writeProjectActivity(
         context.tenantId,
         created.id,
-        `Created project "${title}" via API token ${context.actorLabel}`,
+        `Created project "${title}" ${viaLabel(context)}`,
         'Project',
         created.id,
         context.actorId,
@@ -626,7 +636,7 @@ const updateProject = async (req: any, res: any, projectId: string) => {
     await writeProjectActivity(
         context.tenantId,
         projectId,
-        `Updated project "${projectSnapshot.data()?.title || projectId}" via API token ${context.actorLabel}`,
+        `Updated project "${projectSnapshot.data()?.title || projectId}" ${viaLabel(context)}`,
         'Project',
         projectId,
         context.actorId,
@@ -671,7 +681,7 @@ const deleteProject = async (req: any, res: any, projectId: string) => {
     await writeProjectActivity(
         context.tenantId,
         projectId,
-        `Deleted project "${projectSnapshot.data()?.title || projectId}" via API token ${context.actorLabel}`,
+        `Deleted project "${projectSnapshot.data()?.title || projectId}" ${viaLabel(context)}`,
         'Project',
         projectId,
         context.actorId,
@@ -770,7 +780,7 @@ const createTask = async (req: any, res: any, projectId: string) => {
     await writeProjectActivity(
         context.tenantId,
         projectId,
-        `Created task "${title}" via API token ${context.actorLabel}`,
+        `Created task "${title}" ${viaLabel(context)}`,
         'Tasks',
         created.id,
         context.actorId,
@@ -822,7 +832,7 @@ const updateTask = async (req: any, res: any, projectId: string, taskId: string)
     await writeProjectActivity(
         context.tenantId,
         projectId,
-        `Updated task "${latestTaskTitle || taskId}" via API token ${context.actorLabel}`,
+        `Updated task "${latestTaskTitle || taskId}" ${viaLabel(context)}`,
         'Tasks',
         taskId,
         context.actorId,
@@ -860,7 +870,7 @@ const deleteTask = async (req: any, res: any, projectId: string, taskId: string)
     await writeProjectActivity(
         context.tenantId,
         projectId,
-        `Deleted task "${taskTitle || taskId}" via API token ${context.actorLabel}`,
+        `Deleted task "${taskTitle || taskId}" ${viaLabel(context)}`,
         'Tasks',
         taskId,
         context.actorId,
@@ -1121,7 +1131,7 @@ const createInitiative = async (req: any, res: any, projectId: string) => {
     await writeProjectActivity(
         context.tenantId,
         projectId,
-        `Created initiative "${title}" via API token ${context.actorLabel}`,
+        `Created initiative "${title}" ${viaLabel(context)}`,
         'Initiatives',
         created.id,
         context.actorId,
@@ -1195,7 +1205,7 @@ const updateInitiative = async (req: any, res: any, projectId: string, initiativ
     await writeProjectActivity(
         context.tenantId,
         projectId,
-        `Updated initiative "${getString(latestSnapshot.data()?.title) || initiativeId}" via API token ${context.actorLabel}`,
+        `Updated initiative "${getString(latestSnapshot.data()?.title) || initiativeId}" ${viaLabel(context)}`,
         'Initiatives',
         initiativeId,
         context.actorId,
@@ -1243,7 +1253,7 @@ const deleteInitiative = async (req: any, res: any, projectId: string, initiativ
     await writeProjectActivity(
         context.tenantId,
         projectId,
-        `Deleted initiative "${initiativeTitle || initiativeId}" via API token ${context.actorLabel}`,
+        `Deleted initiative "${initiativeTitle || initiativeId}" ${viaLabel(context)}`,
         'Initiatives',
         initiativeId,
         context.actorId,
@@ -1432,7 +1442,7 @@ const createSubtask = async (req: any, res: any, projectId: string, taskId: stri
     await writeProjectActivity(
         context.tenantId,
         projectId,
-        `Created subtask "${title}" via API token ${context.actorLabel}`,
+        `Created subtask "${title}" ${viaLabel(context)}`,
         'Tasks',
         taskId,
         context.actorId,
@@ -1513,7 +1523,7 @@ const updateSubtask = async (req: any, res: any, projectId: string, taskId: stri
     await writeProjectActivity(
         context.tenantId,
         projectId,
-        `Updated subtask "${getString(subtaskSnapshot.data()?.title) || subtaskId}" via API token ${context.actorLabel}`,
+        `Updated subtask "${getString(subtaskSnapshot.data()?.title) || subtaskId}" ${viaLabel(context)}`,
         'Tasks',
         taskId,
         context.actorId,
@@ -1556,7 +1566,7 @@ const deleteSubtask = async (req: any, res: any, projectId: string, taskId: stri
     await writeProjectActivity(
         context.tenantId,
         projectId,
-        `Deleted subtask "${subtaskTitle || subtaskId}" via API token ${context.actorLabel}`,
+        `Deleted subtask "${subtaskTitle || subtaskId}" ${viaLabel(context)}`,
         'Tasks',
         taskId,
         context.actorId,
@@ -1675,7 +1685,7 @@ const createProjectCollectionItem = async (
     await writeProjectActivity(
         context.tenantId,
         projectId,
-        `Created ${requiredLabel} "${requiredValue}" via API token ${context.actorLabel}`,
+        `Created ${requiredLabel} "${requiredValue}" ${viaLabel(context)}`,
         activityTarget,
         created.id,
         context.actorId,
@@ -1770,7 +1780,7 @@ const updateProjectCollectionItem = async (
     await writeProjectActivity(
         context.tenantId,
         projectId,
-        `Updated ${notFoundLabel.toLowerCase()} "${getString(itemSnapshot.data()?.title) || getString(itemSnapshot.data()?.name) || itemId}" via API token ${context.actorLabel}`,
+        `Updated ${notFoundLabel.toLowerCase()} "${getString(itemSnapshot.data()?.title) || getString(itemSnapshot.data()?.name) || itemId}" ${viaLabel(context)}`,
         activityTarget,
         itemId,
         context.actorId,
@@ -1820,7 +1830,7 @@ const deleteProjectCollectionItem = async (
     await writeProjectActivity(
         context.tenantId,
         projectId,
-        `Deleted ${notFoundLabel.toLowerCase()} "${itemTitle || itemId}" via API token ${context.actorLabel}`,
+        `Deleted ${notFoundLabel.toLowerCase()} "${itemTitle || itemId}" ${viaLabel(context)}`,
         activityTarget,
         itemId,
         context.actorId,
@@ -2660,6 +2670,115 @@ const PROJECTFLOW_SUPPORTED_ENDPOINTS = [
     'POST /api/projectflow/projects/:projectId/codex/followups/bulk-create'
 ];
 
+// ---------------------------------------------------------------------------
+// Compact AI views: search + my today (brain/plans/ai-integrations-concept.md §5)
+// ---------------------------------------------------------------------------
+
+/** Activity suffix naming the machine client: "via Claude", "via personal token CI", "via API token Codex". */
+const viaLabel = (context: ApiContext) =>
+    context.kind === 'oauth'
+        ? `via ${context.actorLabel}`
+        : context.kind === 'personal-token'
+            ? `via personal token ${context.actorLabel}`
+            : `via API token ${context.actorLabel}`;
+
+const SEARCH_MAX_PROJECTS = 15;
+const SEARCH_TASKS_PER_PROJECT = 200;
+const SEARCH_RATE = { capacity: 10, refillPerSecond: 10 / 60 };
+
+/** Projects the caller may see: project-scope token → that one; guests → their projects. */
+const reachableProjects = async (context: ApiContext) => {
+    const scopedProjectId = getString(context.tokenData.projectScope);
+    const docs = scopedProjectId
+        ? [await projectRef(context.tenantId, scopedProjectId).get()].filter((snap) => snap.exists)
+        : (await db.collection('tenants').doc(context.tenantId).collection(PROJECTS).orderBy('createdAt', 'desc').get()).docs;
+    const uid = getString(context.tokenData.uid) || getString(context.tokenData.createdBy);
+    const role = normalizeRole(context.memberRole) || 'Member';
+    return docs.filter((snap) => canReachProject(role, uid, snap.data()));
+};
+
+const callerTimeZone = async (uid: string) => {
+    if (!uid) return DEFAULT_TIMEZONE;
+    const user = await db.doc(`users/${uid}`).get().catch(() => null);
+    return resolveNotificationPrefs(user?.data()?.notificationPrefs).timezone;
+};
+
+const searchWorkspace = async (req: any, res: any) => {
+    const context = await authRequest(req, res, 'tasks:read', undefined, true);
+    if (!context) return;
+    const query = normalizeQuery(req.query?.q);
+    if (query.length < 2) {
+        badRequest(res, 'q must have at least 2 characters.');
+        return;
+    }
+    const retryAfter = aiRateLimiter.take(`search:${context.tenantId}:${context.actorId}`, SEARCH_RATE);
+    if (retryAfter > 0) {
+        res.set?.('Retry-After', String(retryAfter));
+        res.status(429).json({ success: false, error: `Search rate limit exceeded. Retry in ${retryAfter}s.`, retryAfter });
+        return;
+    }
+    const limit = Math.min(Math.max(Number(req.query?.limit) || 20, 1), 50);
+    const includeDone = String(req.query?.includeDone || '') === 'true';
+    const timeZone = await callerTimeZone(getString(context.tokenData.uid) || getString(context.tokenData.createdBy));
+
+    const projects = await reachableProjects(context);
+    const projectHits = projects
+        .filter((snap) => matchesQuery(query, snap.data()?.title, snap.data()?.description))
+        .slice(0, limit)
+        .map((snap) => ({ id: snap.id, title: snap.data()?.title, status: snap.data()?.status }));
+
+    const open = projects.filter((snap) => includeDone || !['Completed', 'Canceled'].includes(snap.data()?.status));
+    const taskHits: ReturnType<typeof toTaskRef>[] = [];
+    let truncated = open.length > SEARCH_MAX_PROJECTS;
+    for (const project of open.slice(0, SEARCH_MAX_PROJECTS)) {
+        if (taskHits.length >= limit) {
+            truncated = true;
+            break;
+        }
+        const tasks = await taskCollectionRef(context.tenantId, project.id).orderBy('createdAt', 'desc').limit(SEARCH_TASKS_PER_PROJECT).get();
+        for (const task of tasks.docs) {
+            const data = task.data();
+            if (!includeDone && (data.isCompleted === true || data.status === 'Done')) continue;
+            if (!matchesQuery(query, data.title, data.description)) continue;
+            taskHits.push(toTaskRef(task.id, project.id, data, timeZone, project.data()?.title));
+            if (taskHits.length >= limit) break;
+        }
+    }
+    res.status(200).json({ success: true, query, projects: projectHits, tasks: taskHits, truncated });
+};
+
+const myToday = async (req: any, res: any) => {
+    const context = await authRequest(req, res, 'tasks:read', undefined, true);
+    if (!context) return;
+    const uid = getString(context.tokenData.uid) || getString(context.tokenData.createdBy);
+    if (!uid) {
+        badRequest(res, 'This credential has no user.');
+        return;
+    }
+    const [timeZone, user, assigned, projects] = await Promise.all([
+        callerTimeZone(uid),
+        db.doc(`users/${uid}`).get(),
+        db.collectionGroup(TASKS)
+            .where('tenantId', '==', context.tenantId)
+            .where('assigneeIds', 'array-contains', uid)
+            .where('isCompleted', '==', false)
+            .limit(300)
+            .get(),
+        reachableProjects(context)
+    ]);
+    const titles = new Map(projects.map((snap) => [snap.id, String(snap.data()?.title || '')]));
+    const tasks = assigned.docs
+        .map((doc) => ({ projectId: doc.ref.parent.parent?.id || '', doc }))
+        .filter(({ projectId }) => titles.has(projectId))
+        .map(({ projectId, doc }) => ({ ref: toTaskRef(doc.id, projectId, doc.data(), timeZone, titles.get(projectId)), raw: doc.data() }));
+    const focus = normalizeFocus(user.data()?.focusState);
+    res.status(200).json({
+        success: true,
+        focus: focus && (!focus.tenantId || focus.tenantId === context.tenantId) ? focus : null,
+        ...planToday(tasks, Date.now(), timeZone)
+    });
+};
+
 export const handleProjectflowApiRoute = async (req: any, res: any, path: string): Promise<boolean> => {
     const handled = await routeProjectflowApi(req, res, path);
     const audit: PendingAudit | undefined = req.__pfAudit;
@@ -2678,6 +2797,16 @@ const routeProjectflowApi = async (req: any, res: any, path: string): Promise<bo
 
     if (segments[0] !== 'projectflow') {
         return false;
+    }
+
+    if (req.method === 'GET' && segments.length === 2 && segments[1] === 'search') {
+        await searchWorkspace(req, res);
+        return true;
+    }
+
+    if (req.method === 'GET' && segments.length === 3 && segments[1] === 'me' && segments[2] === 'today') {
+        await myToday(req, res);
+        return true;
     }
 
     if (segments.length === 2 && segments[1] === PROJECTS) {

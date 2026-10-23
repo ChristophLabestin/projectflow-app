@@ -33,7 +33,14 @@ const mcp = async (token, method, params = {}) => {
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json', Accept: 'application/json, text/event-stream' },
         body: JSON.stringify({ jsonrpc: '2.0', id: 1, method, params })
     });
-    return { status: res.status, body: await res.json().catch(() => null) };
+    // 2026-07-28 requests get JSON; legacy (no protocol meta) requests get one SSE `message` event.
+    const text = await res.text();
+    const data = text.startsWith('event:') || text.startsWith('data:')
+        ? text.split('\n').filter((line) => line.startsWith('data:')).map((line) => line.slice(5).trim()).join('')
+        : text;
+    let body = null;
+    try { body = JSON.parse(data); } catch { body = null; }
+    return { status: res.status, body };
 };
 
 (async () => {
@@ -86,12 +93,153 @@ const mcp = async (token, method, params = {}) => {
     // MCP: role in whoami, filtered + fully annotated tools
     const list = await mcp('pfat_owner', 'tools/list');
     const tools = list.body?.result?.tools || [];
-    check('mcp tools/list', list.status === 200 && tools.length > 20, `status=${list.status} tools=${tools.length}`);
+    check('mcp tools/list', list.status === 200 && tools.length === 29, `status=${list.status} tools=${tools.length}`);
     check('all tools fully annotated', tools.every((t) => ['readOnlyHint', 'destructiveHint', 'idempotentHint', 'openWorldHint'].every((k) => typeof t.annotations?.[k] === 'boolean')));
     check('delete_task is destructive', tools.find((t) => t.name === 'delete_task')?.annotations?.destructiveHint === true);
     const who = await mcp('pfat_member', 'tools/call', { name: 'whoami', arguments: {} });
     const whoText = who.body?.result?.content?.[0]?.text || '';
     check('whoami reports role and drops projects:delete for members', /"role":\s*"Member"/.test(whoText) && !whoText.includes('projects:delete'), whoText.slice(0, 120));
+
+    // Compact AI views: search + my_today
+    const day = (offset) => new Date(Date.now() + offset * 86400000).toLocaleDateString('en-CA', { timeZone: 'Europe/Berlin' });
+    const taskBase = { tenantId: T, assigneeIds: ['owner'], isCompleted: false, status: 'Open', createdAt: admin.firestore.Timestamp.now() };
+    await db.doc(`tenants/${T}/projects/p1/tasks/t-login`).set({ ...taskBase, title: 'Fix login bug', dueDate: day(-1), priority: 'High' });
+    await db.doc(`tenants/${T}/projects/p1/tasks/t-notes`).set({ ...taskBase, title: 'Write release notes', dueDate: day(0) });
+    await db.doc(`tenants/${T}/projects/p2/tasks/t-later`).set({ ...taskBase, title: 'Plan Q4 login revamp', dueDate: day(30) });
+    const found = await mcp('pfat_owner', 'tools/call', { name: 'search', arguments: { query: 'login' } });
+    const foundBody = JSON.parse(found.body?.result?.content?.[0]?.text || '{}');
+    check('search finds tasks across projects', foundBody.tasks?.length === 2 && foundBody.tasks.every((t) => t.projectTitle), JSON.stringify(foundBody).slice(0, 140));
+    const today = await mcp('pfat_owner', 'tools/call', { name: 'my_today', arguments: {} });
+    const todayBody = JSON.parse(today.body?.result?.content?.[0]?.text || '{}');
+    check('my_today groups overdue / today / later', todayBody.counts?.overdue === 1 && todayBody.counts?.today === 1 && todayBody.counts?.later === 1,
+        JSON.stringify(todayBody.counts || todayBody).slice(0, 140));
+    const shortQuery = await api('pfat_owner', 'GET', '/search?q=a');
+    check('search rejects 1-char queries', shortQuery.status === 400);
+
+    // Official MCP client (2025-era initialize handshake) against the v2 server
+    const { Client } = require('@modelcontextprotocol/sdk/client/index.js');
+    const { StreamableHTTPClientTransport } = require('@modelcontextprotocol/sdk/client/streamableHttp.js');
+    const sdkClient = new Client({ name: 'ai-access-test', version: '1' });
+    await sdkClient.connect(new StreamableHTTPClientTransport(new URL(`${BASE}/mcp`), { requestInit: { headers: { Authorization: 'Bearer pfat_owner' } } }));
+    const sdkTools = await sdkClient.listTools();
+    const sdkWho = await sdkClient.callTool({ name: 'whoami', arguments: {} });
+    check('official client: initialize + tools/list + tools/call', sdkTools.tools.length === 29 && /"role":\s*"Owner"/.test(sdkWho.content?.[0]?.text || ''), `tools=${sdkTools.tools.length}`);
+    await sdkClient.close();
+
+    // ---------------------------------------------------------------------
+    // OAuth 2.1 (DCR + PKCE + consent) and personal access tokens
+    // ---------------------------------------------------------------------
+    const AUTH = 'http://127.0.0.1:9951';
+    const signUp = await fetch(`${AUTH}/identitytoolkit.googleapis.com/v1/accounts:signUp?key=fake`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: 'oauth-user@example.com', password: 'test-password-1', returnSecureToken: true })
+    }).then((r) => r.json());
+    const uid = signUp.localId;
+    const idToken = signUp.idToken;
+    await db.doc(`tenants/${T}/members/${uid}`).set({ uid, role: 'Member' });
+    await db.doc(`tenants/${OFF}/members/${uid}`).set({ uid, role: 'Member' });
+    const callable = async (name, data) => {
+        const res = await fetch(`${BASE}/${name}`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` },
+            body: JSON.stringify({ data })
+        });
+        const body = await res.json().catch(() => null);
+        return { status: res.status, result: body?.result, error: body?.error };
+    };
+
+    const unauth = await fetch(`${BASE}/mcp`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+    const challenge = unauth.headers.get('www-authenticate') || '';
+    check('401 without token carries resource_metadata', unauth.status === 401 && /resource_metadata="[^"]+oauth-protected-resource"/.test(challenge), challenge.slice(0, 120));
+    const prm = await fetch(`${BASE}/mcp/.well-known/oauth-protected-resource`).then((r) => r.json());
+    check('protected resource metadata', prm.resource === `${BASE}/mcp` && prm.authorization_servers?.[0] === `${BASE}/oauth`, JSON.stringify(prm).slice(0, 120));
+    const asMeta = await fetch(`${BASE}/oauth/.well-known/oauth-authorization-server`).then((r) => r.json());
+    check('authorization server metadata (S256, CIMD, DCR)', asMeta.issuer === `${BASE}/oauth` && asMeta.code_challenge_methods_supported?.includes('S256') &&
+        asMeta.client_id_metadata_document_supported === true && !!asMeta.registration_endpoint);
+
+    const REDIRECT = 'http://127.0.0.1:43123/callback';
+    const reg = await fetch(`${BASE}/oauth/oauth/register`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ client_name: 'Test CLI', redirect_uris: [REDIRECT], token_endpoint_auth_method: 'none' })
+    });
+    const client = await reg.json();
+    check('dynamic client registration', reg.status === 201 && /^pfc_/.test(client.client_id || ''), `status=${reg.status}`);
+    const badReg = await fetch(`${BASE}/oauth/oauth/register`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ redirect_uris: ['javascript:alert(1)'] })
+    });
+    check('registration rejects script redirect', badReg.status === 400);
+
+    const verifier = crypto.randomBytes(32).toString('base64url');
+    const challengeS256 = crypto.createHash('sha256').update(verifier).digest('base64url');
+    const authorizeUrl = (extra = {}) => `${BASE}/oauth/oauth/authorize?${new URLSearchParams({
+        response_type: 'code', client_id: client.client_id, redirect_uri: 'http://127.0.0.1:50000/callback',
+        code_challenge: challengeS256, code_challenge_method: 'S256', state: 'xyz',
+        scope: 'projects:read tasks:read tasks:write tasks:delete', resource: `${BASE}/mcp`, ...extra
+    })}`;
+    const noPkce = await fetch(authorizeUrl({ code_challenge_method: 'plain' }), { redirect: 'manual' });
+    check('authorize without S256 is refused', noPkce.status === 302 && /error=invalid_request/.test(noPkce.headers.get('location') || ''));
+    const badRedirect = await fetch(authorizeUrl({ redirect_uri: 'https://evil.example/cb' }), { redirect: 'manual' });
+    check('authorize with unregistered redirect shows an error page (no redirect)', badRedirect.status === 400);
+    const authorize = await fetch(authorizeUrl(), { redirect: 'manual' });
+    const consentLocation = authorize.headers.get('location') || '';
+    const requestId = new URL(consentLocation, 'http://x').searchParams.get('request');
+    check('authorize redirects to consent (loopback port may differ)', authorize.status === 302 && consentLocation.includes('/oauth/consent?request=') && !!requestId, consentLocation);
+
+    const consent = await callable('getOAuthConsentRequest', { requestId });
+    const wsOn = consent.result?.workspaces?.find((w) => w.tenantId === T);
+    const wsOff = consent.result?.workspaces?.find((w) => w.tenantId === OFF);
+    check('consent lists workspaces with policy state', wsOn?.allowed === true && wsOff?.allowed === false && wsOff?.reason === 'disabled' && consent.result?.client?.verified === false,
+        JSON.stringify(consent.result || consent.error).slice(0, 160));
+    const approveOff = await callable('approveOAuthConsent', { requestId, tenantId: OFF, scopes: ['tasks:read'] });
+    check('consent refuses a workspace with AI off', approveOff.status !== 200);
+    const approve = await callable('approveOAuthConsent', { requestId, tenantId: T, scopes: ['projects:read', 'tasks:read', 'tasks:write', 'tasks:delete'] });
+    const back = new URL(approve.result?.redirectUrl || 'http://x/');
+    const code = back.searchParams.get('code');
+    check('consent returns code + state + iss to the client', !!code && back.searchParams.get('state') === 'xyz' && back.searchParams.get('iss') === `${BASE}/oauth`, back.toString().slice(0, 100));
+
+    const tokenRequest = (params) => fetch(`${BASE}/oauth/oauth/token`, {
+        method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams(params).toString()
+    }).then(async (r) => ({ status: r.status, body: await r.json() }));
+    const badVerifier = await tokenRequest({ grant_type: 'authorization_code', code, client_id: client.client_id, redirect_uri: 'http://127.0.0.1:50000/callback', code_verifier: 'x'.repeat(43) });
+    check('token: wrong PKCE verifier fails', badVerifier.status === 400 && badVerifier.body.error === 'invalid_grant');
+    // The failed attempt consumed the code (single use): run the flow again for a fresh one.
+    const authorize2 = await fetch(authorizeUrl(), { redirect: 'manual' });
+    const requestId2 = new URL(authorize2.headers.get('location') || '', 'http://x').searchParams.get('request');
+    const approve2 = await callable('approveOAuthConsent', { requestId: requestId2, tenantId: T, scopes: ['projects:read', 'tasks:read', 'tasks:write', 'tasks:delete'] });
+    const code2 = new URL(approve2.result?.redirectUrl || 'http://x/').searchParams.get('code');
+    const issued = await tokenRequest({ grant_type: 'authorization_code', code: code2, client_id: client.client_id, redirect_uri: 'http://127.0.0.1:50000/callback', code_verifier: verifier, resource: `${BASE}/mcp` });
+    check('token: code + PKCE → access + refresh', issued.status === 200 && /^pfo_/.test(issued.body.access_token || '') && /^pfr_/.test(issued.body.refresh_token || '') &&
+        !issued.body.scope.includes('tasks:delete'), JSON.stringify(issued.body).slice(0, 140));
+    const access = issued.body.access_token;
+
+    const oauthTools = await mcp(access, 'tools/list');
+    const oauthToolNames = (oauthTools.body?.result?.tools || []).map((t) => t.name);
+    check('mcp accepts OAuth token; delete tools hidden (policy)', oauthTools.status === 200 && oauthToolNames.includes('create_task') && !oauthToolNames.includes('delete_task'), `status=${oauthTools.status}`);
+    const oauthWrite = await api(access, 'POST', '/projects/p1/tasks', { title: 'Created via OAuth' });
+    check('OAuth token writes as the user', oauthWrite.status < 300, `status=${oauthWrite.status}`);
+    const oauthAudit = (await db.collection(`tenants/${T}/ai_audit`).where('kind', '==', 'oauth').get()).docs[0]?.data();
+    check('OAuth write audited with user + client', oauthAudit?.actorId === uid && oauthAudit?.clientName === 'Test CLI', JSON.stringify(oauthAudit || {}).slice(0, 120));
+    const connections = await callable('listAiConnections', { tenantId: T });
+    check('connection is listed for the user', connections.result?.connections?.some((c) => c.kind === 'oauth' && c.clientName === 'Test CLI'));
+
+    const refreshed = await tokenRequest({ grant_type: 'refresh_token', refresh_token: issued.body.refresh_token, client_id: client.client_id });
+    check('refresh rotates tokens', refreshed.status === 200 && refreshed.body.refresh_token !== issued.body.refresh_token);
+    const reuse = await tokenRequest({ grant_type: 'refresh_token', refresh_token: issued.body.refresh_token, client_id: client.client_id });
+    check('refresh token reuse is rejected', reuse.status === 400 && reuse.body.error === 'invalid_grant');
+    const afterReuse = await mcp(refreshed.body.access_token, 'tools/list');
+    check('reuse revokes the whole connection', afterReuse.status === 401, `status=${afterReuse.status}`);
+
+    const pat = await callable('createPersonalAccessToken', { tenantId: T, name: 'CI', scopes: ['projects:read', 'tasks:read'], expiresInDays: 30 });
+    check('personal access token created', /^pfp_/.test(pat.result?.token || ''), JSON.stringify(pat.error || {}).slice(0, 100));
+    const patRead = await api(pat.result.token, 'GET', '/projects');
+    const patWrite = await api(pat.result.token, 'POST', '/projects/p1/tasks', { title: 'nope' });
+    check('PAT reads, cannot write beyond its scopes', patRead.status === 200 && patWrite.status === 403, `read=${patRead.status} write=${patWrite.status}`);
+    const revoke = await callable('revokeAiConnection', { grantId: pat.result.id });
+    const patAfter = await api(pat.result.token, 'GET', '/projects');
+    check('revoking a connection kills its token', revoke.result?.success === true && patAfter.status === 401, `status=${patAfter.status}`);
+
+    await db.doc(`tenants/${T}/members/${uid}`).delete();
+    const pat2 = await callable('createPersonalAccessToken', { tenantId: T, name: 'x', scopes: ['tasks:read'], expiresInDays: 1 });
+    check('non-member cannot create a token', pat2.status !== 200);
 
     console.log(failures ? `${failures} AI access checks failed.` : 'All AI access checks passed.');
     process.exit(failures ? 1 : 0);

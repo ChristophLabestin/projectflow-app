@@ -7,6 +7,8 @@ const admin = require('firebase-admin');
 if (!admin.apps.length) admin.initializeApp({ projectId: 'demo-projectflow' });
 const db = admin.firestore();
 const { publishLegalDraftCore, acceptLegalDocumentsCore, runLegalMailJob } = require('../lib/legal');
+const { checkMachineLegalConsent } = require('../lib/legal-machine-access');
+const { checkApiTokenUsable } = require('../lib/authUtils');
 
 const draft = (changeType, extra = {}) => ({
     type: 'terms', title: { de: 'AGB', en: 'Terms' }, content: { de: '# AGB', en: '# Terms' },
@@ -76,6 +78,18 @@ const expectCode = async (promise, code) => {
     await putDraft(draft('notifyOnly', { notifyByEmail: false }));
     assert.equal((await publishLegalDraftCore(db, 'terms', 'admin', 2, NOW + 3 * 86400000)).version, 3);
     assert.equal((await db.doc('legal_mail_jobs/terms_v3').get()).exists, false);
+
+    // Machine access: u2 never accepted terms; blocked only after the 14-day grace period.
+    const DAY = 86400000;
+    assert.equal((await checkMachineLegalConsent('u2', NOW + 5 * DAY)).ok, true);
+    const blocked = await checkMachineLegalConsent('u2', NOW + 20 * DAY);
+    assert.equal(blocked.ok, false);
+    assert.equal(blocked.status, 403);
+    assert.match(blocked.error, /app\.getprojectflow\.com/);
+    const usable = await checkApiTokenUsable({ createdBy: 'u2' }, 't1', {
+        getMemberRole: async () => 'Member', now: () => new Date(NOW), checkConsent: (uid) => checkMachineLegalConsent(uid, NOW + 20 * DAY),
+    });
+    assert.deepEqual([usable.ok, usable.status], [false, 403]);
 
     console.log('legal-test: all assertions passed');
     process.exit(0);

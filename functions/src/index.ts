@@ -31,6 +31,15 @@ import {
 } from './workspace-admin';
 import { getWorkspaceAiPolicy, listWorkspaceAiAudit, updateWorkspaceAiPolicy } from './ai-integrations';
 import {
+    approveOAuthConsent,
+    createPersonalAccessToken,
+    denyOAuthConsent,
+    getOAuthConsentRequest,
+    listAiConnections,
+    oauth,
+    revokeAiConnection
+} from './oauth-server';
+import {
     createTenantFileUploadSession,
     deleteTenantFile,
     disconnectGoogleDriveStorage,
@@ -134,6 +143,13 @@ export {
     getWorkspaceAiPolicy,
     updateWorkspaceAiPolicy,
     listWorkspaceAiAudit,
+    oauth,
+    getOAuthConsentRequest,
+    approveOAuthConsent,
+    denyOAuthConsent,
+    createPersonalAccessToken,
+    listAiConnections,
+    revokeAiConnection,
     createWorkspaceApiToken,
     deleteWorkspaceApiToken,
     getWorkspaceFinancialConfig,
@@ -201,7 +217,7 @@ export {
 };
 export * from './passkeys';
 export * from './desktopAuth';
-export { mcp } from './mcp-server';
+export { mcp, mcpServer } from './mcp-server';
 export { crashIngest } from './crash-reports';
 export { transferWorkspaceOwnership, deleteWorkspace } from './workspace-lifecycle';
 export { exportMyData, deleteMyAccount } from './account-data';

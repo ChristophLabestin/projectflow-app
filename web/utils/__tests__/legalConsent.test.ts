@@ -85,6 +85,8 @@ describe('helpers', () => {
     it('maps the old impressum slug', () => {
         expect(legalTypeFromSlug('impressum')).toBe('imprint');
         expect(legalTypeFromSlug('terms')).toBe('terms');
+        expect(legalTypeFromSlug('datenschutz')).toBe('privacy');
+        expect(legalTypeFromSlug('agb')).toBe('terms');
         expect(legalTypeFromSlug('cookies')).toBeNull();
     });
 

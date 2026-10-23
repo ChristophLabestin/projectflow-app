@@ -5,7 +5,7 @@ import { SettingsModal } from '../SettingsModal';
 type SettingsTab = NonNullable<ComponentProps<typeof SettingsModal>['initialTab']>;
 
 /** Personal settings tabs that may be opened by link (e.g. the desktop app sends `?openSettings=account` to the browser). */
-const LINKABLE_TABS: SettingsTab[] = ['account', 'security', 'notifications', 'preferences'];
+const LINKABLE_TABS: SettingsTab[] = ['account', 'security', 'notifications', 'preferences', 'ai'];
 
 export const SettingsUrlOpener = () => {
     const [searchParams, setSearchParams] = useSearchParams();

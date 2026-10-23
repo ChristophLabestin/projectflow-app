@@ -11,6 +11,8 @@ import './download-page.scss';
 
 type HandoffState = 'idle' | 'working' | 'sent' | 'error';
 
+const PROVIDER_IDS: Record<string, string> = { google: 'google.com', github: 'github.com', apple: 'apple.com' };
+
 /**
  * Browser page of the desktop OAuth handoff (/desktop/auth?challenge=…): after a normal web sign-in
  * (any provider) it hands a one-time code to the desktop app via projectflow://auth.
@@ -37,15 +39,22 @@ export const DesktopAuthHandoff = () => {
         }
     }, [challenge]);
 
+    // Hand over automatically only when the signed-in account matches the provider picked in the app;
+    // otherwise the page asks (continue as this account / use a different one).
+    const requestedProvider = PROVIDER_IDS[searchParams.get('provider') || ''];
+    const matchesRequest = !requestedProvider || Boolean(user?.providerData.some((entry) => entry.providerId === requestedProvider));
     useEffect(() => {
-        if (!user || autoStarted.current || !isValidDesktopChallenge(challenge)) return;
+        if (!user || !matchesRequest || autoStarted.current || !isValidDesktopChallenge(challenge)) return;
         autoStarted.current = true;
         void handOff();
-    }, [user, challenge, handOff]);
+    }, [user, matchesRequest, challenge, handOff]);
 
     if (!isAuthReady) return null;
     if (isValidDesktopChallenge(challenge) && !user) {
-        return <Navigate to={`/login?redirect=${encodeURIComponent(`${location.pathname}${location.search}`)}`} replace />;
+        // `provider` (picked in the app) makes Login start that provider directly.
+        const provider = searchParams.get('provider');
+        const providerParam = provider && /^(google|github|apple)$/.test(provider) ? `&provider=${provider}` : '';
+        return <Navigate to={`/login?redirect=${encodeURIComponent(`${location.pathname}${location.search}`)}${providerParam}`} replace />;
     }
 
     return (
@@ -59,7 +68,7 @@ export const DesktopAuthHandoff = () => {
                     ) : (
                         <>
                             <p className="download-page__lead">
-                                {t(state === 'error' ? 'desktopAuth.error' : state === 'sent' ? 'desktopAuth.sent' : 'desktopAuth.working')}
+                                {t(state === 'error' ? 'desktopAuth.error' : state === 'sent' ? 'desktopAuth.sent' : state === 'idle' && !matchesRequest ? 'desktopAuth.confirmAccount' : 'desktopAuth.working')}
                             </p>
                             {user?.email && <p className="download-page__meta">{t('desktopAuth.account').replace('{email}', user.email)}</p>}
                             <button
