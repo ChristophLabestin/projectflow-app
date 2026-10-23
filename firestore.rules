@@ -309,12 +309,16 @@ service cloud.firestore {
 
     match /tenants/{tenantId} {
       allow read: if isTenantMemberAnyState(tenantId);
+      // Personal workspaces (personal_{uid}, workspaceType) are created only by ensurePersonalWorkspace.
       allow create: if authed() && request.resource.data.ownerId == request.auth.uid &&
-        !request.resource.data.keys().hasAny(['suspendedAt', 'suspendedReason', 'suspendedBy', 'isReviewAccount']);
+        !tenantId.matches('personal_.*') &&
+        !request.resource.data.keys().hasAny(['suspendedAt', 'suspendedReason', 'suspendedBy', 'isReviewAccount', 'workspaceType']);
       allow update: if isTenantAdmin(tenantId) &&
-        !request.resource.data.diff(resource.data).affectedKeys().hasAny(['suspendedAt', 'suspendedReason', 'suspendedBy']) &&
-        (isOwner(tenantId) || !request.resource.data.diff(resource.data).affectedKeys().hasAny(['ownerId']));
-      allow delete: if isOwner(tenantId);
+        !request.resource.data.diff(resource.data).affectedKeys().hasAny(['suspendedAt', 'suspendedReason', 'suspendedBy', 'workspaceType']) &&
+        (isOwner(tenantId) || !request.resource.data.diff(resource.data).affectedKeys().hasAny(['ownerId'])) &&
+        (resource.data.get('workspaceType', 'team') != 'personal' ||
+          !request.resource.data.diff(resource.data).affectedKeys().hasAny(['ownerId']));
+      allow delete: if isOwner(tenantId) && resource.data.get('workspaceType', 'team') != 'personal';
 
       match /members/{userId} {
         allow read: if isTenantMemberAnyState(tenantId);

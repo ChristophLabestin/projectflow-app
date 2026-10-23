@@ -10,7 +10,7 @@ import {
     billingErrorKey, createBillingCheckout, createBillingPortal, personalAiKey, type PersonalAiKeyStatus, setAiAddonMembers,
 } from '../../services/billingService';
 import {
-    AI_ADDON_PRICE, type BillingInterval, FREE_PROJECT_LIMIT, TEAM_MEMBER_LIMIT, TEAM_PRICE, daysLeft,
+    AI_ADDON_PRICE, type BillingInterval, FREE_PROJECT_LIMIT, PERSONAL_PRICE, PERSONAL_STORAGE_GB, TEAM_MEMBER_LIMIT, TEAM_PRICE, daysLeft,
 } from '../../utils/billingPlans';
 import { Button } from '../ui/Button';
 import { Checkbox } from '../ui/Checkbox';
@@ -132,6 +132,9 @@ export const BillingPanel: React.FC<BillingPanelProps> = ({ tenantId, role }) =>
                 return t('billing.status.free');
         }
     })();
+    const isPersonal = ent.workspaceType === 'personal';
+    // Personal workspaces book Personal, team workspaces Team (never crossed, contract §7).
+    const upgradeKey = isPersonal ? 'billing.upgradePersonal' : 'billing.upgrade';
     const canSubscribe = !ent.hasSubscription && ent.plan !== 'organization' && ent.status !== 'exempt';
 
     return (
@@ -163,7 +166,9 @@ export const BillingPanel: React.FC<BillingPanelProps> = ({ tenantId, role }) =>
                     </li>
                     <li>
                         <span className="material-symbols-outlined" aria-hidden="true">group</span>
-                        {ent.plan === 'free' ? t('billing.facts.membersFree') : t('billing.facts.members').replace('{limit}', String(ent.memberLimit ?? '∞'))}
+                        {ent.workspaceType === 'personal'
+                            ? t('billing.facts.membersPersonal')
+                            : ent.plan === 'free' ? t('billing.facts.membersFree') : t('billing.facts.members').replace('{limit}', String(ent.memberLimit ?? '∞'))}
                     </li>
                     <li>
                         <span className="material-symbols-outlined" aria-hidden="true">auto_awesome</span>
@@ -187,8 +192,8 @@ export const BillingPanel: React.FC<BillingPanelProps> = ({ tenantId, role }) =>
                 <section className="billing-settings__card">
                     <header className="billing-settings__head">
                         <div>
-                            <h3>{t('billing.upgrade.title')}</h3>
-                            <p>{t('billing.upgrade.subtitle').replace('{limit}', String(TEAM_MEMBER_LIMIT))}</p>
+                            <h3>{t(`${upgradeKey}.title`)}</h3>
+                            <p>{t(`${upgradeKey}.subtitle`).replace('{limit}', String(TEAM_MEMBER_LIMIT)).replace('{gb}', String(PERSONAL_STORAGE_GB))}</p>
                         </div>
                     </header>
                     <div className="billing-settings__intervals" role="radiogroup" aria-label={t('billing.upgrade.interval')}>
@@ -201,16 +206,16 @@ export const BillingPanel: React.FC<BillingPanelProps> = ({ tenantId, role }) =>
                                 className={`billing-settings__interval${interval === option ? ' is-active' : ''}`}
                                 onClick={() => setBillingInterval(option)}
                             >
-                                <strong>{TEAM_PRICE[option]} €</strong>
-                                <span>{t(`billing.upgrade.per.${option}`)}</span>
+                                <strong>{(isPersonal ? PERSONAL_PRICE : TEAM_PRICE)[option]} €</strong>
+                                <span>{t(`${upgradeKey}.per.${option}`)}</span>
                                 {option === 'year' && <em>{t('billing.upgrade.save')}</em>}
                             </button>
                         ))}
                     </div>
                     <ul className="billing-settings__facts">
-                        <li><span className="material-symbols-outlined" aria-hidden="true">check</span>{t('billing.upgrade.f1')}</li>
-                        <li><span className="material-symbols-outlined" aria-hidden="true">check</span>{t('billing.upgrade.f2')}</li>
-                        <li><span className="material-symbols-outlined" aria-hidden="true">check</span>{t('billing.upgrade.f3')}</li>
+                        <li><span className="material-symbols-outlined" aria-hidden="true">check</span>{t(`${upgradeKey}.f1`)}</li>
+                        <li><span className="material-symbols-outlined" aria-hidden="true">check</span>{t(`${upgradeKey}.f2`)}</li>
+                        <li><span className="material-symbols-outlined" aria-hidden="true">check</span>{t(`${upgradeKey}.f3`).replace('{gb}', String(PERSONAL_STORAGE_GB))}</li>
                     </ul>
                     <p className="billing-settings__muted">
                         {ent.status === 'trialing' ? t('billing.upgrade.trialNote') : t('billing.upgrade.note')}

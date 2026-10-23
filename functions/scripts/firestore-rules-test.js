@@ -37,6 +37,9 @@ const seedData = async (testEnv) => {
         await set(`${T}/ai_audit/entryA`, { tool: 'create_task', actorId: 'ownerA' });
         await set(`${T}/ai_config/policy`, { enabled: true });
         await set(`${T}/entitlements/plan`, { plan: 'free', seats: 3 });
+        await set('tenants/personal_ownerA', { tenantId: 'personal_ownerA', name: 'Mein Workspace', ownerId: 'ownerA', workspaceType: 'personal' });
+        await set('tenants/personal_ownerA/members/ownerA', { uid: 'ownerA', role: 'Owner' });
+        await set('tenants/personal_ownerA/entitlements/plan', { plan: 'personal', workspaceType: 'personal', invitesAllowed: false, memberLimit: 1, projectLimit: null });
         // Billing: a Free workspace at its project limit with one locked project.
         await set('tenants/tenantF', { tenantId: 'tenantF', name: 'Free', ownerId: 'ownerA' });
         await set('tenants/tenantF/members/ownerA', { uid: 'ownerA', role: 'Owner' });
@@ -452,6 +455,14 @@ const run = async () => {
             owner.doc(`${TF}/invitations/i1`).set({ status: 'pending', invitedBy: 'ownerA', role: 'Member', kind: 'link' }));
         await check('owner cannot write entitlements', 'deny', () => owner.doc(`${TF}/entitlements/plan`).set({ plan: 'team' }, { merge: true }));
         await check('member reads entitlements', 'allow', () => member.doc(`${T}/entitlements/plan`).get());
+        await check('nobody creates a personal workspace id', 'deny', () =>
+            outsider.doc('tenants/personal_outsiderA').set({ ownerId: 'outsiderA', name: 'p' }));
+        await check('client cannot set workspaceType', 'deny', () =>
+            outsider.doc('tenants/newTeam').set({ ownerId: 'outsiderA', name: 'n', workspaceType: 'personal' }));
+        await check('owner cannot flip workspaceType', 'deny', () => owner.doc(T).update({ workspaceType: 'personal' }));
+        await check('personal: owner cannot delete', 'deny', () => owner.doc('tenants/personal_ownerA').delete());
+        await check('personal: no invitations', 'deny', () =>
+            owner.doc('tenants/personal_ownerA/invitations/i1').set({ status: 'pending', invitedBy: 'ownerA', role: 'Guest', kind: 'link' }));
         await check('member reads billing availability', 'allow', () => member.doc('billing_public/config').get());
         await check('owner cannot switch checkout on', 'deny', () => owner.doc('billing_public/config').set({ checkoutAvailable: true }));
         for (const path of ['billing_customers/tenantF', 'ai_user_keys/ownerA', 'billing_events/evt_1']) {
