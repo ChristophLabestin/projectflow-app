@@ -1,6 +1,20 @@
 # Handoff
 
-Last updated: 2026-06-04
+Last updated: 2026-10-23
+
+## Orchestrator-Stand 2026-10-23
+
+Ab jetzt steuert eine Orchestrator-Session das Projekt und verteilt Arbeit an Sub-Sessions.
+Alle Worktree-Branches sind in main (zuletzt `claude/happy-feistel-97d47f` = iPhone Duo, iOS-Build grün);
+alle ProjectFlow-Sessions archiviert. Rohe Handoffs je Session: [handoffs/2026-10-23-sessions.md](./handoffs/2026-10-23-sessions.md).
+
+Offene Punkte (konsolidiert):
+- **User-Aktionen:** GitHub-Secrets für Hosting-Auto-Deploy (`FIREBASE_SERVICE_ACCOUNT_PROJECTFLOW_LABESTIN`/`firebaseServiceAccount`, `VITE_FIREBASE_*` vom neuen Projekt) — bis dahin Hosting lokal deployen; Owner-E-Mail für `node functions/scripts/grant-platform-admin.mjs`; ASC App-Review-Kontakt + Demo-Konto; Paid-Apps-Agreement; `.p8`-Keys aus `~/Downloads` sicher ablegen, alten APNs-Key Q763AAXUZL widerrufen; Signing-Secrets in `~/ProjectFlowSigning` sichern; Passkey-Login real in Prod testen; Gemini-Key aus `1095e0bb` rotieren falls gültig.
+- **iOS:** nächster TestFlight-Upload braucht `CURRENT_PROJECT_VERSION` 4; Push in TestFlight prüfen (aps-environment); Google/GitHub-Login, Uploads, TOTP, Sprints real testen; iPhone Duo aufgeklappt/halbgefaltet manuell prüfen; ungenutzte Strings (`auth.name`, `welcome.mode.*`, `login.*fullName`).
+- **Desktop:** System-Browser-OAuth-Handoff; Windows-Test + Code-Signing; Mitteilungen ignorieren Push-Kanal-Einstellungen; `--verify-tag`-Fix erst beim nächsten Tag getestet; DMG unsigniert.
+- **Security/Backend:** CSP von Report-Only scharf schalten; RTDB-Presence ohne Membership-Check; npm audit (`nodemailer` Major, `@grpc/grpc-js`); Functions-Cold-Start (index.ts lädt alles); `nudgeLog`-Lesekosten beobachten; kein Staging-Projekt; Tailwind parallel zu SCSS.
+- **Tooling:** Token-Guard-Screenshot-Verkleinerung in neuer Session prüfen; Nachmessung ~2026-11-06 (`analyze.py --since 14`); AGENTS.md-Satz „No root test runner“ veraltet.
+- **Tracking:** ProjectFlow-Tasks für Duo, Passkey u. a. fehlen noch.
 
 ## Where Things Stand
 
