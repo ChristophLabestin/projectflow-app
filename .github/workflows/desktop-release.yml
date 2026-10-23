@@ -8,7 +8,11 @@ name: Desktop release
 # Signing (optional, picked up automatically when the secrets exist):
 #   macOS:   MAC_CSC_LINK (base64 Developer ID Application .p12), MAC_CSC_KEY_PASSWORD,
 #            APPLE_API_KEY (contents of the App Store Connect .p8), APPLE_API_KEY_ID, APPLE_API_ISSUER → notarized.
-#   Windows: WIN_CSC_LINK (base64 .pfx), WIN_CSC_KEY_PASSWORD.
+#   Windows: either Azure Trusted Signing (recommended; OV/EV certificates are HSM-only since 2023, so a .pfx
+#            for CI is rarely available): secrets AZURE_TENANT_ID, AZURE_CLIENT_ID, AZURE_CLIENT_SECRET and
+#            repository variables AZURE_SIGN_ENDPOINT (e.g. https://weu.codesigning.azure.net),
+#            AZURE_SIGN_ACCOUNT, AZURE_SIGN_PROFILE, WIN_PUBLISHER_NAME (certificate subject CN)
+#            — or WIN_CSC_LINK (base64 .pfx) + WIN_CSC_KEY_PASSWORD.
 # Without them the builds are unsigned (macOS Gatekeeper blocks a double-click; Windows shows SmartScreen).
 
 'on':
@@ -136,12 +140,26 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
           CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+          AZURE_SIGN_ENDPOINT: ${{ vars.AZURE_SIGN_ENDPOINT }}
+          AZURE_SIGN_ACCOUNT: ${{ vars.AZURE_SIGN_ACCOUNT }}
+          AZURE_SIGN_PROFILE: ${{ vars.AZURE_SIGN_PROFILE }}
+          WIN_PUBLISHER_NAME: ${{ vars.WIN_PUBLISHER_NAME }}
         run: |
-          if [[ -z "$CSC_LINK" ]]; then
+          EXTRA=()
+          if [[ -n "$AZURE_CLIENT_SECRET" && -n "$AZURE_SIGN_ENDPOINT" ]]; then
+            unset CSC_LINK CSC_KEY_PASSWORD
+            EXTRA+=(-c.win.azureSignOptions.endpoint="$AZURE_SIGN_ENDPOINT"
+              -c.win.azureSignOptions.codeSigningAccountName="$AZURE_SIGN_ACCOUNT"
+              -c.win.azureSignOptions.certificateProfileName="$AZURE_SIGN_PROFILE"
+              -c.win.azureSignOptions.publisherName="$WIN_PUBLISHER_NAME")
+          elif [[ -z "$CSC_LINK" ]]; then
             export CSC_IDENTITY_AUTO_DISCOVERY=false
-            echo "::warning::Windows build is unsigned (no WIN_CSC_LINK secret)."
+            echo "::warning::Windows build is unsigned (no Azure Trusted Signing / WIN_CSC_LINK)."
           fi
-          npx electron-builder --win --publish always -c.publish.releaseType=draft
+          npx electron-builder --win --publish always -c.publish.releaseType=draft "${EXTRA[@]}"
 
   publish:
     name: Publish release
