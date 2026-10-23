@@ -302,7 +302,12 @@
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
     overflow: hidden;
-    padding-right: 20px;
+    text-overflow: ellipsis;
+    // Narrow week columns (~83 px chips at 1024 px): the title uses the full width (the unschedule
+    // action overlays it on hover), long words hyphenate (page lang) or break instead of being cut at
+    // the edge, and the clamp ends in an ellipsis. Full title: hover card.
+    hyphens: auto;
+    overflow-wrap: break-word;
 }
 
 .calendar-item__meta {
@@ -323,7 +328,8 @@
     right: 6px;
     opacity: 0;
     border: none;
-    background: transparent;
+    background: var(--color-surface-paper);
+    box-shadow: 0 0 0 4px var(--color-surface-paper);
     padding: 4px;
     border-radius: var(--radius-control);
     color: var(--color-text-muted);

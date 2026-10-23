@@ -32,7 +32,7 @@ Severity: **S** small (cosmetic), **M** medium (visibly broken/unusable in a sta
 | 16 | i18n (DE) | English-only copy in Profile settings modal, comments (incl. raw relative times), role management, 2FA setup/challenge, media library + image editor, editor menus, whole marketing/blog module (list, editor, settings, connection wizard, AI modal) | M | fixed (342 keys EN+DE, palette colors → tokens) |
 | 17 | `ui/Badge`, personal tasks list/detail, accounting placeholder, profile dropdown | Tailwind palette colors (`indigo/emerald/rose/amber/slate`) instead of tokens | S | fixed |
 | 18 | Effort / Invoices | Icons passed via `Button icon` render at 24 px (taller than the label); other buttons use 18 px | S | fixed 2026-10-23 (`.btn .btn__icon .material-symbols-outlined` sm 16 / md 18 / lg 20; overrides in AccountDataSection, projects-list and the invoices empty state removed/scoped) |
-| 19 | Calendar week (desktop 1024 px) | Event chips in narrow columns cut titles without ellipsis | S | open |
+| 19 | Calendar week (desktop 1024 px) | Event chips in narrow columns cut titles without ellipsis | S | fixed 2026-10-23 (title uses full chip width — unschedule action overlays on hover —, 2-line clamp with ellipsis, `hyphens`/`overflow-wrap`; full title stays in the hover card) |
 | 20 | Team | "By department" groups by base role when no custom roles exist (ADMIN/MEMBER/OWNER), which reads odd | S | open (product decision: label or fallback) |
 
 ## Not reachable with the demo account / seed
