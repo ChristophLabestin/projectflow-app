@@ -157,3 +157,37 @@ public struct PFSplitColumns<Leading: View, Trailing: View>: View {
         return (min(max((width * 0.4).rounded(), 320), 420), 1)
     }
 }
+
+// MARK: - Root tab actions (iPhone Duo outer display)
+
+/// A root tab's header actions. Plain iPhones show them in place (laid out horizontally); with a side region
+/// they move into the shell's side rail, stacked above the tabs.
+public struct PFRootActions<Content: View>: View {
+    @Environment(\.pfSideRegionWidth) private var sideRegion
+    let content: Content
+
+    public init(@ViewBuilder content: () -> Content) { self.content = content() }
+
+    public var body: some View {
+        if sideRegion > 0 {
+            Color.clear.frame(width: 0, height: 0)
+                .preference(key: PFSideControlsKey.self,
+                            value: PFSideControls(toolbar: AnyView(VStack(spacing: 10) { content })))
+        } else {
+            HStack(spacing: PFSpace.xs) { content }
+        }
+    }
+}
+
+public extension View {
+    /// Drops side controls coming from a hidden subtree (inactive tabs stay alive underneath).
+    func pfHidesSideControls(_ hidden: Bool) -> some View {
+        transformPreference(PFSideControlsKey.self) { if hidden { $0 = PFSideControls() } }
+    }
+
+    /// Reads the visible root tab's actions (`PFRootActions`) to stack them in the side rail.
+    func pfSideToolbar<Overlay: View>(alignment: Alignment = .center,
+                                      @ViewBuilder _ overlay: @escaping (AnyView?) -> Overlay) -> some View {
+        overlayPreferenceValue(PFSideControlsKey.self, alignment: alignment) { overlay($0.toolbar) }
+    }
+}

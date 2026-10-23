@@ -33,14 +33,16 @@ struct DateSheet: View {
                 Formatting.date(quick.value).map { PFDateStrip.Quick(id: quick.id, label: quick.label, date: $0) }
             }, days: 45, calendar: Formatting.calendar, locale: L10n.locale, showsMonth: showsMonth,
                monthLabels: (L10n.t("taskDetail.date.previousMonth"), L10n.t("taskDetail.date.nextMonth")), selection: $selection)
+        }
+        .padding(.bottom, PFSpace.xs)
+        // Pinned below the content: switching strip ↔ month grows the sheet upwards, Save stays put.
+        .pfSheetFooter(selection) {
             PFButton(L10n.t("common.save"), fullWidth: true) {
                 onSave(selection.map { FlexDate.day(of: $0, in: Formatting.timeZone) })
                 presenter.dismiss()
             }
             .padding(.horizontal, PFSpace.page)
         }
-        .padding(.bottom, PFSpace.xxs)
-        .pfSheetBottomInset(PFSpace.xxs)
         .onAppear { selection = initial.flatMap { Formatting.date($0) } }
     }
 }

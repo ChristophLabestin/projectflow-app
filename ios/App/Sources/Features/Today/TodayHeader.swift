@@ -26,14 +26,16 @@ struct TodayTopBar: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
 
-            PFIconButton("plus", label: L10n.t("today.capture")) { CaptureLauncher.present(model: model) }
+            PFRootActions {
+                PFIconButton("plus", label: L10n.t("today.capture")) { CaptureLauncher.present(model: model) }
 
-            // Account: the photo (or initials) fills the whole circle, no frame around it.
-            Button { model.router.push(.account) } label: {
-                PFAvatar(name: model.profile?.displayName ?? "", seed: model.uid, imageURL: model.profile?.photoURL, size: 44)
+                // Account: the photo (or initials) fills the whole circle, no frame around it.
+                Button { model.router.push(.account) } label: {
+                    PFAvatar(name: model.profile?.displayName ?? "", seed: model.uid, imageURL: model.profile?.photoURL, size: 44)
+                }
+                .buttonStyle(.pfPressable)
+                .accessibilityLabel(L10n.t("today.account"))
             }
-            .buttonStyle(.pfPressable)
-            .accessibilityLabel(L10n.t("today.account"))
         }
         .padding(.horizontal, PFSpace.page)
         .padding(.vertical, 6)

@@ -123,6 +123,10 @@ Sheets weiterhin `PFPresenter`.
   versteckt, ein „Aa“-Button in der Seitenspalte (nur bei offener Tastatur) blendet sie über der Tastatur ein.
 - Fälligkeits-Sheet: Umschalter oben rechts zwischen Tagesleiste und Monatsansicht (`PFDateStrip(showsMonth:)`,
   wird gemerkt), weniger Leerraum unter „Save“ (`pfSheetBottomInset`).
+- Root-Tabs außen: Header-Aktionen (`PFRootActions`: Heute + und Avatar, Arbeit +, Projekte +, Eingang
+  Alle gelesen/Leeren) wandern über die Tab-Leiste; nur der sichtbare Tab liefert sie (`pfHidesSideControls`).
+- Sheets mit Footer außen: Footer reicht in die untere Safe Area, damit Aktion und X je 20 pt zu linkem,
+  rechtem und unterem Sheet-Rand haben; Höhenwechsel (Tagesleiste ↔ Monat) animiert, Footer bleibt stehen.
 - Nebenbei behoben: „Als erledigt markieren“ im Aufgaben-Detail lag auf allen iPhones hinter der Fokusleiste
   (gepushte Seiten sehen das `safeAreaInset` der Shell nicht) → `pfBottomChromeHeight`.
 - Nebenbei behoben: `PFBoard` rechnete Drag-Treffer mit 85 % statt der gezeichneten 82 % Bahnbreite.

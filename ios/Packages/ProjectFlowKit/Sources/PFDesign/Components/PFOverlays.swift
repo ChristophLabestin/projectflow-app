@@ -133,6 +133,8 @@ struct PFSheetContent: View {
     @State private var keyboardHeight: CGFloat = 0
     @State private var footer: PFSheetFooterBox?
     @State private var trailingInset: CGFloat = 0
+    @State private var bottomSafe: CGFloat = 0
+    @State private var hasMeasured = false
     @State private var contentBottomInset: CGFloat = PFSpace.l
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(\.dismiss) private var dismiss
@@ -147,8 +149,6 @@ struct PFSheetContent: View {
         ScrollView {
             sheet.content
                 .frame(maxWidth: .infinity, alignment: .top)
-                // Side region: horizontal rows (dates, chips) end at its edge instead of running under it.
-                .clipShape(Rectangle().inset(by: sideRegion > 0 ? 0 : -1000))
                 // Fitted sheets without a footer end on their own action row: close sits beside it.
                 .overlay(alignment: .bottomTrailing) {
                     if sideRegion > 0, sheet.dismissable, footer == nil, isFitted {
@@ -157,7 +157,15 @@ struct PFSheetContent: View {
                     }
                 }
                 .padding(.top, 26)
-                .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { contentHeight = $0 + 8 }
+                .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { height in
+                    // Later changes (e.g. strip ↔ month) animate the sheet height instead of jumping.
+                    if hasMeasured {
+                        withAnimation(PFMotion.respecting(PFMotion.smooth)) { contentHeight = height + 8 }
+                    } else {
+                        contentHeight = height + 8
+                        hasMeasured = true
+                    }
+                }
         }
         .scrollBounceBehavior(.basedOnSize)
         .scrollDismissesKeyboard(.interactively)
@@ -166,13 +174,14 @@ struct PFSheetContent: View {
             if let footer {
                 footer.view
                     // Side region: close sits on the footer's row, right of the primary action.
+                    // The row keeps the same margin to the sheet's left, right and bottom edge.
                     .overlay(alignment: .trailing) {
                         if sideRegion > 0, sheet.dismissable {
-                            closeButton.offset(x: closeOffset)
+                            closeButton.offset(x: sideRegion - PFSpace.page)
                         }
                     }
                     .padding(.top, PFSpace.s)
-                    .padding(.bottom, keyboardHeight > 0 ? PFSpace.s : PFSpace.xs)
+                    .padding(.bottom, footerBottomPadding)
                     .frame(maxWidth: .infinity)
                     // Content scrolling under the buttons fades out instead of showing through them.
                     .background {
@@ -182,12 +191,13 @@ struct PFSheetContent: View {
                                                   startPoint: .top, endPoint: .bottom)
                         ZStack { fade; fade }
                             .padding(.top, -PFSpace.l)
-                            .ignoresSafeArea(edges: .bottom)
+                            .ignoresSafeArea(edges: [.bottom, .trailing])
                     }
                     .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { footerHeight = $0 }
             }
         }
         .onGeometryChange(for: CGFloat.self) { $0.safeAreaInsets.trailing } action: { trailingInset = $0 }
+        .onGeometryChange(for: CGFloat.self) { $0.safeAreaInsets.bottom } action: { if keyboardHeight == 0 { bottomSafe = $0 } }
         .overlay {
             if sideRegion > 0, sheet.dismissable, footer == nil, !isFitted {
                 PFSideColumn(side: sideRegion) { closeButton }
@@ -218,6 +228,13 @@ struct PFSheetContent: View {
     }
 
     private var isFitted: Bool { sheet.detents == [.fit] }
+
+    /// Footer distance to the sheet's bottom edge. Side region (iPhone Duo outer display): reaches into the
+    /// bottom safe area so the action row sits `PFSpace.page` above the edge, like its side margins.
+    private var footerBottomPadding: CGFloat {
+        if keyboardHeight > 0 { return PFSpace.s }
+        return sideRegion > 0 ? PFSpace.page - bottomSafe : PFSpace.xs
+    }
 
     /// Moves a trailing-aligned close button from the content edge into the side region, on the rail line.
     private var closeOffset: CGFloat { sideRegion - PFLayout.sideGap(sideRegion) - (PFDock.railWidth - 44) / 2 }

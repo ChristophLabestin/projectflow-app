@@ -41,6 +41,7 @@ struct MainShell: View {
                         .opacity(visible ? 1 : 0)
                         .allowsHitTesting(visible)
                         .accessibilityHidden(!visible)
+                        .pfHidesSideControls(!visible)
                     }
                     if router.isSearchActive {
                         TabPane(stack: router.searchStack, split: isWide) {
@@ -71,16 +72,22 @@ struct MainShell: View {
                     .zIndex(10)
             }
         }
-        .overlay(alignment: .bottomTrailing) {
+        .pfSideToolbar(alignment: .bottomTrailing) { rootActions in
             // Pushed pages hand the side region to their own controls (back lowest), like the dock hides on iPhone.
             if let side = sideRegionWidth, !router.isFocusRoomOpen, !router.isDeep {
                 let gap = PFLayout.sideGap(side)
-                dock(axis: .vertical, listToggle: false, showsFocus: true)
-                    .padding(.trailing, gap)
-                    .padding(.bottom, gap)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
-                    .ignoresSafeArea()
-                    .transition(.opacity)
+                VStack(spacing: 10) {
+                    // The visible tab's header actions (PFRootActions) stack above the tabs.
+                    if let rootActions {
+                        rootActions.frame(width: PFDock.railWidth)
+                    }
+                    dock(axis: .vertical, listToggle: false, showsFocus: true)
+                }
+                .padding(.trailing, gap)
+                .padding(.bottom, gap)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
+                .ignoresSafeArea()
+                .transition(.opacity)
             }
         }
         .onGeometryChange(for: EdgeInsets.self) { $0.safeAreaInsets } action: { safeInsets = $0 }
