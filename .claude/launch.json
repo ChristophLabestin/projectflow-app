@@ -104,6 +104,17 @@
         "web"
       ],
       "port": 3061
+    },
+    {
+      "name": "landing",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "dev",
+        "--prefix",
+        "landing"
+      ],
+      "port": 4300
     }
   ]
 }

@@ -1,0 +1,19 @@
+{
+  "name": "projectflow-landing",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --port 4300 --strictPort",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview --port 4300 --strictPort",
+    "deploy:preview": "npm run build && firebase hosting:channel:deploy preview --expires 30d",
+    "deploy": "npm run build && firebase deploy --only hosting"
+  },
+  "devDependencies": {
+    "gsap": "^3.13.0",
+    "sass": "^1.97.0",
+    "typescript": "~5.8.2",
+    "vite": "^6.2.0"
+  }
+}

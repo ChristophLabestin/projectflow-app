@@ -65,6 +65,13 @@ Deploy only touched functions when possible, for example: `cd functions && fireb
 - App + tray icons are generated from `desktop/assets/glyph.svg`: `cd desktop && npx electron scripts/render-icons.cjs && iconutil -c icns assets/icon.iconset -o assets/icon.icns && rm -r assets/icon.iconset`.
 - macOS dev: `npm --prefix desktop install` / `run build` brand the dev Electron bundle as ProjectFlow (`scripts/brand-dev-app.cjs`: renames it to `ProjectFlow.app`, name, icon, bundle id, ad-hoc re-sign), so menu bar and Dock do not say "Electron".
 
+## Landing Page (`landing/`)
+- `cd landing && npm install && npm run dev` — Vite on port 4300 (launch config `landing`).
+- `npm run build` — typecheck + static build to `landing/dist/` (pages rendered from TS templates).
+- `npm run deploy:preview` — build + `firebase hosting:channel:deploy preview` on site `getprojectflow` (uses `landing/firebase.json`, independent from the app's root `firebase.json`).
+- `npm run deploy` — live deploy of the landing site (only after the owner signs off).
+- Domain: connect `getprojectflow.com` (+ `www`) to Hosting site `getprojectflow` in the Firebase console; `app.getprojectflow.com` stays on site `projectflow-labestin`.
+
 ## Firestore Commands
 
 - Deploy rules: `firebase deploy --only firestore:rules`

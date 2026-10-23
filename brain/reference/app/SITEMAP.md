@@ -127,6 +127,14 @@ Social module and Marketing dashboard/ads/email/recipients were removed 2026-10-
 
 ---
 
+## Landing (getprojectflow.com, separate app in `landing/`)
+Static pages rendered at build time from `landing/src/templates/pages.ts` (Firebase site `getprojectflow`, cleanUrls):
+- `/` (DE) · `/en` (EN) — home: hero, journey (pinned scroll story), board, workbench, notifications, AI, security, platforms, CTA
+- `/impressum` · `/en/imprint`, `/datenschutz` · `/en/privacy`, `/agb` · `/en/terms` — legal (`landing/src/content/legal.ts`)
+- `404.html` — bilingual not-found
+- `/sitemap.xml`, `/robots.txt`, `/og-de.png`, `/og-en.png`
+CTAs point to the app: `/register`, `/login`, `/download`. Concept: `brain/plans/landing-page-concept.md`.
+
 ## Notes / Migration Considerations
 
 - Tailwind -> SCSS migration: audit complete; shared component refactor in progress; keep the Tailwind CDN until remaining utility classes are replaced.

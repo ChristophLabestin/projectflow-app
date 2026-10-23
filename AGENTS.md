@@ -43,6 +43,7 @@ Teilweise erzwungen über `.claude/token-guard.json` (Hook). Bewusster Einmal-By
 - `web/context/`, `web/hooks/`, `web/services/`, `web/utils/`, `web/types/` provide shared state, data access, helpers, and typings.
 - `web/locales/` stores i18n dictionaries; `web/assets/` stores static files; `functions/` contains Firebase Cloud Functions (`functions/src` -> `functions/lib`).
 - `ios/` is the SwiftUI app (XcodeGen `project.yml`, package `Packages/ProjectFlowKit`, widgets/share/notification extensions).
+- `landing/` is the static marketing site for getprojectflow.com (Vite + TS + SCSS, own Firebase site `getprojectflow`; concept `brain/plans/landing-page-concept.md`).
 - `desktop/` is the Electron desktop app around the hosted web app (concept `brain/plans/desktop-electron-concept.md`; releases via `.github/workflows/desktop-release.yml`).
 
 ## Build, Test, and Development Commands
