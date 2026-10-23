@@ -27,7 +27,7 @@ Ziel: KI ist überall im Arbeitsfluss sofort da, kennt den Kontext und *handelt*
 7. **Proaktiv, aber leise.** Hinweise als dezente Chips am Objekt. Keine Popups, keine Notifications ohne Opt-in, jede Hinweisart abschaltbar.
 8. **Eine KI, viele Oberflächen.** Dasselbe Backend, Tool-Layer und Kontextformat für Web, Desktop, iOS und MCP.
 
-**Name und Persönlichkeit:** bewusst **keine Persona** („CORA“ hat Erwartungen an einen Chat-Charakter geweckt). Die UI sagt „KI“ / „Ask AI“, Symbol ✦ (Funke), Shortcut **⌘J**. Ton sachlich, kurz, auf Deutsch, wenn die UI deutsch ist. Personas lenken bei einem Werkzeug ab. Linear und Notion fahren gut damit, Rovo und Brain eher nicht.
+**Name und Persönlichkeit:** bewusst **keine Persona** (User 2026-10-23: CORA verschwindet komplett, die KI ist namenlos) („CORA“ hat Erwartungen an einen Chat-Charakter geweckt). Die UI sagt „KI“ / „Ask AI“, Symbol ✦ (Funke), Shortcut **⌘J**. Ton sachlich, kurz, auf Deutsch, wenn die UI deutsch ist. Personas lenken bei einem Werkzeug ab. Linear und Notion fahren gut damit, Rovo und Brain eher nicht.
 
 ## 2. Muster der Besten (keine Feature-Listen)
 
@@ -159,7 +159,9 @@ Der Server rendert den Kontext als kompakten, deterministisch sortierten Block (
 
 ## 5. UX der Kernerlebnisse
 
-**A · ⌘J – „Frag überall“ (Panel).** ⌘J (iOS: ✦-Button oben rechts, Desktop global `Ctrl+⌘J`) öffnet rechts ein schmales Panel über der Ansicht, ohne Navigation. Oben stehen die Kontext-Chips, darunter Vorschläge passend zur Ansicht, Antworten streamen mit Quellen.
+> **Neu (User, 2026-10-23): ein schwebendes Popover für alles.** Alle KI-Interaktionen laufen in **einem** Muster, dem `AiPopover` (Designsystem STYLING §1.9, Demo `/ui` → AI): schwebend, mit Glas, Brand-Schleier und Glow, an der Kopfzeile verschiebbar und ausklappbar. ⌘J öffnet es oben mittig im Kontext der Ansicht. Der ✦ im Textfeld öffnet es am Cursor bzw. an der Auswahl. Snap und Aktionskarten erscheinen ebenfalls darin. **Entfallen:** das Seitenpanel rechts (A in der alten Form) und der Vorschlag *unter* bzw. *im* Feld (B in der alten Form). Kontext, Tools, Verlauf und Streaming bleiben. Die Skizzen unten zeigen noch die alte Form und gelten nur noch für Inhalt und Ablauf.
+
+**A · ⌘J – „Frag überall“ (jetzt Popover oben mittig, früher Panel).** ⌘J (iOS: ✦-Button oben rechts, Desktop global `Ctrl+⌘J`) öffnet rechts ein schmales Panel über der Ansicht, ohne Navigation. Oben stehen die Kontext-Chips, darunter Vorschläge passend zur Ansicht, Antworten streamen mit Quellen.
 ```
 ┌ Board: Website-Relaunch ───────────────────────┬─ ✦ KI ─────────────── ⌘J ✕ ┐
 │ ▢ Login-Bug iOS      ▣ Hero-Animation          │ [Projekt Website ✕] [3 ausgewählt ✕] │
@@ -178,7 +180,7 @@ Der Server rendert den Kontext als kompakten, deterministisch sortierten Block (
 ```
 Leeres Feld + ⌘J auf einer Aufgabe = „Was ist hier los?“ (Kurzstatus + nächste Schritte). Verlauf pro Objekt (Thread hängt am Objekt, nicht an einer Chat-Seite).
 
-**B · ✦ Funke im Textfeld.** Fokus in Beschreibung, Kommentar oder Wiki: rechts unten im Feld ein ✦. Bei Textauswahl erscheint eine schwebende Leiste mit Verben. `/ki` oder ⌘J im Feld öffnet die Freitext-Anweisung. Das Ergebnis erscheint als Vorschlag *im Feld* (grau/grün markiert): **Tab/Enter** übernimmt, **Esc** verwirft, ↻ erzeugt neu.
+**B · ✦ Funke im Textfeld (jetzt Popover am Cursor/an der Auswahl).** Fokus in Beschreibung, Kommentar oder Wiki: rechts unten im Feld ein ✦. Bei Textauswahl erscheint eine schwebende Leiste mit Verben. `/ki` oder ⌘J im Feld öffnet die Freitext-Anweisung. Das Ergebnis erscheint als Vorschlag *im Feld* (grau/grün markiert): **Tab/Enter** übernimmt, **Esc** verwirft, ↻ erzeugt neu.
 ```
 Beschreibung ─────────────────────────────────────────────┐
 │ login geht auf ios nicht nach passwort reset             │
@@ -267,3 +269,10 @@ Entscheidungen (User, 2026-10-23): bei **OpenAI** bleiben (Abstraktion in `ai-mo
 - **P1** ✅ ✦ in Textfeldern (Web/Desktop): `AiTextAssist` in Aufgabe erstellen/bearbeiten, Kommentaren und Projektfeldern; ersetzt „Mit CORA generieren“. Schalter in Einstellungen → KI & Integrationen („KI in der App (Beta)“, „… für Mitglieder erlauben“). Lokal testen: `E2E_AI=1 bash scripts/dev-e2e.sh` (echtes Modell, Daten nur im Emulator).
 - **P2** ✅ ⌘J-Panel (Web, Desktop über die Web-App; globaler Desktop-Hotkey ⌃⌘J ab dem nächsten Desktop-Release): Kontext aus Route + Screen-Extras, Kontext-Chips, Vorschläge je Ansicht, Tool-Schritte, sichere Links, Verlauf je Objekt 30 Tage (`users/{uid}/ai_threads`, TTL).
 - **P3** ✅ Aktionskarten: Schreib-Tools erzeugen nur Vorschläge (`users/{uid}/ai_proposals`, Admin-only, TTL 2 h / nach Anwendung 24 h Undo-Fenster), `aiApplyProposal` führt mit dem ID-Token des Nutzers über die REST-API aus (Doppelklick-sicher), schreibt `ai_audit` („ProjectFlow KI (in-app)“), `aiUndoProposal` nimmt zurück. `autoRunLowRisk` ist bewusst noch nicht gebaut (Entscheidung: opt-in, später).
+
+### Neue Vorgaben (User, 2026-10-23), noch umzusetzen
+- **Popover statt Panel/Inline**, siehe §5. Designsystem fertig (d36c7726). Der Einbau in ⌘J und Funke folgt nach der Abnahme.
+- **CORA komplett entfernen** (P9 vorgezogen): Code, Texte, Hilfe, Route `/brainstorm` → `/`, Functions (`askCora`) und Studio-Daten. Die Prod-Löschliste geht vorher an den Orchestrator.
+- **Structured Outputs als Standard** für alles Erzeugte (Schema je Fähigkeit, `strict`, `text.format` json_schema). Die JSON-Rettungslogik in `ai-service.ts` entfällt. Gemeinsame Bausteine `aiGenerate`/`aiDecide` baut die Flows-Session in `functions/src/ai-decide.ts` (Signatur abgestimmt), die In-App-KI stellt danach darauf um.
+- **Decisions API** (`/v1/decisions`, gpt-6-luna) für Routing (Intent im ⌘J-Popover), Einordnen (Duplikat, Aufteilen, Priorität/Labels, Snap-Typ, Projekt mit Fallback Eingang) und den Injection-Check vor Aktionskarten. Schwellen zentral, Wahrscheinlichkeiten im Audit, kleine Evals je Entscheidung.
+- **Preise (pricing-strategy.md):** In-App-KI nur mit KI-Paket (pro Nutzer: 1 Mio. Tokens + 50 Bilder/Monat); im Free-Plan nur BYOK (eigener OpenAI-Schlüssel, serverseitig verschlüsselt). Folgen: Freischaltung pro Nutzer über das Entitlement (Session „Billing & plan limits“), Kontingent pro Nutzer statt pro Workspace (`ai_credits/{Monat}/users/{uid}` existiert schon), BYOK-Pfad in `ai-models.ts` (Client je Nutzer).
