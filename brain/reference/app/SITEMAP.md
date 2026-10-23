@@ -27,6 +27,7 @@ These routes must remain accessible without being logged in.
 - [x] `/desktop/capture` — Desktop only: Quick Capture panel (`QuickCaptureWindow`), opened by the global shortcut.
 - [x] `/desktop/day?mode=start|close` — Desktop only: day start / day close window (`DesktopDayWindow`, plan logic from `utils/dayPlan`).
 - [x] `/desktop/tray` — Desktop only: menu bar panel (`DesktopTrayPanel`): focus timer + controls, inline capture, Today / Pinned / Inbox, next meeting, quick actions.
+- [x] `/desktop/auth?challenge=…` — Browser page of the desktop OAuth handoff (`DesktopAuthHandoff`): after web sign-in it creates a one-time code and opens `projectflow://auth`.
 
 ---
 
