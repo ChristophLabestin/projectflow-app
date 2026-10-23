@@ -32,6 +32,10 @@ struct MainShell: View {
                         .padding(.leading, PFSpace.xs)
                         .transition(.move(edge: .leading).combined(with: .opacity))
                 }
+                // Platform announcement: a thin banner in the layout above the content column, so every tab (and its
+                // floating header, which reads the window's safe area) starts below it instead of under it.
+                VStack(spacing: 0) {
+                announcementBanner
                 ZStack {
                     ForEach(AppTab.allCases, id: \.self) { tab in
                         let visible = router.tab == tab && !router.isSearchActive
@@ -57,6 +61,7 @@ struct MainShell: View {
                 // Pushed screens don't receive the inset above, so floating actions read its height here.
                 .environment(\.pfBottomChromeHeight, bottomChromeHeight)
                 .environment(\.pfSideRegionWidth, sideRegionWidth ?? 0)
+                }
             }
             .background(PFCanvas())
 
@@ -96,6 +101,19 @@ struct MainShell: View {
         .animation(PFMotion.respecting(PFMotion.snappy), value: router.isDeep)
         .animation(PFMotion.respecting(PFMotion.snappy), value: router.isListColumnHidden)
         .animation(PFMotion.respecting(PFMotion.normal), value: model.network.isOnline)
+        .animation(PFMotion.respecting(PFMotion.snappy), value: model.announcements.visible)
+        .task { model.announcements.start() }
+    }
+
+    @ViewBuilder
+    private var announcementBanner: some View {
+        if let announcement = model.announcements.visible {
+            AnnouncementBanner(announcement: announcement) {
+                withAnimation(PFMotion.respecting(PFMotion.snappy)) { model.announcements.dismiss() }
+            }
+            .padding(.bottom, PFSpace.xs)
+            .transition(.move(edge: .top).combined(with: .opacity))
+        }
     }
 
     @ViewBuilder

@@ -24,12 +24,26 @@ export const personalAiKey = async (action: 'get' | 'set' | 'clear', key?: strin
     return (await call({ action, key })).data;
 };
 
+/** Contract error codes (brain/plans/billing-entitlements-contract.md §3); each has `billing.errors.<code>`. */
+export const BILLING_ERROR_CODES = [
+    'plan-project-limit', 'plan-project-locked', 'plan-invites-disabled', 'plan-member-limit',
+    'ai-not-enabled', 'ai-addon-required', 'ai-plan-required',
+    'ai-addon-unavailable', 'ai-addon-needs-subscription', 'ai-addon-invalid-member',
+    'billing-not-configured', 'billing-already-subscribed', 'billing-price-missing', 'billing-no-customer',
+    'invalid-openai-key', 'ai-key-storage-unavailable',
+] as const;
+
+/** Assigns the AI add-on to full members (owner only); Stripe quantity follows. */
+export const setAiAddonMembers = async (tenantId: string, memberIds: string[]) => {
+    const call = httpsCallable<{ tenantId: string; memberIds: string[] }, { aiMemberIds: string[] }>(functions, 'setAiAddonMembers');
+    return (await call({ tenantId, memberIds })).data.aiMemberIds;
+};
+
 /** Maps billing/plan error codes from callables to locale keys. */
 export const billingErrorKey = (error: unknown): string | null => {
     const message = String((error as { message?: string })?.message || '');
-    const code = ['plan-invites-disabled', 'plan-member-limit', 'ai-plan-required', 'billing-not-configured',
-        'billing-already-subscribed', 'billing-price-missing', 'billing-no-customer', 'invalid-openai-key']
-        .find((entry) => message.includes(entry));
+    const code = BILLING_ERROR_CODES.find((entry) => message.includes(entry))
+        || BILLING_ERROR_CODES.find((entry) => (error as { code?: string })?.code === entry);
     return code ? `billing.errors.${code}` : null;
 };
 
@@ -45,8 +59,8 @@ export class PlanLimitError extends Error {
 export const assertPlanAllows = async (tenantId: string, action: 'project' | 'invite') => {
     const snap = await getDoc(doc(db, 'tenants', tenantId, 'entitlements', 'plan'));
     const ent = parseEntitlements(snap.exists() ? snap.data() : undefined);
-    if (action === 'project' && !canCreateProject(ent)) throw new PlanLimitError('billing.projectLimit');
-    if (action === 'invite' && !ent.invitesAllowed) throw new PlanLimitError('billing.invitesLocked');
+    if (action === 'project' && !canCreateProject(ent)) throw new PlanLimitError('billing.errors.plan-project-limit');
+    if (action === 'invite' && !ent.invitesAllowed) throw new PlanLimitError('billing.errors.plan-invites-disabled');
 };
 
 /** Localized message for plan/billing errors (service pre-checks and callables), else null. */

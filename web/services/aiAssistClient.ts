@@ -64,7 +64,7 @@ export interface AiStreamHandlers {
 /** Error codes from the endpoint (`code` field), used for user-facing messages. */
 export type AiErrorCode =
     | 'unauthenticated' | 'forbidden' | 'disabled' | 'invalid-argument' | 'resource-exhausted'
-    | 'credits-exhausted' | 'ai-plan-required' | 'provider-quota' | 'provider-unavailable' | 'internal' | 'network' | 'aborted';
+    | 'credits-exhausted' | 'ai-plan-required' | 'ai-addon-required' | 'provider-quota' | 'provider-unavailable' | 'internal' | 'network' | 'aborted';
 
 export class AiAssistError extends Error {
     constructor(readonly code: AiErrorCode, message: string) {

@@ -18,7 +18,7 @@ import { normalizeRole } from './ai-access';
 import { isTenantSuspended, SUSPENDED_MESSAGE } from './tenant-status';
 import { aiPolicyRef, loadAiPolicy } from './ai-store';
 import { consumeAiQuota, trackUsage } from './ai-service';
-import { tenantIncludesAi } from './billing';
+import { aiGateFor } from './billing';
 import { refundCredits, reserveCredits, recordModelUsage, resolveMonthlyLimit, type CreditCapability } from './ai-credits';
 import { streamTurn, tierModel, ModelError, type ModelTier, type ModelUsage } from './ai-models';
 import {
@@ -201,7 +201,9 @@ export const aiAssist = onRequest({
         const { role, monthlyLimit } = await authorizeWorkspace(tenantId, uid);
         if (body.capability === 'assist' && role === 'Guest') throw new HttpError(403, 'The assistant is not available for guests yet.', 'forbidden');
         // Free workspaces have no included AI (brain/plans/billing-implementation.md).
-        if (!(await tenantIncludesAi(tenantId))) throw new HttpError(402, 'AI is included in the Team plan.', 'ai-plan-required');
+        // AI per user: trial/beta for all members, otherwise the AI add-on (brain/plans/billing-entitlements-contract.md).
+        const aiGate = await aiGateFor(tenantId, uid);
+        if (aiGate) throw new HttpError(402, 'AI is not enabled for you in this workspace.', aiGate);
 
         // Validate before spending anything.
         if (body.capability === 'write') buildWriteRequest(body.input, body.language);

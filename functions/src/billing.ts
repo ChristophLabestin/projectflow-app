@@ -8,11 +8,13 @@ import * as functions from 'firebase-functions/v1';
 import * as admin from 'firebase-admin';
 import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 import Stripe = require('stripe');
+import { createCipheriv, createDecipheriv, randomBytes } from 'crypto';
 
 import { db } from './init';
 import { ALLOWED_ORIGINS } from './corsConfig';
 import {
-    PLAN_LIMITS, PRICE_LOOKUP_KEYS, initialEntitlement, isTestKey, limitsFor, mapStripeStatus,
+    AI_ADDON_LOOKUP_KEYS, PLAN_LIMITS, PRICE_LOOKUP_KEYS, aiEnabledFor, aiIncludedForStatus, initialEntitlement,
+    isAiAddonLookupKey, isTestKey, limitsFor, mapStripeStatus,
     memberLimitAllows, periodExpired, projectsToLock, seatQuantity,
     type BillingInterval, type BillingStatus, type PlanId, type PlanLimits,
 } from './billing-logic';
@@ -67,15 +69,65 @@ export const assertCanAddMember = async (tenantId: string, role: string) => {
     }
 };
 
-/** Does the workspace include server AI (Team/trial/grace/Organization)? */
-export const tenantIncludesAi = async (tenantId: string) => (await loadPlanLimits(tenantId)).aiIncluded;
+/** Server AI for `uid` in this workspace: trial/grace for everyone, otherwise the AI add-on per user. */
+export const memberHasAi = async (tenantId: string, uid: string) => aiEnabledFor((await entRef(tenantId).get()).data(), uid);
+
+/** Plan check for writes that bypass the rules (REST API, MCP, AI tools). null = allowed, else contract error code. */
+export const planWriteBlock = async (
+    tenantId: string, action: 'create-project' | 'write-project', projectId?: string,
+): Promise<'plan-project-limit' | 'plan-project-locked' | null> => {
+    const ent = (await entRef(tenantId).get()).data();
+    if (!ent) return null;
+    if (action === 'create-project') {
+        const limit = ent.projectLimit;
+        return typeof limit === 'number' && Number(ent.projectCount || 0) >= limit ? 'plan-project-limit' : null;
+    }
+    const locked: unknown[] = Array.isArray(ent.lockedProjectIds) ? ent.lockedProjectIds : [];
+    return projectId && locked.includes(projectId) ? 'plan-project-locked' : null;
+};
+
+/** null when `uid` may use server AI in this workspace, else the contract error code. */
+export const aiGateFor = async (tenantId: string, uid: string): Promise<'ai-plan-required' | 'ai-addon-required' | null> => {
+    const ent = (await entRef(tenantId).get()).data();
+    if (aiEnabledFor(ent, uid)) return null;
+    return limitsFor(ent).aiAddonAvailable ? 'ai-addon-required' : 'ai-plan-required';
+};
+
+// --- Own OpenAI keys (BYOK), AES-256-GCM with the AI_KEY_ENCRYPTION_KEY secret ---
+
+const encryptionKey = () => {
+    const raw = Buffer.from(String(process.env.AI_KEY_ENCRYPTION_KEY || ''), 'base64');
+    if (raw.length !== 32) throw new functions.https.HttpsError('failed-precondition', 'ai-key-storage-unavailable');
+    return raw;
+};
+
+const encryptSecret = (plain: string) => {
+    const iv = randomBytes(12);
+    const cipher = createCipheriv('aes-256-gcm', encryptionKey(), iv);
+    const data = Buffer.concat([cipher.update(plain, 'utf8'), cipher.final()]);
+    return { iv: iv.toString('base64'), tag: cipher.getAuthTag().toString('base64'), data: data.toString('base64') };
+};
+
+const decryptSecret = (box: { iv?: string; tag?: string; data?: string } | undefined): string | null => {
+    if (!box?.iv || !box.tag || !box.data || !process.env.AI_KEY_ENCRYPTION_KEY) return null;
+    try {
+        const decipher = createDecipheriv('aes-256-gcm', encryptionKey(), Buffer.from(box.iv, 'base64'));
+        decipher.setAuthTag(Buffer.from(box.tag, 'base64'));
+        return Buffer.concat([decipher.update(Buffer.from(box.data, 'base64')), decipher.final()]).toString('utf8');
+    } catch {
+        return null;
+    }
+};
+
+/** Functions that may use a caller's own OpenAI key must list this secret in runWith. */
+export const AI_KEY_SECRETS = ['AI_KEY_ENCRYPTION_KEY'];
 
 const aiAccessCache = new Map<string, { at: number; value: AiAccess }>();
 export type AiAccess = { mode: 'plan' } | { mode: 'own-key'; apiKey: string } | { mode: 'none' };
 
 /**
- * AI access of a user: included when they are a full member of any workspace whose plan includes AI;
- * otherwise their own OpenAI key (Free). Cached per instance for a minute.
+ * AI access of a user: server AI when any workspace where they are a full member enables it for them
+ * (trial/grace, or the AI add-on assigned to them); otherwise their own OpenAI key. Cached for a minute.
  */
 export const resolveAiAccess = async (uid: string): Promise<AiAccess> => {
     const cached = aiAccessCache.get(uid);
@@ -88,10 +140,10 @@ export const resolveAiAccess = async (uid: string): Promise<AiAccess> => {
     let value: AiAccess = { mode: 'none' };
     if (tenantIds.length > 0) {
         const ents = await db.getAll(...tenantIds.map(entRef));
-        if (ents.some((snap) => limitsFor(snap.data()).aiIncluded)) value = { mode: 'plan' };
+        if (ents.some((snap) => aiEnabledFor(snap.data(), uid))) value = { mode: 'plan' };
     }
     if (value.mode === 'none') {
-        const key = String((await aiKeyRef(uid).get()).data()?.apiKey || '');
+        const key = decryptSecret((await aiKeyRef(uid).get()).data()?.secret);
         if (key) value = { mode: 'own-key', apiKey: key };
     }
     aiAccessCache.set(uid, { at: Date.now(), value });
@@ -109,10 +161,17 @@ const recountProjects = async (tenantId: string) => {
 };
 
 /** Writes the effective plan; moving to Free locks projects over the limit, other plans unlock all. */
-const applyPlan = async (tenantId: string, plan: PlanId, fields: Record<string, unknown>) => {
-    const limits = PLAN_LIMITS[plan];
+const applyPlan = async (tenantId: string, requestedPlan: PlanId, requestedFields: Record<string, unknown>) => {
+    // billingExempt (internal/comp, admin console) overrides trial expiry and Stripe state until it is removed.
+    const exempt = requestedFields.billingExempt === undefined
+        ? (await entRef(tenantId).get()).data()?.billingExempt === true
+        : requestedFields.billingExempt === true;
+    const plan: PlanId = exempt ? 'team' : requestedPlan;
+    const fields = exempt ? { ...requestedFields, status: 'exempt' } : requestedFields;
+    const limits = { ...PLAN_LIMITS[plan], aiIncluded: aiIncludedForStatus(plan, String(fields.status || '')) };
     const projects = await recountProjects(tenantId);
     await entRef(tenantId).set({
+        ...(limits.aiAddonAvailable ? {} : { aiMemberIds: [], aiAddonSeats: 0 }),
         ...fields,
         plan,
         ...limits,
@@ -166,7 +225,9 @@ const syncSubscription = async (subscription: Stripe.Subscription, tenantHint?: 
         console.warn('[billing] subscription without tenant', subscription.id);
         return;
     }
-    const item = subscription.items.data[0];
+    const items = subscription.items.data;
+    const addonItem = items.find((entry) => isAiAddonLookupKey(entry.price?.lookup_key));
+    const item = items.find((entry) => entry !== addonItem) || items[0];
     const mapped = mapStripeStatus(subscription.status);
     const current = (await entRef(tenantId).get()).data() || {};
     // A canceled subscription only downgrades the workspace it currently drives.
@@ -187,7 +248,57 @@ const syncSubscription = async (subscription: Stripe.Subscription, tenantHint?: 
         graceEndsAt: null,
         cancelAtPeriodEnd: Boolean(subscription.cancel_at_period_end),
         currentPeriodEnd: item?.current_period_end ? Timestamp.fromMillis(item.current_period_end * 1000) : null,
+        // Add-on quantity can also shrink in the portal: keep the first N assignments.
+        ...(mapped.plan === 'free' ? {} : (() => {
+            const aiAddonSeats = Number(addonItem?.quantity || 0);
+            const assigned: string[] = Array.isArray(current.aiMemberIds) ? current.aiMemberIds : [];
+            return { aiAddonSeats, aiMemberIds: assigned.slice(0, aiAddonSeats) };
+        })()),
     });
+};
+
+/** Sets the AI add-on quantity on the subscription (adds/removes the item as needed). */
+const setAddonQuantity = async (stripe: Stripe, subscriptionId: string, quantity: number) => {
+    const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+    const addonItem = subscription.items.data.find((entry) => isAiAddonLookupKey(entry.price?.lookup_key));
+    if (addonItem && quantity === addonItem.quantity) return;
+    if (addonItem && quantity === 0) {
+        await stripe.subscriptionItems.del(addonItem.id, { proration_behavior: 'create_prorations' });
+        return;
+    }
+    if (addonItem) {
+        await stripe.subscriptionItems.update(addonItem.id, { quantity, proration_behavior: 'create_prorations' });
+        return;
+    }
+    if (quantity === 0) return;
+    const teamItem = subscription.items.data[0];
+    const interval: BillingInterval = teamItem?.price?.recurring?.interval === 'month' ? 'month' : 'year';
+    const prices = await stripe.prices.list({ lookup_keys: [AI_ADDON_LOOKUP_KEYS[interval]], active: true, limit: 1 });
+    if (!prices.data[0]) throw new functions.https.HttpsError('failed-precondition', 'billing-price-missing');
+    await stripe.subscriptionItems.create({
+        subscription: subscriptionId, price: prices.data[0].id, quantity, proration_behavior: 'create_prorations',
+    });
+};
+
+/**
+ * Internal/comp workspaces (owner decision 2026-10-23): Team scope incl. AI for all members, no payment.
+ * Only the admin console calls this (it writes the audit entry). Removing the flag returns to the Stripe
+ * state when a subscription exists, else to Free (projects over the limit become read-only).
+ */
+export const setBillingExempt = async (tenantId: string, exempt: boolean, by: string) => {
+    if (exempt) {
+        await applyPlan(tenantId, 'team', { billingExempt: true, status: 'exempt', exemptBy: by, exemptAt: FieldValue.serverTimestamp() });
+    } else {
+        const ent = (await entRef(tenantId).get()).data() || {};
+        const subId = typeof ent.stripeSubscriptionId === 'string' ? ent.stripeSubscriptionId : null;
+        await entRef(tenantId).set({ billingExempt: false, exemptBy: by, exemptAt: FieldValue.serverTimestamp() }, { merge: true });
+        if (subId && process.env.STRIPE_SECRET_KEY) {
+            await syncSubscription(await getStripe().subscriptions.retrieve(subId), tenantId);
+        } else {
+            await applyPlan(tenantId, 'free', { billingExempt: false, status: 'free', seats: 0, billingInterval: null });
+        }
+    }
+    aiAccessCache.clear();
 };
 
 // --- Callables ---
@@ -276,14 +387,14 @@ export const createBillingPortal = functions.region(REGION).runWith({ secrets: S
     });
 
 /** Own OpenAI key for AI on Free (never returned to the client, only its last four characters). */
-export const personalAiKey = functions.region(REGION).https.onCall(async (data, context) => {
+export const personalAiKey = functions.region(REGION).runWith({ secrets: AI_KEY_SECRETS }).https.onCall(async (data, context) => {
     const uid = context.auth?.uid;
     if (!uid) throw new functions.https.HttpsError('unauthenticated', 'Authentication required.');
     const action = data?.action;
     if (action === 'set') {
         const key = typeof data?.key === 'string' ? data.key.trim() : '';
         if (!/^sk-[A-Za-z0-9_-]{20,}$/.test(key)) throw new functions.https.HttpsError('invalid-argument', 'invalid-openai-key');
-        await aiKeyRef(uid).set({ apiKey: key, last4: key.slice(-4), updatedAt: FieldValue.serverTimestamp() });
+        await aiKeyRef(uid).set({ secret: encryptSecret(key), last4: key.slice(-4), updatedAt: FieldValue.serverTimestamp() });
     } else if (action === 'clear') {
         await aiKeyRef(uid).delete();
     }
@@ -291,6 +402,34 @@ export const personalAiKey = functions.region(REGION).https.onCall(async (data, 
     const snap = await aiKeyRef(uid).get();
     return { hasKey: snap.exists, last4: snap.exists ? String(snap.data()?.last4 || '') : null };
 });
+
+/**
+ * Assigns the AI add-on (10 €/user/month) to full members; the Stripe add-on quantity follows the list.
+ * Team/Organization with a subscription only.
+ */
+export const setAiAddonMembers = functions.region(REGION).runWith({ secrets: STRIPE_SECRETS })
+    .https.onCall(async (data, context) => {
+        const { tenantId } = await requireOwner(data?.tenantId, context);
+        const requested: string[] = Array.isArray(data?.memberIds)
+            ? Array.from(new Set((data.memberIds as unknown[]).filter((id): id is string => typeof id === 'string')))
+            : [];
+        const ent = (await entRef(tenantId).get()).data() || {};
+        if (!limitsFor(ent).aiAddonAvailable) throw new functions.https.HttpsError('failed-precondition', 'ai-addon-unavailable');
+        if (!ent.stripeSubscriptionId || !['active', 'trialing', 'past_due'].includes(String(ent.status))) {
+            throw new functions.https.HttpsError('failed-precondition', 'ai-addon-needs-subscription');
+        }
+        const members = await db.collection(`tenants/${tenantId}/members`).select('role').get();
+        const fullMembers = new Set(members.docs.filter((doc) => String(doc.data().role || 'Member') !== 'Guest').map((doc) => doc.id));
+        if (requested.some((uid) => !fullMembers.has(uid))) {
+            throw new functions.https.HttpsError('invalid-argument', 'ai-addon-invalid-member');
+        }
+        await setAddonQuantity(getStripe(), String(ent.stripeSubscriptionId), requested.length);
+        await entRef(tenantId).set({
+            aiMemberIds: requested, aiAddonSeats: requested.length, updatedAt: FieldValue.serverTimestamp(),
+        }, { merge: true });
+        aiAccessCache.clear();
+        return { aiMemberIds: requested };
+    });
 
 // --- Webhook ---
 
@@ -365,19 +504,30 @@ export const onMemberWrittenBilling = functions.region(REGION).runWith({ secrets
         const isSeat = after !== null && after !== 'Guest';
         if (wasSeat === isSeat) return;
         const tenantId = context.params.tenantId;
+        const memberId = context.params.memberId;
         const ent = (await entRef(tenantId).get()).data();
+        // A member who leaves (or becomes a guest) loses the AI add-on assignment.
+        const assigned: string[] = Array.isArray(ent?.aiMemberIds) ? ent.aiMemberIds : [];
+        const dropAi = !isSeat && assigned.includes(memberId);
+        if (dropAi) {
+            await entRef(tenantId).set({ aiMemberIds: FieldValue.arrayRemove(memberId) }, { merge: true });
+            aiAccessCache.delete(memberId);
+        }
         if (!ent?.stripeSubscriptionId || !['active', 'trialing', 'past_due'].includes(String(ent.status))) return;
         if (!process.env.STRIPE_SECRET_KEY) return;
         const stripe = getStripe();
         const subscription = await stripe.subscriptions.retrieve(String(ent.stripeSubscriptionId));
-        const item = subscription.items.data[0];
+        const item = subscription.items.data.find((entry) => !isAiAddonLookupKey(entry.price?.lookup_key));
         const quantity = seatQuantity(await fullMemberRoles(tenantId));
-        if (!item || item.quantity === quantity) return;
-        await stripe.subscriptions.update(subscription.id, {
-            items: [{ id: item.id, quantity }],
-            proration_behavior: 'create_prorations',
-        });
-        await entRef(tenantId).set({ seats: quantity, updatedAt: FieldValue.serverTimestamp() }, { merge: true });
+        if (item && item.quantity !== quantity) {
+            await stripe.subscriptionItems.update(item.id, { quantity, proration_behavior: 'create_prorations' });
+        }
+        if (dropAi) await setAddonQuantity(stripe, subscription.id, assigned.length - 1);
+        await entRef(tenantId).set({
+            seats: quantity,
+            ...(dropAi ? { aiAddonSeats: assigned.length - 1 } : {}),
+            updatedAt: FieldValue.serverTimestamp(),
+        }, { merge: true });
     });
 
 // --- Sweep: trials/grace that ran out, backfill of existing workspaces ---

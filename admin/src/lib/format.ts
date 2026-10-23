@@ -23,3 +23,5 @@ export const relative = (ms: number | null | undefined, now = Date.now()) => {
 };
 
 export const delta = (current: number, previous: number): number | null => (previous > 0 ? (current - previous) / previous : current > 0 ? null : 0);
+
+export const eur = (value: number | null | undefined) => (value == null ? '–' : new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(value));

@@ -4,38 +4,61 @@
  */
 
 export type PlanId = 'free' | 'team' | 'organization';
-export type BillingStatus = 'trialing' | 'active' | 'past_due' | 'grace' | 'free' | 'canceled';
+/** `exempt` = internal/comp workspace (admin console flag `billingExempt`): Team scope incl. AI, no payment. */
+export type BillingStatus = 'trialing' | 'active' | 'past_due' | 'grace' | 'free' | 'canceled' | 'exempt';
 export type BillingInterval = 'month' | 'year';
 
 export const TRIAL_DAYS = 14;
 export const FREE_PROJECT_LIMIT = 3;
 export const TEAM_MEMBER_LIMIT = 50;
-/** Workspaces created before this moment are existing (beta) workspaces and start in grace. */
-export const BILLING_LAUNCH_AT = Date.parse('2026-10-24T00:00:00Z');
 
 export const PRICE_LOOKUP_KEYS: Record<BillingInterval, string> = {
     month: 'team_monthly',
     year: 'team_yearly',
 };
 
+/** AI add-on (owner decision 2026-10-23): 10 €/user/month, Team/Organization only, quantity = users with AI. */
+export const AI_ADDON_LOOKUP_KEYS: Record<BillingInterval, string> = {
+    month: 'ai_addon_monthly',
+    year: 'ai_addon_yearly',
+};
+export const isAiAddonLookupKey = (key: string | null | undefined) =>
+    key === AI_ADDON_LOOKUP_KEYS.month || key === AI_ADDON_LOOKUP_KEYS.year;
+
 export type PlanLimits = {
     memberLimit: number | null;
     projectLimit: number | null;
     invitesAllowed: boolean;
+    /** Every full member has AI (trial and beta grace only); otherwise AI is per user via the add-on. */
     aiIncluded: boolean;
+    aiAddonAvailable: boolean;
 };
 
 export const PLAN_LIMITS: Record<PlanId, PlanLimits> = {
-    free: { memberLimit: 1, projectLimit: FREE_PROJECT_LIMIT, invitesAllowed: false, aiIncluded: false },
-    team: { memberLimit: TEAM_MEMBER_LIMIT, projectLimit: null, invitesAllowed: true, aiIncluded: true },
-    organization: { memberLimit: null, projectLimit: null, invitesAllowed: true, aiIncluded: true },
+    free: { memberLimit: 1, projectLimit: FREE_PROJECT_LIMIT, invitesAllowed: false, aiIncluded: false, aiAddonAvailable: false },
+    team: { memberLimit: TEAM_MEMBER_LIMIT, projectLimit: null, invitesAllowed: true, aiIncluded: false, aiAddonAvailable: true },
+    organization: { memberLimit: null, projectLimit: null, invitesAllowed: true, aiIncluded: false, aiAddonAvailable: true },
 };
 
-/** Effective limits; a missing entitlement doc means a legacy workspace in grace (= Team). */
+/** Trial and beta grace unlock AI for every full member; paid plans need the add-on per user. */
+export const aiIncludedForStatus = (plan: PlanId, status: string) =>
+    plan !== 'free' && (status === 'trialing' || status === 'grace' || status === 'exempt');
+
+/** Effective limits; a missing entitlement doc means a legacy workspace in grace (= Team, AI for all). */
 export const limitsFor = (doc: Record<string, unknown> | undefined | null): PlanLimits => {
     const plan = doc?.plan;
-    if (plan === 'free' || plan === 'team' || plan === 'organization') return PLAN_LIMITS[plan];
-    return PLAN_LIMITS.team;
+    if (plan === 'free' || plan === 'team' || plan === 'organization') {
+        return { ...PLAN_LIMITS[plan], aiIncluded: aiIncludedForStatus(plan, String(doc?.status || '')) };
+    }
+    return { ...PLAN_LIMITS.team, aiIncluded: true };
+};
+
+/** Server AI for this user in this workspace (caller must already know uid is a full member). */
+export const aiEnabledFor = (doc: Record<string, unknown> | undefined | null, uid: string) => {
+    const limits = limitsFor(doc);
+    if (limits.aiIncluded) return true;
+    if (!limits.aiAddonAvailable) return false;
+    return Array.isArray(doc?.aiMemberIds) && (doc?.aiMemberIds as unknown[]).includes(uid);
 };
 
 /** Stripe subscription status → our status + effective plan. */
@@ -86,10 +109,9 @@ export const periodExpired = (endsAtMs: number | null | undefined, now: number) 
     typeof endsAtMs === 'number' && Number.isFinite(endsAtMs) && endsAtMs <= now;
 
 /** Initial entitlement fields for a workspace that has none yet. */
+// No grace for new workspaces (owner 2026-10-23: no customers yet, internal workspaces use `billingExempt`).
+// `grace` remains only on the pre-launch docs written by the first backfill until they are decided.
 export const initialEntitlement = (createdAtMs: number | null, now: number) => {
-    if (createdAtMs !== null && createdAtMs < BILLING_LAUNCH_AT) {
-        return { plan: 'team' as PlanId, status: 'grace' as BillingStatus, trialEndsAtMs: null };
-    }
     const start = createdAtMs ?? now;
     return {
         plan: 'team' as PlanId,

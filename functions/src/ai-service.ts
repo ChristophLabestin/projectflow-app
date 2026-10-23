@@ -39,7 +39,7 @@ const quotaRefs = (uid: string) => {
 export const consumeAiQuota = async (uid: string, kind: AiQuotaKind) => {
     // Plan gate (brain/plans/billing-implementation.md): Free = own OpenAI key only, not metered.
     const access = await resolveAiAccess(uid);
-    if (access.mode === 'none') throw new functions.https.HttpsError('failed-precondition', 'ai-plan-required');
+    if (access.mode === 'none') throw new functions.https.HttpsError('failed-precondition', 'ai-not-enabled');
     if (access.mode === 'own-key') return;
     const { day, month, daily, monthly } = quotaRefs(uid);
     const limit = AI_DAILY_LIMITS[kind];
@@ -197,7 +197,7 @@ export const generateServerText = async (uid: string, instructions: string, inpu
 
 // --- Generate Image ---
 
-export const generateImage = functions.region('europe-west3').runWith({ secrets: ['OPENAI_API_KEY'] }).https.onCall(async (data, context) => {
+export const generateImage = functions.region('europe-west3').runWith({ secrets: ['OPENAI_API_KEY', 'AI_KEY_ENCRYPTION_KEY'] }).https.onCall(async (data, context) => {
     if (!context.auth) {
         throw new functions.https.HttpsError('unauthenticated', 'User must be logged in.');
     }
@@ -237,7 +237,7 @@ export const generateImage = functions.region('europe-west3').runWith({ secrets:
 
 // --- Edit Image ---
 
-export const editImage = functions.region('europe-west3').runWith({ secrets: ['OPENAI_API_KEY'] }).https.onCall(async (data, context) => {
+export const editImage = functions.region('europe-west3').runWith({ secrets: ['OPENAI_API_KEY', 'AI_KEY_ENCRYPTION_KEY'] }).https.onCall(async (data, context) => {
     if (!context.auth) {
         throw new functions.https.HttpsError('unauthenticated', 'User must be logged in.');
     }
@@ -283,7 +283,7 @@ export const editImage = functions.region('europe-west3').runWith({ secrets: ['O
 });
 
 // --- Fixed AI capabilities (replaces the former generic `callGemini` proxy) ---
-export const runAiCapability = functions.region('europe-west3').runWith({ secrets: ['OPENAI_API_KEY'] }).https.onCall(async (data, context) => {
+export const runAiCapability = functions.region('europe-west3').runWith({ secrets: ['OPENAI_API_KEY', 'AI_KEY_ENCRYPTION_KEY'] }).https.onCall(async (data, context) => {
     if (!context.auth) {
         throw new functions.https.HttpsError('unauthenticated', 'User must be logged in.');
     }

@@ -4,9 +4,20 @@ const assert = require('node:assert/strict');
 const billing = require('../../lib/billing-logic');
 
 test('missing entitlement doc is treated as Team (legacy grace)', () => {
-    assert.deepEqual(billing.limitsFor(undefined), billing.PLAN_LIMITS.team);
+    assert.deepEqual(billing.limitsFor(undefined), { ...billing.PLAN_LIMITS.team, aiIncluded: true });
     assert.equal(billing.limitsFor({ plan: 'free' }).projectLimit, 3);
     assert.equal(billing.limitsFor({ plan: 'free' }).aiIncluded, false);
+});
+
+test('AI: trial/grace for everyone, paid Team only via the per-user add-on, never on Free', () => {
+    assert.equal(billing.aiEnabledFor(undefined, 'u1'), true);
+    assert.equal(billing.aiEnabledFor({ plan: 'team', status: 'trialing' }, 'u1'), true);
+    assert.equal(billing.aiEnabledFor({ plan: 'team', status: 'grace' }, 'u1'), true);
+    assert.equal(billing.aiEnabledFor({ plan: 'team', status: 'active', aiMemberIds: ['u2'] }, 'u1'), false);
+    assert.equal(billing.aiEnabledFor({ plan: 'team', status: 'active', aiMemberIds: ['u1'] }, 'u1'), true);
+    assert.equal(billing.aiEnabledFor({ plan: 'free', status: 'free', aiMemberIds: ['u1'] }, 'u1'), false);
+    assert.equal(billing.isAiAddonLookupKey('ai_addon_yearly'), true);
+    assert.equal(billing.isAiAddonLookupKey('team_yearly'), false);
 });
 
 test('maps Stripe statuses', () => {
@@ -30,8 +41,10 @@ test('locks all but the most recently updated projects', () => {
     assert.deepEqual(billing.projectsToLock(projects, null), []);
 });
 
-test('existing workspaces start in grace, new ones in a 14-day trial', () => {
-    assert.equal(billing.initialEntitlement(Date.parse('2026-01-01'), Date.now()).status, 'grace');
+test('every new workspace starts a 14-day trial; exempt workspaces get Team incl. AI', () => {
+    assert.equal(billing.initialEntitlement(Date.parse('2026-01-01'), Date.now()).status, 'trialing');
+    assert.equal(billing.aiEnabledFor({ plan: 'team', status: 'exempt' }, 'u1'), true);
+    assert.equal(billing.limitsFor({ plan: 'team', status: 'exempt' }).projectLimit, null);
     const created = Date.parse('2026-11-01T00:00:00Z');
     const trial = billing.initialEntitlement(created, created);
     assert.equal(trial.status, 'trialing');

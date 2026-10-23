@@ -83,7 +83,9 @@ Example modules:
 > **Implementation status (2026-10-23):** Free and Team are live in code (Stripe **test mode**), see
 > `brain/plans/billing-implementation.md`. New workspaces get a 14-day Team trial without card, then Free
 > (projects over 3 become read-only, nothing is deleted). Existing workspaces are Team in `grace` until
-> `admin_config/billing.cutoverAt`. Free AI = user's own **OpenAI** key (not Gemini). Seats = full members (guests free),
+> `admin_config/billing.cutoverAt`. Free AI = user's own **OpenAI** key (not Gemini). AI add-on: per-user assignment
+> (`aiMemberIds`), trial/grace unlock AI for all members. Internal/comp workspaces: `billingExempt` (admin console only) →
+> Team incl. AI without payment. No founding discount (owner 2026-10-23); no grace/cutover for new workspaces. Seats = full members (guests free),
 > synced to the Stripe quantity. License mode A/B (§3.2), owner quota pools (§3.3), overage (§3.4) and Organization/SSO are not built.
 
 ProjectFlow is intentionally designed with **three subscription tiers**. Plan entitlements must be enforced consistently in:

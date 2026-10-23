@@ -1,16 +1,19 @@
 import React, { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { collection, getDocs } from 'firebase/firestore';
 
 import { useLanguage } from '../../context/LanguageContext';
 import { useToast } from '../../context/UIContext';
-import { useEntitlements } from '../../hooks/useEntitlements';
+import { useCheckoutAvailable, useEntitlements } from '../../hooks/useEntitlements';
+import { auth, db } from '../../services/firebase';
 import {
-    billingErrorKey, createBillingCheckout, createBillingPortal, personalAiKey, type PersonalAiKeyStatus,
+    billingErrorKey, createBillingCheckout, createBillingPortal, personalAiKey, type PersonalAiKeyStatus, setAiAddonMembers,
 } from '../../services/billingService';
 import {
-    type BillingInterval, FREE_PROJECT_LIMIT, TEAM_MEMBER_LIMIT, TEAM_PRICE, daysLeft,
+    AI_ADDON_PRICE, type BillingInterval, FREE_PROJECT_LIMIT, TEAM_MEMBER_LIMIT, TEAM_PRICE, daysLeft,
 } from '../../utils/billingPlans';
 import { Button } from '../ui/Button';
+import { Checkbox } from '../ui/Checkbox';
 import { Input } from '../ui/Input';
 
 type BillingPanelProps = {
@@ -23,18 +26,35 @@ export const BillingPanel: React.FC<BillingPanelProps> = ({ tenantId, role }) =>
     const { t, language } = useLanguage();
     const { showError, showSuccess } = useToast();
     const ent = useEntitlements(tenantId);
+    const checkoutAvailable = useCheckoutAvailable();
     const [searchParams] = useSearchParams();
     const [interval, setBillingInterval] = useState<BillingInterval>('year');
-    const [busy, setBusy] = useState<'checkout' | 'portal' | 'key' | null>(null);
+    const [busy, setBusy] = useState<'checkout' | 'portal' | 'key' | 'ai' | null>(null);
+    const [members, setMembers] = useState<{ uid: string; name: string }[]>([]);
+    const [aiSelection, setAiSelection] = useState<string[] | null>(null);
+    const uid = auth.currentUser?.uid || null;
     const [keyStatus, setKeyStatus] = useState<PersonalAiKeyStatus | null>(null);
     const [keyInput, setKeyInput] = useState('');
     const isOwner = role === 'Owner';
     const checkoutResult = searchParams.get('checkout');
 
+    const needsOwnKey = Boolean(ent && !ent.aiEnabledFor(uid));
     useEffect(() => {
-        if (ent?.plan !== 'free') return;
+        if (!needsOwnKey) return;
         personalAiKey('get').then(setKeyStatus).catch(() => setKeyStatus(null));
-    }, [ent?.plan]);
+    }, [needsOwnKey]);
+
+    // Full members for the AI add-on assignment (guests cannot get it).
+    const showAiAssign = Boolean(ent?.aiAddonAvailable && ent.hasSubscription && isOwner);
+    useEffect(() => {
+        if (!showAiAssign) return;
+        getDocs(collection(db, 'tenants', tenantId, 'members'))
+            .then((snap) => setMembers(snap.docs
+                .filter((doc) => String(doc.data().role || 'Member') !== 'Guest')
+                .map((doc) => ({ uid: doc.id, name: String(doc.data().displayName || doc.data().email || doc.id) }))
+                .sort((a, b) => a.name.localeCompare(b.name))))
+            .catch(() => setMembers([]));
+    }, [showAiAssign, tenantId]);
 
     const formatDate = (date: Date | null) =>
         date ? date.toLocaleDateString(language === 'de' ? 'de-DE' : 'en-US', { day: 'numeric', month: 'long', year: 'numeric' }) : '';
@@ -53,6 +73,22 @@ export const BillingPanel: React.FC<BillingPanelProps> = ({ tenantId, role }) =>
             window.location.assign(url);
         } catch (error) {
             fail(error);
+            setBusy(null);
+        }
+    };
+
+    const selectedAi = aiSelection ?? ent?.aiMemberIds ?? [];
+    const toggleAi = (memberUid: string) => setAiSelection(
+        selectedAi.includes(memberUid) ? selectedAi.filter((id) => id !== memberUid) : [...selectedAi, memberUid]);
+    const saveAi = async () => {
+        setBusy('ai');
+        try {
+            await setAiAddonMembers(tenantId, selectedAi);
+            setAiSelection(null);
+            showSuccess(t('billing.aiAddon.saved'));
+        } catch (error) {
+            fail(error);
+        } finally {
             setBusy(null);
         }
     };
@@ -90,11 +126,13 @@ export const BillingPanel: React.FC<BillingPanelProps> = ({ tenantId, role }) =>
                     .replace('{date}', formatDate(ent.currentPeriodEnd));
             case 'past_due':
                 return t('billing.status.pastDue');
+            case 'exempt':
+                return t('billing.status.exempt');
             default:
                 return t('billing.status.free');
         }
     })();
-    const canSubscribe = !ent.hasSubscription && ent.plan !== 'organization';
+    const canSubscribe = !ent.hasSubscription && ent.plan !== 'organization' && ent.status !== 'exempt';
 
     return (
         <div className="billing-settings">
@@ -129,7 +167,11 @@ export const BillingPanel: React.FC<BillingPanelProps> = ({ tenantId, role }) =>
                     </li>
                     <li>
                         <span className="material-symbols-outlined" aria-hidden="true">auto_awesome</span>
-                        {ent.aiIncluded ? t('billing.facts.aiIncluded') : t('billing.facts.aiOwnKey')}
+                        {ent.plan === 'free'
+                            ? t('billing.facts.aiOwnKey')
+                            : ent.aiIncluded
+                                ? t('billing.facts.aiTrial')
+                                : t('billing.facts.aiAddon').replace('{count}', String(ent.aiAddonSeats))}
                     </li>
                 </ul>
                 {ent.hasSubscription && (
@@ -175,13 +217,54 @@ export const BillingPanel: React.FC<BillingPanelProps> = ({ tenantId, role }) =>
                     </p>
                     <div className="billing-settings__actions">
                         {isOwner
-                            ? <Button onClick={() => void redirect('checkout')} isLoading={busy === 'checkout'}>{t('billing.upgrade.cta')}</Button>
+                            ? checkoutAvailable
+                                ? <Button onClick={() => void redirect('checkout')} isLoading={busy === 'checkout'}>{t('billing.upgrade.cta')}</Button>
+                                : <Button disabled>{t('billing.upgrade.comingSoon')}</Button>
                             : <p className="billing-settings__muted">{t('billing.ownerOnly')}</p>}
                     </div>
                 </section>
             )}
 
-            {ent.plan === 'free' && (
+            {ent.aiAddonAvailable && (
+                <section className="billing-settings__card">
+                    <header className="billing-settings__head">
+                        <div>
+                            <h3>{t('billing.aiAddon.title')}</h3>
+                            <p>{t('billing.aiAddon.subtitle').replace('{price}', String(AI_ADDON_PRICE))}</p>
+                        </div>
+                    </header>
+                    {ent.aiIncluded && <p className="billing-settings__muted">{t('billing.aiAddon.trialNote')}</p>}
+                    {!ent.hasSubscription && <p className="billing-settings__muted">{t('billing.aiAddon.needsSubscription')}</p>}
+                    {ent.hasSubscription && !isOwner && <p className="billing-settings__muted">{t('billing.ownerOnly')}</p>}
+                    {showAiAssign && (
+                        <>
+                            <ul className="billing-settings__members">
+                                {members.map((member) => (
+                                    <li key={member.uid}>
+                                        <Checkbox
+                                            checked={selectedAi.includes(member.uid)}
+                                            onChange={() => toggleAi(member.uid)}
+                                            label={member.name}
+                                        />
+                                    </li>
+                                ))}
+                            </ul>
+                            <div className="billing-settings__actions">
+                                <span className="billing-settings__muted">
+                                    {t('billing.aiAddon.total')
+                                        .replace('{count}', String(selectedAi.length))
+                                        .replace('{amount}', String(selectedAi.length * AI_ADDON_PRICE))}
+                                </span>
+                                <Button onClick={() => void saveAi()} disabled={aiSelection === null} isLoading={busy === 'ai'}>
+                                    {t('billing.aiAddon.save')}
+                                </Button>
+                            </div>
+                        </>
+                    )}
+                </section>
+            )}
+
+            {needsOwnKey && (
                 <section className="billing-settings__card">
                     <header className="billing-settings__head">
                         <div>
