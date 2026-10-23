@@ -31,6 +31,15 @@ import {
 } from './workspace-admin';
 import { getWorkspaceAiPolicy, listWorkspaceAiAudit, updateWorkspaceAiPolicy } from './ai-integrations';
 import {
+    approveOAuthConsent,
+    createPersonalAccessToken,
+    denyOAuthConsent,
+    getOAuthConsentRequest,
+    listAiConnections,
+    oauth,
+    revokeAiConnection
+} from './oauth-server';
+import {
     createTenantFileUploadSession,
     deleteTenantFile,
     disconnectGoogleDriveStorage,
@@ -134,6 +143,13 @@ export {
     getWorkspaceAiPolicy,
     updateWorkspaceAiPolicy,
     listWorkspaceAiAudit,
+    oauth,
+    getOAuthConsentRequest,
+    approveOAuthConsent,
+    denyOAuthConsent,
+    createPersonalAccessToken,
+    listAiConnections,
+    revokeAiConnection,
     createWorkspaceApiToken,
     deleteWorkspaceApiToken,
     getWorkspaceFinancialConfig,

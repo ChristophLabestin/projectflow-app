@@ -115,6 +115,25 @@
         "landing"
       ],
       "port": 4300
+    },
+    {
+      "name": "web-ai-emulator",
+      "runtimeExecutable": "env",
+      "runtimeArgs": [
+        "VITE_EMULATOR_AUTH_PORT=9951",
+        "VITE_EMULATOR_FIRESTORE_PORT=8951",
+        "VITE_EMULATOR_FUNCTIONS_PORT=5951",
+        "npm",
+        "run",
+        "dev:emulator",
+        "--prefix",
+        "web",
+        "--",
+        "--port",
+        "3020",
+        "--strictPort"
+      ],
+      "port": 3020
     }
   ]
 }

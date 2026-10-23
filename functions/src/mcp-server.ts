@@ -18,6 +18,9 @@ import { z } from 'zod';
 import { db } from './init';
 import { checkWorkspaceAccess, effectiveScopes, normalizeRole, type PrincipalKind, RATE_LIMITS } from './ai-access';
 import { aiRateLimiter, loadAiPolicy } from './ai-store';
+import { isAiToken, resolveAiToken } from './ai-tokens';
+import { issuerFor, mcpResourceFor, protectedResourceMetadataUrl } from './oauth-config';
+import { audienceMatches, DEFAULT_OAUTH_SCOPES, OAUTH_SCOPES } from './oauth-core';
 import { checkApiTokenUsable, findApiToken } from './authUtils';
 import { handleProjectflowApiRoute } from './projectflow-api';
 
@@ -581,13 +584,58 @@ const jsonRpcError = (res: any, status: number, message: string, headers: Record
     res.status(status).json({ jsonrpc: '2.0', error: { code: status === 401 ? -32001 : -32000, message }, id: null });
 };
 
+type McpCaller = { tenantId: string; tokenData: any; role: string; kind: PrincipalKind; credentialId: string; resource: string | null };
+
+/** Workspace API tokens (`pfat_`) and user-bound AI tokens (`pfo_` OAuth, `pfp_` personal). */
+const resolveMcpCaller = async (token: string): Promise<McpCaller | { error: string }> => {
+    if (isAiToken(token)) {
+        const resolved = await resolveAiToken(token).catch((error) => {
+            console.error('MCP AI token lookup failed', error);
+            return null;
+        });
+        if (!resolved) return { error: 'Invalid or expired access token.' };
+        if ('error' in resolved) return { error: resolved.error };
+        return {
+            tenantId: resolved.tenantId,
+            tokenData: resolved.tokenData,
+            role: resolved.memberRole,
+            kind: resolved.tokenData.kind,
+            credentialId: resolved.tokenId,
+            resource: resolved.tokenData.resource
+        };
+    }
+    const found = await findApiToken(token).catch((error) => {
+        console.error('MCP token lookup failed', error);
+        return null;
+    });
+    if (!found) return { error: 'Invalid API token.' };
+    const usable = await checkApiTokenUsable(found.tokenData, found.tenantId);
+    if (!usable.ok) return { error: usable.error };
+    return { tenantId: found.tenantId, tokenData: found.tokenData, role: usable.role, kind: 'workspace-token', credentialId: found.tokenRef.id, resource: null };
+};
+
+export const protectedResourceMetadata = (req: any) => ({
+    resource: mcpResourceFor(req),
+    authorization_servers: [issuerFor(req)],
+    scopes_supported: [...OAUTH_SCOPES],
+    bearer_methods_supported: ['header'],
+    resource_name: 'ProjectFlow',
+    resource_documentation: 'https://getprojectflow.com/docs/mcp'
+});
+
 export const mcp = functions.region(REGION).runWith({ memory: '512MB', timeoutSeconds: 120 }).https.onRequest(async (req, res) => {
     res.set('Access-Control-Allow-Origin', '*');
     res.set('Access-Control-Allow-Headers', 'Authorization, Content-Type, Accept, Mcp-Session-Id, Mcp-Protocol-Version');
-    res.set('Access-Control-Expose-Headers', 'Mcp-Session-Id');
+    res.set('Access-Control-Expose-Headers', 'Mcp-Session-Id, WWW-Authenticate');
     if (req.method === 'OPTIONS') {
-        res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
+        res.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
         res.status(204).send('');
+        return;
+    }
+    // RFC 9728 protected resource metadata (OAuth discovery for MCP clients).
+    if (req.method === 'GET' && /\/\.well-known\/oauth-protected-resource(\/mcp)?\/?$/.test(String(req.path || ''))) {
+        res.set('Cache-Control', 'public, max-age=300');
+        res.status(200).json(protectedResourceMetadata(req));
         return;
     }
     // Stateless server: no server-initiated streams and no sessions to delete.
@@ -599,35 +647,31 @@ export const mcp = functions.region(REGION).runWith({ memory: '512MB', timeoutSe
 
     const header = String(req.headers.authorization || '');
     const token = header.startsWith('Bearer ') ? header.slice(7).trim() : '';
-    const unauthorizedHeaders = { 'WWW-Authenticate': 'Bearer realm="ProjectFlow", error="invalid_token"' };
+    const challenge = `Bearer realm="ProjectFlow", resource_metadata="${protectedResourceMetadataUrl(req)}", scope="${DEFAULT_OAUTH_SCOPES.join(' ')}"`;
     if (!token) {
-        jsonRpcError(res, 401, 'Missing API token. Create one in ProjectFlow → Settings → API and send it as "Authorization: Bearer <token>".', unauthorizedHeaders);
+        jsonRpcError(res, 401, 'Sign in to ProjectFlow (OAuth) or send a ProjectFlow token as "Authorization: Bearer <token>".', { 'WWW-Authenticate': challenge });
         return;
     }
 
-    const found = await findApiToken(token).catch((error) => {
-        console.error('MCP token lookup failed', error);
-        return null;
-    });
-    if (!found) {
-        jsonRpcError(res, 401, 'Invalid API token.', unauthorizedHeaders);
+    const caller = await resolveMcpCaller(token);
+    if ('error' in caller) {
+        jsonRpcError(res, 401, caller.error, { 'WWW-Authenticate': `${challenge}, error="invalid_token"` });
         return;
     }
-    const usable = await checkApiTokenUsable(found.tokenData, found.tenantId);
-    if (!usable.ok) {
-        jsonRpcError(res, 401, usable.error, unauthorizedHeaders);
+    if (!audienceMatches(caller.resource, mcpResourceFor(req))) {
+        jsonRpcError(res, 401, 'This token was issued for a different resource.', { 'WWW-Authenticate': `${challenge}, error="invalid_token"` });
         return;
     }
 
-    const role = normalizeRole(usable.role);
-    const kind: PrincipalKind = found.tokenData.kind || 'workspace-token';
-    const policy = await loadAiPolicy(found.tenantId);
+    const role = normalizeRole(caller.role);
+    const kind = caller.kind;
+    const policy = await loadAiPolicy(caller.tenantId);
     const access = role ? checkWorkspaceAccess({ role, policy, kind }) : { ok: false as const, error: 'Not a member of this workspace.' };
     if (!role || !access.ok) {
         jsonRpcError(res, 403, access.ok ? 'Not a member of this workspace.' : access.error);
         return;
     }
-    const retryAfter = aiRateLimiter.take(`mcp:${found.tokenRef.id}`, RATE_LIMITS.request);
+    const retryAfter = aiRateLimiter.take(`mcp:${caller.credentialId}`, RATE_LIMITS.request);
     if (retryAfter > 0) {
         res.set('Retry-After', String(retryAfter));
         jsonRpcError(res, 429, `Rate limit exceeded. Retry in ${retryAfter}s.`);
@@ -635,10 +679,10 @@ export const mcp = functions.region(REGION).runWith({ memory: '512MB', timeoutSe
     }
 
     // tools/list only shows what the token may actually do: scopes ∩ role ceiling ∩ workspace AI policy.
-    const tokenScopes = Array.isArray(found.tokenData.permissions) ? found.tokenData.permissions : [];
+    const tokenScopes = Array.isArray(caller.tokenData.permissions) ? caller.tokenData.permissions : [];
     const server = buildServer(token, {
-        tenantId: found.tenantId,
-        tokenData: found.tokenData,
+        tenantId: caller.tenantId,
+        tokenData: caller.tokenData,
         role,
         permissions: new Set<string>(effectiveScopes({ tokenScopes, role, policy, kind }))
     });

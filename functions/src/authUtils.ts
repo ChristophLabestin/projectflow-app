@@ -3,6 +3,7 @@ import * as crypto from 'crypto';
 import { db } from './init';
 import { FieldValue } from 'firebase-admin/firestore';
 import { shouldTouchLastUsed } from './ai-access';
+import { isAiToken, resolveAiToken } from './ai-tokens';
 
 /**
  * Hash a token using SHA-256 (must match client-side implementation)
@@ -78,6 +79,23 @@ export const validateAPIToken = async (
     requiredPermission: ApiPermission
 ): Promise<{ valid: boolean; tokenData?: any; tenantId?: string; tokenId?: string; memberRole?: string; error?: string }> => {
     try {
+        // 0. User-bound AI credentials (OAuth access tokens, personal access tokens).
+        if (isAiToken(token)) {
+            const resolved = await resolveAiToken(token);
+            if (!resolved) return { valid: false, error: 'Invalid token' };
+            if ('error' in resolved) return { valid: false, error: resolved.error };
+            if (!resolved.tokenData.permissions.includes(requiredPermission)) {
+                return { valid: false, error: 'Insufficient permissions' };
+            }
+            return {
+                valid: true,
+                tokenData: resolved.tokenData,
+                tenantId: resolved.tenantId,
+                tokenId: resolved.tokenId,
+                memberRole: resolved.memberRole
+            };
+        }
+
         // 1. Firebase ID tokens (signed-in app users) are only accepted for
         //    workspace-scoped PM endpoints. The caller must still verify the
         //    user's membership in the requested tenant (see requireWorkspaceMember).

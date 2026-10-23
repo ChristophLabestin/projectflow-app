@@ -8,7 +8,7 @@ A remote [Model Context Protocol](https://modelcontextprotocol.io) server so Cla
 
 - Production URL: `https://app.getprojectflow.com/mcp` (Hosting rewrite → function `mcp`; also `https://projectflow-labestin.web.app/mcp`).
 - Emulator URL: `http://127.0.0.1:5001/demo-projectflow/europe-west3/mcp`.
-- Auth: workspace API token (Settings → API Keys), sent as `Authorization: Bearer <token>`. Missing/invalid/expired tokens get HTTP 401 with `WWW-Authenticate: Bearer`. OAuth is not implemented, so claude.ai "custom connectors" (OAuth-only) cannot connect; Claude Code, Codex and header-capable clients can.
+- Auth (since 2026-10-23): **OAuth 2.1** (preferred, any MCP client incl. claude.ai/ChatGPT connectors), personal access tokens `pfp_…`, or legacy workspace API tokens `pfat_…` — all as `Authorization: Bearer`. A 401 carries `WWW-Authenticate: Bearer resource_metadata="https://app.getprojectflow.com/.well-known/oauth-protected-resource/mcp"`; details in `brain/operations/projectflow-oauth.md`.
 
 ## Design
 

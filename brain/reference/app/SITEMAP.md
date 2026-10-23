@@ -28,6 +28,7 @@ These routes must remain accessible without being logged in.
 - [x] `/desktop/day?mode=start|close` — Desktop only: day start / day close window (`DesktopDayWindow`, plan logic from `utils/dayPlan`).
 - [x] `/desktop/tray` — Desktop only: menu bar panel (`DesktopTrayPanel`): focus timer + controls, inline capture, Today / Pinned / Inbox, next meeting, quick actions.
 - [x] `/desktop/auth?challenge=…` — Browser page of the desktop OAuth handoff (`DesktopAuthHandoff`): after web sign-in it creates a one-time code and opens `projectflow://auth`.
+- [x] `/oauth/consent?request=…` — OAuth consent for AI/MCP clients (`OAuthConsent`): signed-in user picks one workspace and the scopes, then returns to the client with a code (server: `functions/src/oauth-server.ts`). Hosting rewrites `/oauth/authorize|token|register|revoke` and `/.well-known/oauth-*` go to the functions `oauth` / `mcp`, not to the SPA.
 
 ---
 
