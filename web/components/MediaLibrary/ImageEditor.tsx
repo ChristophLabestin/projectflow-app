@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
+import { useLanguage } from '../../context/LanguageContext';
 import ReactCrop, { Crop, PixelCrop, centerCrop, makeAspectCrop } from 'react-image-crop';
 import 'react-image-crop/dist/ReactCrop.css';
 
@@ -49,6 +50,7 @@ function centerAspectCrop(
 }
 
 export const ImageEditor: React.FC<ImageEditorProps> = ({ src, onSave, onCancel, onSaveReplace, circularCrop }) => {
+    const { t } = useLanguage();
     const imgRef = useRef<HTMLImageElement>(null);
     const [crop, setCrop] = useState<Crop>();
     const [completedCrop, setCompletedCrop] = useState<PixelCrop>();
@@ -145,7 +147,7 @@ export const ImageEditor: React.FC<ImageEditorProps> = ({ src, onSave, onCancel,
                         >
                             <img
                                 ref={imgRef}
-                                alt="Crop me"
+                                alt={t('imageEditor.cropAlt')}
                                 src={src}
                                 style={{
                                     transform: `rotate(${rotation}deg) scale(${zoom})`,
@@ -164,7 +166,7 @@ export const ImageEditor: React.FC<ImageEditorProps> = ({ src, onSave, onCancel,
                 <div className="w-80 bg-surface-paper border-l border-surface flex flex-col">
                     {/* Header */}
                     <div className="p-4 border-b border-surface flex justify-between items-center">
-                        <h3 className="font-bold">Edit Image</h3>
+                        <h3 className="font-bold">{t('imageEditor.title')}</h3>
                         <button onClick={onCancel} className="text-muted hover:text-main">
                             <span className="material-symbols-outlined">close</span>
                         </button>
@@ -181,7 +183,7 @@ export const ImageEditor: React.FC<ImageEditorProps> = ({ src, onSave, onCancel,
                         >
                             <div className="flex items-center justify-center gap-2">
                                 <span className="material-symbols-outlined text-[18px]">crop_rotate</span>
-                                Crop & Rotate
+                                {t('imageEditor.tab.crop')}
                             </div>
                         </button>
                         <button
@@ -193,7 +195,7 @@ export const ImageEditor: React.FC<ImageEditorProps> = ({ src, onSave, onCancel,
                         >
                             <div className="flex items-center justify-center gap-2">
                                 <span className="material-symbols-outlined text-[18px]">tune</span>
-                                Filters
+                                {t('imageEditor.tab.filters')}
                             </div>
                         </button>
                     </div>
@@ -203,27 +205,27 @@ export const ImageEditor: React.FC<ImageEditorProps> = ({ src, onSave, onCancel,
                         {activeTab === 'crop' && (
                             <div className="space-y-6">
                                 <div className="space-y-3">
-                                    <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Aspect Ratio</label>
+                                    <label className="text-xs font-bold text-muted uppercase tracking-wider">{t('imageEditor.aspectRatio')}</label>
                                     <div className="grid grid-cols-4 gap-2">
                                         {ASPECT_RATIOS.map((ratio) => (
                                             <button
-                                                key={ratio.label}
+                                                key={ratio.label === 'Free' ? t('imageEditor.free') : ratio.label}
                                                 onClick={() => setAspect(ratio.value)}
                                                 className={`py-2 text-[10px] font-bold border rounded-lg transition-all ${aspect === ratio.value
                                                     ? 'bg-primary border-primary text-on-primary'
-                                                    : 'bg-white text-zinc-600 border-zinc-200 hover:border-primary/50'
+                                                    : 'bg-surface-card text-muted border-surface hover:border-primary/50'
                                                     }`}
                                             >
-                                                {ratio.label}
+                                                {ratio.label === 'Free' ? t('imageEditor.free') : ratio.label}
                                             </button>
                                         ))}
                                     </div>
                                 </div>
 
-                                <div className="space-y-2 pt-4 border-t border-zinc-100 dark:border-zinc-800">
+                                <div className="space-y-2 pt-4 border-t border-surface">
                                     <div className="flex justify-between">
-                                        <label className="text-xs font-bold text-zinc-500">Zoom</label>
-                                        <span className="text-xs text-zinc-400">{zoom.toFixed(1)}x</span>
+                                        <label className="text-xs font-bold text-muted">{t('imageEditor.zoom')}</label>
+                                        <span className="text-xs text-subtle">{zoom.toFixed(1)}x</span>
                                     </div>
                                     <input
                                         type="range"
@@ -236,10 +238,10 @@ export const ImageEditor: React.FC<ImageEditorProps> = ({ src, onSave, onCancel,
                                     />
                                 </div>
 
-                                <div className="space-y-2 pt-4 border-t border-zinc-100 dark:border-zinc-800">
+                                <div className="space-y-2 pt-4 border-t border-surface">
                                     <div className="flex justify-between">
-                                        <label className="text-xs font-bold text-zinc-500">Rotation</label>
-                                        <span className="text-xs text-zinc-400">{rotation}°</span>
+                                        <label className="text-xs font-bold text-muted">{t('imageEditor.rotation')}</label>
+                                        <span className="text-xs text-subtle">{rotation}°</span>
                                     </div>
                                     <input
                                         type="range"
@@ -254,7 +256,7 @@ export const ImageEditor: React.FC<ImageEditorProps> = ({ src, onSave, onCancel,
                                             <button
                                                 key={deg}
                                                 onClick={() => setRotation(deg)}
-                                                className="flex-1 py-1 text-xs border border-zinc-200 dark:border-zinc-700 rounded hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                                                className="flex-1 py-1 text-xs border border-surface rounded hover:bg-surface-hover"
                                             >
                                                 {deg}°
                                             </button>
@@ -270,10 +272,10 @@ export const ImageEditor: React.FC<ImageEditorProps> = ({ src, onSave, onCancel,
                                         setRotation(0);
                                         setAspect(undefined);
                                     }}
-                                    className="w-full py-2 text-xs font-medium text-muted border border-zinc-200 dark:border-zinc-700 rounded hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors flex items-center justify-center gap-2"
+                                    className="w-full py-2 text-xs font-medium text-muted border border-surface rounded hover:bg-surface-hover transition-colors flex items-center justify-center gap-2"
                                 >
                                     <span className="material-symbols-outlined text-[16px]">restart_alt</span>
-                                    Reset Crop & Orientation
+                                    {t('imageEditor.resetCrop')}
                                 </button>
                             </div>
                         )}
@@ -281,16 +283,16 @@ export const ImageEditor: React.FC<ImageEditorProps> = ({ src, onSave, onCancel,
                         {activeTab === 'filters' && (
                             <div className="space-y-6">
                                 {[
-                                    { key: 'brightness', label: 'Brightness', min: 0, max: 200, unit: '%' },
-                                    { key: 'contrast', label: 'Contrast', min: 0, max: 200, unit: '%' },
-                                    { key: 'saturate', label: 'Saturation', min: 0, max: 200, unit: '%' },
-                                    { key: 'grayscale', label: 'Grayscale', min: 0, max: 100, unit: '%' },
-                                    { key: 'sepia', label: 'Sepia', min: 0, max: 100, unit: '%' },
+                                    { key: 'brightness', label: t('imageEditor.filter.brightness'), min: 0, max: 200, unit: '%' },
+                                    { key: 'contrast', label: t('imageEditor.filter.contrast'), min: 0, max: 200, unit: '%' },
+                                    { key: 'saturate', label: t('imageEditor.filter.saturation'), min: 0, max: 200, unit: '%' },
+                                    { key: 'grayscale', label: t('imageEditor.filter.grayscale'), min: 0, max: 100, unit: '%' },
+                                    { key: 'sepia', label: t('imageEditor.filter.sepia'), min: 0, max: 100, unit: '%' },
                                 ].map((filter) => (
                                     <div key={filter.key} className="space-y-2">
                                         <div className="flex justify-between">
-                                            <label className="text-xs font-bold text-zinc-500">{filter.label}</label>
-                                            <span className="text-xs text-zinc-400">
+                                            <label className="text-xs font-bold text-muted">{filter.label}</label>
+                                            <span className="text-xs text-subtle">
                                                 {filters[filter.key as keyof FilterState]}{filter.unit}
                                             </span>
                                         </div>
@@ -308,7 +310,7 @@ export const ImageEditor: React.FC<ImageEditorProps> = ({ src, onSave, onCancel,
                                     onClick={() => setFilters(DEFAULT_FILTERS)}
                                     className="w-full py-2 text-xs font-medium text-primary border border-primary rounded hover:bg-primary/5"
                                 >
-                                    Reset Filters
+                                    {t('imageEditor.resetFilters')}
                                 </button>
                             </div>
                         )}
@@ -322,7 +324,7 @@ export const ImageEditor: React.FC<ImageEditorProps> = ({ src, onSave, onCancel,
                             className="flex-1 py-2.5 bg-primary text-on-primary rounded-lg font-medium hover:brightness-110 flex items-center justify-center gap-2 disabled:opacity-50"
                         >
                             {isProcessing && <span className="material-symbols-outlined animate-spin text-sm">progress_activity</span>}
-                            Save Changes
+                            {t('imageEditor.save')}
                         </button>
                     </div>
                 </div>

@@ -10,6 +10,10 @@
     cursor: pointer;
     transition: all var(--transition-fast);
     width: auto;
+    max-width: 100%;
+    // Fixed heights below: labels must not wrap, and flex parents must not squeeze the button.
+    white-space: nowrap;
+    flex-shrink: 0;
 
     // Disable native outline and use focus-visible usually, but for now standard focus
     &:focus-visible {

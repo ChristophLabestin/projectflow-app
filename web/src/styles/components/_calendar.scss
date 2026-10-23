@@ -997,6 +997,35 @@
         flex: 1;
         justify-content: space-between;
     }
+
+    // Seven week columns are ~45px wide on a phone: stack the days as an agenda.
+    .calendar-grid--week {
+        grid-template-columns: 1fr;
+        grid-auto-rows: max-content;
+        overflow-y: auto;
+    }
+
+    .calendar-grid--week .calendar-day {
+        min-height: 56px;
+    }
+
+    .calendar-grid--week .calendar-day__list {
+        flex: none;
+        overflow: visible;
+    }
+
+    .calendar-grid--week .calendar-day__header {
+        justify-content: flex-start;
+        gap: 8px;
+    }
+
+    .calendar-grid--month {
+        grid-auto-rows: minmax(64px, auto);
+    }
+
+    .calendar-grid--month .calendar-day__header {
+        padding: 4px;
+    }
 }
 
 @media (max-width: 640px) {

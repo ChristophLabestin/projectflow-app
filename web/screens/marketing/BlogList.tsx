@@ -8,7 +8,7 @@ import { useToast, useConfirm } from '../../context/UIContext';
 import { Button } from '../../components/ui/Button';
 
 const BlogList = () => {
-    const { t, language } = useLanguage();
+    const { t, language, dateLocale } = useLanguage();
     const navigate = useNavigate();
     const { id: projectId } = useParams();
     const [blogs, setBlogs] = useState<BlogPost[]>([]);
@@ -63,8 +63,8 @@ const BlogList = () => {
         if (!projectId) return;
 
         const confirmed = await confirm(
-            'Delete Blog Post',
-            'Are you sure you want to delete this blog post? This action cannot be undone.'
+            t('marketing.blogList.deleteTitle'),
+            t('marketing.blogList.deleteMessage')
         );
 
         if (!confirmed) return;
@@ -72,10 +72,10 @@ const BlogList = () => {
         try {
             await deleteBlogPost(projectId, blogId);
             setBlogs(prev => prev.filter(b => b.id !== blogId));
-            showSuccess('Blog post deleted successfully');
+            showSuccess(t('marketing.blogList.deleted'));
         } catch (err) {
             console.error('Failed to delete post', err);
-            showError('Failed to delete blog post');
+            showError(t('marketing.blogList.deleteFailed'));
         }
     };
 
@@ -158,20 +158,20 @@ const BlogList = () => {
             {/* Header */}
             <div className="flex items-center justify-between shrink-0">
                 <div>
-                    <h1 className="text-2xl font-bold text-main">Blog Posts</h1>
-                    <p className="text-sm text-muted">Manage your blog content and publications</p>
+                    <h1 className="text-2xl font-bold text-main">{t('marketing.blogList.title')}</h1>
+                    <p className="text-sm text-muted">{t('marketing.blogList.subtitle')}</p>
                 </div>
                 <div className="flex items-center gap-3">
                     {/* Language Filter - Only show if languages are configured */}
                     {supportedLanguages.length > 1 && (
                         <div className="flex items-center gap-2">
-                            <span className="text-xs text-muted">Language:</span>
+                            <span className="text-xs text-muted">{t('marketing.blogList.language')}</span>
                             <select
                                 value={selectedLanguage}
                                 onChange={(e) => setSelectedLanguage(e.target.value)}
                                 className="px-3 py-1.5 text-sm bg-surface border border-surface rounded-lg focus:border-primary outline-none"
                             >
-                                <option value="all">All Languages</option>
+                                <option value="all">{t('marketing.blogList.allLanguages')}</option>
                                 {supportedLanguages.map(lang => (
                                     <option key={lang} value={lang}>{lang.toUpperCase()}</option>
                                 ))}
@@ -180,21 +180,21 @@ const BlogList = () => {
                     )}
 
                     <div className="flex items-center p-1 bg-surface-hover rounded-lg">
-                        <button aria-label="Grid View"
+                        <button aria-label={t('marketing.blogList.gridView')}
                             onClick={() => setViewMode('grid')}
                             className={`p-1.5 rounded-md transition-all ${viewMode === 'grid'
-                                ? 'bg-white shadow-sm text-main dark:bg-card'
+                                ? 'bg-surface-card shadow-sm text-main'
                                 : 'text-muted hover:text-main'}`}
-                            title="Grid View"
+                            title={t('marketing.blogList.gridView')}
                         >
                             <span className="material-symbols-outlined text-[20px]">grid_view</span>
                         </button>
-                        <button aria-label="List View"
+                        <button aria-label={t('marketing.blogList.listView')}
                             onClick={() => setViewMode('list')}
                             className={`p-1.5 rounded-md transition-all ${viewMode === 'list'
-                                ? 'bg-white shadow-sm text-main dark:bg-card'
+                                ? 'bg-surface-card shadow-sm text-main'
                                 : 'text-muted hover:text-main'}`}
-                            title="List View"
+                            title={t('marketing.blogList.listView')}
                         >
                             <span className="material-symbols-outlined text-[20px]">view_list</span>
                         </button>
@@ -205,7 +205,7 @@ const BlogList = () => {
                         className="px-4 py-2 rounded-lg hover:bg-[var(--color-primary-hover)] transition-colors shadow-sm font-medium gap-2"
                     >
                         <span className="material-symbols-outlined text-[20px]">add</span>
-                        Create New Post
+                        {t('marketing.blogList.createPost')}
                     </Button>
                 </div>
             </div>
@@ -219,10 +219,10 @@ const BlogList = () => {
 
             {/* Error State */}
             {error && (
-                <div className="p-4 mb-6 rounded-lg bg-red-500/10 border border-red-500/20 text-red-500 flex items-center gap-3">
+                <div className="p-4 mb-6 rounded-lg bg-error/10 border border-error/20 text-error flex items-center gap-3">
                     <span className="material-symbols-outlined">error</span>
                     <p>{error}</p>
-                    <button onClick={() => window.location.reload()} className="ml-auto underline text-sm">Retry</button>
+                    <button onClick={() => window.location.reload()} className="ml-auto underline text-sm">{t('common.retry')}</button>
                 </div>
             )}
 
@@ -239,10 +239,10 @@ const BlogList = () => {
                                 {/* Status Badge */}
                                 <div className="absolute top-3 right-3 z-10">
                                     <span className={`px-2.5 py-1 rounded-full text-xs font-medium backdrop-blur-md shadow-sm border ${blog.status === 'published'
-                                        ? 'bg-white text-emerald-600 border-emerald-500/20'
-                                        : 'bg-white text-amber-600 border-amber-500/20'
+                                        ? 'bg-surface-card text-success border-success/20'
+                                        : 'bg-surface-card text-warning border-warning/20'
                                         }`}>
-                                        {blog.status === 'published' ? 'Published' : 'Draft'}
+                                        {blog.status === 'published' ? t('marketing.blogList.status.published') : t('marketing.blogList.status.draft')}
                                     </span>
                                 </div>
                                 <div className="absolute top-3 right-3 z-20 mt-8 flex flex-row items-center gap-1">
@@ -256,10 +256,10 @@ const BlogList = () => {
                                                 }
                                             }}
                                             className={`px-3 py-1 rounded-full text-xs font-bold backdrop-blur-md shadow-sm transition-all uppercase tracking-wide ${langItem.id === blog.id
-                                                ? 'bg-white text-primary ring-1 ring-primary/10 dark:text-black'
-                                                : 'bg-white/90 text-muted hover:bg-white hover:text-primary dark:text-black/70 dark:hover:text-black'
+                                                ? 'bg-surface-card text-primary ring-1 ring-primary/10'
+                                                : 'bg-surface-card/90 text-muted hover:bg-surface-card hover:text-primary'
                                                 }`}
-                                            title={`Switch to ${langItem.lang.toUpperCase()}`}
+                                            title={t('marketing.blogList.switchTo').replace('{lang}', langItem.lang.toUpperCase())}
                                         >
                                             {langItem.lang}
                                         </button>
@@ -267,10 +267,10 @@ const BlogList = () => {
                                 </div>
 
                                 {/* Delete Button (Visible on hover) */}
-                                <button aria-label="Delete Post"
+                                <button aria-label={t('marketing.blogList.deletePost')}
                                     onClick={(e) => handleDelete(e, blog.id)}
-                                    className="absolute top-3 left-3 z-10 w-8 h-8 flex items-center justify-center rounded-full bg-white/90 text-red-500 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-50 shadow-sm"
-                                    title="Delete Post"
+                                    className="absolute top-3 left-3 z-10 w-8 h-8 flex items-center justify-center rounded-full bg-surface-card/90 text-error opacity-0 group-hover:opacity-100 transition-opacity hover:bg-error/10 shadow-sm"
+                                    title={t('marketing.blogList.deletePost')}
                                 >
                                     <span className="material-symbols-outlined text-[18px]">delete</span>
                                 </button>
@@ -310,7 +310,7 @@ const BlogList = () => {
 
                                     <div className="flex items-center justify-between text-xs text-muted mt-4">
                                         <span>{typeof blog.author === 'object' ? blog.author.name : blog.author}</span>
-                                        <span>{format(new Date(blog.createdAt), 'MMM d, yyyy')}</span>
+                                        <span>{format(new Date(blog.createdAt), 'PP', { locale: dateLocale })}</span>
                                     </div>
                                 </div>
                             </div>
@@ -324,7 +324,7 @@ const BlogList = () => {
                             <div className="w-12 h-12 rounded-full bg-surface-hover flex items-center justify-center group-hover:bg-[var(--color-primary-light)] transition-colors">
                                 <span className="material-symbols-outlined text-2xl">add</span>
                             </div>
-                            <span className="font-medium">Create New Blog</span>
+                            <span className="font-medium">{t('marketing.blogList.createBlog')}</span>
                         </button>
                     </div>
                 ) : (
@@ -333,11 +333,11 @@ const BlogList = () => {
                             <table className="w-full text-left text-sm">
                                 <thead className="bg-surface border-b border-surface">
                                     <tr>
-                                        <th className="py-3 px-4 font-medium text-muted w-1/2">Post</th>
-                                        <th className="py-3 px-4 font-medium text-muted">Author</th>
-                                        <th className="py-3 px-4 font-medium text-muted">Status</th>
-                                        <th className="py-3 px-4 font-medium text-muted">Date</th>
-                                        <th className="py-3 px-4 font-medium text-muted text-right">Actions</th>
+                                        <th className="py-3 px-4 font-medium text-muted w-1/2">{t('marketing.blogList.col.post')}</th>
+                                        <th className="py-3 px-4 font-medium text-muted">{t('marketing.blogList.col.author')}</th>
+                                        <th className="py-3 px-4 font-medium text-muted">{t('marketing.blogList.col.status')}</th>
+                                        <th className="py-3 px-4 font-medium text-muted">{t('marketing.blogList.col.date')}</th>
+                                        <th className="py-3 px-4 font-medium text-muted text-right">{t('marketing.blogList.col.actions')}</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-[var(--color-surface-border)]">
@@ -373,17 +373,17 @@ const BlogList = () => {
                                                                             }
                                                                         }}
                                                                         className={`px-1.5 py-0.5 rounded text-[10px] font-medium border ${langItem.lang === blog.language
-                                                                            ? 'bg-blue-500/10 text-blue-600 border-blue-500/20'
-                                                                            : 'bg-gray-100 text-gray-600 border-gray-200 hover:bg-blue-50 hover:text-blue-600'
+                                                                            ? 'bg-primary/10 text-primary border-primary/20'
+                                                                            : 'bg-surface-hover text-muted border-surface hover:bg-primary/10 hover:text-primary'
                                                                             }`}
-                                                                        title={`Switch to ${langItem.lang.toUpperCase()}`}
+                                                                        title={t('marketing.blogList.switchTo').replace('{lang}', langItem.lang.toUpperCase())}
                                                                     >
                                                                         {langItem.lang.toUpperCase()}
                                                                     </button>
                                                                 ))
                                                             ) : (
                                                                 blog.language && (
-                                                                    <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-500/10 text-blue-600 border border-blue-500/20">
+                                                                    <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-primary/10 text-primary border border-primary/20">
                                                                         {blog.language.toUpperCase()}
                                                                     </span>
                                                                 )
@@ -395,25 +395,25 @@ const BlogList = () => {
                                             <td className="py-3 px-4 text-muted">{typeof blog.author === 'object' ? blog.author.name : blog.author}</td>
                                             <td className="py-3 px-4">
                                                 <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${blog.status === 'published'
-                                                    ? 'bg-emerald-500/10 text-emerald-600'
-                                                    : 'bg-amber-500/10 text-amber-600'
+                                                    ? 'bg-success/10 text-success'
+                                                    : 'bg-warning/10 text-warning'
                                                     }`}>
-                                                    {blog.status === 'published' ? 'Published' : 'Draft'}
+                                                    {blog.status === 'published' ? t('marketing.blogList.status.published') : t('marketing.blogList.status.draft')}
                                                 </span>
                                                 {blog.language && (
-                                                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-500/10 text-blue-600 ml-1">
+                                                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary ml-1">
                                                         {blog.language.toUpperCase()}
                                                     </span>
                                                 )}
                                             </td>
                                             <td className="py-3 px-4 text-muted">
-                                                {format(new Date(blog.createdAt), 'MMM d, yyyy')}
+                                                {format(new Date(blog.createdAt), 'PP', { locale: dateLocale })}
                                             </td>
                                             <td className="py-3 px-4 text-right">
-                                                <button aria-label="Delete"
+                                                <button aria-label={t('common.delete')}
                                                     onClick={(e) => handleDelete(e, blog.id)}
-                                                    className="p-1.5 rounded-md text-muted hover:text-red-500 hover:bg-red-50 transition-colors opacity-0 group-hover:opacity-100"
-                                                    title="Delete"
+                                                    className="p-1.5 rounded-md text-muted hover:text-error hover:bg-error/10 transition-colors opacity-0 group-hover:opacity-100"
+                                                    title={t('common.delete')}
                                                 >
                                                     <span className="material-symbols-outlined text-[20px]">delete</span>
                                                 </button>

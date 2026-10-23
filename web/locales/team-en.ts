@@ -9,6 +9,7 @@ const enTeam = {
     'team.v2.view.all': 'All',
     'team.v2.view.invites': 'Invitations',
     'team.v2.stats': '{agents} AI agents · {humans} people · {departments} departments · {projects} projects',
+    'team.v2.statsNoAgents': '{humans} people · {departments} departments · {projects} projects',
     'team.v2.invite': 'Invite',
     'team.v2.allMembers': 'All members',
     'team.v2.companyWide': 'Company-wide',

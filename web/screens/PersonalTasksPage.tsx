@@ -250,8 +250,8 @@ export const PersonalTasksPage = () => {
                                 className={`
                                     flex-shrink-0 size-6 rounded-lg border-2 flex items-center justify-center transition-all duration-300
                                     ${task.isCompleted
-                                        ? 'bg-green-500 border-green-500 text-white shadow-sm shadow-green-500/20'
-                                        : 'border-[var(--color-text-subtle)]/30 text-transparent hover:border-green-500 hover:text-green-500/20 bg-transparent'}
+                                        ? 'bg-success border-success text-[var(--color-text-ondark)] shadow-sm'
+                                        : 'border-[var(--color-text-subtle)]/30 text-transparent hover:border-success hover:text-success/40 bg-transparent'}
                                 `}
                             >
                                 <span className="material-symbols-outlined text-[16px] font-bold">check</span>
@@ -282,7 +282,7 @@ export const PersonalTasksPage = () => {
                                     <button
                                         onClick={(e) => { e.stopPropagation(); setShowMoveDropdown(showMoveDropdown === task.id ? null : task.id); }}
                                         disabled={movingTaskId === task.id}
-                                        className="p-2 rounded-lg hover:bg-indigo-500/10 text-muted hover:text-indigo-500 transition-all"
+                                        className="p-2 rounded-lg hover:bg-primary/10 text-muted hover:text-primary transition-all"
                                         title={t('personalTasks.move.title')}
                                     >
                                         {movingTaskId === task.id ? (
@@ -326,7 +326,7 @@ export const PersonalTasksPage = () => {
                                 {/* Delete Button */}
                                 <button aria-label={t('personalTasks.actions.delete')}
                                     onClick={(e) => handleDelete(e, task.id)}
-                                    className="p-2 rounded-lg hover:bg-red-500/10 text-muted hover:text-red-500 transition-all"
+                                    className="p-2 rounded-lg hover:bg-error/10 text-muted hover:text-error transition-all"
                                     title={t('personalTasks.actions.delete')}
                                 >
                                     <span className="material-symbols-outlined text-[18px]">delete</span>

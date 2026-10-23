@@ -442,6 +442,12 @@ html.dark .app-sidebar .app-sidebar__nav-item.is-active {
     > * {
         pointer-events: auto;
     }
+
+    // On phones the pills need their full width; otherwise they overflow to the
+    // left and cover the breadcrumbs. The context pill shrinks instead.
+    @media (max-width: 767px) {
+        flex: 0 0 auto;
+    }
 }
 
 .topbar-search-pill {

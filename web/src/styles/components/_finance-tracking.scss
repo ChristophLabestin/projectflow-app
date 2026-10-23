@@ -9,6 +9,7 @@
 
 .finance-header {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   align-items: flex-start;
   gap: 16px;
@@ -1479,7 +1480,8 @@
 
 .finance-cockpit__hero {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  // Container-driven: the media query below ignores the sidebar width.
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
   gap: 24px;
 }
 
@@ -1501,7 +1503,6 @@
 
 @media (max-width: 1024px) {
 
-  .finance-cockpit__hero,
   .finance-cockpit__grid {
     grid-template-columns: 1fr;
   }

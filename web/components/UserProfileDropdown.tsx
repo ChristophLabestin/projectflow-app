@@ -76,11 +76,11 @@ export const UserProfileDropdown: React.FC = () => {
 
     const getStatusInfo = (status: 'online' | 'busy' | 'idle' | 'offline') => {
         switch (status) {
-            case 'online': return { color: 'bg-emerald-500', label: t('status.online'), icon: 'check_circle' };
-            case 'busy': return { color: 'bg-rose-500', label: t('status.busy'), icon: 'do_not_disturb_on' };
-            case 'idle': return { color: 'bg-amber-400', label: t('status.away'), icon: 'schedule' };
-            case 'offline': return { color: 'bg-slate-400', label: t('status.offline'), icon: 'visibility_off' };
-            default: return { color: 'bg-emerald-500', label: t('status.online'), icon: 'check_circle' };
+            case 'online': return { color: 'bg-success', label: t('status.online'), icon: 'check_circle' };
+            case 'busy': return { color: 'bg-error', label: t('status.busy'), icon: 'do_not_disturb_on' };
+            case 'idle': return { color: 'bg-warning', label: t('status.away'), icon: 'schedule' };
+            case 'offline': return { color: 'bg-[var(--color-text-subtle)]', label: t('status.offline'), icon: 'visibility_off' };
+            default: return { color: 'bg-success', label: t('status.online'), icon: 'check_circle' };
         }
     };
 
@@ -271,7 +271,7 @@ export const UserProfileDropdown: React.FC = () => {
                     <div className="pf-menu-divider-t py-2 rounded-b-2xl">
                         <button
                             onClick={handleSignOut}
-                            className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-rose-50 dark:hover:bg-rose-900/10 text-rose-600 dark:text-rose-400 transition-colors text-left"
+                            className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-error/10 text-error transition-colors text-left"
                         >
                             <span className="material-symbols-outlined text-[20px]">logout</span>
                             <span className="text-sm font-medium">{t('user.signOut')}</span>

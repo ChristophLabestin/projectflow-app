@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Editor } from '@tiptap/react';
+import { useLanguage } from '../../../context/LanguageContext';
 import { BoxSelect, AlignLeft, AlignCenter, AlignRight, Maximize } from 'lucide-react';
 
 interface ButtonMenuProps {
@@ -14,6 +15,7 @@ const ensureUnit = (val: string) => {
 };
 
 export const ButtonMenu: React.FC<ButtonMenuProps> = ({ editor }) => {
+    const { t } = useLanguage();
     const [isVisible, setIsVisible] = useState(false);
     const [position, setPosition] = useState({ top: 0, left: 0 });
     const menuRef = useRef<HTMLDivElement>(null);
@@ -117,7 +119,7 @@ export const ButtonMenu: React.FC<ButtonMenuProps> = ({ editor }) => {
             onClick={(e) => e.stopPropagation()}
         >
             <div className="flex items-center justify-between px-1 mb-2">
-                <span className="text-xs font-bold text-main">Button Settings</span>
+                <span className="text-xs font-bold text-main">{t('editor.menu.button.title')}</span>
             </div>
 
             {/* TABS */}
@@ -138,7 +140,7 @@ export const ButtonMenu: React.FC<ButtonMenuProps> = ({ editor }) => {
                 {activeTab === 'link' && (
                     <div className="animate-in fade-in duration-200 space-y-3">
                         <div>
-                            <div className="text-[10px] font-medium text-muted mb-2 uppercase tracking-wide">Link URL</div>
+                            <div className="text-[10px] font-medium text-muted mb-2 uppercase tracking-wide">{t('editor.menu.button.linkUrl')}</div>
                             <div className="flex gap-2">
                                 <input
                                     type="text"
@@ -153,19 +155,19 @@ export const ButtonMenu: React.FC<ButtonMenuProps> = ({ editor }) => {
                         </div>
 
                         <div>
-                            <div className="text-[10px] font-medium text-muted mb-2 uppercase tracking-wide">Target</div>
+                            <div className="text-[10px] font-medium text-muted mb-2 uppercase tracking-wide">{t('editor.menu.button.target')}</div>
                             <div className="flex gap-2">
                                 <button
                                     onClick={() => updateAttribute('target', '_blank')}
                                     className={`flex-1 py-1.5 text-[10px] rounded-md border ${attrs.target === '_blank' ? 'bg-primary/10 border-primary text-primary' : 'border-surface text-muted'}`}
                                 >
-                                    New Tab
+                                    {t('editor.menu.button.newTab')}
                                 </button>
                                 <button
                                     onClick={() => updateAttribute('target', '_self')}
                                     className={`flex-1 py-1.5 text-[10px] rounded-md border ${attrs.target === '_self' ? 'bg-primary/10 border-primary text-primary' : 'border-surface text-muted'}`}
                                 >
-                                    Same Tab
+                                    {t('editor.menu.button.sameTab')}
                                 </button>
                             </div>
                         </div>
@@ -176,7 +178,7 @@ export const ButtonMenu: React.FC<ButtonMenuProps> = ({ editor }) => {
                     <div className="animate-in fade-in duration-200 space-y-3">
                         {/* Background Color */}
                         <div>
-                            <div className="text-[10px] font-medium text-muted mb-2 uppercase tracking-wide">Background</div>
+                            <div className="text-[10px] font-medium text-muted mb-2 uppercase tracking-wide">{t('editor.menu.button.background')}</div>
                             <div className="flex flex-wrap gap-2">
                                 {colors.map(color => (
                                     <button
@@ -200,7 +202,7 @@ export const ButtonMenu: React.FC<ButtonMenuProps> = ({ editor }) => {
 
                         {/* Text Color */}
                         <div>
-                            <div className="text-[10px] font-medium text-muted mb-2 uppercase tracking-wide">Text</div>
+                            <div className="text-[10px] font-medium text-muted mb-2 uppercase tracking-wide">{t('editor.menu.button.text')}</div>
                             <div className="flex flex-wrap gap-2">
                                 {textColorOptions.map(color => (
                                     <button
@@ -227,7 +229,7 @@ export const ButtonMenu: React.FC<ButtonMenuProps> = ({ editor }) => {
                         {/* Border */}
                         <div className="grid grid-cols-3 gap-2">
                             <div className="bg-surface rounded-lg p-2 border border-surface">
-                                <span className="text-[9px] text-muted uppercase block mb-1">Border W</span>
+                                <span className="text-[9px] text-muted uppercase block mb-1">{t('editor.menu.button.borderWidth')}</span>
                                 <input
                                     type="text"
                                     value={borderWidth || '0px'}
@@ -237,16 +239,16 @@ export const ButtonMenu: React.FC<ButtonMenuProps> = ({ editor }) => {
                                 />
                             </div>
                             <div className="bg-surface rounded-lg p-2 border border-surface">
-                                <span className="text-[9px] text-muted uppercase block mb-1">Style</span>
+                                <span className="text-[9px] text-muted uppercase block mb-1">{t('editor.menu.style')}</span>
                                 <select
                                     value={borderStyle || 'solid'}
                                     onChange={(e) => updateAttribute('borderStyle', e.target.value)}
                                     className="w-full text-xs font-medium bg-transparent outline-none appearance-none cursor-pointer"
                                 >
-                                    <option value="solid">Solid</option>
-                                    <option value="dashed">Dashed</option>
-                                    <option value="dotted">Dotted</option>
-                                    <option value="none">None</option>
+                                    <option value="solid">{t('editor.menu.border.solid')}</option>
+                                    <option value="dashed">{t('editor.menu.border.dashed')}</option>
+                                    <option value="dotted">{t('editor.menu.border.dotted')}</option>
+                                    <option value="none">{t('editor.menu.border.none')}</option>
                                 </select>
                             </div>
                             <div className="bg-surface rounded-lg p-2 border border-surface flex items-center justify-center">
@@ -267,7 +269,7 @@ export const ButtonMenu: React.FC<ButtonMenuProps> = ({ editor }) => {
                     <div className="animate-in fade-in duration-200 space-y-3">
                         {/* Alignment */}
                         <div>
-                            <div className="text-[10px] font-medium text-muted mb-2 uppercase tracking-wide">Alignment</div>
+                            <div className="text-[10px] font-medium text-muted mb-2 uppercase tracking-wide">{t('editor.menu.button.alignment')}</div>
                             <div className="flex gap-2">
                                 {[
                                     { value: 'left', icon: AlignLeft },
@@ -289,7 +291,7 @@ export const ButtonMenu: React.FC<ButtonMenuProps> = ({ editor }) => {
                         <div className="bg-surface rounded-lg p-2 border border-surface">
                             <div className="flex items-center gap-1.5 text-muted mb-2">
                                 <BoxSelect size={12} />
-                                <span className="text-[10px] uppercase font-medium tracking-wide">Padding</span>
+                                <span className="text-[10px] uppercase font-medium tracking-wide">{t('editor.menu.padding')}</span>
                             </div>
                             <input
                                 type="text"
@@ -306,7 +308,7 @@ export const ButtonMenu: React.FC<ButtonMenuProps> = ({ editor }) => {
                         <div className="bg-surface rounded-lg p-2 border border-surface">
                             <div className="flex items-center gap-1.5 text-muted mb-2">
                                 <Maximize size={12} />
-                                <span className="text-[10px] uppercase font-medium tracking-wide">Radius</span>
+                                <span className="text-[10px] uppercase font-medium tracking-wide">{t('editor.menu.radius')}</span>
                             </div>
                             <input
                                 type="text"

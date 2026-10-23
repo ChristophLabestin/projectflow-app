@@ -34,10 +34,10 @@ interface ProfileSettingsModalProps {
 type TabId = 'general' | 'privacy' | 'skills';
 
 const SCOPES: { value: PrivacyScope; label: string; icon: string; description: string }[] = [
-    { value: 'public', label: 'Public', icon: 'public', description: 'Visible to everyone' },
-    { value: 'members', label: 'Workspace Members', icon: 'group', description: 'Visible to workspace members only' },
-    { value: 'guests', label: 'Workspace Guests', icon: 'person_outline', description: 'Visible to members and guests' },
-    { value: 'private', label: 'Private (Just You)', icon: 'lock', description: 'Visible only to you' }
+    { value: 'public', label: 'profileSettings.scope.public', icon: 'public', description: 'profileSettings.scope.public.desc' },
+    { value: 'members', label: 'profileSettings.scope.members', icon: 'group', description: 'profileSettings.scope.members.desc' },
+    { value: 'guests', label: 'profileSettings.scope.guests', icon: 'person_outline', description: 'profileSettings.scope.guests.desc' },
+    { value: 'private', label: 'profileSettings.scope.private', icon: 'lock', description: 'profileSettings.scope.private.desc' }
 ];
 
 export const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({ isOpen, onClose, initialData, onUpdate }) => {
@@ -127,11 +127,11 @@ export const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({ isOp
                 coverFileTenantId
             });
 
-            showSuccess("Profile updated successfully!");
+            showSuccess(t('profileSettings.saved'));
             onClose();
         } catch (e: any) {
             console.error(e);
-            showError(`Failed to update profile: ${e.message}`);
+            showError(t('profileSettings.saveFailed').replace('{error}', e.message));
         } finally {
             setSaving(false);
         }
@@ -154,9 +154,9 @@ export const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({ isOp
     };
 
     const tabs: { id: TabId; label: string; icon: string }[] = [
-        { id: 'general', label: 'General Info', icon: 'person' },
-        { id: 'privacy', label: 'Privacy', icon: 'lock' },
-        { id: 'skills', label: 'Skills & Focus', icon: 'psychology' },
+        { id: 'general', label: t('profileSettings.tab.general'), icon: 'person' },
+        { id: 'privacy', label: t('profileSettings.tab.privacy'), icon: 'lock' },
+        { id: 'skills', label: t('profileSettings.tab.skills'), icon: 'psychology' },
     ];
 
     const PrivacySelect = ({ label, value, onChange }: { label: string, value: PrivacyScope, onChange: (val: PrivacyScope) => void }) => (
@@ -169,7 +169,7 @@ export const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({ isOp
                     className="bg-transparent text-sm font-bold text-main focus:outline-none cursor-pointer border-none text-right"
                 >
                     {SCOPES.map(scope => (
-                        <option key={scope.value} value={scope.value}>{scope.label}</option>
+                        <option key={scope.value} value={scope.value}>{t(scope.label)}</option>
                     ))}
                 </select>
             </div>
@@ -182,15 +182,15 @@ export const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({ isOp
                 return (
                     <div className="space-y-6 animate-in fade-in duration-300">
                         <div>
-                            <h3 className="text-lg font-bold text-main mb-1">General Information</h3>
-                            <p className="text-sm text-muted">Update your profile details and visual assets.</p>
+                            <h3 className="text-lg font-bold text-main mb-1">{t('profileSettings.general.title')}</h3>
+                            <p className="text-sm text-muted">{t('profileSettings.general.subtitle')}</p>
                         </div>
                         <div className="space-y-4">
                             {/* Visual Assets Section */}
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pb-6 border-b border-surface">
                                 {/* Profile Picture */}
                                 <div className="space-y-2">
-                                    <label className="text-sm font-medium text-main">Profile Picture</label>
+                                    <label className="text-sm font-medium text-main">{t('profileSettings.avatar.label')}</label>
                                     <div className="flex items-center gap-4">
                                         <div
                                             className="size-20 rounded-full overflow-hidden border-2 border-surface shadow-sm bg-surface-hover flex items-center justify-center cursor-pointer group relative"
@@ -198,7 +198,7 @@ export const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({ isOp
                                         >
                                             {photoURL ? (
                                                 <>
-                                                    <img src={photoURL} className="w-full h-full object-cover" alt="Avatar" />
+                                                    <img src={photoURL} className="w-full h-full object-cover" alt={t('profileSettings.avatar.alt')} />
                                                     <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                                                         <span className="material-symbols-outlined text-white text-[20px]">edit</span>
                                                     </div>
@@ -215,24 +215,24 @@ export const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({ isOp
 
                                 {/* Cover Image */}
                                 <div className="space-y-2">
-                                    <label className="text-sm font-medium text-main">Cover Image</label>
+                                    <label className="text-sm font-medium text-main">{t('profileSettings.cover.label')}</label>
                                     <div
                                         className="h-20 w-full rounded-xl overflow-hidden border border-surface shadow-sm bg-surface-hover flex items-center justify-center relative cursor-pointer group"
                                         onClick={() => { setMediaTarget('cover'); setShowMediaLibrary(true); }}
                                     >
                                         {coverURL ? (
                                             <>
-                                                <img src={coverURL} className="w-full h-full object-cover" alt="Cover" />
+                                                <img src={coverURL} className="w-full h-full object-cover" alt={t('profileSettings.cover.alt')} />
                                                 <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                                                     <span className="text-white text-xs font-medium flex items-center gap-1">
-                                                        <span className="material-symbols-outlined text-[16px]">edit</span> Change
+                                                        <span className="material-symbols-outlined text-[16px]">edit</span> {t('profileSettings.cover.change')}
                                                     </span>
                                                 </div>
                                             </>
                                         ) : (
                                             <div className="flex flex-col items-center gap-1 text-muted scale-75">
                                                 <span className="material-symbols-outlined text-2xl">image</span>
-                                                <span className="text-xs">Upload Cover</span>
+                                                <span className="text-xs">{t('profileSettings.cover.upload')}</span>
                                             </div>
                                         )}
                                     </div>
@@ -241,30 +241,30 @@ export const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({ isOp
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <Input
-                                    label="Display Name"
+                                    label={t('profileSettings.displayName')}
                                     value={displayName}
                                     onChange={(e) => setDisplayName(e.target.value)}
-                                    placeholder="e.g. John Doe"
+                                    placeholder={t('profileSettings.displayName.placeholder')}
                                 />
                                 <Input
-                                    label="Job Title"
+                                    label={t('profileSettings.jobTitle')}
                                     value={title}
                                     onChange={(e) => setTitle(e.target.value)}
-                                    placeholder="e.g. Creative Lead"
+                                    placeholder={t('profileSettings.jobTitle.placeholder')}
                                 />
                             </div>
                             <Input
-                                label="Location / Address"
+                                label={t('profileSettings.address')}
                                 value={address}
                                 onChange={(e) => setAddress(e.target.value)}
-                                placeholder="e.g. San Francisco, CA"
+                                placeholder={t('profileSettings.address.placeholder')}
                                 icon="location_on"
                             />
                             <Textarea
-                                label="Short Bio"
+                                label={t('profileSettings.bio')}
                                 value={bio}
                                 onChange={(e) => setBio(e.target.value)}
-                                placeholder="Tell the world about yourself..."
+                                placeholder={t('profileSettings.bio.placeholder')}
                                 rows={4}
                             />
                         </div>
@@ -274,40 +274,40 @@ export const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({ isOp
                 return (
                     <div className="space-y-6 animate-in fade-in duration-300">
                         <div>
-                            <h3 className="text-lg font-bold text-main mb-1">Privacy Settings</h3>
-                            <p className="text-sm text-muted">Control who can see different parts of your profile.</p>
+                            <h3 className="text-lg font-bold text-main mb-1">{t('profileSettings.privacy.title')}</h3>
+                            <p className="text-sm text-muted">{t('profileSettings.privacy.subtitle')}</p>
                         </div>
 
                         <div className="space-y-2">
                             <PrivacySelect
-                                label="Email Address"
+                                label={t('profileSettings.privacy.email')}
                                 value={privacySettings.email}
                                 onChange={(val) => updatePrivacy('email', val)}
                             />
                             <PrivacySelect
-                                label="Bio & About"
+                                label={t('profileSettings.privacy.bio')}
                                 value={privacySettings.bio}
                                 onChange={(val) => updatePrivacy('bio', val)}
                             />
                             <PrivacySelect
-                                label="Skills & Expertise"
+                                label={t('profileSettings.privacy.skills')}
                                 value={privacySettings.skills}
                                 onChange={(val) => updatePrivacy('skills', val)}
                             />
                             <PrivacySelect
-                                label="Location"
+                                label={t('profileSettings.privacy.location')}
                                 value={privacySettings.address}
                                 onChange={(val) => updatePrivacy('address', val)}
                             />
                             <PrivacySelect
-                                label="Statistics (Projects, Teams)"
+                                label={t('profileSettings.privacy.stats')}
                                 value={privacySettings.stats}
                                 onChange={(val) => updatePrivacy('stats', val)}
                             />
                         </div>
 
-                        <div className="p-4 bg-blue-50/50 dark:bg-blue-900/10 rounded-xl text-xs text-blue-600 dark:text-blue-400">
-                            <strong>Note:</strong> Your Display Name and Profile Picture are always public to your workspace members to ensure you can be identified in tasks and comments.
+                        <div className="p-4 bg-primary/10 rounded-xl text-xs text-primary">
+                            <strong>{t('profileSettings.privacy.noteLabel')}</strong> {t('profileSettings.privacy.note')}
                         </div>
                     </div>
                 );
@@ -315,30 +315,30 @@ export const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({ isOp
                 return (
                     <div className="space-y-6 animate-in fade-in duration-300">
                         <div>
-                            <h3 className="text-lg font-bold text-main mb-1">Skills & Expertise</h3>
-                            <p className="text-sm text-muted">Add skills to help others find your expertise.</p>
+                            <h3 className="text-lg font-bold text-main mb-1">{t('profileSettings.skills.title')}</h3>
+                            <p className="text-sm text-muted">{t('profileSettings.skills.subtitle')}</p>
                         </div>
                         <div className="flex gap-2">
                             <Input
                                 value={newSkill}
                                 onChange={(e) => setNewSkill(e.target.value)}
-                                placeholder="Add a skill (e.g. React, UI Design)"
+                                placeholder={t('profileSettings.skills.placeholder')}
                                 onKeyPress={(e) => e.key === 'Enter' && addSkill()}
                                 className="flex-1"
                             />
-                            <Button onClick={addSkill} variant="primary">Add</Button>
+                            <Button onClick={addSkill} variant="primary">{t('common.add')}</Button>
                         </div>
                         <div className="flex flex-wrap gap-2 pt-2">
                             {skills.map(skill => (
                                 <div key={skill} className="flex items-center gap-2 px-3 py-1.5 bg-primary/10 text-primary rounded-lg text-sm font-medium border border-primary/20">
                                     {skill}
-                                    <button type="button" aria-label={t('common.remove')} onClick={() => removeSkill(skill)} className="hover:text-rose-500 transition-colors flex items-center">
+                                    <button type="button" aria-label={t('common.remove')} onClick={() => removeSkill(skill)} className="hover:text-error transition-colors flex items-center">
                                         <span className="material-symbols-outlined text-[16px]">close</span>
                                     </button>
                                 </div>
                             ))}
                             {skills.length === 0 && (
-                                <p className="text-sm text-muted italic">No skills added yet.</p>
+                                <p className="text-sm text-muted italic">{t('profileSettings.skills.empty')}</p>
                             )}
                         </div>
                     </div>
@@ -348,7 +348,7 @@ export const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({ isOp
 
     return (
         <>
-            <Modal isOpen={isOpen} onClose={onClose} title="Edit Profile" size="xl">
+            <Modal isOpen={isOpen} onClose={onClose} title={t('profileSettings.modal.title')} size="xl">
                 <div className="flex h-[600px] -m-6">
                     {/* Sidebar */}
                     <div className="w-64 shrink-0 bg-surface-hover/30 border-r border-surface p-4 flex flex-col gap-1">
@@ -376,8 +376,8 @@ export const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({ isOp
                         </div>
                         {/* Footer */}
                         <div className="shrink-0 p-4 border-t border-surface flex items-center justify-end gap-3 bg-surface-paper">
-                            <Button variant="ghost" onClick={onClose}>Cancel</Button>
-                            <Button variant="primary" onClick={handleSave} isLoading={saving}>Save Changes</Button>
+                            <Button variant="ghost" onClick={onClose}>{t('common.cancel')}</Button>
+                            <Button variant="primary" onClick={handleSave} isLoading={saving}>{t('profileSettings.save')}</Button>
                         </div>
                     </div>
                 </div>

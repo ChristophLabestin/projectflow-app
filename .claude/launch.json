@@ -170,6 +170,23 @@
         "web"
       ],
       "port": 3091
+    },
+    {
+      "name": "web-ui-sweep",
+      "runtimeExecutable": "env",
+      "runtimeArgs": [
+        "PORT=3071",
+        "AUTH_PORT=9771",
+        "FIRESTORE_PORT=8771",
+        "STORAGE_PORT=9772",
+        "FUNCTIONS_PORT=5771",
+        "npm",
+        "run",
+        "dev:e2e",
+        "--prefix",
+        "web"
+      ],
+      "port": 3071
     }
   ]
 }

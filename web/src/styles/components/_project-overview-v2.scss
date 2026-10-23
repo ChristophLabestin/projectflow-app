@@ -1853,7 +1853,7 @@ html:not(.dark) .po-board {
     &__count { background: var(--color-surface-hover); color: var(--color-text-subtle); padding: 1px 7px; border-radius: var(--radius-full); font-size: 11px; }
     &__head-actions { display: inline-flex; align-items: center; gap: 6px; }
     &__clear, &__new {
-        display: inline-flex; align-items: center; gap: 5px;
+        display: inline-flex; align-items: center; gap: 5px; white-space: nowrap;
         height: 30px; padding: 0 11px; border-radius: var(--radius-md);
         font-size: 12px; font-weight: 600; cursor: pointer;
         .material-symbols-outlined { font-size: 16px; }
@@ -1940,6 +1940,9 @@ html:not(.dark) .po-board {
     .po-reminders__item { grid-template-columns: auto minmax(0, 1fr) auto; }
     .po-reminders__link { grid-column: 2 / -1; justify-self: start; max-width: 100%; }
     /* Initiative rows: name + status on the first line, progress/actions below. */
+    /* Initiatives header: the progress/risk summary moves to its own line. */
+    .po-inits__head-main { flex-wrap: wrap; min-width: 0; row-gap: 2px; text-align: left; }
+    .po-inits__summary { flex-basis: 100%; flex-wrap: wrap; margin-left: 28px; white-space: nowrap; }
     .po-inits__row { flex-wrap: wrap; row-gap: 8px; padding-left: 0; }
     .po-inits__name { white-space: normal; overflow-wrap: anywhere; }
     .po-inits__row-actions .po-inits__icon-btn,

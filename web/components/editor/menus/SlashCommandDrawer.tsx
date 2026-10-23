@@ -113,7 +113,7 @@ export const SlashCommandDrawer: React.FC<SlashCommandDrawerProps> = ({ isOpen, 
                                     }}
                                     className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-surface-hover text-left group transition-colors"
                                 >
-                                    <div className={`p-2 rounded-md ${cmd.category === 'custom' ? 'bg-purple-50 text-purple-600 dark:bg-purple-900/20' : 'bg-surface text-muted group-hover:text-primary'}`}>
+                                    <div className={`p-2 rounded-md ${cmd.category === 'custom' ? 'bg-primary/10 text-primary' : 'bg-surface text-muted group-hover:text-primary'}`}>
                                         <span className="material-symbols-outlined text-[20px]">{cmd.icon}</span>
                                     </div>
                                     <div>
@@ -123,7 +123,7 @@ export const SlashCommandDrawer: React.FC<SlashCommandDrawerProps> = ({ isOpen, 
                                     {cmd.category === 'custom' && (
                                         <button
                                             onClick={(e) => handleDeletePreset(e, cmd.title)}
-                                            className="p-2 text-red-400 hover:text-red-500 hover:bg-red-50 rounded-full opacity-0 group-hover:opacity-100 transition-all"
+                                            className="p-2 text-error hover:text-error hover:bg-error rounded-full opacity-0 group-hover:opacity-100 transition-all"
                                             title={t('editor.slashDrawer.actions.deletePreset')}
                                         >
                                             <Trash2 size={16} />

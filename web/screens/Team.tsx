@@ -258,7 +258,7 @@ export const Team = () => {
                 <h3 className="text-[13px] font-black uppercase tracking-wider text-[var(--color-text-main)]">{title}</h3>
                 <span className="min-w-[20px] h-[20px] px-1.5 rounded-full text-[11px] font-bold text-[var(--color-text-muted)] flex items-center justify-center" style={{ background: SURFACE_HOVER }}>{members.length}</span>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-3">
+            <div className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,220px),1fr))] gap-3">
                 {members.map(AgentCard)}
             </div>
         </section>
@@ -276,12 +276,12 @@ export const Team = () => {
             {/* Hauptbereich */}
             <div className="flex-1 flex flex-col min-w-0">
                 {/* Kopf */}
-                <div className="px-8 pt-7 pb-5">
+                <div className="px-4 sm:px-8 pt-7 pb-5">
                     <div className="flex items-center justify-between flex-wrap gap-4">
                         <div>
                             <h1 className="text-[26px] font-bold text-[var(--color-text-main)] tracking-tight leading-none">{t('nav.team')}</h1>
                             <p className="text-[12.5px] text-[var(--color-text-muted)] mt-2">
-                                {t('team.v2.stats')
+                                {t(stats.agents > 0 ? 'team.v2.stats' : 'team.v2.statsNoAgents')
                                     .replace('{agents}', String(stats.agents))
                                     .replace('{humans}', String(stats.humans))
                                     .replace('{departments}', String(stats.departments))
@@ -296,10 +296,10 @@ export const Team = () => {
                     </div>
 
                     <div className="flex items-center gap-3 mt-5 flex-wrap">
-                        <div className="flex p-1 rounded-full" style={{ background: SURFACE_HOVER }}>
+                        <div className="flex p-1 rounded-full max-w-full overflow-x-auto" style={{ background: SURFACE_HOVER }}>
                             {segItems.map(([v, label]) => (
                                 <button key={v} onClick={() => setView(v)}
-                                    className="px-4 py-1.5 rounded-full text-[12.5px] font-bold transition-all"
+                                    className="px-4 py-1.5 rounded-full text-[12.5px] font-bold whitespace-nowrap shrink-0 transition-all"
                                     style={view === v
                                         ? { background: SURFACE_CARD, color: 'var(--color-text-main)', boxShadow: 'var(--shadow-sm)' }
                                         : { color: 'var(--color-text-muted)' }}>
@@ -319,7 +319,7 @@ export const Team = () => {
                 </div>
 
                 {/* Inhalt */}
-                <div className="flex-1 overflow-y-auto px-8 pb-10">
+                <div className="flex-1 overflow-y-auto px-4 sm:px-8 pb-10">
                     {view === 'department' && byDepartment.map(d => <Section key={d.name} title={d.name} color={d.color} members={d.members} />)}
                     {view === 'all' && <Section title={t('team.v2.allMembers')} members={[...filtered].sort(sortMembers)} />}
                     {view === 'project' && (
@@ -358,7 +358,7 @@ export const Team = () => {
 
             {/* Detail-Panel: höhere Ebene = hellere Surface + Schatten, kein Border */}
             {selected && (
-                <aside className="hidden lg:flex w-[380px] shrink-0 flex-col overflow-y-auto z-10" style={{ background: SURFACE_CARD, boxShadow: 'var(--shadow-lg)' }}>
+                <aside className="fixed inset-y-0 right-0 z-40 flex w-full sm:w-[380px] lg:static lg:z-10 shrink-0 flex-col overflow-y-auto" style={{ background: SURFACE_CARD, boxShadow: 'var(--shadow-lg)' }}>
                     <div className="p-7">
                         <button onClick={() => setSelectedId(null)} className="text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] text-[12px] mb-5 inline-flex items-center gap-1">
                             <span className="material-symbols-outlined text-[16px]">close</span>{t('team.v2.close')}
