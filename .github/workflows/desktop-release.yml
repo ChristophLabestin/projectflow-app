@@ -46,9 +46,16 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           VERSION=${{ steps.version.outputs.version }}
+          # On a tag push the tag already exists: `--target <sha>` for an existing tag returns
+          # HTTP 403 "Resource not accessible by integration" with GITHUB_TOKEN, so use --verify-tag.
+          if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
+            TARGET=(--verify-tag)
+          else
+            TARGET=(--target "${GITHUB_SHA}")
+          fi
           if ! gh release view "v$VERSION" >/dev/null 2>&1; then
             gh release create "v$VERSION" --draft --title "ProjectFlow Desktop $VERSION" \
-              --notes "ProjectFlow Desktop $VERSION for macOS and Windows." --target "${GITHUB_SHA}"
+              --notes "ProjectFlow Desktop $VERSION for macOS and Windows." "${TARGET[@]}"
           fi
 
   build:
