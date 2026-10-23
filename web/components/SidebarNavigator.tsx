@@ -204,25 +204,20 @@ const ThemeToggle: React.FC = () => {
     const { theme, setTheme } = useTheme();
     const { t } = useLanguage();
     return (
-        <div className="snav-theme" role="group" aria-label={t('theme.light')}>
-            <button
-                type="button"
-                onClick={() => setTheme('light')}
-                className={theme === 'light' ? 'is-active' : ''}
-                aria-pressed={theme === 'light'}
-            >
-                <span className="material-symbols-outlined">light_mode</span>
-                <span>{t('theme.light')}</span>
-            </button>
-            <button
-                type="button"
-                onClick={() => setTheme('dark')}
-                className={theme === 'dark' ? 'is-active' : ''}
-                aria-pressed={theme === 'dark'}
-            >
-                <span className="material-symbols-outlined">dark_mode</span>
-                <span>{t('theme.dark')}</span>
-            </button>
+        <div className="snav-theme" role="group" aria-label={t('theme.label')}>
+            {(['light', 'dark'] as const).map((mode) => (
+                <button
+                    key={mode}
+                    type="button"
+                    onClick={() => setTheme(mode)}
+                    className={theme === mode ? 'is-active' : ''}
+                    aria-pressed={theme === mode}
+                    aria-label={t(`theme.${mode}`)}
+                    title={t(`theme.${mode}`)}
+                >
+                    <span className="material-symbols-outlined" aria-hidden="true">{mode === 'light' ? 'light_mode' : 'dark_mode'}</span>
+                </button>
+            ))}
         </div>
     );
 };
