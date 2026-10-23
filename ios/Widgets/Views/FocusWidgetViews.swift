@@ -130,7 +130,7 @@ struct FocusClock: View {
             } else if let started = focus.startedAt {
                 Text(started, style: .timer)
                     .font(WidgetFont.display(size).monospacedDigit())
-                    .foregroundStyle(PFColor.textMain)
+                    .timerForeground(PFColor.textMain)
             } else {
                 EmptyView()
             }
