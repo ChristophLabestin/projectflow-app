@@ -1,0 +1,113 @@
+// Task detail → "Linked docs" (wiki pages linked to or mentioning the task).
+.linked-docs {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.linked-docs__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.linked-docs__actions {
+    display: flex;
+    gap: 2px;
+}
+
+.linked-docs__btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    padding: 0;
+    border: 0;
+    border-radius: var(--radius-md);
+    background: transparent;
+    color: var(--color-text-muted);
+    cursor: pointer;
+    transition: background-color var(--motion-duration-fast) var(--motion-ease-out);
+
+    .material-symbols-outlined { font-size: 17px; }
+    &:hover { background: var(--color-surface-hover); color: var(--color-text-main); }
+}
+
+.linked-docs__row {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    animation: pf-rise-in var(--motion-duration-base) var(--motion-ease-out) both;
+}
+
+.linked-docs__link, .linked-docs__option {
+    display: flex;
+    flex: 1;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    padding: 6px 8px;
+    border: 0;
+    border-radius: var(--radius-md);
+    background: transparent;
+    color: var(--color-text-main);
+    font-size: 13px;
+    text-align: left;
+    text-decoration: none;
+    cursor: pointer;
+
+    &:hover { background: var(--color-surface-hover); }
+}
+
+.linked-docs__glyph {
+    display: inline-flex;
+    width: 18px;
+    justify-content: center;
+    color: var(--color-text-subtle);
+
+    .material-symbols-outlined { font-size: 17px; }
+}
+
+.linked-docs__name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.linked-docs__mention {
+    width: 26px;
+    color: var(--color-text-subtle);
+    font-size: 12px;
+    text-align: center;
+}
+
+.linked-docs__empty {
+    margin: 2px 8px 4px;
+    color: var(--color-text-subtle);
+    font-size: 12px;
+}
+
+.linked-docs__picker {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin: 4px 0 6px;
+    padding: 6px;
+    border-radius: var(--radius-lg);
+    background: var(--color-surface-hover-light);
+    animation: pf-drop-in var(--motion-duration-base) var(--motion-ease-out) both;
+    transform-origin: top right;
+
+    input {
+        height: 32px;
+        margin-bottom: 4px;
+        padding: 0 10px;
+        border: 0;
+        border-radius: var(--radius-md);
+        outline: 0;
+        background: var(--color-surface-input);
+        color: var(--color-text-main);
+        font-size: 13px;
+    }
+}

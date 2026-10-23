@@ -1,186 +1,183 @@
-import type { SiteCopy } from '../content/site';
-import { icon, logo } from './icons';
+import type { SiteCopy, StoryCard } from '../content/site';
+import { icon, logo, type IconName } from './icons';
 import { esc, headline, links } from './layout';
-import { sectionsRest } from './home-sections';
-import type { Lang } from './pages';
+import { legalUrl, urlFor, type Lang } from './pages';
 
-const prioClass = (prio: string) => `prio prio--${prio}`;
+/* ------------------------------------------------------------------ fragments */
 
-const sectionHead = (eyebrow: string, title: string, text?: string, id?: string) => `
-    <header class="section-head" data-reveal>
-        <p class="eyebrow">${esc(eyebrow)}</p>
-        <h2 class="section-title"${id ? ` id="${id}"` : ''}>${headline(title)}</h2>
-        ${text ? `<p class="section-text">${esc(text)}</p>` : ''}
-    </header>`;
+const check = (checked = false) =>
+    `<span class="checkbox${checked ? ' is-checked' : ''}"><i class="checkbox__fill"></i><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></span>`;
 
-/** The hero product window: sidebar + Today view, rendered as real markup. */
-const appWindow = (t: SiteCopy) => {
-    const a = t.app;
-    const navIcons = ['sun', 'inbox', 'folder', 'bell'] as const;
-    const projectTones = ['open', 'planning', 'done'];
-    return `
-        <div class="app-window" data-hero-window>
-            <div class="app-window__bar"><span></span><span></span><span></span></div>
-            <div class="app-window__body">
-                <aside class="app-side">
-                    <div class="app-side__ws"><span class="app-side__ws-logo">${logo('app-side__logo')}</span>${esc(a.workspace)}</div>
-                    <ul class="app-side__nav">
-                        ${a.nav.map((label, i) => `<li class="${i === 0 ? 'is-active' : ''}">${icon(navIcons[i])}<span>${esc(label)}</span>${i === 3 ? '<em class="app-badge" data-hero-badge>2</em>' : ''}</li>`).join('')}
-                    </ul>
-                    <p class="app-side__label">${esc(a.nav[2])}</p>
-                    <ul class="app-side__projects">
-                        ${a.projects.map((p, i) => `<li><i class="dot dot--${projectTones[i]}"></i>${esc(p)}</li>`).join('')}
-                    </ul>
-                </aside>
-                <div class="app-main">
-                    <div class="app-main__head">
-                        <div><h3 class="app-main__title">${esc(a.todayTitle)}</h3><p class="app-main__date">${esc(a.todayDate)}</p></div>
-                        <div class="app-progress" aria-hidden="true"><span>${esc(a.progress)}</span><b data-hero-progress-label>40 %</b><i><s data-hero-progress style="--p:.4"></s></i></div>
-                    </div>
-                    <div class="focus-card">
-                        <span class="focus-card__label">${icon('timer')}${esc(a.focusLabel)}</span>
-                        <p class="focus-card__task">${esc(a.focusTask)}</p>
-                        <span class="focus-card__time" data-hero-timer>00:24:13</span>
-                    </div>
-                    <ul class="task-list">
-                        ${a.tasks.map((task, i) => `
-                        <li class="task-row" ${i === 1 ? 'data-hero-check' : ''}>
-                            <span class="checkbox"><i class="checkbox__fill"></i><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></span>
-                            <span class="task-row__title">${esc(task.title)}</span>
-                            <span class="chip">${esc(task.project)}</span>
-                            <i class="${prioClass(task.prio)}"></i>
-                        </li>`).join('')}
-                    </ul>
-                </div>
-            </div>
+const kindIcon: Record<StoryCard['kind'], IconName> = { mail: 'at', chat: 'message', note: 'flag', bug: 'alert', call: 'phone', doc: 'layers' };
+const colTone = ['open', 'in-progress', 'review', 'done'];
+
+/** A story card: before capture it shows its origin (mail, chat, …), afterwards it is a task. */
+const card = (c: StoryCard, i: number) => `
+    <div class="scard${c.hero ? ' scard--hero' : ''}${c.col === 3 ? ' is-done' : ''}" data-card="${i}" data-col="${c.col}"${c.core ? ' data-core' : ''}${c.hero ? ' data-hero' : ''}>
+        <div class="scard__inner">
+            <span class="scard__kind">${icon(kindIcon[c.kind])}</span>
+            ${check(c.col === 3)}
+            <span class="scard__body"><b>${esc(c.title)}</b><span class="scard__meta"><i class="prio prio--${c.prio}"></i>${esc(c.project)}</span></span>
+            ${c.who ? `<span class="avatar avatar--xs avatar--${'CMJLA'.indexOf(c.who) % 4} scard__who">${c.who}</span>` : ''}
+        </div>
+    </div>`;
+
+/* ------------------------------------------------------------------ story stage */
+
+const story = (t: SiteCopy, lang: Lang) => {
+    const s = t.story;
+    const acts = s.acts;
+    const ctas = (cls = '') => `
+        <div class="act__ctas ${cls}">
+            <a class="btn btn--primary btn--lg" href="${links.register}" data-magnetic>${esc(s.primary)}${icon('arrowRight')}</a>
+            <a class="btn btn--ghost btn--lg" href="${links.download}" data-magnetic>${icon('download')}${esc(s.secondary)}</a>
         </div>`;
-};
+    const cols = [0, 1, 2, 3].map((c) => {
+        const cards = s.cards.map((cd, i) => ({ cd, i })).filter(({ cd }) => cd.col === c);
+        return `
+            <div class="scol" data-col="${c}">
+                <p class="scol__head" data-col-head="${c}"><i class="dot dot--${colTone[c]}"></i><span class="scol__name" data-desktop="${esc(s.columns[c])}">${esc(s.columns[c])}</span><em data-col-count="${c}">${cards.length}</em></p>
+                ${cards.map(({ cd, i }) => card(cd, i)).join('')}
+            </div>`;
+    }).join('');
 
-const hero = (t: SiteCopy) => `
-<section class="hero" aria-labelledby="hero-title">
-    <div class="hero__backdrop" aria-hidden="true">
-        <div class="hero__grid" data-depth="0.15"></div>
-        <div class="hero__glow hero__glow--a" data-depth="0.35"></div>
-        <div class="hero__glow hero__glow--b" data-depth="0.6"></div>
-    </div>
-    <div class="container hero__copy">
-        <p class="eyebrow hero-in" style="--i:0">${esc(t.hero.eyebrow)}</p>
-        <h1 class="hero__title" id="hero-title">${t.hero.title.map((w, i, all) => `<span class="word"><span class="hero-in" style="--i:${i + 1}">${headline(w)}</span></span>${w.endsWith('.') && i < all.length - 1 ? '<span class="hero__break"></span>' : ''}`).join(' ')}</h1>
-        <p class="hero__lead hero-in" style="--i:${t.hero.title.length + 1}">${esc(t.hero.lead)}</p>
-        <div class="hero__ctas hero-in" style="--i:${t.hero.title.length + 2}">
-            <a class="btn btn--primary btn--lg" href="${links.register}" data-magnetic>${esc(t.hero.primary)}${icon('arrowRight')}</a>
-            <a class="btn btn--ghost btn--lg" href="${links.download}" data-magnetic>${icon('download')}${esc(t.hero.secondary)}</a>
-        </div>
-        <p class="hero__note hero-in" style="--i:${t.hero.title.length + 3}">${icon('key')}${esc(t.hero.note)}</p>
-    </div>
-    <div class="hero__stage" data-hero-stage role="img" aria-label="${esc(t.a11y.preview)}">
-        <div class="hero__tilt" data-tilt aria-hidden="true">
-            ${appWindow(t)}
-            <div class="float float--notif" data-depth="1.1" data-hero-notif>
-                <span class="avatar avatar--l">L</span>
-                <div><b>${esc(t.app.notifTitle)}</b><p>${esc(t.app.notifBody)}</p></div>
-            </div>
-            <div class="float float--timer" data-depth="1.6">
-                <svg class="ring" viewBox="0 0 36 36" aria-hidden="true"><circle cx="18" cy="18" r="15"/><circle class="ring__value" cx="18" cy="18" r="15" pathLength="100" data-hero-ring/></svg>
-                <div><span>${esc(t.app.timerLabel)}</span><b data-hero-timer-short>24:13</b></div>
-            </div>
-            <div class="float float--done" data-depth="0.8">
-                <span class="checkbox is-checked"><i class="checkbox__fill"></i><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></span>
-                <div><span>${esc(t.app.doneLabel)}</span><b>${esc(t.app.doneTask)}</b></div>
-            </div>
-        </div>
-    </div>
-</section>`;
-
-const journey = (t: SiteCopy) => {
-    const j = t.journey;
-    const stepIcons = ['inbox', 'sun', 'timer', 'check'] as const;
     return `
-<section class="journey section" id="journey" aria-labelledby="journey-title">
-    <div class="container">${sectionHead(j.eyebrow, j.title, undefined, 'journey-title')}</div>
-    <div class="journey__pin" data-journey>
-        <div class="container journey__grid">
-            <div class="journey__copy">
-            <ol class="journey__steps">
-                ${j.steps.map((s, i) => `
-                <li class="journey__step" data-step="${i}">
-                    <span class="journey__num">${icon(stepIcons[i])}<span>${String(i + 1).padStart(2, '0')} · ${esc(s.label)}</span></span>
-                    <h3>${headline(s.title)}</h3>
-                    <p>${esc(s.text)}</p>
-                </li>`).join('')}
-            </ol>
-            <div class="journey__dots" aria-hidden="true">${j.steps.map((_, i) => `<i data-journey-dot="${i}"></i>`).join('')}</div>
-            </div>
-            <div class="journey__stage stage" aria-hidden="true">
-                <div class="panel">
-                    <div class="panel__tabs">
-                        <span class="panel__indicator" data-journey-indicator></span>
-                        ${[j.inbox, j.today, j.focus, j.done].map((label, i) => `<span class="panel__tab" data-journey-tab="${i}">${icon(stepIcons[i])}<span>${esc(label)}</span></span>`).join('')}
-                    </div>
-                    <div class="panel__body">
-                        <div class="capture-bar" data-journey-capture>${icon('plus')}<span class="capture-bar__text" data-journey-typed>${esc(j.task)}</span><kbd>↵</kbd></div>
-                        <ul class="ghost-list" data-journey-ghosts>
-                            ${j.others.map((o) => `<li><span class="checkbox"><i class="checkbox__fill"></i><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></span><span>${esc(o)}</span></li>`).join('')}
-                        </ul>
-                        <div class="travel-card" data-journey-card>
-                            <span class="travel-card__focus" data-journey-focus></span>
-                            <span class="checkbox is-checked" data-journey-check><i class="checkbox__fill"></i><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></span>
-                            <div class="travel-card__text">
-                                <b class="travel-card__title">${esc(j.task)}<i class="strike" data-journey-strike></i></b>
-                                <span class="travel-card__meta"><i class="dot dot--open"></i>${esc(j.project)}</span>
-                            </div>
-                            <span class="travel-card__states">
-                                <em class="state state--capture" data-journey-state="0">${esc(j.captured)}</em>
-                                <em class="state state--plan" data-journey-state="1">${icon('calendar')}${esc(j.scheduled)}</em>
-                                <em class="state state--focus" data-journey-state="2">${icon('timer')}<span data-journey-clock>00:00</span></em>
-                                <em class="state state--done" data-journey-state="3">${icon('check')}${esc(j.completed)}</em>
-                            </span>
-                        </div>
-                        <div class="panel__progress" data-journey-progress>
-                            <span>${esc(j.projectProgress)} · ${esc(j.project)}</span>
-                            <b><span data-journey-percent>58</span> %</b>
-                            <i><s data-journey-bar></s></i>
-                        </div>
-                    </div>
+<section class="story" id="story" aria-labelledby="act-0-title">
+    <div class="story__pin" data-story>
+        <div class="story__canvas" aria-hidden="true" data-canvas>
+            <div class="story__grid"></div>
+            <p class="story__inbox" data-inbox-head>${icon('inbox')}${esc(s.inbox)}<em>${s.cards.length}</em></p>
+            <div class="story__board" data-board>${cols}</div>
+            <div class="story__veil" data-veil></div>
+            <div class="focus-panel" data-focus>
+                <p class="focus-panel__label">${icon('timer')}${esc(s.focusLabel)}</p>
+                <p class="focus-panel__title">${esc(s.cards[0].title)}</p>
+                <div class="focus-panel__clock">
+                    <svg class="ring" viewBox="0 0 36 36"><circle cx="18" cy="18" r="15"/><circle class="ring__value" cx="18" cy="18" r="15" pathLength="100" data-focus-ring/></svg>
+                    <b class="mono" data-focus-clock>24:13</b>
                 </div>
+                <p class="focus-panel__hint">${esc(s.focusHint)}</p>
+            </div>
+            <ul class="toasts" data-toasts>
+                ${s.notifications.map((n, i) => `<li class="toast" data-toast><span class="avatar avatar--${i + 1}">${n.who[0]}</span><p><b>${esc(n.who)}</b> ${esc(n.what)}</p></li>`).join('')}
+            </ul>
+            <div class="story__frame" data-frame>
+                <div class="story__frame-bar"><span></span><span></span><span></span><em>app.getprojectflow.com</em></div>
+            </div>
+            <div class="story__phone" data-phone>
+                <div class="phone__island"></div>
+                <p class="story__phone-title">${icon('sun')}${lang === 'en' ? 'Today' : 'Heute'}</p>
+                ${s.cards.filter((c) => c.col !== 3).slice(0, 3).map((c) => `<p class="story__phone-row">${check()}<span>${esc(c.title)}</span></p>`).join('')}
+                <p class="story__phone-live">${icon('timer')}<span>${esc(s.cards[0].title)}</span><b>24:13</b></p>
             </div>
         </div>
-    </div>
-</section>`;
-};
 
-const board = (t: SiteCopy) => {
-    const b = t.board;
-    const tones = ['backlog', 'open', 'in-progress', 'review', 'done'];
-    const prios = ['low', 'medium', 'high', 'medium', 'low', 'urgent', 'medium', 'low', 'high'];
-    let n = 0;
-    return `
-<section class="board-section section" id="board" aria-labelledby="board-title">
-    <div class="container board-section__grid">
-        <div>
-            ${sectionHead(b.eyebrow, b.title, b.text, 'board-title')}
-            <dl class="stats" data-reveal>
-                ${b.stats.map((s) => `<div class="stat"><dt>${esc(s.label)}</dt><dd><span data-count="${s.value}">${s.value}</span>${esc(s.suffix)}</dd></div>`).join('')}
-            </dl>
-            <p class="fineprint" data-reveal>${esc(b.statsNote)}</p>
-        </div>
-        <ul class="feature-list" data-reveal-group>
-            ${b.features.map((f) => `<li data-reveal><h3>${esc(f.title)}</h3><p>${esc(f.text)}</p></li>`).join('')}
-        </ul>
-    </div>
-    <div class="board-wrap" data-board aria-hidden="true">
-        <div class="board" data-board-track>
-            ${b.columns.map((col, c) => `
-            <div class="board__col board__col--${tones[c]}">
-                <div class="board__head"><i class="dot dot--${tones[c]}"></i>${esc(col)}<span>${b.cards[c].length}</span></div>
-                ${b.cards[c].map((card) => {
-                    const prio = prios[n++ % prios.length];
-                    return `<div class="board-card" data-board-card><span class="board-card__title">${esc(card)}</span><span class="board-card__meta"><i class="prio prio--${prio}"></i><span class="avatar avatar--sm avatar--${n % 4}">${'LJMA'[n % 4]}</span></span></div>`;
-                }).join('')}
+        <div class="story__copy">
+            ${acts.map((a, i) => i === 0 ? `
+            <div class="act act--hero" id="act-0" data-act="0">
+                <h1 class="act__title act__title--hero" id="act-0-title">${a.title.split(' ').map((w, n) => `<span class="word"><span class="hero-in" style="--i:${n}">${headline(w)}</span></span>`).join(' ')}</h1>
+                <p class="act__text hero-in" style="--i:9">${esc(a.text)}</p>
+                ${ctas('hero-in')}
+                <p class="act__platforms hero-in" style="--i:11">${icon('monitor')}${esc(s.platforms)}</p>
+            </div>` : `
+            <div class="act" id="act-${i}" data-act="${i}">
+                <p class="act__num"><span>${String(i).padStart(2, '0')}</span>${esc(a.label)}</p>
+                <h2 class="act__title">${headline(a.title)}</h2>
+                <p class="act__text">${esc(a.text)}</p>
+                ${i === acts.length - 1 ? ctas() : ''}
             </div>`).join('')}
         </div>
+
+        <nav class="story__nav" aria-label="${esc(t.a11y.storyNav)}">
+            <ol>${acts.map((a, i) => `<li><a href="#act-${i}" data-goto="${i}" aria-label="${String(i).padStart(2, '0')} ${esc(a.label)}"${i === 0 ? ' aria-current="step"' : ''}><span aria-hidden="true">${esc(a.label)}</span></a></li>`).join('')}</ol>
+        </nav>
+        <a class="story__skip" href="#mcp">${esc(t.a11y.skipStory)}</a>
     </div>
 </section>`;
 };
 
-export const homeBody = (t: SiteCopy, lang: Lang): string => [hero(t), journey(t), board(t), sectionsRest(t, lang)].join('\n');
+/* ------------------------------------------------------------------ MCP scene */
+
+const mcp = (t: SiteCopy, lang: Lang) => {
+    const m = t.mcp;
+    return `
+<section class="section mcp" id="mcp" aria-labelledby="mcp-title">
+    <div class="container mcp__grid">
+        <div class="mcp__copy" data-reveal>
+            <p class="eyebrow">${esc(m.eyebrow)}</p>
+            <h2 class="sec-title" id="mcp-title">${headline(m.title)}</h2>
+            <p class="sec-text">${esc(m.text)}</p>
+            <ul class="chips">${m.clients.map((c) => `<li>${esc(c)}</li>`).join('')}</ul>
+            <a class="btn btn--ghost" href="${urlFor('docsMcp', lang)}">${esc(m.cta)}${icon('arrowRight')}</a>
+            <p class="fineprint">${esc(m.note)}</p>
+        </div>
+        <div class="mcp__scene" aria-hidden="true" data-mcp>
+            <div class="agent">
+                <p class="agent__head">${icon('sparkles')}${esc(m.agent)}</p>
+                <p class="agent__prompt" data-mcp-prompt>${esc(m.prompt)}</p>
+                <p class="agent__call" data-mcp-call><span class="mono">${esc(m.call)}</span><em>projectflow</em></p>
+                <p class="agent__result" data-mcp-result>${icon('check')}${esc(m.result)}</p>
+            </div>
+            <div class="mini-board">
+                <p class="scol__head"><i class="dot dot--open"></i>${esc(m.column)}<em data-mcp-count>3</em></p>
+                <div class="mcp-card mcp-card--new" data-mcp-card>${check()}<span><b>${esc(m.card)}</b><span class="scard__meta"><i class="prio prio--high"></i>iOS 2.0</span></span><span class="agent-tag">${icon('sparkles')}</span></div>
+                ${t.story.cards.filter((c) => c.col === 0).slice(0, 2).map((c) => `<div class="mcp-card">${check()}<span><b>${esc(c.title)}</b><span class="scard__meta"><i class="prio prio--${c.prio}"></i>${esc(c.project)}</span></span></div>`).join('')}
+            </div>
+        </div>
+    </div>
+</section>`;
+};
+
+/* ------------------------------------------------------------------ more, faq, cta */
+
+const more = (t: SiteCopy) => `
+<section class="section more" id="more" aria-labelledby="more-title">
+    <div class="container">
+        <header class="more__head" data-reveal>
+            <p class="eyebrow">${esc(t.more.eyebrow)}</p>
+            <h2 class="sec-title" id="more-title">${headline(t.more.title)}</h2>
+        </header>
+        <ul class="more__grid">
+            ${t.more.items.map((it) => `<li class="more__item" data-reveal data-spot><span class="more__icon">${icon(it.icon as IconName)}</span><h3>${esc(it.title)}</h3><p>${esc(it.text)}</p></li>`).join('')}
+        </ul>
+    </div>
+</section>`;
+
+const faq = (t: SiteCopy, lang: Lang) => {
+    const f = t.faq;
+    const fill = (a: string) => esc(a)
+        .replace('{privacy}', `<a href="${legalUrl('privacy', lang)}">${esc(f.privacy)}</a>`)
+        .replace('{docs}', `<a href="${urlFor('docsMcp', lang)}">${esc(f.docs)}</a>`);
+    return `
+<section class="section faq" id="faq" aria-labelledby="faq-title">
+    <div class="container faq__grid">
+        <header data-reveal>
+            <p class="eyebrow">${esc(f.eyebrow)}</p>
+            <h2 class="sec-title" id="faq-title">${headline(f.title)}</h2>
+        </header>
+        <div class="faq__list" data-reveal>
+            ${f.items.map((it) => `<details><summary>${esc(it.q)}${icon('plus')}</summary><p>${fill(it.a)}</p></details>`).join('')}
+        </div>
+    </div>
+</section>`;
+};
+
+const cta = (t: SiteCopy) => `
+<section class="cta" aria-labelledby="cta-title">
+    <div class="container">
+        <div class="cta__card theme-dark" data-reveal data-spot>
+            <div class="cta__mark" aria-hidden="true">${logo('cta__logo')}</div>
+            <div>
+                <h2 class="sec-title" id="cta-title">${headline(t.cta.title)}</h2>
+                <p>${esc(t.cta.text)}</p>
+            </div>
+            <div class="cta__actions">
+                <a class="btn btn--primary btn--lg" href="${links.register}" data-magnetic>${esc(t.cta.primary)}${icon('arrowRight')}</a>
+                <a class="btn btn--ghost btn--lg" href="${links.login}">${esc(t.cta.secondary)}</a>
+            </div>
+        </div>
+    </div>
+</section>`;
+
+export const homeBody = (t: SiteCopy, lang: Lang): string =>
+    [story(t, lang), mcp(t, lang), more(t), faq(t, lang), cta(t)].join('\n');

@@ -48,6 +48,11 @@ export interface FileUploadSessionInput {
     entityId: string;
     projectId?: string;
     file: File;
+    /** File manager uploads (module 'files'): the object the file hangs on. */
+    parent?: Record<string, unknown>;
+    /** File manager: upload a new version of this file instead of creating one. */
+    replaceFileId?: string;
+    folder?: string;
 }
 
 export interface TenantFile {
@@ -212,9 +217,15 @@ export const uploadTenantFile = async (input: FileUploadSessionInput): Promise<T
             fileName: string;
             mimeType: string;
             sizeBytes: number;
+            parent?: Record<string, unknown>;
+            replaceFileId?: string;
+            folder?: string;
         },
         CreateUploadSessionResponse
     >('createTenantFileUploadSession', {
+        parent: input.parent,
+        replaceFileId: input.replaceFileId,
+        folder: input.folder,
         tenantId: input.tenantId,
         module: input.module,
         entityType: input.entityType,

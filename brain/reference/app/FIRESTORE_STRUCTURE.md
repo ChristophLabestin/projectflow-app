@@ -159,6 +159,30 @@ Members are created only by (a) the workspace creator bootstrapping themselves a
 - `sourceUrl`: string (optional)
 - `shareCaptureId`: string (optional, native Share Sheet import id)
 
+
+### 📂 **`docs`** (Wiki & Docs, 2026-10-23)
+**Path:** `/tenants/{tenantId}/docs/{docId}` — page **metadata only** (the tree loads it live): `{ tenantId, spaceType: 'workspace'|'project', projectId|null, parentId|null, order (float), title, icon|null, excerpt (≤200), searchText (lowercase, ≤6000), bodyChunks, bodyRev, bodySize, linkedTaskRefs[], mentionTaskRefs[], taskRefs[] ("projectId/taskId", union), outLinks[] (mentioned docIds → backlinks), mentionedUserIds[], createdBy, updatedBy, updatedByName, createdAt, updatedAt, archivedAt|null, archivedBy, archivedRoot }`. `tenantId/spaceType/projectId/createdBy/createdAt` are immutable.
+- `body/{n}` — editor JSON as string chunks `{ i, data }` ≤300k UTF-16 units each (1 MiB safe); saves run in a transaction that checks `bodyRev`.
+- `versions/{id}` — `{ data|null, title, size, reason: autosave|manual|restore|before-restore|conflict, createdBy, createdByName, createdAt }`; autosave at most every 10 min, last 50 kept.
+- `editors/{uid}` — presence heartbeat `{ uid, name, photoURL, at }` (shown as "X is editing" when < 90 s old).
+- Access: workspace pages full members; project pages like project tasks (guests of that project). Guest queries must filter `spaceType == 'project'` + `projectId`. Hard delete: author or Owner/Admin. Trigger `onWikiDocWritten` emits `doc.created|updated|archived|restored|deleted` (updates throttled to one per page + person per 10 min).
+
+### 📂 **`docTemplates`** (custom wiki templates)
+**Path:** `/tenants/{tenantId}/docTemplates/{id}` — `{ name, description, icon, data (Tiptap JSON string), createdBy, createdAt }`; full members (generic tenant rule).
+User prefs: `/tenants/{tenantId}/users/{uid}/prefs/wiki` — `{ favorites: docId[], recent: [{ docId, at }] }`.
+
+### 📂 **`activity`** (workspace activity stream, 2026-10-23)
+**Path:** `/tenants/{tenantId}/activity/{eventId}`
+- Typed, server-written events (`emitActivityEvent`, `functions/src/activity-events.ts`): `{ v, type, domain, actor{kind,id,name,photoURL?,client?,automationId?,automationRunId?,automationDepth?}, cause{kind,id,automationRunId?,depth}, actorId, object{type,id,title,parentType?,parentId?}, projectId|null, projectTitle?, changes?, meta?, source, createdAt, expireAt }`. Contract and type list: `brain/plans/activity-events-contract.md`.
+- Written by `onTaskWritten`/`onSubtaskWritten`/`onCommentCreated`/`onProjectWritten` next to the legacy `projects/{p}/activities` entries. TTL 365 days on `expireAt`.
+- Access: full members read all; guests only events of their projects and only with a `projectId` filter (`==`/`in`); no client writes.
+
+### 📂 **`insights_daily`** / **`insights_reports`** (2026-10-23)
+**Path:** `/tenants/{tenantId}/insights_daily/{YYYY-MM-DD|latest}`, `/tenants/{tenantId}/insights_reports/{isoWeek}-{lang}`
+- `insights_daily`: `{ v, day, weeks[12], projects[{ id, title, status, created[], completed[], cycleDaysSum[], cycleCount[], scope[], done[], open, overdue, blocked, dueNext7, onTime, late, activity7d, health, people{uid:[open,overdue,dueNext7]} }], truncated, computedAt }` from `computeWorkspaceInsights` (daily 03:30 Berlin) / `refreshWorkspaceInsights` (callable, 10-min cooldown).
+- `insights_reports`: `{ week, language, markdown, createdBy, createdAt }` from `generateWeeklyInsightsReport` (OpenAI).
+- Access: full members read; guests none; no client writes.
+
 #### ↳ 📂 **`notifications`**
 **Path:** `/tenants/{tenantId}/notifications/{notificationId}`
 **Schema:** `Notification`
@@ -234,6 +258,8 @@ Members are created only by (a) the workspace creator bootstrapping themselves a
   - S3: `bucket`, `key`, `region`, `endpoint`, `forcePathStyle`
   - Google Drive: `fileId`, `folderId`
 - `createdBy`, `createdAt`, `updatedAt`
+- File manager rows (`module: 'files'`, 2026-10-23, brain/plans/files-concept.md): `listed: true`, `parent { type: task|initiative|project|comment|doc|workspace, id, projectId, rootType, rootId, title }`, `name`, `nameLower`, `folder`, `tags[]`, `version`, `versions[]` (older `{ version, fileName, sizeBytes, mimeType, provider, providerRef, createdBy, createdAt }`), `versionBytes`, `uploaderName`, `status: ready|trashed`, `trashedAt`, `trashedBy`.
+- Read access: `projectId` set → project access (guests only their projects, queries must filter `projectId ==`); `projectId` null → non-guests. Firebase objects: `tenants/{t}/files/files/{projectId|global}/{parentType}/{parentId}/…`, Storage rules mirror the same scope.
 
 #### ↳ 📂 **`file_upload_drafts`** *(Transient upload sessions; Functions-only)*
 **Path:** `/tenants/{tenantId}/file_upload_drafts/{draftId}`
@@ -377,7 +403,7 @@ Members are created only by (a) the workspace creator bootstrapping themselves a
 *   **`submissions`** *(External project intake — see `intakeForm` above)*
     *   📄 `ProjectSubmission`: `{ categoryId, categoryLabel, status: "new"|"reviewed"|"accepted"|"archived", title, description, submitter: { name, email, company }, fields: SubmittedField[], attachments: Attachment[], linkedTaskId, source: "public-form", submittedAt, createdAt }`. Created by `submitProjectIntake` (Admin SDK). Project members read/triage via the project `{document=**}` rule; status/convert/delete happen client-side. Attachments live in Storage at `project-intake/{tenantId}/{projectId}/{submissionId}/…` and are served via signed URLs.
 *   **`activities`**
-    *   📄 `Activity`: `{ action, target, user, details, type, ... }` (Audit log; Codex activity uses `type: "codex"`)
+    *   📄 `Activity`: `{ action, target, user, details, type, ... }` (Legacy free-text audit log; Codex activity uses `type: "codex"`). Still written; the typed stream is `tenants/{t}/activity`. Shown as "Earlier activity" on `/project/:id/activity`.
 *   **`comments`** _(Implied)_
     *   📄 `Comment`: `{ content, targetId, targetType, userId, userDisplayName, userPhotoURL, mentionedUserIds?, updatedBy, createdAt }`. Created by clients (web `addComment`/`addIdeaComment`, iOS); `onCommentCreated` writes the activity + notifications.
 *   **`codex_sessions`**

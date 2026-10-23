@@ -274,6 +274,16 @@ Ports of the iOS brand motion (`PFBrandScene.swift`) and `desktop/assets/splash.
 - `BrandScene` (`variant` screen/inline, `label`): loading scene (field + mark + staggered name + track, `role="status"`). Used by the root auth loading and `WorkspaceConnecting` (screen) and `RoutePending` (inline).
 - `playCompletionBurst(element)`: one-shot burst of the four dots from an element's centre, fixed on `<body>` so it survives rows moving groups; used by `TaskRow`'s complete check. Skipped under reduced motion.
 
+## Activity & insights (2026-10-23)
+- `components/activity/ActivityFeed.tsx` — shared feed for `/activity` and `/project/:id/activity` (`projectId` prop). Reads `tenants/{t}/activity` via `services/domain/activityStreamService.ts`; text via `utils/activityStreamText.ts` (i18n `activity.types.<type>`), icons via `config/activityTypes.ts`. Guests are scoped to their projects automatically.
+- `screens/WorkspaceInsights.tsx` — Recharts (lazy `charts` chunk) on the precomputed snapshot; aggregation in `utils/insightsAggregate.ts`.
+- Sidebar "Arbeitsbereich" order: Projects, Documents*, Wiki*, Flows*, Activity, Insights (no guests), Team, Media (*gated by `WORKSPACE_AREAS` in `config/features.ts`).
+
+## Motion primitives (`web/components/motion/`, 2026-10-23)
+- `usePresence`, `useFlipList`, `useMotionOnChange`, `useSlidingIndicator`, `AnimatedNumber`, `MOTION` (JS token mirror). Rules and CSS utilities: STYLING.md §4.1; live demo `/ui` → Motion (`screens/style-guide/MotionShowcase.tsx`).
+- `AppLayout` runs `useMotionOnChange(…, location.pathname, 'route')` on the outlet wrapper: route content fades/rises in without remounting.
+- `ui/Modal` keeps itself mounted for its exit via `usePresence` (`.ui-modal.is-exiting`); `common/Modal` enters with keyframes, exits with transitions; `GlobalToast` is a live region (`status`/`alert`).
+
 ## Notification Center (`web/components/notifications/`, 2026-10-23)
 
 - `NotificationDropdown` (`components/NotificationDropdown.tsx`): sidebar bell with unread badge (active workspace + other workspaces) and a popover **portaled to `<body>`** (fixed, beside the sidebar flush with the bottom of `.snav-card`, or flipped below/above the trigger; Escape/outside click close). One-line header: All/Unread filter tabs (replace the visible title; dialog aria-label keeps it) plus icon buttons (mark all read, notification settings → `SettingsModal` tab `notifications`, lazy), "Unread in other workspaces" (switches workspace → `/notifications`), grouped list, "View all" footer.
@@ -308,6 +318,18 @@ Concept: `brain/plans/help-center-rework.md`.
 - `AdminLayout.tsx`: `/admin/*` shell with side nav; gates on the `platformAdmin` claim (404 otherwise) and renders child routes via `<Outlet />`. New admin sections: add a `SECTIONS` entry + nested route in `web/Router.tsx`.
 - `CrashReports.tsx` / `CrashIssueDetail.tsx` (+ `crashFormat.ts`, `admin.scss`): crash issue list and detail on `services/crashReportsService.ts`.
 - Web crash capture lives in `services/errorReporting.ts` (`reportError`, global handlers, `isCrashReportingEnabled`/`setCrashReportingEnabled`); the ErrorBoundary reports render crashes through it.
+
+## Wiki & Docs (`web/screens/wiki/`, `web/components/wiki/`, 2026-10-23)
+- `WikiScreen` (route container: tree + home/page/trash), `WikiSidebar` (tree, native drag & drop before/inside/after, favorites, search), `WikiPage` (autosave 1.5 s, `bodyRev` conflict guard, presence, rail: TOC/linked tasks/backlinks), `WikiDialogs` (`IconPicker`, `WikiVersionsDrawer`, `WikiLinkTaskDialog`, `WikiAiDialog`, `WikiTemplatePicker`), `WikiMenu` (portaled origin-aware action menu).
+- Editor `screens/wiki/editor/WikiEditor` on Tiptap 3 (same library as the blog editor) + `extension-table`/`-mention`/`-details`: slash menu, `@`-mentions (`wikiMention` live chips), `wikiCallout`, `wikiTaskList` (filtered live task list), `wikiFile` (file block, provider `screens/wiki/wikiFiles.ts`), `wikiToc`, bubble menus (format/table). Host contract `editor/host.ts`.
+- `components/wiki/LinkedDocsPanel` — task detail "Linked docs" (link/unlink, new project page for the task).
+- Strings: `locales/wiki-{en,de}.ts` via `useWikiT` (lazy chunk). Styles `screens/wiki/wiki.scss`, `components/wiki/linked-docs-panel.scss`.
+- Service entry for other features: `createWikiPageFromMarkdown(tenantId, { space, title, markdown, parentId?, icon?, linkedTaskRefs? })` in `services/wiki/wikiService.ts`.
+## File manager (`web/components/files/`, 2026-10-23)
+- `FileAttachments` — attachment panel for one object (`parent: { type, id, projectId, title }`): drag & drop, paste, picker, list with preview/actions. Used in task detail; wiki docs use `type: 'doc'`.
+- `FilesBrowser` — list/grid with search, filters (type, project, object, uploader, time), sort, trash; used by `/files` and `/project/:id/files`.
+- `FileRow` (row/card), `FileThumb`, `useFileDrop`, `useThumbnailUrls` (`fileHooks.tsx`), `FilePreviewModal` (image/PDF/video/audio/text + versions), `useFileActions` (menu options + rename/move/version/trash/purge modals; purge uses the shared confirm dialog), `FileEmbed` (render a stored `fileId`).
+- Data: `web/services/filesService.ts` (subscriptions, `uploadFiles`, `getFileUrls`, commands). Styles: `src/styles/components/_files.scss`, `screens/files-page.scss`.
 
 ## Notes for future components
 - When adding a reusable component, update this file and ensure it uses tokens from `brain/reference/app/STYLING.md`.

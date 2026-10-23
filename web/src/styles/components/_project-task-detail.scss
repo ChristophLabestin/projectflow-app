@@ -390,7 +390,7 @@
     min-height: 44px;
     padding: 6px 8px;
     border-radius: var(--radius-md);
-    transition: background-color var(--transition-fast);
+    transition: background-color var(--motion-duration-fast) var(--motion-ease-out);
 
     &:hover {
         background: var(--color-surface-bg);
@@ -408,15 +408,25 @@
     background: transparent;
     color: transparent;
     cursor: pointer;
-    transition: all var(--transition-fast);
+    transition: background-color var(--motion-duration-fast) var(--motion-ease-out),
+        border-color var(--motion-duration-fast) var(--motion-ease-out),
+        color var(--motion-duration-fast) var(--motion-ease-out),
+        transform var(--motion-duration-fast) var(--motion-ease-out);
 
     .material-symbols-outlined {
         font-size: 16px;
+        transform: scale(0.7);
+        transition: transform var(--motion-duration-base) var(--motion-ease-spring);
     }
 
     &:active {
-        transform: scale(0.92);
+        transform: scale(0.88);
+        transition-duration: var(--motion-duration-instant);
     }
+}
+
+.task-detail__subtask[data-complete='true'] .task-detail__subtask-toggle .material-symbols-outlined {
+    transform: none;
 }
 
 .task-detail__subtask[data-complete='true'] .task-detail__subtask-toggle {
@@ -431,6 +441,7 @@
 }
 
 .task-detail__subtask-title {
+    transition: color var(--motion-duration-base) var(--motion-ease-out);
     min-width: 0;
     overflow: hidden;
     color: var(--color-text-main);
@@ -579,6 +590,8 @@
 
 .task-detail__select-menu,
 .task-detail__menu {
+    transform-origin: top center;
+    animation: pf-drop-in var(--motion-duration-base) var(--motion-ease-out) both;
     position: absolute;
     top: calc(100% + 4px);
     left: 0;

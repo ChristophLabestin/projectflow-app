@@ -1,0 +1,56 @@
+// Motion mixins – emit no CSS on their own, safe to @use from any component file.
+// Tokens live in _tokens.scss (--motion-*), keyframes/utilities in _motion.scss.
+// Rule: animate transform/opacity (clip-path for reveals) only.
+
+// Enter animation with one of the global keyframes (pf-fade-in, pf-rise-in, pf-pop-in, pf-drop-in,
+// pf-slide-in-right, pf-slide-in-left, pf-slide-in-up).
+@mixin enter($name: pf-rise-in, $duration: var(--motion-duration-base), $delay: 0ms) {
+  animation: $name $duration var(--motion-ease-out) $delay both;
+}
+
+// Exit animation (pf-fade-out, pf-pop-out, pf-sink-out, pf-slide-out-right). Ease-in, shorter.
+@mixin exit($name: pf-fade-out, $duration: var(--motion-duration-exit)) {
+  animation: $name $duration var(--motion-ease-in) both;
+  pointer-events: none;
+}
+
+// Tactile press: quick scale-down on :active, released with ease-out.
+@mixin press($scale: var(--motion-press-scale)) {
+  transition-property: transform, background-color, border-color, color, box-shadow, opacity;
+  transition-duration: var(--motion-duration-fast);
+  transition-timing-function: var(--motion-ease-out);
+
+  &:active:not(:disabled):not([aria-disabled='true']) {
+    transform: scale($scale);
+    transition-duration: var(--motion-duration-instant);
+  }
+}
+
+// Hover lift for cards: 1px rise plus shadow step.
+@mixin lift($shadow: var(--shadow-md)) {
+  transition: transform var(--motion-duration-fast) var(--motion-ease-out),
+    box-shadow var(--motion-duration-fast) var(--motion-ease-out),
+    border-color var(--motion-duration-fast) var(--motion-ease-out);
+
+  @media (hover: hover) {
+    &:hover {
+      transform: translateY(var(--motion-lift));
+      box-shadow: $shadow;
+    }
+  }
+}
+
+// Colour-only hover/focus feedback with the standard timing.
+@mixin hover-colors {
+  transition: background-color var(--motion-duration-fast) var(--motion-ease-out),
+    border-color var(--motion-duration-fast) var(--motion-ease-out),
+    color var(--motion-duration-fast) var(--motion-ease-out),
+    box-shadow var(--motion-duration-fast) var(--motion-ease-out);
+}
+
+// Gated by reduced motion: wrap transform-heavy rules that have no meaning without movement.
+@mixin motion-ok {
+  @media (prefers-reduced-motion: no-preference) {
+    @content;
+  }
+}

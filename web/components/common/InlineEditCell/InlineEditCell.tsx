@@ -27,6 +27,13 @@ export const InlineEditCell: React.FC<InlineEditCellProps> = ({
     const inputId = useId();
     const [draft, setDraft] = useState(value);
     const [isEditing, setEditing] = useState(false);
+    // Brief success flash on the saved value (optimistic confirmation).
+    const [justSaved, setJustSaved] = useState(false);
+    useEffect(() => {
+        if (!justSaved) return undefined;
+        const timer = window.setTimeout(() => setJustSaved(false), 800);
+        return () => window.clearTimeout(timer);
+    }, [justSaved]);
     const [isSaving, setSaving] = useState(false);
 
     useEffect(() => {
@@ -45,6 +52,7 @@ export const InlineEditCell: React.FC<InlineEditCellProps> = ({
         try {
             await onSave(draft.trim());
             setEditing(false);
+            setJustSaved(true);
         } finally {
             setSaving(false);
         }
@@ -80,7 +88,7 @@ export const InlineEditCell: React.FC<InlineEditCellProps> = ({
     return (
         <button
             type="button"
-            className={`inline-edit-cell ${className}`.trim()}
+            className={`inline-edit-cell ${justSaved ? 'motion-confirm' : ''} ${className}`.trim()}
             onClick={() => !disabled && setEditing(true)}
             disabled={disabled}
         >

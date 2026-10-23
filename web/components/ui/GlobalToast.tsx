@@ -40,7 +40,11 @@ export const GlobalToast = () => {
 
     return (
         <>
-            <div className={`global-toast ${toneClass} ${toast.show ? 'global-toast--visible' : ''}`}>
+            <div
+                className={`global-toast ${toneClass} ${toast.show ? 'global-toast--visible' : ''}`}
+                role={toast.type === 'error' ? 'alert' : 'status'}
+                aria-live={toast.type === 'error' ? 'assertive' : 'polite'}
+            >
                 <div className="global-toast__row">
                     <span className="material-symbols-outlined global-toast__icon">
                         {toast.type === 'error' ? 'error' :

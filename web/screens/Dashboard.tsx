@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { AnimatedNumber } from '../components/motion';
 import { format } from 'date-fns';
 import { auth } from '../services/firebase';
 import { getAllWorkspaceProjects } from '../services/dataService';
@@ -117,6 +118,9 @@ export const Dashboard = () => {
     const [loading, setLoading] = useState(true);
     const [showPasskeyUpsell, setShowPasskeyUpsell] = useState(false);
     const [activeDashboardStep, setActiveDashboardStep] = useState(0);
+    // Pulse numbers count up the first time the pulse slide comes in, then only tween on change.
+    const [pulseSeen, setPulseSeen] = useState(false);
+    useEffect(() => { if (activeDashboardStep === 1) setPulseSeen(true); }, [activeDashboardStep]);
     const dashboardStageRef = useRef<HTMLDivElement | null>(null);
     const members = useWorkMembers();
     const timeZone = useMemo(() => browserTimeZone(), []);
@@ -978,7 +982,7 @@ export const Dashboard = () => {
                                         <div className="dashboard-pulse-stats">
                                             {portfolioStats.map((stat) => (
                                                 <div key={stat.key} className={`dashboard-pulse-stat dashboard-pulse-stat--${stat.tone}`}>
-                                                    <strong>{stat.value}</strong>
+                                                    <strong>{typeof stat.value === 'number' ? <AnimatedNumber value={pulseSeen ? stat.value : 0} /> : stat.value}</strong>
                                                     <span><i aria-hidden="true" />{stat.label}</span>
                                                 </div>
                                             ))}

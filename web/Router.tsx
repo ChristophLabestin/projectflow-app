@@ -17,7 +17,6 @@ import { Team } from './screens/Team';
 import { AcceptInvite } from './screens/AcceptInvite';
 import { Profile } from './screens/Profile';
 import { Notifications } from './screens/Notifications';
-import { MediaLibraryPage } from './screens/MediaLibraryPage';
 import { PersonalTasksPage } from './screens/PersonalTasksPage';
 import { NotFound } from './screens/NotFound';
 import { PersonalTaskDetailPage } from './screens/PersonalTaskDetailPage';
@@ -73,7 +72,11 @@ const ProjectInitiativeDetail = React.lazy(() => import('./screens/ProjectInitia
 const PublicInitiativeFeedbackPage = React.lazy(() => import('./screens/PublicInitiativeFeedbackPage').then((module) => ({ default: module.PublicInitiativeFeedbackPage })));
 const ProjectInvoices = React.lazy(() => import('./screens/ProjectInvoices').then((module) => ({ default: module.ProjectInvoices })));
 const ProjectEffort = React.lazy(() => import('./screens/ProjectEffort').then((module) => ({ default: module.ProjectEffort })));
+const FilesPage = React.lazy(() => import('./screens/FilesPage').then((module) => ({ default: module.FilesPage })));
 const ProjectActivity = React.lazy(() => import('./screens/ProjectActivity').then((module) => ({ default: module.ProjectActivity })));
+const WorkspaceInsights = React.lazy(() => import('./screens/WorkspaceInsights').then((module) => ({ default: module.WorkspaceInsights })));
+const WorkspaceActivity = React.lazy(() => import('./screens/WorkspaceActivity').then((module) => ({ default: module.WorkspaceActivity })));
+const WikiScreen = React.lazy(() => import('./screens/wiki/WikiScreen').then((module) => ({ default: module.WikiScreen })));
 const ProjectMilestones = React.lazy(() => import('./screens/ProjectMilestones').then((module) => ({ default: module.ProjectMilestones })));
 const OnboardingInsights = React.lazy(() => import('./screens/OnboardingInsights').then((module) => ({ default: module.OnboardingInsights })));
 const MarketingLayout = React.lazy(() => import('./screens/marketing/MarketingLayout').then((module) => ({ default: module.MarketingLayout })));
@@ -259,6 +262,7 @@ export const AppRouter = () => {
                     <Route element={<AuthenticatedLayout />}>
                         <Route path="/" element={<Dashboard />} />
                         <Route path="/notifications" element={<Notifications />} />
+                        <Route path="/insights" element={withRouteSuspense(<WorkspaceInsights />)} />
                         <Route path="/insights/onboarding" element={withRouteSuspense(<OnboardingInsights />)} />
                         <Route path="/admin" element={withRouteSuspense(<AdminLayout />)}>
                             <Route index element={<Navigate to="/admin/crashes" replace />} />
@@ -272,8 +276,13 @@ export const AppRouter = () => {
                         <Route path="/brainstorm" element={isCoraStudioEnabled() ? <Brainstorming /> : <Navigate to="/" replace />} />
                         <Route path="/create" element={<CreateProjectModalRoute />} />
                         <Route path="/team" element={<Team />} />
+                        <Route path="/activity" element={withRouteSuspense(<WorkspaceActivity />)} />
                         <Route path="/workspace" element={<Navigate to="/" replace />} />
-                        <Route path="/media" element={<MediaLibraryPage />} />
+                        <Route path="/files" element={withRouteSuspense(<FilesPage />)} />
+                        {/* The media library is part of the file manager now. */}
+                        <Route path="/media" element={<Navigate to="/files?type=image" replace />} />
+                        <Route path="/wiki" element={withRouteSuspense(<WikiScreen />)} />
+                        <Route path="/wiki/:docId" element={withRouteSuspense(<WikiScreen />)} />
                         <Route path="/profile" element={<Profile />} />
 
                         <Route path="/personal-tasks" element={<PersonalTasksPage />} />
@@ -295,9 +304,12 @@ export const AppRouter = () => {
                             <Route path="effort" element={withRouteSuspense(<ProjectEffort />)} />
                             <Route path="details" element={withRouteSuspense(<ProjectDetails />)} />
                             <Route path="activity" element={withRouteSuspense(<ProjectActivity />)} />
+                            <Route path="files" element={withRouteSuspense(<FilesPage />)} />
                             {/* The Codex view was removed; keep old links working. */}
                             <Route path="codex" element={<Navigate to=".." relative="path" replace />} />
                             <Route path="milestones" element={withRouteSuspense(<ProjectMilestones />)} />
+                            <Route path="wiki" element={withRouteSuspense(<WikiScreen />)} />
+                            <Route path="wiki/:docId" element={withRouteSuspense(<WikiScreen />)} />
                             <Route
                                 path="sprints"
                                 element={

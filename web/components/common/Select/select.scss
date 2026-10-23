@@ -90,7 +90,7 @@
 
     &__icon {
         color: var(--color-text-muted);
-        transition: transform 0.2s ease;
+        transition: transform var(--motion-duration-base) var(--motion-ease-out);
 
         &--open {
             transform: rotate(180deg);
@@ -107,21 +107,9 @@
         box-shadow: var(--shadow-lg);
         z-index: 9999;
         padding: 4px;
-        animation: fadeIn 0.15s ease-out;
-
-        // Remove transform transitions since position is updated manually
-    }
-
-    @keyframes fadeIn {
-        from {
-            opacity: 0;
-            transform: translateY(-4px);
-        }
-
-        to {
-            opacity: 1;
-            transform: translateY(0);
-        }
+        // Drops from its trigger (always opens below). Position is set inline, so no transform transition.
+        animation: pf-drop-in var(--motion-duration-base) var(--motion-ease-out) both;
+        transform-origin: top center;
     }
 
     &__option {
@@ -133,7 +121,7 @@
         color: var(--color-text-main);
         border-radius: var(--radius-sm);
         cursor: pointer;
-        transition: background-color 0.1s ease;
+        transition: background-color var(--motion-duration-instant) var(--motion-ease-out);
 
         &:hover,
         &--highlighted {

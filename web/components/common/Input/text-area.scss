@@ -42,7 +42,10 @@
     background-color: rgba(var(--color-surface-hover-rgb), 0.5); // Filled background match TextInput
     border: none !important; // Borderless strict
     border-radius: var(--radius-md);
-    transition: background-color var(--transition-normal), box-shadow var(--transition-normal), color var(--transition-normal);
+    transition: background-color var(--motion-duration-base) var(--motion-ease-out),
+        box-shadow var(--motion-duration-base) var(--motion-ease-out),
+        color var(--motion-duration-base) var(--motion-ease-out),
+        opacity var(--motion-duration-base) var(--motion-ease-out);
     resize: vertical; // Allow vertical resize only by default
 
     &::placeholder {
@@ -69,7 +72,7 @@
 
             &:focus {
                 background-color: #f4f4f5;
-                box-shadow: none;
+                box-shadow: inset 0 0 0 1px rgba(var(--color-primary-rgb), 0.28), 0 0 0 3px rgba(var(--color-primary-rgb), 0.08);
             }
         }
     }
@@ -78,14 +81,19 @@
         outline: none;
         // Focus state matches TextInput.
         background-color: var(--color-surface-hover-light);
-        box-shadow: none;
+        // Soft focus ring that fades in with the background change.
+        box-shadow: inset 0 0 0 1px rgba(var(--color-primary-rgb), 0.28), 0 0 0 3px rgba(var(--color-primary-rgb), 0.08);
     }
 
-    &--error {
+    // Validation feedback: error ring plus one short nudge when the state appears.
+    &--error,
+    &--error:hover:not(:disabled) {
         border-color: var(--color-error);
+        box-shadow: inset 0 0 0 1px rgba(var(--color-error-rgb), 0.55);
+        animation: pf-nudge 240ms var(--motion-ease-in-out);
 
         &:focus {
-            box-shadow: none;
+            box-shadow: inset 0 0 0 1px rgba(var(--color-error-rgb), 0.7), 0 0 0 3px rgba(var(--color-error-rgb), 0.1);
         }
     }
 

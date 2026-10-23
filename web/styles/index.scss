@@ -1,5 +1,6 @@
 @use './tokens';
 @use './utilities';
+@use './motion';
 @use '../src/styles/components/dashboard';
 @use '../src/styles/components/scheduled-tasks-card';
 @use '../src/styles/components/tasks';
@@ -31,6 +32,7 @@
 @use '../src/styles/components/sprints';
 @use '../src/styles/components/sprint-details';
 @use '../src/styles/components/work-list';
+@use '../src/styles/components/files';
 @use '../src/styles/components/reminders';
 @use '../src/styles/components/notification-settings';
 @use '../src/styles/components/planning';
@@ -474,7 +476,8 @@ html.dark .switch-track.active {
   border: 1px solid color-mix(in srgb, var(--color-surface-border) 60%, transparent);
   border-radius: var(--radius-xl);
   box-shadow: var(--shadow-sm);
-  transition: all var(--transition-normal);
+  transition: box-shadow var(--motion-duration-base) var(--motion-ease-out),
+    border-color var(--motion-duration-base) var(--motion-ease-out);
 }
 
 .app-card:hover {

@@ -44,7 +44,7 @@
     }
     border-radius: var(--radius-lg);
     cursor: pointer;
-    transition: background-color 0.15s ease;
+    transition: background-color var(--motion-duration-fast) var(--motion-ease-out);
 
     &[data-tone='assign'] { --tone-rgb: var(--status-open-rgb); --tone-text: var(--color-status-open-text); }
     &[data-tone='comment'] { --tone-rgb: var(--status-planning-rgb); --tone-text: var(--color-status-planning-text); }
@@ -152,7 +152,7 @@
     background: var(--color-surface-hover);
     opacity: 0;
     pointer-events: none;
-    transition: opacity 0.15s ease;
+    transition: opacity var(--motion-duration-fast) var(--motion-ease-out);
 
     .notification-row:hover &,
     .notification-row:focus-within & {
@@ -169,7 +169,7 @@
 }
 
 .notification-row__meta {
-    transition: opacity 0.15s ease;
+    transition: opacity var(--motion-duration-fast) var(--motion-ease-out);
 
     @media (hover: hover) {
         .notification-row:hover &,
@@ -211,6 +211,7 @@
     height: 8px;
     border-radius: var(--radius-full);
     background: var(--color-error);
+    animation: pf-pop-in var(--motion-duration-base) var(--motion-ease-spring) both;
 }
 
 .notification-list--compact {

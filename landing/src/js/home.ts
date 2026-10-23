@@ -1,367 +1,357 @@
 import '../styles/home.scss';
-import '../styles/sections.scss';
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { finePointer, motion, prefersMotion } from './motion';
 
 const $ = <T extends Element = HTMLElement>(sel: string, root: ParentNode = document) => root.querySelector<T>(sel);
 const $$ = <T extends Element = HTMLElement>(sel: string, root: ParentNode = document) => Array.from(root.querySelectorAll<T>(sel));
-
 const pad = (n: number) => String(n).padStart(2, '0');
 
-/** Hero: live UI fragments (ticking focus timer, a task gets checked off, a mention arrives). */
-function heroLive() {
-    const timer = $('[data-hero-timer]');
-    const timerShort = $('[data-hero-timer-short]');
-    const ring = $<SVGCircleElement>('[data-hero-ring]');
+/* ==================================================================== story stage
+ * One pinned viewport, 6 acts. Timeline time t runs 0 → 5; the transition into act k starts at k - 1,
+ * takes ~0.7 and is then held until k. Every card is the same DOM node in every act; only transform/opacity change.
+ */
+
+const ACTS = 5;
+const CARD_H = 66;
+const HEADER = 64;
+
+interface Pose { x: number; y: number; r: number; s: number; o: number }
+interface Geo {
+    W: number; H: number;
+    x0: number; y0: number; x1: number; y1: number;
+    cw: number; gap: number; cols: number;
+}
+
+// Hand-placed "noise" positions (normalised, kept clear of the centred headline).
+const NOISE_DESKTOP: [number, number, number][] = [
+    [0.02, 0.14, -7], [0.85, 0.12, 6], [0.0, 0.40, 5], [0.91, 0.38, -4], [0.04, 0.66, -6], [0.87, 0.63, 5],
+    [0.13, 0.93, 4], [0.33, 0.86, -5], [0.53, 0.95, 3], [0.72, 0.87, -6], [0.94, 0.92, 4], [0.19, 0.77, -3],
+];
+const NOISE_MOBILE: [number, number, number][] = [
+    [0.0, 0.095, -6], [0.56, 0.1, 5], [0.06, 0.185, 4], [0.62, 0.19, -4], [0.0, 0.875, 5], [0.54, 0.87, -6], [0.22, 0.94, -3], [0.7, 0.945, 4],
+];
+
+function storyScene(mobile: boolean) {
+    const stage = $('[data-story]');
+    if (!stage) return undefined;
+    const header = $('[data-header]');
+    const allCards = $$('[data-card]', stage);
+    const cards = mobile ? allCards.filter((c) => c.hasAttribute('data-core')) : allCards;
+    const hero = $('[data-hero]', stage)!;
+    const heads = $$('[data-col-head]', stage);
+    const acts = $$('[data-act]', stage);
+    const navLinks = $$<HTMLAnchorElement>('[data-goto]', stage);
+    const inboxHead = $('[data-inbox-head]', stage)!;
+    const veil = $('[data-veil]', stage)!;
+    const focus = $('[data-focus]', stage)!;
+    const toasts = $$('[data-toast]', stage);
+    const frame = $('[data-frame]', stage)!;
+    const phone = $('[data-phone]', stage)!;
+    const counts = $$('[data-col-count]', stage);
+
+    // Board column per card (mobile folds the statuses into "open" and "done").
+    const colOf = (card: HTMLElement, heroDone: boolean) => {
+        const col = heroDone && card === hero ? 3 : Number(card.dataset.col);
+        return mobile ? (col === 3 ? 1 : 0) : col;
+    };
+    const headCol = (h: HTMLElement) => {
+        const c = Number(h.dataset.colHead);
+        if (!mobile) return c;
+        return c === 3 ? 1 : c === 0 ? 0 : -1;
+    };
+
+    let geoCache: Geo | null = null;
+    const geo = (): Geo => {
+        if (geoCache) return geoCache;
+        const W = stage.clientWidth;
+        const H = stage.clientHeight;
+        const cols = mobile ? 2 : 4;
+        const gap = mobile ? 8 : 12;
+        let x0: number; let x1: number; let y0: number; let y1: number;
+        if (mobile) {
+            const copyH = Math.max(...acts.slice(1).map((a) => a.offsetHeight));
+            x0 = 16; x1 = W - 16; y0 = HEADER + 24; y1 = H - copyH - 72;
+        } else {
+            x0 = Math.max(W * 0.37, 420); x1 = W - Math.max(72, (W - 1240) / 2 + 40); y0 = HEADER + 76; y1 = H - 40;
+        }
+        const cw = Math.min(260, (x1 - x0 - gap * (cols - 1)) / cols);
+        geoCache = { W, H, x0, y0, x1, y1, cw, gap, cols };
+        stage.style.setProperty('--cw', `${cw}px`);
+        return geoCache;
+    };
+    const resetGeo = () => { geoCache = null; };
+    ScrollTrigger.addEventListener('refreshInit', resetGeo);
+
+    const boardW = (g: Geo) => g.cols * g.cw + (g.cols - 1) * g.gap;
+    const boardX = (g: Geo) => g.x0 + Math.max(0, (g.x1 - g.x0 - boardW(g)) / 2);
+    /** Board is vertically centred in the work area (tallest column decides). */
+    const boardY = (g: Geo) => {
+        const rows = Math.max(...[0, 1, 2, 3].map((c) => cards.filter((card) => colOf(card, true) === c).length));
+        const h = 36 + rows * (CARD_H + 8);
+        return g.y0 + Math.max(0, (g.y1 - g.y0 - h) / 2);
+    };
+
+    /** Pose of every visible card in act k. */
+    const poses = (k: number): Pose[] => {
+        const g = geo();
+        if (k === 0) {
+            const pts = mobile ? NOISE_MOBILE : NOISE_DESKTOP;
+            return cards.map((_, i) => {
+                const [nx, ny, r] = pts[i % pts.length];
+                return { x: nx * (g.W - g.cw * (mobile ? 0.8 : 1)), y: ny * (g.H - CARD_H), r, s: mobile ? 0.8 : 1, o: 1 };
+            });
+        }
+        if (k === 1) {
+            const s = Math.min(mobile ? 1.5 : 1.3, (g.x1 - g.x0) / g.cw);
+            const w = g.cw * s;
+            const x = g.x0 + (g.x1 - g.x0 - w) / 2;
+            return cards.map((_, i) => {
+                const y = g.y0 + 40 + i * (CARD_H * s + 8);
+                return { x, y, r: 0, s, o: y + CARD_H * s > g.y1 ? 0 : 1 };
+            });
+        }
+        const heroDone = k >= 4;
+        const heroHidden = k === 3; // the hero card turns into the focus panel
+        const fill = [0, 0, 0, 0];
+        const bx = boardX(g);
+        return cards.map((card) => {
+            const col = colOf(card, heroDone);
+            const row = fill[col]++;
+            const y = boardY(g) + 36 + row * (CARD_H + 8);
+            const hidden = (heroHidden && card === hero) || y + CARD_H > g.y1 + 30;
+            return { x: bx + col * (g.cw + g.gap), y, r: 0, s: 1, o: hidden ? 0 : 1 };
+        });
+    };
+
+    // ---------------------------------------------------------------- timeline
+    const tl = gsap.timeline({ defaults: { ease: 'power2.inOut', duration: 0.7 } });
+    const at = (k: number) => k - 1;
+
+    cards.forEach((card, i) => {
+        gsap.set(card, {
+            x: () => poses(0)[i].x, y: () => poses(0)[i].y, rotation: () => poses(0)[i].r,
+            scale: () => poses(0)[i].s, transformOrigin: '0 0', autoAlpha: 1,
+        });
+    });
+    gsap.set([inboxHead, ...heads, veil, ...toasts, frame, phone], { autoAlpha: 0 });
+    gsap.set(focus, { autoAlpha: 0 });
+
+    for (let k = 1; k <= ACTS; k += 1) {
+        cards.forEach((card, i) => {
+            tl.to(card, {
+                x: () => poses(k)[i].x, y: () => poses(k)[i].y, rotation: () => poses(k)[i].r,
+                scale: () => poses(k)[i].s, autoAlpha: () => poses(k)[i].o,
+            }, at(k) + (k <= 2 ? i * 0.012 : 0));
+        });
+        tl.to(acts[k - 1], { autoAlpha: 0, y: -24, duration: 0.3, ease: 'power1.in' }, at(k))
+            .fromTo(acts[k], { autoAlpha: 0, y: 24 }, { autoAlpha: 1, y: 0, duration: 0.35, ease: 'power2.out', immediateRender: false }, at(k) + 0.32);
+    }
+
+    const inboxX = () => {
+        const g = geo();
+        const w = g.cw * Math.min(mobile ? 1.5 : 1.3, (g.x1 - g.x0) / g.cw);
+        return g.x0 + (g.x1 - g.x0 - w) / 2;
+    };
+
+    // Act 1 – fragments become tasks; inbox header appears.
+    tl.to($$('.scard__kind', stage), { autoAlpha: 0, duration: 0.3 }, 0.15)
+        .to($$('.scard .checkbox', stage), { autoAlpha: 1, duration: 0.3 }, 0.3)
+        .fromTo(inboxHead, { autoAlpha: 0, x: inboxX, y: () => geo().y0 }, { autoAlpha: 1, x: inboxX, y: () => geo().y0, duration: 0.3, immediateRender: false }, 0.35)
+        .to(inboxHead, { autoAlpha: 0, duration: 0.25 }, at(2));
+    // Act 2 – column heads.
+    heads.forEach((h) => {
+        tl.fromTo(h, { autoAlpha: 0, x: () => boardX(geo()) + Math.max(0, headCol(h)) * (geo().cw + geo().gap), y: () => boardY(geo()) },
+            { autoAlpha: headCol(h) < 0 ? 0 : 1, x: () => boardX(geo()) + Math.max(0, headCol(h)) * (geo().cw + geo().gap), y: () => boardY(geo()), duration: 0.4, immediateRender: false }, at(2) + 0.3);
+    });
+    // Act 3 – focus: stage goes dark, the hero card becomes the focus panel.
+    const focusPos = () => {
+        const g = geo();
+        return { x: g.x0 + (g.x1 - g.x0 - focus.offsetWidth) / 2, y: g.y0 + Math.max(0, (g.y1 - g.y0 - focus.offsetHeight) / 2) };
+    };
+    tl.to(veil, { autoAlpha: 0.94, duration: 0.5 }, at(3))
+        .fromTo(focus, { x: () => focusPos().x, y: () => focusPos().y + 30, scale: 0.85, autoAlpha: 0 },
+            { x: () => focusPos().x, y: () => focusPos().y, scale: 1, autoAlpha: 1, duration: 0.5, ease: 'power3.out', immediateRender: false }, at(3) + 0.2)
+        .fromTo($('[data-focus-ring]', focus), { strokeDashoffset: 95 }, { strokeDashoffset: 30, duration: 0.8, ease: 'none', immediateRender: false }, at(3) + 0.2)
+    // Act 4 – back to light; hero lands in "done"; the team shows up.
+        .to(focus, { autoAlpha: 0, scale: 0.9, duration: 0.35 }, at(4))
+        .to(veil, { autoAlpha: 0, duration: 0.45 }, at(4) + 0.05)
+        .to($$('.scard__who', stage), { autoAlpha: 1, duration: 0.3, stagger: 0.04 }, at(4) + 0.4);
+    toasts.forEach((toast, i) => {
+        const tx = () => geo().x1 - toast.offsetWidth;
+        const ty = () => {
+            const g = geo();
+            if (!mobile) return Math.max(HEADER + 12, boardY(g) - 132) + i * 60;
+            const rows = Math.max(...[0, 1].map((c) => cards.filter((card) => colOf(card, true) === c).length));
+            return Math.min(boardY(g) + 36 + rows * (CARD_H + 8) + 4, g.y1 - 40);
+        };
+        if (mobile && i > 0) { gsap.set(toast, { display: 'none' }); return; }
+        tl.fromTo(toast, { autoAlpha: 0, x: () => tx() + 24, y: ty },
+            { autoAlpha: 1, x: tx, y: ty, duration: 0.35, ease: 'power3.out', immediateRender: false }, at(4) + 0.45 + i * 0.15);
+    });
+    // Act 5 – the board sits in a real app frame; the phone joins; cards become clickable.
+    const frameBox = () => {
+        const g = geo();
+        const rows = Math.max(...[0, 1, 2, 3].map((c) => cards.filter((card) => colOf(card, true) === c).length));
+        return { x: boardX(g) - 16, y: boardY(g) - 56, w: boardW(g) + 32, h: 36 + rows * (CARD_H + 8) + 72 };
+    };
+    tl.to(toasts, { autoAlpha: 0, duration: 0.3 }, at(5))
+        .fromTo(frame, { autoAlpha: 0, x: () => frameBox().x, y: () => frameBox().y, width: () => frameBox().w, height: () => frameBox().h, scale: 1.03 },
+            { autoAlpha: 1, x: () => frameBox().x, y: () => frameBox().y, width: () => frameBox().w, height: () => frameBox().h, scale: 1, duration: 0.5, immediateRender: false }, at(5) + 0.1)
+        .fromTo(phone, { autoAlpha: 0, x: () => geo().x1 - 200, y: () => geo().y1 - 230 },
+            { autoAlpha: 1, x: () => geo().x1 - 200, y: () => geo().y1 - 290, duration: 0.5, ease: 'power3.out', immediateRender: false }, at(5) + 0.3)
+        .to({}, { duration: 0.3 }, ACTS - 0.3);
+
+    // ---------------------------------------------------------------- discrete, reversible states
+    const heroBox = $('.checkbox', hero);
+    let last = '';
+    const applyState = (t: number) => {
+        const dark = t > at(3) + 0.25 && t < at(4) + 0.15;
+        const heroDone = t > at(4) + 0.25;
+        const live = t > ACTS - 0.35;
+        const act = t < 0.35 ? 0 : Math.min(ACTS, Math.floor(t + 0.35));
+        const key = `${dark}${heroDone}${live}${act}${t > at(2) + 0.4}`;
+        if (key === last) return;
+        last = key;
+        stage.classList.toggle('is-dark', dark);
+        header?.classList.toggle('is-dark', dark);
+        stage.classList.toggle('is-live', live);
+        stage.classList.toggle('is-board', t > at(2) + 0.4);
+        hero.classList.toggle('is-done', heroDone);
+        heroBox?.classList.toggle('is-checked', heroDone);
+        navLinks.forEach((a, i) => (i === act ? a.setAttribute('aria-current', 'step') : a.removeAttribute('aria-current')));
+        const fill = [0, 0, 0, 0];
+        cards.forEach((c) => { fill[c === hero && heroDone ? 3 : Number(c.dataset.col)] += 1; });
+        counts.forEach((el) => {
+            const c = Number(el.dataset.colCount);
+            el.textContent = String(mobile ? (c === 3 ? fill[3] : fill[0] + fill[1] + fill[2]) : fill[c]);
+        });
+    };
+
+    const actLen = () => window.innerHeight * (mobile ? 0.68 : 0.92);
+    const st = ScrollTrigger.create({
+        trigger: stage,
+        start: 'top top',
+        end: () => `+=${actLen() * ACTS}`,
+        pin: true,
+        scrub: 0.5,
+        animation: tl,
+        invalidateOnRefresh: true,
+        onUpdate: (self) => applyState(self.progress * ACTS),
+    });
+    applyState(0);
+
+    // Chapter navigation jumps to the held state of an act.
+    const onNav = (event: Event) => {
+        event.preventDefault();
+        const k = Number((event.currentTarget as HTMLElement).dataset.goto);
+        window.scrollTo({ top: st.start + ((k === 0 ? 0 : k - 0.1) / ACTS) * (st.end - st.start), behavior: 'smooth' });
+    };
+    navLinks.forEach((a) => a.addEventListener('click', onNav));
+
+    // Last act: the board is usable – cards can be checked off.
+    const onCard = (event: Event) => {
+        const card = event.currentTarget as HTMLElement;
+        if (!stage.classList.contains('is-live')) return;
+        const done = !card.classList.contains('is-done');
+        card.classList.toggle('is-done', done);
+        $('.checkbox', card)?.classList.toggle('is-checked', done);
+        gsap.fromTo($('.scard__inner', card), { scale: 0.96 }, { scale: 1, duration: motion.dur3, ease: motion.easeSpring });
+    };
+    cards.forEach((card) => card.addEventListener('click', onCard));
+
+    // Act 0: fragments drift away from the cursor.
+    let onMove: ((e: PointerEvent) => void) | undefined;
+    let onLeave: (() => void) | undefined;
+    if (finePointer()) {
+        const movers = cards.map((card) => {
+            const inner = $('.scard__inner', card)!;
+            return { card, x: gsap.quickTo(inner, 'x', { duration: 0.8, ease: 'power3.out' }), y: gsap.quickTo(inner, 'y', { duration: 0.8, ease: 'power3.out' }) };
+        });
+        onMove = (event) => {
+            const calm = st.progress > 0.02;
+            movers.forEach((m) => {
+                if (calm) { m.x(0); m.y(0); return; }
+                const r = m.card.getBoundingClientRect();
+                const dx = r.left + r.width / 2 - event.clientX;
+                const dy = r.top + r.height / 2 - event.clientY;
+                const d = Math.hypot(dx, dy) || 1;
+                const push = Math.max(0, 1 - d / 260) * 36;
+                m.x((dx / d) * push);
+                m.y((dy / d) * push);
+            });
+        };
+        onLeave = () => movers.forEach((m) => { m.x(0); m.y(0); });
+        stage.addEventListener('pointermove', onMove);
+        stage.addEventListener('pointerleave', onLeave);
+    }
+
+    // The focus clock keeps ticking.
+    const clock = $('[data-focus-clock]', focus);
     let seconds = 24 * 60 + 13;
-    window.setInterval(() => {
-        if (document.hidden) return;
+    const id = window.setInterval(() => {
+        if (document.hidden || !clock) return;
         seconds += 1;
-        const m = Math.floor(seconds / 60);
-        const s = seconds % 60;
-        if (timer) timer.textContent = `00:${pad(m)}:${pad(s)}`;
-        if (timerShort) timerShort.textContent = `${pad(m)}:${pad(s)}`;
-        if (ring) ring.style.strokeDashoffset = String(40 - ((seconds % 1500) / 1500) * 40);
+        clock.textContent = `${pad(Math.floor(seconds / 60))}:${pad(seconds % 60)}`;
     }, 1000);
 
-    const notif = $('[data-hero-notif]');
-    if (notif) {
-        gsap.fromTo(notif, { opacity: 0, y: -14, scale: 0.94 }, { opacity: 1, y: 0, scale: 1, duration: motion.dur4, ease: motion.easeSpring, delay: 2.2 });
-        const badge = $('[data-hero-badge]');
-        if (badge) gsap.fromTo(badge, { scale: 0.4 }, { scale: 1, duration: motion.dur3, ease: motion.easeSpring, delay: 2.35 });
-    }
-
-    const row = $('[data-hero-check]');
-    const bar = $('[data-hero-progress]');
-    const label = $('[data-hero-progress-label]');
-    window.setTimeout(() => {
-        row?.classList.add('is-done');
-        row?.querySelector('.checkbox')?.classList.add('is-checked');
-        if (row) gsap.fromTo(row.querySelector('.checkbox'), { scale: 0.7 }, { scale: 1, duration: motion.dur3, ease: motion.easeSpring });
-        bar?.style.setProperty('--p', '0.6');
-        if (label) {
-            const counter = { v: 40 };
-            gsap.to(counter, { v: 60, duration: motion.dur4, ease: motion.ease, onUpdate: () => { label.textContent = `${Math.round(counter.v)} %`; } });
-        }
-    }, 3400);
-}
-
-/** Hero: window tilts into place while scrolling; layers drift at their own depth; cursor tilt. */
-function heroScene() {
-    const stage = $('[data-hero-stage]');
-    const tilt = $('[data-tilt]');
-    const win = $('[data-hero-window]');
-    if (!stage || !tilt || !win) return;
-
-    gsap.fromTo(tilt, { rotateX: 14, scale: 0.96, y: 0 }, {
-        rotateX: 0, scale: 1, y: -40, ease: 'none',
-        scrollTrigger: { trigger: stage, start: 'top bottom', end: 'top 20%', scrub: 0.4 },
-    });
-
-    $$('.hero [data-depth]').forEach((el) => {
-        const depth = Number(el.dataset.depth ?? 0);
-        gsap.to(el, {
-            yPercent: el.classList.contains('float') ? 0 : depth * 30,
-            y: el.classList.contains('float') ? -depth * 60 : 0,
-            ease: 'none',
-            scrollTrigger: { trigger: '.hero', start: 'top top', end: 'bottom top', scrub: true },
-        });
-    });
-
-    if (!finePointer()) return;
-    const rx = gsap.quickTo(win, 'rotationX', { duration: motion.dur3 * 1.5, ease: 'power3.out' });
-    const ry = gsap.quickTo(win, 'rotationY', { duration: motion.dur3 * 1.5, ease: 'power3.out' });
-    const floats = $$('.float', stage).map((el) => ({
-        depth: Number(el.dataset.depth ?? 1),
-        x: gsap.quickTo(el, 'x', { duration: motion.dur4, ease: 'power3.out' }),
-    }));
-    const hero = $('.hero')!;
-    hero.addEventListener('pointermove', (event) => {
-        const nx = event.clientX / window.innerWidth - 0.5;
-        const ny = event.clientY / window.innerHeight - 0.5;
-        ry(nx * 5);
-        rx(-ny * 3);
-        floats.forEach((f) => f.x(nx * f.depth * 16));
-    });
-    hero.addEventListener('pointerleave', () => {
-        rx(0);
-        ry(0);
-        floats.forEach((f) => f.x(0));
-    });
-}
-
-/** Journey: pinned 4-step story; a task travels Inbox → Today → Focus → Done. */
-function journeyScene() {
-    const pin = $('[data-journey]');
-    if (!pin) return;
-    const steps = $$('.journey__step', pin);
-    const card = $('[data-journey-card]', pin)!;
-    const body = $('.panel__body', pin)!;
-    const states = $$('[data-journey-state]', pin);
-    const check = $('[data-journey-check]', pin)!;
-    const checkPath = $<SVGPathElement>('[data-journey-check] path', pin)!;
-    const fill = $('[data-journey-check] .checkbox__fill', pin)!;
-    const clock = $('[data-journey-clock]', pin)!;
-    const percent = $('[data-journey-percent]', pin)!;
-    const ghosts = $('[data-journey-ghosts]', pin)!;
-    const capture = $('[data-journey-capture]', pin)!;
-    const progress = $('[data-journey-progress]', pin)!;
-
-    const slot = 74; // card height + gap
-    // Focus: centred in the free space above the progress block.
-    const focusY = () => (body.clientHeight - progress.offsetHeight - 12 - card.offsetHeight) / 2 - 64;
-    const doneY = () => body.clientHeight - progress.offsetHeight - card.offsetHeight - 16 - 64;
-
-    gsap.set(steps, { autoAlpha: 0, y: 24 });
-    gsap.set(steps[0], { autoAlpha: 1, y: 0 });
-    gsap.set('[data-journey-indicator]', { xPercent: 0 });
-    gsap.set('[data-journey-typed]', { clipPath: 'inset(0 100% 0 0)' });
-    gsap.set(card, { autoAlpha: 0, y: -12, scale: 0.96 });
-    gsap.set(states, { autoAlpha: 0 });
-    gsap.set(states[0], { autoAlpha: 1 });
-    gsap.set(fill, { opacity: 0 });
-    gsap.set(checkPath, { strokeDashoffset: 24 });
-    gsap.set('[data-journey-strike]', { scaleX: 0 });
-    gsap.set('[data-journey-focus]', { autoAlpha: 0 });
-    gsap.set('[data-journey-bar]', { scaleX: 0.58 });
-    gsap.set(ghosts, { y: slot });
-
-    const tabs = $$('[data-journey-tab]', pin);
-    const dots = $$('[data-journey-dot]', pin);
-    const setTab = (i: number) => {
-        tabs.forEach((t, n) => t.classList.toggle('is-active', n === i));
-        dots.forEach((d, n) => d.classList.toggle('is-active', n === i));
+    return () => {
+        window.clearInterval(id);
+        ScrollTrigger.removeEventListener('refreshInit', resetGeo);
+        navLinks.forEach((a) => a.removeEventListener('click', onNav));
+        cards.forEach((card) => card.removeEventListener('click', onCard));
+        if (onMove) stage.removeEventListener('pointermove', onMove);
+        if (onLeave) stage.removeEventListener('pointerleave', onLeave);
+        stage.classList.remove('is-dark', 'is-live');
+        header?.classList.remove('is-dark');
     };
-    setTab(0);
-
-    const stepTo = (tl: gsap.core.Timeline, from: number, to: number, at: number) => {
-        tl.to(steps[from], { autoAlpha: 0, y: -24, duration: 0.3 }, at)
-            .fromTo(steps[to], { autoAlpha: 0, y: 24 }, { autoAlpha: 1, y: 0, duration: 0.3, immediateRender: false }, at + 0.15)
-            .to('[data-journey-indicator]', { xPercent: to * 100, duration: 0.4, ease: motion.easeInOut }, at)
-            .to(states[from], { autoAlpha: 0, duration: 0.2 }, at)
-            .to(states[to], { autoAlpha: 1, duration: 0.2 }, at + 0.2)
-            .call(() => setTab(to), undefined, at + 0.2);
-    };
-
-    const tl = gsap.timeline({
-        defaults: { ease: 'none' },
-        scrollTrigger: {
-            trigger: pin,
-            start: 'top top',
-            end: () => `+=${window.innerHeight * 3.2}`,
-            pin: true,
-            scrub: 0.6,
-            invalidateOnRefresh: true,
-            onUpdate: (self) => {
-                const i = Math.min(3, Math.floor(self.progress * 4.4 - 0.2));
-                setTab(Math.max(0, i));
-            },
-        },
-    });
-
-    // 0 — capture: text is typed, the card drops into the inbox
-    tl.to('[data-journey-typed]', { clipPath: 'inset(0 0% 0 0)', duration: 0.5 }, 0.05)
-        .to(card, { autoAlpha: 1, y: 0, scale: 1, duration: 0.3, ease: motion.ease }, 0.55);
-
-    // 1 — plan: input clears, card moves to the top of Today
-    stepTo(tl, 0, 1, 1);
-    tl.to(capture, { autoAlpha: 0, y: -12, duration: 0.3 }, 1)
-        .to(card, { y: -64, duration: 0.5, ease: motion.easeInOut }, 1.1)
-        .to(ghosts, { y: 10, duration: 0.5, ease: motion.easeInOut }, 1.1);
-
-    // 2 — focus: everything else steps back, the clock runs
-    stepTo(tl, 1, 2, 2);
-    tl.to(ghosts, { autoAlpha: 0, y: 24, duration: 0.3 }, 2)
-        .to(card, { y: focusY, scale: 1.04, duration: 0.5, ease: motion.easeInOut }, 2.05)
-        .to('[data-journey-focus]', { autoAlpha: 1, duration: 0.3 }, 2.1)
-        .to({ s: 0 }, {
-            s: 25 * 60 - 1, duration: 0.75,
-            onUpdate() {
-                const s = Math.round((this.targets()[0] as { s: number }).s);
-                clock.textContent = `${pad(Math.floor(s / 60))}:${pad(s % 60)}`;
-            },
-        }, 2.2);
-
-    // 3 — done: checked, struck through, progress moves
-    stepTo(tl, 2, 3, 3);
-    tl.to('[data-journey-focus]', { autoAlpha: 0, duration: 0.25 }, 3)
-        .to(fill, { opacity: 1, duration: 0.15 }, 3.05)
-        .to(checkPath, { strokeDashoffset: 0, duration: 0.25 }, 3.1)
-        .fromTo(check, { scale: 0.8 }, { scale: 1, duration: 0.25, ease: motion.easeSpring, immediateRender: false }, 3.1)
-        .to('[data-journey-strike]', { scaleX: 1, duration: 0.3 }, 3.2)
-        .to(card, { y: doneY, scale: 1, duration: 0.5, ease: motion.easeInOut }, 3.35)
-        .fromTo(ghosts, { y: -40 }, { autoAlpha: 1, y: -64, duration: 0.4, immediateRender: false }, 3.35)
-        .to('[data-journey-bar]', { scaleX: 0.64, duration: 0.4 }, 3.5)
-        .to({ p: 58 }, {
-            p: 64, duration: 0.4,
-            onUpdate() { percent.textContent = String(Math.round((this.targets()[0] as { p: number }).p)); },
-        }, 3.5)
-        .to({}, { duration: 0.4 });
 }
 
-/** Board: cards land column by column as the section scrolls in; the board pans sideways. */
-function boardScene() {
-    const wrap = $('[data-board]');
-    const track = $('[data-board-track]');
-    if (!wrap || !track) return;
-    const cards = $$('[data-board-card]', wrap);
+/* ==================================================================== MCP scene */
 
-    gsap.fromTo(cards, { autoAlpha: 0, y: -36, rotate: -1.5 }, {
-        autoAlpha: 1, y: 0, rotate: 0, ease: motion.ease, stagger: 0.12, duration: 1,
-        scrollTrigger: { trigger: wrap, start: 'top 85%', end: 'center 45%', scrub: 0.6 },
-    });
-
-    const overflow = () => Math.max(40, (track.scrollWidth - window.innerWidth) / 2 + 24);
-    gsap.fromTo(track, { x: () => overflow() }, {
-        x: () => -overflow(), ease: 'none',
-        scrollTrigger: { trigger: wrap, start: 'top bottom', end: 'bottom top', scrub: 0.4, invalidateOnRefresh: true },
-    });
-}
-
-
-/** Workbench: subtasks can be checked with the mouse; one completes itself on enter. */
-function workbenchScene() {
-    const buttons = $$<HTMLButtonElement>('[data-subtask]');
-    const count = $('[data-sub-count]');
-    const bar = $('[data-sub-bar]');
-    const update = () => {
-        const done = buttons.filter((b) => b.classList.contains('is-done')).length;
-        if (count) count.textContent = `${done}/${buttons.length}`;
-        bar?.style.setProperty('--p', String(done / buttons.length));
-    };
-    const toggle = (b: HTMLButtonElement) => {
-        b.classList.toggle('is-done');
-        b.querySelector('.checkbox')?.classList.toggle('is-checked', b.classList.contains('is-done'));
-        update();
-    };
-    buttons.forEach((b) => b.addEventListener('click', () => toggle(b)));
-    if (buttons[2]) {
-        ScrollTrigger.create({
-            trigger: '.detail', start: 'top 55%', once: true,
-            onEnter: () => window.setTimeout(() => !buttons[2].classList.contains('is-done') && toggle(buttons[2]), 500),
-        });
-    }
-}
-
-/** Notifications: rows arrive one by one, the bell rings, the first one is read. */
-function notifyScene() {
-    const panel = $('[data-notify]');
-    if (!panel) return;
-    const rows = $$('[data-notif]', panel);
-    const counters = [$('[data-unread]'), $('[data-bell-count]')];
-    gsap.set(rows, { autoAlpha: 0, x: 32 });
-    ScrollTrigger.create({
-        trigger: panel, start: 'top 70%', once: true,
-        onEnter: () => {
-            gsap.to(rows, { autoAlpha: 1, x: 0, duration: motion.dur4, ease: motion.ease, stagger: 0.14 });
-            gsap.fromTo('[data-bell]', { rotate: 0 }, { keyframes: { rotate: [0, 14, -12, 8, -5, 0] }, duration: 0.9, ease: 'power1.inOut', delay: 0.3 });
-            window.setTimeout(() => {
-                rows[0]?.classList.remove('is-unread');
-                counters.forEach((c) => { if (c) c.textContent = '3'; });
-                gsap.fromTo(counters, { scale: 0.6 }, { scale: 1, duration: motion.dur3, ease: motion.easeSpring });
-            }, 2200);
-        },
-    });
-    rows.forEach((row) => row.addEventListener('click', () => row.classList.toggle('is-unread')));
-}
-
-/** AI: the prompt is "sent", the suggestion streams in line by line. */
-function aiScene() {
-    const root = $('[data-ai]');
+function mcpScene() {
+    const root = $('[data-mcp]');
     if (!root) return;
-    const lines = $$('[data-ai-line]', root);
-    const tl = gsap.timeline({ paused: true });
-    tl.from('.ai__prompt', { autoAlpha: 0, y: 16, duration: motion.dur3, ease: motion.ease })
-        .from('.ai__answer', { autoAlpha: 0, y: 16, duration: motion.dur3, ease: motion.ease }, '+=0.35')
-        .from(lines, { autoAlpha: 0, x: -12, duration: motion.dur3, ease: motion.ease, stagger: 0.18 }, '-=0.2')
-        .from('.ai__accept', { autoAlpha: 0, scale: 0.9, duration: motion.dur3, ease: motion.easeSpring });
-    ScrollTrigger.create({ trigger: root, start: 'top 75%', once: true, onEnter: () => tl.play() });
-}
-
-/** Passkey: the ring scans, the key turns into a check, the status appears. */
-function passkeyScene() {
-    const root = $('[data-passkey]');
-    if (!root) return;
-    const tl = gsap.timeline({ paused: true });
-    tl.set('.passkey__ok', { autoAlpha: 0, scale: 0.6 })
-        .set('[data-passkey-status]', { autoAlpha: 0, y: 8 })
-        .set('.passkey__key', { autoAlpha: 1, scale: 1 })
-        .fromTo('[data-passkey-ring]', { strokeDashoffset: 100 }, { strokeDashoffset: 0, duration: 1.2, ease: motion.easeInOut })
-        .to('.passkey__key', { autoAlpha: 0, scale: 0.6, duration: motion.dur2 })
-        .to('.passkey__ok', { autoAlpha: 1, scale: 1, duration: motion.dur3, ease: motion.easeSpring }, '<0.1')
-        .to('[data-passkey-status]', { autoAlpha: 1, y: 0, duration: motion.dur3, ease: motion.ease }, '<0.15');
-    tl.progress(0).pause();
-    ScrollTrigger.create({ trigger: root, start: 'top 70%', once: true, onEnter: () => tl.play() });
-}
-
-/** Platforms: devices drift at their own depth; quick capture types a task. */
-function platformsScene() {
-    const devices = $('[data-devices]');
-    if (!devices) return;
-    $$('[data-depth]', devices).forEach((el) => {
-        const depth = Number(el.dataset.depth ?? 0);
-        gsap.fromTo(el, { y: depth * 40 }, {
-            y: -depth * 20, ease: 'none',
-            scrollTrigger: { trigger: devices, start: 'top bottom', end: 'bottom top', scrub: true },
-        });
-    });
-    const field = $('[data-capture-text]', devices);
-    if (!field) return;
-    const text = field.textContent ?? '';
-    field.textContent = '';
+    const prompt = $('[data-mcp-prompt]', root)!;
+    const text = prompt.textContent ?? '';
+    const call = $('[data-mcp-call]', root);
+    const result = $('[data-mcp-result]', root);
+    const card = $('[data-mcp-card]', root);
+    const count = $('[data-mcp-count]', root);
+    gsap.set([call, result], { autoAlpha: 0, y: 8 });
+    gsap.set(card, { autoAlpha: 0, x: -40, scale: 0.96 });
+    if (count) count.textContent = '2';
+    prompt.textContent = '';
     ScrollTrigger.create({
-        trigger: devices, start: 'top 65%', once: true,
+        trigger: root, start: 'top 70%', once: true,
         onEnter: () => {
             let i = 0;
             const id = window.setInterval(() => {
-                field.textContent = text.slice(0, ++i);
-                if (i >= text.length) window.clearInterval(id);
-            }, 55);
+                prompt.textContent = text.slice(0, ++i);
+                if (i < text.length) return;
+                window.clearInterval(id);
+                gsap.timeline()
+                    .to(call, { autoAlpha: 1, y: 0, duration: motion.dur3, ease: motion.ease }, 0.2)
+                    .to(result, { autoAlpha: 1, y: 0, duration: motion.dur3, ease: motion.ease }, 0.9)
+                    .to(card, { autoAlpha: 1, x: 0, scale: 1, duration: motion.dur4, ease: motion.easeSpring }, 1.1)
+                    .call(() => { if (count) count.textContent = '3'; }, undefined, 1.2);
+            }, 28);
         },
     });
 }
 
-/** Generic vertical parallax for decorative layers: data-parallax="<px>". */
-function parallax() {
-    $$('[data-parallax]').forEach((el) => {
-        const dist = Number(el.dataset.parallax ?? 0);
-        gsap.fromTo(el, { y: -dist / 2 }, {
-            y: dist / 2, ease: 'none',
-            scrollTrigger: { trigger: el.parentElement ?? el, start: 'top bottom', end: 'bottom top', scrub: true },
-        });
-    });
-}
+/* ==================================================================== small things */
 
-/** Header switches to the dark tokens while it sits over a dark section. */
-function headerTheme() {
-    const header = $('[data-header]');
-    if (!header) return;
-    $$('main section.theme-dark').forEach((section) => {
-        ScrollTrigger.create({
-            trigger: section,
-            start: 'top 32px',
-            end: 'bottom 32px',
-            toggleClass: { targets: header, className: 'is-dark' },
+function spotlights() {
+    if (!finePointer()) return;
+    $$('[data-spot]').forEach((el) => {
+        el.addEventListener('pointermove', (event) => {
+            const r = el.getBoundingClientRect();
+            el.style.setProperty('--mx', `${event.clientX - r.left}px`);
+            el.style.setProperty('--my', `${event.clientY - r.top}px`);
+            el.classList.add('is-lit');
         });
-    });
-}
-
-/** Counters count up once when they enter the viewport. */
-function counters() {
-    $$('[data-count]').forEach((el) => {
-        const target = Number(el.dataset.count);
-        const state = { v: 0 };
-        el.textContent = '0';
-        ScrollTrigger.create({
-            trigger: el,
-            start: 'top 90%',
-            once: true,
-            onEnter: () => gsap.to(state, {
-                v: target, duration: 1.4, ease: motion.ease,
-                onUpdate: () => { el.textContent = String(Math.round(state.v)); },
-            }),
-        });
+        el.addEventListener('pointerleave', () => el.classList.remove('is-lit'));
     });
 }
 
@@ -375,22 +365,16 @@ function reveals() {
 
 if (prefersMotion()) {
     gsap.registerPlugin(ScrollTrigger);
+    ScrollTrigger.config({ ignoreMobileResize: true });
     document.documentElement.classList.add('is-ready');
-    heroLive();
-    heroScene();
-    journeyScene();
-    boardScene();
-    workbenchScene();
-    notifyScene();
-    aiScene();
-    passkeyScene();
-    platformsScene();
-    parallax();
-    headerTheme();
-    counters();
+    const mm = gsap.matchMedia();
+    mm.add('(min-width: 1000px)', () => storyScene(false));
+    mm.add('(max-width: 999px)', () => storyScene(true));
+    mcpScene();
+    spotlights();
     reveals();
     document.fonts?.ready.then(() => ScrollTrigger.refresh());
 }
 
-// Dev-only hook so scroll scenes can be verified in a hidden/background preview (no rAF there).
+// Dev-only hook so scenes can be verified in a hidden/background preview (no rAF there).
 if (import.meta.env.DEV) Object.assign(window, { __motion: { gsap, ScrollTrigger } });

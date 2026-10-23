@@ -1,5 +1,6 @@
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { TabIndicator, useMotionOnChange } from '../components/motion';
 import { useNavigate } from 'react-router-dom';
 import { format, isSameDay, addDays, isToday, startOfWeek, endOfWeek, eachDayOfInterval, isValid, startOfMonth, endOfMonth, isSameMonth, isAfter } from 'date-fns';
 import { Button } from '../components/common/Button/Button';
@@ -25,6 +26,11 @@ export const Calendar = () => {
     // View state
     const [viewMode, setViewMode] = useState<'week' | 'month'>('week');
     const [viewDate, setViewDate] = useState(new Date());
+    // Paging slides the grid in from the side it moved to.
+    const gridRef = useRef<HTMLDivElement>(null);
+    const periodKey = (viewMode === 'week' ? startOfWeek(viewDate, { weekStartsOn: 1 }) : startOfMonth(viewDate)).getTime();
+    useMotionOnChange(gridRef, periodKey, 'directional');
+    useMotionOnChange(gridRef, viewMode, 'fade');
     const [selectedDate, setSelectedDate] = useState(new Date());
     const [showScheduleModal, setShowScheduleModal] = useState(false);
     const [proposedSchedule, setProposedSchedule] = useState<ProposedSchedule[]>([]);
@@ -472,7 +478,8 @@ export const Calendar = () => {
                         </div>
 
                         <div className="calendar-header__controls">
-                            <div className="calendar-view-toggle">
+                            <div className="calendar-view-toggle motion-tabs">
+                                <TabIndicator activeKey={viewMode} />
                                 <Button
                                     type="button"
                                     variant="ghost"
@@ -585,7 +592,7 @@ export const Calendar = () => {
                         );
                     })()}
 
-                    <div className={`calendar-grid calendar-grid--${viewMode}`}>
+                    <div ref={gridRef} className={`calendar-grid calendar-grid--${viewMode}`}>
                         {days.map(day => {
                             const dayKey = day.toISOString();
                             const isSelected = isSameDay(day, selectedDate);

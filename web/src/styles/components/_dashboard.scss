@@ -145,6 +145,8 @@
     display: flex;
     gap: 5px;
     height: 13px;
+    // The day band draws in from the left once on load.
+    animation: pf-wipe-in 560ms var(--motion-ease-out) 120ms both;
 }
 
 .dashboard-band__seg {
@@ -1168,5 +1170,17 @@
         display: flex;
         flex-direction: column;
         gap: 22px;
+    }
+}
+
+// Workload bars grow from the left each time the pulse slide comes in, staggered per row.
+.dashboard-track--pulse .dashboard-workload__bar i {
+    transform-origin: left center;
+    animation: pf-grow-x 480ms var(--motion-ease-out) both;
+}
+
+@for $i from 1 through 8 {
+    .dashboard-track--pulse .dashboard-workload__row:nth-child(#{$i}) .dashboard-workload__bar i {
+        animation-delay: calc(200ms + #{$i - 1} * var(--motion-stagger) * 2);
     }
 }

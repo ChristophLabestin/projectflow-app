@@ -486,21 +486,20 @@ public struct PlanningActions {
 
 // MARK: - AI
 
-/// Description drafts through the `callGemini` callable (same function the web uses). The server
-/// meters the monthly AI quota and answers `resource-exhausted` when it is used up.
+/// Description drafts through the `runAiCapability` callable (capability `taskDraft`). Prompt and quota
+/// live on the server; it answers `resource-exhausted` when the AI quota is used up.
 @MainActor
 public enum PlanningAI {
     public enum Failure: Error, Equatable { case quotaExceeded, unavailable, empty }
 
     public static func draftDescription(taskTitle: String, projectTitle: String?, currentText: String?, language: String) async throws -> String {
-        let languageName = language == "de" ? "German" : "English"
-        var prompt = "Write a clear, concise task description (2-4 sentences, plain text, no headings or markdown) for a task named \"\(taskTitle)\""
-        if let projectTitle, !projectTitle.isEmpty { prompt += " in the project \"\(projectTitle)\"" }
-        prompt += "."
-        if let currentText, !currentText.isEmpty { prompt += " Existing notes to build on: \(currentText.prefix(600))." }
-        prompt += " Respond in \(languageName)."
+        let input: [String: Any] = [
+            "taskTitle": taskTitle,
+            "projectTitle": projectTitle ?? "",
+            "notes": String((currentText ?? "").prefix(600))
+        ]
         do {
-            let data = try await PFCallables.call("callGemini", ["prompt": prompt, "temperature": 0.7, "jsonMode": false, "model": "gpt-5-mini"])
+            let data = try await PFCallables.call("runAiCapability", ["capability": "taskDraft", "input": input, "language": language])
             let text = ((data as? [String: Any])?["text"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
             guard !text.isEmpty else { throw Failure.empty }
             return text

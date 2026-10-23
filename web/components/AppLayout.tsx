@@ -1,5 +1,6 @@
 import { WelcomeDialog } from './onboarding/WelcomeDialog';
-import React, { Suspense, lazy, useEffect, useState, useMemo } from 'react';
+import React, { Suspense, lazy, useEffect, useState, useMemo, useRef } from 'react';
+import { useMotionOnChange } from './motion';
 import { Outlet, useLocation, useParams, useNavigate } from 'react-router-dom';
 import { useUIState } from '../context/UIContext';
 import { buildBreadcrumbs } from '../utils/breadcrumbs';
@@ -200,6 +201,10 @@ export const AppLayout = () => {
     });
 
     // Breadcrumbs: one route table for the whole app (utils/breadcrumbs.ts).
+    // Route content fades in on navigation; the outlet is not remounted.
+    const routeViewRef = useRef<HTMLDivElement>(null);
+    useMotionOnChange(routeViewRef, location.pathname, 'route');
+
     const breadcrumbs = useMemo(() => buildBreadcrumbs(location.pathname, {
         t,
         projectTitle: project?.title,
@@ -237,7 +242,7 @@ export const AppLayout = () => {
             {navOpen && (
                 <div className="fixed inset-0 z-50 md:hidden flex">
                     <div
-                        className="fixed inset-0 bg-black/40 backdrop-blur-sm transition-opacity"
+                        className="fixed inset-0 bg-black/40 backdrop-blur-sm motion-fade-in"
                         onClick={() => setNavOpen(false)}
                     />
                     <div className="relative w-4/5 max-w-xs h-full bg-card shadow-2xl animate-fade-in-left">
@@ -278,7 +283,7 @@ export const AppLayout = () => {
 
                 {/* Main Scroll Area */}
                 <main className={`app-main-scroll dotted-bg ${(isFullWidthRoute || contentWide) ? 'app-main-scroll--full' : 'app-main-scroll--standard'}`}>
-                    <div className={(isFullWidthRoute || contentWide) ? 'w-full h-full' : 'max-w-7xl mx-auto h-full'}>
+                    <div ref={routeViewRef} className={(isFullWidthRoute || contentWide) ? 'w-full h-full' : 'max-w-7xl mx-auto h-full'}>
                         <Outlet context={{ setTaskTitle, statusPreference, contentWide, setContentWide }} />
                     </div>
                 </main>

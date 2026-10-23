@@ -1300,10 +1300,13 @@ html:not(.dark) .po-board {
         min-width: 0;
         background: transparent;
         border-radius: var(--radius-xl);
-        transition: var(--transition-fast);
+        // Drop target: the outline fades in instead of snapping on.
+        outline: 2px solid transparent;
+        outline-offset: 0.3rem;
+        transition: outline-color var(--motion-duration-fast) var(--motion-ease-out),
+            background-color var(--motion-duration-fast) var(--motion-ease-out);
         &.is-over {
-            outline: 2px solid rgba(var(--color-surface-card-rgb), 0.22);
-            outline-offset: 0.3rem;
+            outline-color: rgba(var(--color-surface-card-rgb), 0.22);
         }
     }
     &__lane-head {
@@ -1386,12 +1389,24 @@ html:not(.dark) .po-board {
         padding: 0.65rem 0.7rem;
         cursor: pointer;
         text-align: left;
-        transition: var(--transition-fast);
+        transition: background-color var(--motion-duration-fast) var(--motion-ease-out),
+            transform var(--motion-duration-fast) var(--motion-ease-out),
+            box-shadow var(--motion-duration-fast) var(--motion-ease-out),
+            opacity var(--motion-duration-base) var(--motion-ease-out);
         &.is-draggable { cursor: grab; }
-        &.is-dragging { opacity: 0.5; }
-        &:hover {
+        &.is-draggable:active { cursor: grabbing; }
+        // Placeholder left in the lane while the overlay carries the card.
+        &.is-dragging { opacity: 0.35; transform: scale(0.98); }
+        &:hover:not(.is-dragging) {
             background: var(--color-surface-hover-light, var(--color-surface-hover));
-            transform: translateY(-1px);
+            transform: translateY(var(--motion-lift));
+        }
+        // Lifted card in the DragOverlay: slight scale + deep shadow, eased in.
+        &.is-overlay {
+            cursor: grabbing;
+            transform: scale(1.03);
+            box-shadow: var(--shadow-lg);
+            animation: po-board-lift var(--motion-duration-base) var(--motion-ease-out) both;
         }
         &-kind { display: inline-flex; .material-symbols-outlined { font-size: 15px; color: var(--color-text-subtle); }
             &--initiative .material-symbols-outlined { color: var(--color-primary); } }
@@ -2200,4 +2215,8 @@ html[data-view-transition='po-focus-exit']::view-transition-new(po-inits) {
 
 @keyframes po-focus-drop-in {
     from { opacity: 0; transform: translateY(-20px) scale(0.98); filter: blur(4px); }
+}
+
+@keyframes po-board-lift {
+    from { transform: scale(1); box-shadow: var(--shadow-sm); }
 }

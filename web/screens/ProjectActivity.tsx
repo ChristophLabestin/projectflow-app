@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
+import { ActivityFeed } from '../components/activity/ActivityFeed';
 import '../src/styles/components/_project-activity.scss';
 import { format } from 'date-fns';
 import { getProjectActivity } from '../services/dataService';
@@ -37,9 +38,9 @@ const FilterTab = ({
     </Button>
 );
 
-export const ProjectActivity = () => {
+/** Free-text history of `projects/{p}/activities` from before the activity stream (no backfill). */
+const LegacyActivityLog: React.FC<{ projectId: string }> = ({ projectId: id }) => {
     const { t, dateFormat, dateLocale } = useLanguage();
-    const { id } = useParams<{ id: string }>();
     const [activity, setActivity] = useState<Activity[]>([]);
     const [loading, setLoading] = useState(true);
     const [filter, setFilter] = useState('all');
@@ -84,23 +85,9 @@ export const ProjectActivity = () => {
     }
 
     return (
-        <div className="project-activity custom-scrollbar">
+        <div className="project-activity project-activity--embedded">
             <div className="project-activity__content">
                 <div className="project-activity__header">
-                    <div className="project-activity__title-block">
-                        <Link
-                            to={`/project/${id}`}
-                            className="project-activity__back"
-                            aria-label={t('projectActivity.back', 'Back to project')}
-                        >
-                            <span className="material-symbols-outlined project-activity__back-icon">arrow_back</span>
-                        </Link>
-                        <div>
-                            <h1 className="project-activity__title">{t('projectActivity.title', 'Activity Log')}</h1>
-                            <p className="project-activity__subtitle">{t('projectActivity.subtitle', 'Track progress and changes in real-time.')}</p>
-                        </div>
-                    </div>
-
                     <TextInput
                         value={searchTerm}
                         onChange={(event) => setSearchTerm(event.target.value)}
@@ -194,6 +181,41 @@ export const ProjectActivity = () => {
                         ))
                     )}
                 </div>
+            </div>
+        </div>
+    );
+};
+
+export const ProjectActivity = () => {
+    const { t } = useLanguage();
+    const { id } = useParams<{ id: string }>();
+    const [showLegacy, setShowLegacy] = useState(false);
+    if (!id) return null;
+
+    return (
+        <div className="activity-page custom-scrollbar">
+            <div className="activity-page__content">
+                <header className="activity-page__header">
+                    <Link to={`/project/${id}`} className="activity-page__back" aria-label={t('projectActivity.back', 'Back to project')}>
+                        <span className="material-symbols-outlined">arrow_back</span>
+                    </Link>
+                    <div>
+                        <h1>{t('activity.title')}</h1>
+                        <p>{t('activity.projectSubtitle')}</p>
+                    </div>
+                </header>
+
+                <ActivityFeed projectId={id} defaultPeriod="all" />
+
+                <section className="activity-legacy" aria-label={t('activity.legacy.title')}>
+                    <div>
+                        <Button size="sm" variant="secondary" onClick={() => setShowLegacy((v) => !v)} aria-expanded={showLegacy}>
+                            {showLegacy ? t('activity.legacy.hide') : t('activity.legacy.show')}
+                        </Button>
+                    </div>
+                    <p className="activity-legacy__hint">{t('activity.legacy.hint')}</p>
+                    {showLegacy && <LegacyActivityLog projectId={id} />}
+                </section>
             </div>
         </div>
     );

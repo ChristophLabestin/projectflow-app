@@ -1,5 +1,6 @@
 import { useTenantDeepLink } from '../hooks/useTenantDeepLink';
 import React, { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react';
+import { useFlipList } from '../components/motion';
 import { Link, useNavigate, useOutletContext, useParams, useSearchParams } from 'react-router-dom';
 import '../src/styles/components/_project-task-detail.scss';
 import { getProjectCategories, subscribeProjectMilestones, updateMilestone } from '../services/domain/projectMetaService';
@@ -9,11 +10,14 @@ import { subscribeTenantUsers } from '../services/domain/workspaceMembersService
 import { deleteField } from 'firebase/firestore';
 import { SubTask, Task, Project, Activity, Milestone, TaskCategory, ProjectReminder } from '../types';
 import { CommentSection } from '../components/CommentSection';
+import { FileAttachments } from '../components/files/FileAttachments';
+import { useWorkspace } from '../context/WorkspaceContext';
 import { Button } from '../components/common/Button/Button';
 import { TextInput } from '../components/common/Input/TextInput';
 import { EditTaskModal } from '../components/EditTaskModal';
 import { MultiAssigneeSelector } from '../components/MultiAssigneeSelector';
 import { TaskRelationshipsPanel } from '../components/TaskRelationshipsPanel';
+import { LinkedDocsPanel } from '../components/wiki/LinkedDocsPanel';
 import { ProjectLabelsModal } from '../components/ProjectLabelsModal';
 import { toMillis, timeAgo } from '../utils/time';
 import { activityIcon } from '../utils/activityHelpers';
@@ -91,6 +95,7 @@ type TenantUser = Parameters<Parameters<typeof subscribeTenantUsers>[0]>[0][numb
 
 export const ProjectTaskDetail = () => {
     const { id, taskId } = useParams<{ id: string; taskId: string }>();
+    const { activeWorkspace } = useWorkspace();
     const [searchParams] = useSearchParams();
     const tenantId = searchParams.get('tenant') || undefined;
     const navigate = useNavigate();
@@ -209,6 +214,9 @@ export const ProjectTaskDetail = () => {
     const doneCount = subTasks.filter(s => s.isCompleted).length;
     const totalCount = subTasks.length;
     const progressPct = totalCount ? Math.round((doneCount / totalCount) * 100) : 0;
+    // Subtasks rise in when added, slide out when deleted.
+    const subtaskListRef = useRef<HTMLDivElement>(null);
+    useFlipList(subtaskListRef);
 
     const taskAssignees = useMemo(() => {
         if (!task) return [];
@@ -776,7 +784,7 @@ export const ProjectTaskDetail = () => {
                             </Button>
                         </form>
 
-                        <div className="task-detail__subtasks-list" style={{ marginTop: '4px' }}>
+                        <div ref={subtaskListRef} className="task-detail__subtasks-list" style={{ marginTop: '4px' }}>
                             {subTasks.length === 0 && (
                                 <div className="task-detail__empty-inline">
                                     <span className="material-symbols-outlined">splitscreen_add</span>
@@ -784,7 +792,7 @@ export const ProjectTaskDetail = () => {
                                 </div>
                             )}
                             {subTasks.map(sub => (
-                                <div key={sub.id} className="task-detail__subtask" data-complete={sub.isCompleted ? 'true' : 'false'}>
+                                <div key={sub.id} data-flip-key={sub.id} className="task-detail__subtask" data-complete={sub.isCompleted ? 'true' : 'false'}>
                                     <button type="button" onClick={() => handleToggleSubTask(sub.id, sub.isCompleted)} className="task-detail__subtask-toggle" aria-label={sub.isCompleted ? t('common.reopen') : t('common.complete')}>
                                         <span className="material-symbols-outlined">check</span>
                                     </button>
@@ -841,6 +849,17 @@ export const ProjectTaskDetail = () => {
                             ))}
                         </div>
                     </section>
+
+                    {activeTenantId && id && taskId && (
+                        <section className="task-detail__section">
+                            <FileAttachments
+                                tenantId={activeTenantId}
+                                parent={{ type: 'task', id: taskId, projectId: id, title: task.title }}
+                                role={activeWorkspace?.role}
+                                projects={project ? [{ id: project.id, title: project.title, ownerId: project.ownerId }] : []}
+                            />
+                        </section>
+                    )}
 
                     <section className="task-detail__section">
                         <div className="task-detail__section-header">
@@ -1146,6 +1165,10 @@ export const ProjectTaskDetail = () => {
                             tenantId={activeTenantId}
                             onTaskChange={(updates) => setTask(prev => prev ? { ...prev, ...updates } : prev)}
                         />
+                    </div>
+
+                    <div className="task-detail__sidebar-section">
+                        <LinkedDocsPanel projectId={id!} taskId={task.id} taskTitle={task.title} tenantId={activeTenantId} />
                     </div>
 
                     <div className="task-detail__sidebar-section">
