@@ -1,4 +1,5 @@
 import * as crypto from 'crypto';
+import { assertTenantActive } from './tenant-status';
 import * as functions from 'firebase-functions/v1';
 
 import { hashToken, type ApiPermission } from './authUtils';
@@ -51,6 +52,7 @@ const requireWorkspaceOwner = async (tenantId: string, context: functions.https.
 };
 
 const requireWorkspaceAccess = async (tenantId: string, context: functions.https.CallableContext) => {
+    await assertTenantActive(tenantId);
     const uid = requireAuth(context);
 
     if (!tenantId) {

@@ -3,6 +3,7 @@
 // `reminder` notification doc per recipient (the push/email fan-out is done by onNotificationCreated),
 // `sentAt` on the reminder, and `nextReminderAt` recomputed.
 import { onSchedule } from 'firebase-functions/v2/scheduler';
+import { isTenantSuspended } from './tenant-status';
 import { FieldValue } from 'firebase-admin/firestore';
 import { db } from './init';
 import { copyText, resolveNudgeLanguage } from './nudge-logic';
@@ -125,6 +126,8 @@ export const runDeliverReminders = async (nowMs: number = Date.now()): Promise<D
         const snapshot = await db.collectionGroup(group).where('nextReminderAt', '<=', nowIso).limit(BATCH_SIZE).get();
         for (const docSnap of snapshot.docs) {
             stats.scanned += 1;
+            // Suspended workspaces (admin console) get no reminders until they are released.
+            if (await isTenantSuspended(docSnap.ref.path.split('/')[1])) continue;
             try {
                 await processDoc(docSnap, kind, nowMs, stats);
             } catch (error) {

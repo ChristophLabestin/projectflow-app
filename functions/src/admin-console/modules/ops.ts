@@ -1,9 +1,11 @@
-import { FieldValue } from 'firebase-admin/firestore';
+import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 import { GoogleAuth } from 'google-auth-library';
 import type { HandlerMap } from '../types';
 import { AdminInputError, int, str, toMs } from '../types';
 import { dayKeys } from './crashes';
-import { listDirectory } from './directory';
+import { normalizeAiPolicy } from '../../ai-access';
+import { monthKey, resolveMonthlyLimit } from '../../ai-credits';
+import { listDirectory, reviewTenantIds } from './directory';
 
 const PROJECT = process.env.GCLOUD_PROJECT || process.env.GCP_PROJECT || 'projectflow-labestin';
 const REGION = 'europe-west3';
@@ -43,7 +45,57 @@ const gcp = async <T>(url: string): Promise<T | null> => {
     }
 };
 
+const IN_APP_ROLLOUT_DEFAULT = process.env.AI_IN_APP_DEFAULT === 'true';
+
 export const opsHandlers: HandlerMap = {
+    /** In-app assistant per workspace: rollout flag, switch, credits this month (tenants/{t}/ai_credits, ai_config/policy). */
+    'ai.credits': {
+        audit: 'none',
+        run: async ({ db }, params) => {
+            const month = /^\d{4}-\d{2}$/.test(str(params?.month, 7)) ? str(params.month, 7) : monthKey();
+            const [tenants, review] = await Promise.all([db.collection('tenants').select('name').get(), reviewTenantIds(db)]);
+            const docs = tenants.docs.filter((d) => !review.has(d.id));
+            if (!docs.length) return { month, rolloutDefault: IN_APP_ROLLOUT_DEFAULT, workspaces: [] };
+            const [credits, policies] = await Promise.all([
+                db.getAll(...docs.map((d) => d.ref.collection('ai_credits').doc(month))),
+                db.getAll(...docs.map((d) => d.ref.collection('ai_config').doc('policy'))),
+            ]);
+            return {
+                month,
+                rolloutDefault: IN_APP_ROLLOUT_DEFAULT,
+                workspaces: docs.map((d, i) => {
+                    const raw = policies[i].data();
+                    const policy = normalizeAiPolicy(raw);
+                    const c = credits[i].data() || {};
+                    return {
+                        tenantId: d.id, name: d.get('name') || d.id,
+                        inAppAi: typeof raw?.inAppAi === 'boolean' ? raw.inAppAi : IN_APP_ROLLOUT_DEFAULT, inAppAiExplicit: typeof raw?.inAppAi === 'boolean',
+                        inAppEnabled: policy.inAppEnabled, mcpEnabled: policy.enabled,
+                        monthlyCredits: raw?.monthlyCredits ?? null, limit: resolveMonthlyLimit(raw),
+                        credits: Number(c.credits || 0), requests: Number(c.requests || 0), tokensIn: Number(c.tokensIn || 0), tokensOut: Number(c.tokensOut || 0),
+                        costUsd: Number(c.costMicros || 0) / 1_000_000, byCapability: c.byCapability || {},
+                    };
+                }),
+            };
+        },
+    },
+
+    'ai.setRollout': {
+        audit: 'mutation',
+        target: (p) => `ai_config/policy.inAppAi × ${Array.isArray(p?.tenantIds) ? p.tenantIds.length : 0}`,
+        summary: (p) => `inAppAi → ${p?.inAppAi} für ${(p?.tenantIds || []).slice(0, 10).join(', ')}`,
+        run: async ({ db, uid }, params) => {
+            const ids: string[] = Array.isArray(params?.tenantIds) ? params.tenantIds.map((t: unknown) => str(t, 128)).filter(Boolean).slice(0, 500) : [];
+            if (!ids.length || typeof params?.inAppAi !== 'boolean') throw new AdminInputError('tenantIds/inAppAi fehlen');
+            for (let i = 0; i < ids.length; i += 400) {
+                const batch = db.batch();
+                ids.slice(i, i + 400).forEach((t) => batch.set(db.collection('tenants').doc(t).collection('ai_config').doc('policy'), { inAppAi: params.inAppAi, updatedAt: FieldValue.serverTimestamp(), updatedBy: `platform-admin:${uid}` }, { merge: true }));
+                await batch.commit();
+            }
+            return { ok: true, count: ids.length };
+        },
+    },
+
     'ai.overview': {
         audit: 'none',
         run: async ({ db }, params) => {
@@ -67,7 +119,9 @@ export const opsHandlers: HandlerMap = {
             };
             const text = keys.map(() => 0);
             const images = keys.map(() => 0);
+            const reviewUids = new Set(users.filter((u) => u.reviewAccount).map((u) => u.uid));
             daily.forEach((d) => {
+                if (reviewUids.has(d.get('uid'))) return;
                 const i = index.get(d.get('day'));
                 if (i === undefined) return;
                 const e = entry(d.get('uid'));
@@ -76,7 +130,7 @@ export const opsHandlers: HandlerMap = {
                 e.text += t; e.image += im; e.series[i] += t; e.peakDay = Math.max(e.peakDay, t);
                 text[i] += t; images[i] += im;
             });
-            monthly.forEach((d) => { const e = entry(d.get('uid')); e.monthTokens += Number(d.get('tokens') || 0); e.monthImages += Number(d.get('images') || 0); });
+            monthly.forEach((d) => { if (reviewUids.has(d.get('uid'))) return; const e = entry(d.get('uid')); e.monthTokens += Number(d.get('tokens') || 0); e.monthImages += Number(d.get('images') || 0); });
             const emailOf = new Map(users.map((u) => [u.uid, u.email]));
             const tenantIds = Array.from(new Set(Array.from(byUser.keys()).map((uid) => lastTenant.get(uid)).filter(Boolean) as string[]));
             const tenants = tenantIds.length ? await db.getAll(...tenantIds.map((t) => db.collection('tenants').doc(t))) : [];
@@ -108,7 +162,8 @@ export const opsHandlers: HandlerMap = {
     'ai.grants': {
         audit: 'none',
         run: async ({ db }) => {
-            const [grants, users] = await Promise.all([db.collection('ai_grants').orderBy('createdAt', 'desc').limit(1000).get(), listDirectory()]);
+            const [grantSnap, users, review] = await Promise.all([db.collection('ai_grants').orderBy('createdAt', 'desc').limit(1000).get(), listDirectory(), reviewTenantIds(db)]);
+            const grants = { docs: grantSnap.docs.filter((d) => !review.has(d.get('tenantId'))) };
             const emailOf = new Map(users.map((u) => [u.uid, u.email]));
             const tenantIds = Array.from(new Set(grants.docs.map((d) => d.get('tenantId')).filter(Boolean)));
             const tenants = tenantIds.length ? await db.getAll(...tenantIds.map((t) => db.collection('tenants').doc(t))) : [];
@@ -191,6 +246,46 @@ export const opsHandlers: HandlerMap = {
                     openLegalMailJobs: mailJobs.docs.map((d) => ({ id: d.id, status: d.get('status'), counts: d.get('counts') || null, sendAfter: toMs(d.get('sendAfter')) })),
                 },
             };
+        },
+    },
+
+    /** Banner for all users (platform_config/announcement, public read). `id` changes on every save = dismiss per version. */
+    'system.announcement': {
+        audit: 'none',
+        run: async ({ db }) => {
+            const snap = await db.collection('platform_config').doc('announcement').get();
+            const d = snap.data();
+            return d ? { ...d, startsAt: toMs(d.startsAt), endsAt: toMs(d.endsAt), updatedAt: toMs(d.updatedAt) } : null;
+        },
+    },
+    'system.setAnnouncement': {
+        audit: 'mutation',
+        target: () => 'platform_config/announcement',
+        summary: (p) => `${p?.active ? 'aktiv' : 'aus'} · ${p?.type} · ${str(p?.text?.de, 80)}`,
+        run: async ({ db, uid }, params) => {
+            const type = ['info', 'maintenance', 'warning'].includes(params?.type) ? params.type : null;
+            const text = { de: str(params?.text?.de, 400), en: str(params?.text?.en, 400) };
+            if (!type) throw new AdminInputError('Typ ungültig');
+            if (params?.active === true && (!text.de || !text.en)) throw new AdminInputError('Text DE und EN sind Pflicht');
+            const url = str(params?.link?.url, 500);
+            if (url && !/^https:\/\//.test(url)) throw new AdminInputError('Link muss mit https:// beginnen');
+            const startsAt = toMs(params?.startsAt);
+            const endsAt = toMs(params?.endsAt);
+            if (startsAt && endsAt && endsAt <= startsAt) throw new AdminInputError('Ende muss nach dem Start liegen');
+            const doc = {
+                id: `a${Date.now().toString(36)}`,
+                active: params?.active === true,
+                type,
+                text,
+                link: url ? { url, label: { de: str(params?.link?.label?.de, 60) || 'Mehr erfahren', en: str(params?.link?.label?.en, 60) || 'Learn more' } } : null,
+                startsAt: startsAt ? Timestamp.fromMillis(startsAt) : null,
+                endsAt: endsAt ? Timestamp.fromMillis(endsAt) : null,
+                dismissible: params?.dismissible !== false,
+                updatedAt: FieldValue.serverTimestamp(),
+                updatedBy: uid,
+            };
+            await db.collection('platform_config').doc('announcement').set(doc);
+            return { ok: true, id: doc.id };
         },
     },
 

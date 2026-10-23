@@ -1,4 +1,5 @@
 import { onSchedule } from "firebase-functions/v2/scheduler";
+import { suspendedTenantIds } from './tenant-status';
 import * as admin from "firebase-admin";
 import { db } from "./init";
 import { FieldValue } from 'firebase-admin/firestore';
@@ -38,7 +39,9 @@ export const autoStartSprints = onSchedule({ schedule: "every 1 hours", region: 
         const batch = db.batch();
         let updateCount = 0;
 
+        const suspended = await suspendedTenantIds();
         snapshot.docs.forEach(doc => {
+            if (suspended.has(doc.ref.path.split('/')[1])) return; // suspended in the admin console
             const sprint = doc.data() as Sprint;
 
             // Parse start date
@@ -164,6 +167,7 @@ export const dailyHealthSnapshots = onSchedule(
 
             for (const tenantDoc of tenantsSnap.docs) {
                 const tenantId = tenantDoc.id;
+                if (tenantDoc.get('suspendedAt') != null) continue; // suspended in the admin console
 
                 // Get all projects for this tenant
                 const projectsSnap = await db.collection('tenants').doc(tenantId)

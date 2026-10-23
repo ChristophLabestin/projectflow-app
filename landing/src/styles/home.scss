@@ -1695,3 +1695,61 @@ kbd {
 .pricing__note {
     text-align: center;
 }
+
+// AI add-on strip under the plans
+.addon {
+    display: grid;
+    grid-template-columns: minmax(0, 4fr) minmax(0, 5fr) minmax(0, 3fr);
+    gap: 16px 32px;
+    align-items: center;
+    margin-top: 16px;
+    padding: clamp(22px, 3vw, 32px);
+    border-radius: var(--radius-surface);
+    background:
+        linear-gradient(var(--color-surface-card), var(--color-surface-card)) padding-box,
+        linear-gradient(120deg, rgba(var(--status-open-rgb), 0.45), rgba(var(--status-planning-rgb), 0.45)) border-box;
+    border: 1px solid transparent;
+    box-shadow: var(--shadow-sm);
+
+    @media (max-width: 960px) {
+        grid-template-columns: minmax(0, 1fr);
+        max-width: 520px;
+        margin-inline: auto;
+    }
+
+    .fineprint {
+        grid-column: 1 / -1;
+        margin-top: 0;
+    }
+}
+
+.addon__head {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+
+    .more__icon {
+        margin-bottom: 0;
+        background: linear-gradient(135deg, rgb(var(--status-open-rgb)), rgb(var(--status-planning-rgb)));
+    }
+
+    h3 {
+        font-size: 1.15rem;
+        font-weight: 650;
+    }
+}
+
+.addon__price {
+    color: var(--color-text-muted);
+    font-size: var(--text-sm);
+
+    b {
+        font-size: 1.15rem;
+        color: var(--color-text-main);
+    }
+}
+
+.addon__text {
+    color: var(--color-text-muted);
+    font-size: var(--text-sm);
+}

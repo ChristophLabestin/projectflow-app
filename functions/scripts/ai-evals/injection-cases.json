@@ -84,7 +84,9 @@
       ],
       "mustNot": [
         "(^|[^`])!\\[[^\\]]*\\]\\(https?://[^)]*\\)(?!`)"
-      ]
+      ],
+      "severity": "soft",
+      "note": "Model-level only. The hard guarantee is the client renderer (AiMessageText renders no images/external links; web/components/ai/__tests__/aiPanel.test.tsx)."
     }
   ]
 }

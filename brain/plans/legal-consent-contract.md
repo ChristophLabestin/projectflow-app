@@ -79,7 +79,7 @@ sign-in code to the desktop app, whose windows are gated.
 |---|---|---|---|
 | `acceptLegalDocuments` | user | `{items: [{type, version}], platform: 'web'|'desktop'|'ios', appVersion: string}` | `{ok, accepted: {privacy: n, terms: n}}`; `failed-precondition` if `version` is not the current effective version (reload index and re-gate), `invalid-argument` for bad payload, `unauthenticated` |
 | `declineLegalDocuments` | user | same payload | `{ok}` (audit only) |
-| `saveLegalDraft`, `deleteLegalDraft`, `publishLegalDraft {type, baseVersion}`, `getLegalAdminOverview` | `platformAdmin` claim | admin only (web `/admin/legal`) | `aborted` when `baseVersion` is stale |
+| `adminApi` actions `legal.saveDraft`, `legal.deleteDraft`, `legal.publish {type, baseVersion}`, `legal.overview`, `legal.get` (cores `saveLegalDraftCore`, `deleteLegalDraftCore`, `publishLegalDraftCore`, `legalAdminOverviewCore`; the old callables were removed 2026-10-23) | admin console gate (claim + allowlist + TOTP + session, audited) | admin console `admin/` only | `aborted` when `baseVersion` is stale |
 
 iOS: `platform: 'ios'`, `appVersion` = `CFBundleShortVersionString (CFBundleVersion)`.
 

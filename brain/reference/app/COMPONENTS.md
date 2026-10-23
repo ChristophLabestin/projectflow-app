@@ -357,6 +357,7 @@ Concept: `brain/plans/help-center-rework.md`.
 - `useInAppAi` (`web/hooks/`): availability of the in-app AI for the active workspace (cached policy; `forgetInAppAi` after settings changes).
 - `streamAiAssist` (`web/services/aiAssistClient.ts`): SSE client for the `aiAssist` function (`/api/assist` in production, function URL in the emulator).
 - `AiPanel` + `AiPanelProvider` (`web/context/AiPanelContext.tsx`, P2): ⌘J/Ctrl+J or ✦ in the top bar opens the assistant on the right. Base context from the route (`contextFromPath`: dashboard, project, task, …); screens add visible items/selection with `useAiScreenContext({ surface, view: { items }, selection: { ids } })` (used in ProjectTasks). Answers render through `AiMessageText` (only `pf://task|project` links, no external links/images/HTML). Conversations per object in `users/{uid}/ai_threads/{tenant__object}` (owner only, 30-day TTL). Desktop: global shortcut ⌃⌘J (`aiShortcut`, command `open-ai`) → window event `pf:open-ai-panel`.
+- `AiActionCard` (P3): change the assistant proposed (new task, task change with old → new values, comment, subtask). Applied only via „Übernehmen“ (`aiApplyProposal`), undoable (`aiUndoProposal`); fires `pf:ai-data-changed` (`AI_DATA_CHANGED_EVENT` in `web/services/aiActions.ts`) so screens that load once (ProjectTaskDetail) refresh.
 
 ## Admin console (`admin/src/ui`, not shared with web)
 

@@ -1,4 +1,5 @@
 import * as admin from 'firebase-admin';
+import { isTenantSuspended, SUSPENDED_MESSAGE } from './tenant-status';
 import * as crypto from 'crypto';
 import { db } from './init';
 import { FieldValue } from 'firebase-admin/firestore';
@@ -62,16 +63,19 @@ export const checkApiTokenUsable = async (
         getMemberRole: (tenantId: string, uid: string) => Promise<string | null>;
         now: () => Date;
         checkConsent?: (uid: string) => Promise<MachineConsentResult>;
+        isSuspended?: (tenantId: string) => Promise<boolean>;
     } = {
         getMemberRole: (t, uid) => getWorkspaceMemberRole(t, uid),
         now: () => new Date(),
-        checkConsent: (uid) => checkMachineLegalConsent(uid)
+        checkConsent: (uid) => checkMachineLegalConsent(uid),
+        isSuspended: (t) => isTenantSuspended(t)
     }
 ): Promise<ApiTokenUsable> => {
     const expiresAt = tokenData?.expiresAt?.toDate?.();
     if (expiresAt && deps.now() > expiresAt) return { ok: false, error: 'Token expired' };
     const creator = typeof tokenData?.createdBy === 'string' ? tokenData.createdBy : '';
     if (!creator) return { ok: false, error: 'Token has no owner. Create a new token.' };
+    if (deps.isSuspended && await deps.isSuspended(tenantId)) return { ok: false, error: SUSPENDED_MESSAGE, status: 403 };
     const role = await deps.getMemberRole(tenantId, creator);
     if (!role || role === 'Guest') return { ok: false, error: 'Token creator is no longer a member of this workspace.' };
     const consent = deps.checkConsent ? await deps.checkConsent(creator) : { ok: true as const };

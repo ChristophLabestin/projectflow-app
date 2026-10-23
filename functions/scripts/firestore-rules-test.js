@@ -117,6 +117,13 @@ const seedData = async (testEnv) => {
         await set(`${T}/insights_reports/2026-W43`, { markdown: 'Report' });
 
         await set('tenants/tenantB', { tenantId: 'tenantB', name: 'Tenant B', ownerId: 'ownerB' });
+        // Suspended workspace (admin console): members keep tenant doc + membership, lose everything else.
+        await set('tenants/tenantS', { tenantId: 'tenantS', name: 'Suspended', ownerId: 'ownerS', suspendedAt: new Date('2026-10-23'), suspendedReason: 'Abuse report' });
+        await set('tenants/tenantS/members/ownerS', { uid: 'ownerS', role: 'Owner' });
+        await set('tenants/tenantS/projects/projectS', { title: 'P', tenantId: 'tenantS', ownerId: 'ownerS', memberIds: ['ownerS'] });
+        await set('tenants/tenantS/projects/projectS/tasks/taskS', { title: 'T', tenantId: 'tenantS', projectId: 'projectS' });
+        await set('tenants/tenantS/labels/l1', { name: 'x' });
+        await set('tenants/tenantS/suspension_log/s1', { suspended: true, reason: 'Abuse report' });
         await set('tenants/tenantB/members/ownerB', { uid: 'ownerB', role: 'Owner' });
     });
 };
@@ -422,6 +429,25 @@ const run = async () => {
         await check('platform admin cannot read crash issue (adminApi only)', 'deny', () => platformAdmin.doc('crashIssues/fp1').get());
         await check('platform admin cannot triage crash issue directly', 'deny', () => platformAdmin.doc('crashIssues/fp1').set({ status: 'resolved' }));
         await check('member cannot read crash events', 'deny', () => member.collection('crashIssues/fp1/crashEvents').get());
+
+        // Workspace suspension (admin console).
+        const suspendedOwner = testEnv.authenticatedContext('ownerS').firestore();
+        await check('suspended: owner still reads tenant doc (notice)', 'allow', () => suspendedOwner.doc('tenants/tenantS').get());
+        await check('suspended: owner still reads own membership', 'allow', () => suspendedOwner.doc('tenants/tenantS/members/ownerS').get());
+        await check('suspended: owner cannot read projects', 'deny', () => suspendedOwner.doc('tenants/tenantS/projects/projectS').get());
+        await check('suspended: owner cannot read tasks', 'deny', () => suspendedOwner.doc('tenants/tenantS/projects/projectS/tasks/taskS').get());
+        await check('suspended: owner cannot query tasks by collection group', 'deny', () => suspendedOwner.collectionGroup('tasks').where('tenantId', '==', 'tenantS').get());
+        await check('suspended: owner cannot write workspace data', 'deny', () => suspendedOwner.doc('tenants/tenantS/labels/l2').set({ name: 'y' }));
+        await check('suspended: owner cannot lift the suspension', 'deny', () => suspendedOwner.doc('tenants/tenantS').update({ suspendedAt: null }));
+        await check('suspended: owner cannot rename the workspace', 'deny', () => suspendedOwner.doc('tenants/tenantS').update({ name: 'x' }));
+        await check('active: owner cannot suspend own workspace field', 'deny', () => owner.doc(T).update({ suspendedAt: new Date() }));
+        await check('active: owner still renames workspace', 'allow', () => owner.doc(T).update({ name: 'Tenant A2' }));
+        await check('active: member still reads project', 'allow', () => owner.doc(PROJECT).get());
+        await check('create: no pre-suspended workspace', 'deny', () => outsider.doc('tenants/newT').set({ ownerId: 'outsiderA', name: 'n', suspendedAt: null }));
+        await check('signed-out reads announcement', 'allow', () => anon.doc('platform_config/announcement').get());
+        await check('member cannot write announcement', 'deny', () => owner.doc('platform_config/announcement').set({ active: true }));
+        await check('nobody reads other platform config', 'deny', () => owner.doc('platform_config/flags').get());
+        await check('member cannot read suspension log', 'deny', () => owner.doc(`${T}/suspension_log/x`).get());
 
         // Removed Finance V2 module: its data stays in Firestore but is closed to clients.
         await check('owner cannot read legacy finance data', 'deny', () => owner.doc(`${T}/finance_accounts/acc1`).get());

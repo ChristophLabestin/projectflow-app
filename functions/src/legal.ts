@@ -38,11 +38,6 @@ const REGION = 'europe-west3';
 const docRef = (firestore: Firestore, type: LegalType) => firestore.collection('legal_documents').doc(type);
 const draftRef = (firestore: Firestore, type: LegalType) => docRef(firestore, type).collection('drafts').doc('current');
 
-const requirePlatformAdmin = (context: functions.https.CallableContext) => {
-    if (!context.auth) throw new functions.https.HttpsError('unauthenticated', 'Authentication required.');
-    if (context.auth.token.platformAdmin !== true) throw new functions.https.HttpsError('permission-denied', 'Platform admin only.');
-    return context.auth.uid;
-};
 
 const toMs = (value: any): number => (value instanceof Timestamp ? value.toMillis() : typeof value?.toMillis === 'function' ? value.toMillis() : Number(value) || 0);
 
@@ -64,10 +59,10 @@ export const loadIndex = async (firestore: Firestore) => {
 };
 
 // ---------------------------------------------------------------------------
-// Admin: drafts + publish
+// Admin: drafts + publish (used by adminApi in the admin console, functions/src/admin-console/modules/legal.ts)
 // ---------------------------------------------------------------------------
 
-/** Saves drafts/current (shared by the saveLegalDraft callable and the admin console's adminApi). */
+/** Saves drafts/current (admin console, adminApi action legal.saveDraft). */
 export const saveLegalDraftCore = async (firestore: Firestore, data: unknown, uid: string) => {
     let draft;
     try {
@@ -98,16 +93,7 @@ export const deleteLegalDraftCore = async (firestore: Firestore, type: unknown) 
     return { ok: true };
 };
 
-export const saveLegalDraft = functions.region(REGION).https.onCall(async (data, context) => {
-    const uid = requirePlatformAdmin(context);
-    await saveLegalDraftCore(db, data, uid);
-    return { ok: true };
-});
 
-export const deleteLegalDraft = functions.region(REGION).https.onCall(async (data, context) => {
-    requirePlatformAdmin(context);
-    return deleteLegalDraftCore(db, data?.type);
-});
 
 /**
  * Publishes drafts/current as the next version. Idempotent: the caller passes the version it
@@ -180,12 +166,6 @@ export const publishLegalDraftCore = async (firestore: Firestore, type: LegalTyp
     });
 };
 
-export const publishLegalDraft = functions.region(REGION).https.onCall(async (data, context) => {
-    const uid = requirePlatformAdmin(context);
-    if (!isLegalType(data?.type)) throw new functions.https.HttpsError('invalid-argument', 'type is invalid');
-    const baseVersion = typeof data.baseVersion === 'number' ? data.baseVersion : null;
-    return publishLegalDraftCore(db, data.type, uid, baseVersion);
-});
 
 /** Acceptance rate per published version + mail job progress, for the admin screen. */
 export const legalAdminOverviewCore = async (firestore: Firestore) => {
@@ -217,10 +197,6 @@ export const legalAdminOverviewCore = async (firestore: Firestore) => {
     return { totalUsers, documents };
 };
 
-export const getLegalAdminOverview = functions.region(REGION).https.onCall(async (_data, context) => {
-    requirePlatformAdmin(context);
-    return legalAdminOverviewCore(db);
-});
 
 // ---------------------------------------------------------------------------
 // User: accept / decline

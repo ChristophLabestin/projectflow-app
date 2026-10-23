@@ -1,4 +1,4 @@
-# Domains setup — getprojectflow.com, www, mcp
+# Domains setup — getprojectflow.com, www, mcp, admin
 
 Date: 2026-10-23 · Firebase project `projectflow-labestin` · Done by the user (DNS provider + Firebase Console).
 
@@ -8,6 +8,7 @@ Date: 2026-10-23 · Firebase project `projectflow-labestin` · Done by the user 
 | `www.getprojectflow.com` | `getprojectflow` | — | Redirect → `https://getprojectflow.com` |
 | `mcp.getprojectflow.com` | `projectflow-labestin` (app site) | root `firebase.json` (rewrites `/mcp`, `/.well-known/oauth-*`) | MCP endpoint `https://mcp.getprojectflow.com/mcp` |
 | `app.getprojectflow.com` | `projectflow-labestin` | root `firebase.json` | App, OAuth issuer, consent (already live — do not touch) |
+| `admin.getprojectflow.com` | `projectflow-admin` | `admin/firebase.json` | Admin console (platform admin only; fallback `https://projectflow-admin.web.app`) |
 
 ## Current state (checked 2026-10-23)
 `getprojectflow.com` and `www` already resolve to Firebase Hosting (`199.36.158.100`) but answer `404` — the domain is attached to a site without that content (or a stale one). So for A) the A records are already right: mainly re-attach the domain in the Console (step 6 first). `mcp.getprojectflow.com` has no DNS record yet.
@@ -39,6 +40,21 @@ Date: 2026-10-23 · Firebase project `projectflow-labestin` · Done by the user 
    curl -s https://mcp.getprojectflow.com/.well-known/oauth-protected-resource/mcp
    ```
 No code change is needed for the endpoint itself: resource and metadata follow the called host (`MCP_RESOURCES` in `functions/src/oauth-core.ts`). The OAuth issuer stays `https://app.getprojectflow.com`. `https://mcp.getprojectflow.com/` (root) shows the app — harmless.
+
+## D) admin.getprojectflow.com → admin console site
+Already prepared in code/config (2026-10-23): Auth authorized domain `admin.getprojectflow.com`, console auth domain = own host
+(`admin/src/lib/firebase.ts`, CSP `frame-src 'self'`), passkey origin allow-list (`ADMIN_CONSOLE_ORIGIN` in `functions/src/passkeys.ts`),
+old app links `/admin*` → `https://admin.getprojectflow.com` (`web/screens/AdminConsoleRedirect.tsx`).
+1. Firebase Console → **Hosting** → site **projectflow-admin** → **Add custom domain** → `admin.getprojectflow.com` → no redirect.
+2. DNS as the wizard shows: typically **TXT** on `admin` (`hosting-site=projectflow-admin`) and **A** `admin` → `199.36.158.100`. No other record on `admin`.
+3. Wait for "Connected" (certificate is automatic).
+4. Google Cloud Console → **APIs & Services → Credentials** → OAuth 2.0 client "Web client (auto created by Google Service)" → **Authorized redirect URIs** → add `https://admin.getprojectflow.com/__/auth/handler` → Save (otherwise Google sign-in on the new host fails with `redirect_uri_mismatch`).
+5. Check:
+   ```bash
+   curl -sI https://admin.getprojectflow.com | rg -i '^(HTTP|content-security-policy|x-robots-tag)'
+   ```
+   Expect `HTTP/2 200`, the strict CSP and `x-robots-tag: noindex, nofollow, noarchive`. Then sign in once with Google and once with e-mail + TOTP.
+6. Until step 3 is done, `https://app.getprojectflow.com/admin` redirects to a host that does not resolve yet — use `https://projectflow-admin.web.app` meanwhile.
 
 ## C) After the domains are live (agent tasks)
 | When | Change | Where |

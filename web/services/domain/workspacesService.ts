@@ -45,6 +45,9 @@ export interface WorkspaceSummary {
     name: string;
     ownerId?: string;
     role: WorkspaceRole;
+    /** Suspended by a platform admin (admin console): data access is closed, the app shows a notice. */
+    suspended?: boolean;
+    suspendedReason?: string | null;
 }
 
 export interface WorkspaceInvitation {
@@ -95,7 +98,9 @@ export const listMyWorkspaces = async (): Promise<WorkspaceSummary[]> => {
                 id: tenantDoc.id,
                 name: data.name || 'Workspace',
                 ownerId: data.ownerId,
-                role: (memberDoc.data().role || 'Member') as WorkspaceRole
+                role: (memberDoc.data().role || 'Member') as WorkspaceRole,
+                suspended: data.suspendedAt != null,
+                suspendedReason: typeof data.suspendedReason === 'string' ? data.suspendedReason : null
             } as WorkspaceSummary;
         } catch {
             return null;
