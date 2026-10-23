@@ -633,6 +633,12 @@ export const billingSweep = functions.region(REGION).runWith({ timeoutSeconds: 5
                 await applyPlan(tenantId, ent.plan as PlanId, { status: ent.status });
                 ent = (await entRef(tenantId).get()).data() || {};
             }
+            // Pooled Team storage follows full members (also covered by onMemberWrittenBilling once Stripe is set up).
+            if (ent.plan === 'team' || ent.plan === 'organization') {
+                const fullMembers = (await fullMemberRoles(tenantId)).filter((role) => role !== 'Guest').length;
+                const storage = storageFor(ent.plan, fullMembers);
+                if (storage.storageQuotaBytes !== ent.storageQuotaBytes) await entRef(tenantId).set(storage, { merge: true });
+            }
             const status = String(ent.status) as BillingStatus;
             const trialOver = status === 'trialing' && !ent.stripeSubscriptionId && periodExpired(toMs(ent.trialEndsAt), now);
             const graceOver = status === 'grace' && !ent.stripeSubscriptionId && periodExpired(cutoverAtMs, now);
