@@ -375,6 +375,11 @@ Treat these as v1 defaults before creating one-off versions in feature screens; 
 
 ---
 
+## 6.7) Landing Page Tokens & Motion (`landing/`)
+- `landing/src/styles/_tokens.scss` mirrors app colours/radii/shadows (app stays the source) plus landing-only tokens (type scale, device colours, role badges). `.theme-dark` scopes the app's dark values to a single section.
+- Motion tokens (mirrored in `landing/src/js/motion.ts` for GSAP): `--ease-out` cubic-bezier(0.16,1,0.3,1) (GSAP `expo.out`), `--ease-in-out` (`power3.inOut`), `--ease-spring` (`back.out(1.6)`, micro feedback only), `--dur-1..4` 150/300/600/900 ms, `--stagger` 60 ms, `--rise` 24 px.
+- Only `transform`/`opacity` (and `clip-path` for reveals) are animated. Hidden start states are gated by `html.motion.is-ready`; without JS or with `prefers-reduced-motion` every section renders its end state.
+
 ## 7) Implementation Rules (Mandatory)
 
 - Do not hardcode colors, radii, shadows, transitions, or layout constants when a token exists.

@@ -1,0 +1,124 @@
+// Landing token layer. Colours, radii and shadows mirror web/styles/_tokens.scss (the app is the
+// source of truth); everything else in the landing styles must reference these variables.
+:root {
+    --color-primary: #171717;
+    --color-primary-dark: #000000;
+    --color-primary-text: #ffffff;
+    --color-surface-bg: #f2f2f3;
+    --color-surface-card: #ffffff;
+    --color-surface-hover: #ededee;
+    --color-surface-hover-light: #f7f7f8;
+    --color-surface-border: #e5e7eb;
+    --color-surface-border-hover: #d1d5db;
+    --color-surface-bg-rgb: 242, 242, 243;
+    --color-surface-card-rgb: 255, 255, 255;
+    --color-text-main: #171717;
+    --color-text-muted: #5c5c5c; // app uses #666; darkened slightly for AA on the grey canvas
+    --color-text-subtle: #6b6b6b; // AA on canvas + card
+    --color-text-main-rgb: 23, 23, 23;
+
+    --color-success: #10b981;
+    --color-warning: #f59e0b;
+    --color-error: #ef4444;
+    --status-backlog-rgb: 148, 163, 184;
+    --status-open-rgb: 59, 130, 246;
+    --status-in-progress-rgb: 14, 165, 233;
+    --status-review-rgb: 245, 158, 11;
+    --status-done-rgb: 16, 185, 129;
+    --status-planning-rgb: 139, 92, 246;
+    --color-status-done-text: #047857;
+    --color-status-open-text: #1d4ed8;
+    --color-status-review-text: #b45309;
+    --color-status-blocked-text: #b91c1c;
+    --color-status-planning-text: #6d28d9;
+    --color-on-accent: #ffffff; // text on saturated fills (badges)
+    --color-device-frame: #1c1c1e;
+    --color-device-edge: #3a3a3c;
+    --color-device-black: #000000;
+    --color-live-accent: #fbbf24;
+    --color-role-owner: #6d28d9;
+    --color-role-admin: #1d4ed8;
+    --color-role-member: #047857;
+    --color-role-external: #475569;
+    --priority-urgent: #7c3aed;
+    --priority-high: #ef4444;
+    --priority-medium: #3b82f6;
+    --priority-low: #94a3b8;
+
+    --radius-sm: 6px;
+    --radius-md: 10px;
+    --radius-lg: 16px;
+    --radius-xl: 24px;
+    --radius-2xl: 32px;
+    --radius-full: 999px;
+    --radius-control: var(--radius-md);
+    --radius-card: var(--radius-lg);
+    --radius-surface: var(--radius-xl);
+
+    --shadow-sm: 0 0 0 1px rgba(0, 0, 0, 0.05), 0 1px 2px rgba(0, 0, 0, 0.06), 0 2px 8px -2px rgba(0, 0, 0, 0.08);
+    --shadow-md: 0 0 0 1px rgba(0, 0, 0, 0.05), 0 8px 24px -6px rgba(0, 0, 0, 0.12), 0 2px 6px -2px rgba(0, 0, 0, 0.06);
+    --shadow-lg: 0 0 0 1px rgba(0, 0, 0, 0.05), 0 16px 32px -8px rgba(0, 0, 0, 0.14), 0 6px 12px -4px rgba(0, 0, 0, 0.06);
+    --shadow-xl: 0 0 0 1px rgba(0, 0, 0, 0.05), 0 40px 80px -24px rgba(0, 0, 0, 0.22), 0 12px 24px -12px rgba(0, 0, 0, 0.1);
+
+    // Typography
+    --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    --font-mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+    --text-display: clamp(2.5rem, 1.2rem + 4.4vw, 5.25rem);
+    --text-h2: clamp(2rem, 1.3rem + 2.6vw, 3.5rem);
+    --text-h3: clamp(1.15rem, 1rem + 0.5vw, 1.4rem);
+    --text-lead: clamp(1.05rem, 0.98rem + 0.35vw, 1.3rem);
+    --text-body: 1rem;
+    --text-sm: 0.875rem;
+    --text-xs: 0.75rem;
+    --tracking-tight: -0.035em;
+
+    // Layout
+    --container: 1200px;
+    --gutter: clamp(20px, 4vw, 40px);
+    --section-space: clamp(96px, 14vw, 200px);
+    --header-h: 64px;
+
+    // Motion (mirrored in src/js/motion.ts)
+    --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+    --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+    --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+    --dur-1: 150ms;
+    --dur-2: 300ms;
+    --dur-3: 600ms;
+    --dur-4: 900ms;
+    --stagger: 60ms;
+    --rise: 24px;
+}
+
+// Dark scope for single sections; values mirror html.dark in the app.
+.theme-dark {
+    --color-primary: #e5e5e5;
+    --color-primary-dark: #ffffff;
+    --color-primary-text: #171717;
+    --color-surface-bg: #0b0d11;
+    --color-surface-card: #151920;
+    --color-surface-hover: #1e242e;
+    --color-surface-hover-light: #212732;
+    --color-surface-border: #2e3440;
+    --color-surface-border-hover: #3c4453;
+    --color-surface-bg-rgb: 11, 13, 17;
+    --color-surface-card-rgb: 21, 25, 32;
+    --color-text-main: #e5e7eb;
+    --color-text-muted: #a1a8b3;
+    --color-text-subtle: #8b93a1;
+    --color-text-main-rgb: 229, 231, 235;
+    --color-status-done-text: #34d399;
+    --color-role-owner: #c4b5fd;
+    --color-role-admin: #93c5fd;
+    --color-role-member: #6ee7b7;
+    --color-role-external: #cbd5e1;
+    --priority-urgent: #a78bfa;
+    --priority-high: #f87171;
+    --priority-medium: #60a5fa;
+    --shadow-sm: 0 2px 8px -2px rgba(0, 0, 0, 0.4), 0 1px 4px -1px rgba(0, 0, 0, 0.2);
+    --shadow-md: 0 8px 24px -4px rgba(0, 0, 0, 0.5), 0 4px 8px -2px rgba(0, 0, 0, 0.3);
+    --shadow-lg: 0 16px 40px -8px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.04);
+    --shadow-xl: 0 40px 80px -24px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.05);
+    color: var(--color-text-main);
+    background: var(--color-surface-bg);
+}

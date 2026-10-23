@@ -1,3 +1,5 @@
+> **Veraltet (2026-10-23):** Social Studio/Marketing-Suite existieren nicht mehr. Aktuell: `brain/plans/landing-page-concept.md` und `landing/`.
+
 # ProjectFlow - AI powered project and marketing command center
 
 ## Product overview
