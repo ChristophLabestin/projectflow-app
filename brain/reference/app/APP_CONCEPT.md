@@ -111,7 +111,8 @@ Rules:
 - **Unlimited external project collaborators** per project (no tenant membership required for externals).
 
 AI entitlements – **not included in the seat price** (owner decision 2026-10-23): AI features are unlocked per user by the
-**AI add-on, 10 €/user/month**. Each user with the add-on gets monthly:
+**AI add-on, 10 €/user/month** – bookable on Team (Professional) and Organization only; Starter/Free uses AI only with the
+user's own OpenAI key. Each user with the add-on gets monthly:
 - **1,000,000 AI tokens / month / user**
 - **50 images / month / user**
 
