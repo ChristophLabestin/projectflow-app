@@ -119,7 +119,7 @@ struct ProjectOverviewView: View {
                     VStack(alignment: .leading, spacing: 4) {
                         Text(milestone.title).pfText(.rowTitle).foregroundStyle(PFColor.textMain).lineLimit(2).multilineTextAlignment(.leading)
                         if let due = milestone.dueDate {
-                            Text(Formatting.weekday(due) + ", " + Formatting.shortDate(due)).pfText(.meta).foregroundStyle(PFColor.textMuted)
+                            Text(Formatting.shortDate(due)).pfText(.meta).foregroundStyle(PFColor.textMuted)
                         }
                         if !linked.isEmpty {
                             Text(L10n.t("projects.overview.milestone.linked", ["done": done, "total": linked.count]))

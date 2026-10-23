@@ -21,6 +21,7 @@ struct ProjectScreen: View {
     @State private var newTaskTitle = ""
     @State private var topInset: CGFloat = 0
     @State private var tabBarY: CGFloat = 10_000
+    @State private var tabBarY0: CGFloat?
     @Namespace private var underline
 
     init(tenantId: String, projectId: String) {
@@ -35,7 +36,7 @@ struct ProjectScreen: View {
     private var access: ProjectAccess { ProjectAccess(model: model, project: project) }
     private var health: HealthSnapshot? { model.workspace?.healthSnapshots[projectId] }
     private var pulse: ProjectPulse { ProjectPulse(tasks: store.tasks, milestones: store.milestones) }
-    private var barHeight: CGFloat { topInset + 48 }
+    private var barHeight: CGFloat { topInset + 54 }
     private var isPinned: Bool { tabBarY < barHeight }
 
     private var tabOptions: [CockpitTabBar<ProjectTab>.Option] {
@@ -111,7 +112,10 @@ struct ProjectScreen: View {
                     .padding(.bottom, PFSpace.l)
                 tabBar(underline)
                     .opacity(isPinned ? 0 : 1)
-                    .onGeometryChange(for: CGFloat.self) { $0.frame(in: .named("cockpit")).minY } action: { tabBarY = $0 }
+                    .onGeometryChange(for: CGFloat.self) { $0.frame(in: .named("cockpit")).minY } action: {
+                        tabBarY = $0
+                        if tabBarY0 == nil, $0 < 9_000 { tabBarY0 = $0 }
+                    }
                 tabContent(project)
                     .padding(.bottom, 120)
                     .id(tab)
@@ -122,8 +126,19 @@ struct ProjectScreen: View {
         .scrollIndicators(.hidden)
         .scrollDismissesKeyboard(.interactively)
         .ignoresSafeArea(.container, edges: [.top, .bottom])
+        .overlay(alignment: .top) { topFade }
         .overlay(alignment: .top) { pinnedBar }
         .animation(PFMotion.respecting(PFMotion.fast), value: tab)
+    }
+
+    /// Soft canvas fade under the top bar as soon as the header starts to scroll away.
+    private var topFade: some View {
+        LinearGradient(colors: [PFColor.canvas, PFColor.canvas.opacity(0.94), PFColor.canvas.opacity(0)], startPoint: .top, endPoint: .bottom)
+            .frame(height: barHeight + 18)
+            .ignoresSafeArea(.container, edges: .top)
+            .opacity(tabBarY0.map { tabBarY < $0 - 6 } ?? false ? 1 : 0)
+            .allowsHitTesting(false)
+            .animation(PFMotion.respecting(PFMotion.fast), value: tabBarY < (tabBarY0 ?? 0) - 6)
     }
 
     /// Canvas band + tab bar that takes over once the in-flow tab bar scrolled under the top bar.
