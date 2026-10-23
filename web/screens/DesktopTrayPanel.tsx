@@ -6,6 +6,7 @@ import { usePinnedTasks, type PinnedItem } from '../context/PinnedTasksContext';
 import { useWorkspace } from '../context/WorkspaceContext';
 import { useToast } from '../context/UIContext';
 import { dayPlanStopPath, useDesktopDayPlan } from '../hooks/useDesktopDayPlan';
+import { useDesktopUpdate } from '../hooks/useDesktopUpdate';
 import { desktopWindowKind, getDesktopBridge, pinnedItemPath } from '../services/desktop';
 import { completeItem, createCapturedTask } from '../services/desktopActions';
 import { markAllNotificationsAsRead, markNotificationAsRead, subscribeToNotifications } from '../services/notificationService';
@@ -56,6 +57,7 @@ const formatTimer = (startedAt: string | undefined, now: number) => {
  */
 export const DesktopTrayPanel = () => {
     const bridge = getDesktopBridge();
+    const update = useDesktopUpdate();
     const { user } = useAuth();
     const { t, language } = useLanguage();
     const { activeWorkspace, activeWorkspaceId, status: workspaceStatus, refresh: refreshWorkspace } = useWorkspace();
@@ -381,6 +383,12 @@ export const DesktopTrayPanel = () => {
                     )}
                 </div>
 
+                {update.status !== 'none' && (
+                    <button type="button" className="tray-panel__update" onClick={() => bridge.applyUpdate?.()}>
+                        <span className="material-symbols-outlined">{update.status === 'ready' ? 'restart_alt' : 'download'}</span>
+                        {t(update.status === 'ready' ? 'desktop.update.readyHint' : 'desktop.update.availableHint').replace('{version}', update.version || '')}
+                    </button>
+                )}
                 <footer className="tray-panel__footer">
                     <button type="button" className="tray-panel__footer-action" onClick={() => bridge.appAction?.('day-close')}>
                         <span className="material-symbols-outlined">bedtime</span>{t('desktop.tray.actions.dayClose')}

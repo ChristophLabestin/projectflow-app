@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useLanguage } from '../../context/LanguageContext';
 import { useWorkspace } from '../../context/WorkspaceContext';
+import { useDesktopUpdate } from '../../hooks/useDesktopUpdate';
 import {
     getDesktopBridge,
     hasDesktopCapability,
@@ -35,6 +36,7 @@ export const DesktopTitleBar: React.FC<DesktopTitleBarProps> = ({ mode }) => {
     const [state, setState] = useState<DesktopWindowState>(INITIAL_STATE);
     const [quickAccess, setQuickAccess] = useState<DesktopQuickAccessState | null>(null);
     const menuButtonRef = useRef<HTMLButtonElement>(null);
+    const update = useDesktopUpdate();
 
     useEffect(() => {
         if (!bridge) return;
@@ -141,6 +143,17 @@ export const DesktopTitleBar: React.FC<DesktopTitleBarProps> = ({ mode }) => {
             )}
 
             <div className="desktop-titlebar__trailing">
+                {mode === 'inline' && update.status !== 'none' && (
+                    <button
+                        type="button"
+                        className="desktop-titlebar__update"
+                        onClick={() => bridge.applyUpdate?.()}
+                        title={t(update.status === 'ready' ? 'desktop.update.readyHint' : 'desktop.update.availableHint').replace('{version}', update.version || '')}
+                    >
+                        <span className="material-symbols-outlined">{update.status === 'ready' ? 'restart_alt' : 'download'}</span>
+                        {t(update.status === 'ready' ? 'desktop.update.ready' : 'desktop.update.available')}
+                    </button>
+                )}
                 {mode === 'inline' && quickAccess && (
                     <button
                         type="button"

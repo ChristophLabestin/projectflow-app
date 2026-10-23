@@ -9,6 +9,7 @@ import { hideTrayPanel } from './windows/trayPanel';
 import { upcomingEvents } from './features/calendar';
 import { startExternalSignIn } from './features/externalAuth';
 import { indexSpotlight } from './features/spotlight';
+import { applyUpdate, getUpdateState } from './features/updater';
 import { setLanguage } from './labels';
 import { addRecent, installMenus } from './menu';
 import { isTrustedSender } from './security';
@@ -133,6 +134,8 @@ export const registerIpc = () => {
         const safe = sanitizeAppPath(target);
         if (safe) void shell.openExternal(new URL(safe, APP_ORIGIN).toString());
     });
+    handle(IPC.updateState, () => getUpdateState());
+    on(IPC.updateAction, () => applyUpdate());
     on(IPC.indexSpotlight, (event, items: unknown) => {
         if (senderWindow(event) === getMainWindow()) indexSpotlight(items);
     });
