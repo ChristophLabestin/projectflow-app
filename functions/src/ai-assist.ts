@@ -18,7 +18,7 @@ import { normalizeRole } from './ai-access';
 import { isTenantSuspended, SUSPENDED_MESSAGE } from './tenant-status';
 import { aiPolicyRef, loadAiPolicy } from './ai-store';
 import { consumeAiQuota, trackUsage } from './ai-service';
-import { aiGateFor } from './billing';
+import { aiGateFor, resolveAiAccess } from './billing';
 import { refundCredits, reserveCredits, recordModelUsage, resolveMonthlyLimit, type CreditCapability } from './ai-credits';
 import { streamTurn, tierModel, ModelError, type ModelTier, type ModelUsage } from './ai-models';
 import {
@@ -105,13 +105,13 @@ const addUsage = (total: ModelUsage, usage: ModelUsage) => {
     total.cachedTokens += usage.cachedTokens;
 };
 
-const runWrite = async (body: any, send: Send, signal: AbortSignal): Promise<ModelUsage> => {
+const runWrite = async (body: any, send: Send, signal: AbortSignal, ownKey?: string): Promise<ModelUsage> => {
     const request = buildWriteRequest(body.input, body.language);
-    const turn = await streamTurn({ tier: 'fast', ...request, signal }, (delta) => send('delta', { text: delta }));
+    const turn = await streamTurn({ tier: 'fast', ...request, signal, ownKey }, (delta) => send('delta', { text: delta }));
     return turn.usage;
 };
 
-const runAssist = async (body: any, ctx: ToolContext, send: Send, signal: AbortSignal): Promise<ModelUsage> => {
+const runAssist = async (body: any, ctx: ToolContext, send: Send, signal: AbortSignal, ownKey?: string): Promise<ModelUsage> => {
     const messages = normalizeMessages(body.messages);
     const context = normalizeContext(body.context, body.language);
     const resolved = await resolveContext(ctx, context);
@@ -126,7 +126,7 @@ const runAssist = async (body: any, ctx: ToolContext, send: Send, signal: AbortS
     let proposals = 0;
     const instructions = buildAssistInstructions(context.language, renderContextBlock(context, resolved));
     const usage: ModelUsage = { inputTokens: 0, outputTokens: 0, cachedTokens: 0 };
-    let turn = await streamTurn({ tier: 'agent', instructions, input: messages, tools: toOpenAiTools(tools), signal }, (delta) => send('delta', { text: delta }));
+    let turn = await streamTurn({ tier: 'agent', instructions, input: messages, tools: toOpenAiTools(tools), signal, ownKey }, (delta) => send('delta', { text: delta }));
     addUsage(usage, turn.usage);
 
     for (let round = 0; round < MAX_TOOL_ROUNDS && turn.functionCalls.length; round++) {
@@ -151,7 +151,7 @@ const runAssist = async (body: any, ctx: ToolContext, send: Send, signal: AbortS
             return { type: 'function_call_output' as const, call_id: call.callId, output };
         }));
         turn = await streamTurn({
-            tier: 'agent', instructions, input: outputs, previousResponseId: turn.responseId, tools: toOpenAiTools(tools), signal
+            tier: 'agent', instructions, input: outputs, previousResponseId: turn.responseId, tools: toOpenAiTools(tools), signal, ownKey
         }, (delta) => send('delta', { text: delta }));
         addUsage(usage, turn.usage);
     }
@@ -166,7 +166,7 @@ const CAPABILITIES: Record<string, { credit: CreditCapability; tier: ModelTier }
 export const aiAssist = onRequest({
     region: REGION,
     cors: CORS_ORIGINS,
-    secrets: ['OPENAI_API_KEY'],
+    secrets: ['OPENAI_API_KEY', 'AI_KEY_ENCRYPTION_KEY'],
     memory: '512MiB',
     timeoutSeconds: 120,
     concurrency: 40
@@ -202,31 +202,46 @@ export const aiAssist = onRequest({
         if (body.capability === 'assist' && role === 'Guest') throw new HttpError(403, 'The assistant is not available for guests yet.', 'forbidden');
         // Free workspaces have no included AI (brain/plans/billing-implementation.md).
         // AI per user: trial/beta for all members, otherwise the AI add-on (brain/plans/billing-entitlements-contract.md).
+        // Without server AI the user may run on their own OpenAI key (BYOK, billing-entitlements-contract.md):
+        // no quota, no workspace credits, costs on their key.
+        let ownKey: string | undefined;
         const aiGate = await aiGateFor(tenantId, uid);
-        if (aiGate) throw new HttpError(402, 'AI is not enabled for you in this workspace.', aiGate);
+        if (aiGate) {
+            const access = await resolveAiAccess(uid);
+            if (access.mode !== 'own-key') throw new HttpError(402, 'AI is not enabled for you in this workspace.', aiGate);
+            ownKey = access.apiKey;
+        }
 
         // Validate before spending anything.
         if (body.capability === 'write') buildWriteRequest(body.input, body.language);
         else normalizeMessages(body.messages);
 
-        await consumeAiQuota(uid, 'text').catch(() => {
-            throw new HttpError(429, 'Daily AI limit reached.', 'resource-exhausted');
-        });
-        const credits = await reserveCredits(tenantId, uid, capability.credit, monthlyLimit);
-        if (!credits.ok) throw new HttpError(429, 'The workspace has used its AI credits for this month.', 'credits-exhausted');
+        let credits: { ok: boolean; used: number; limit: number } | null = null;
+        if (!ownKey) {
+            await consumeAiQuota(uid, 'text').catch(() => {
+                throw new HttpError(429, 'Daily AI limit reached.', 'resource-exhausted');
+            });
+            credits = await reserveCredits(tenantId, uid, capability.credit, monthlyLimit);
+            if (!credits.ok) throw new HttpError(429, 'The workspace has used its AI credits for this month.', 'credits-exhausted');
+        }
 
         const ctx: ToolContext = { idToken: auth.idToken, tenantId, uid };
         let usage: ModelUsage;
         try {
             usage = body.capability === 'write'
-                ? await runWrite(body, send, abort.signal)
-                : await runAssist(body, ctx, send, abort.signal);
+                ? await runWrite(body, send, abort.signal, ownKey)
+                : await runAssist(body, ctx, send, abort.signal, ownKey);
         } catch (error) {
             // Nothing useful reached the user: give the credits back.
-            await refundCredits(tenantId, uid, capability.credit).catch(() => undefined);
+            if (credits) await refundCredits(tenantId, uid, capability.credit).catch(() => undefined);
             throw error;
         }
 
+        if (!credits) {
+            send('done', { ownKey: true });
+            res.end();
+            return;
+        }
         const { model, serviceTier } = tierModel(capability.tier);
         await Promise.all([
             recordModelUsage(tenantId, uid, model, usage, serviceTier),
