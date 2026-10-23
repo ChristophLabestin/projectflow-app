@@ -136,8 +136,7 @@
         .snav-group--pins .snav-row,
         .snav-row--external,
         .snav-dock,
-        .desktop-promo,
-        .snav-footer {
+        .desktop-promo {
             max-height: 0;
             padding-top: 0;
             padding-bottom: 0;
@@ -149,6 +148,18 @@
         .desktop-promo {
             margin-top: 0;
             border-width: 0;
+        }
+
+        // The footer stays so the collapse toggle sits exactly where it is when expanded
+        // (same 12 px inset; 28 px button in the 52 px spine). Theme switch keeps its box
+        // (stable row height), the notification bell steps out.
+        .snav-theme {
+            visibility: hidden;
+            opacity: 0;
+        }
+
+        .snav-footer__actions {
+            display: none;
         }
     }
 }
@@ -554,6 +565,7 @@
     align-items: center;
     justify-content: space-between;
     gap: 8px;
+    min-height: 32px;
 }
 
 .snav-footer__start {
