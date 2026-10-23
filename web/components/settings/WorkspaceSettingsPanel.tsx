@@ -174,7 +174,7 @@ export const WorkspaceSettingsPanel: React.FC<{ section: WorkspaceSettingsSectio
                 </div>
                 <footer className="ws-card__foot">
                     <Link to="/team" className="ws-link" onClick={onNavigate}>{t('workspaceSettings.members.manage')}</Link>
-                    {isAdmin && (
+                    {isAdmin && !active?.isPersonal && (
                         <Button variant="primary" onClick={() => setInviteOpen(true)} icon={<span className="material-symbols-outlined">person_add</span>}>
                             {t('workspaceSettings.members.invite')}
                         </Button>

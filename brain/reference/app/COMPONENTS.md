@@ -297,6 +297,12 @@ Contract: `brain/plans/billing-entitlements-contract.md`. Data: `useEntitlements
 - AI: `useAiAccess()` → `{ status: loading|enabled|own-key|addon-required|plan-required, canUse }` + `AiPlanHint` (for the in-app AI entry points). `resetOwnAiKeyCheck()` after key changes.
 - Errors: always `planErrorMessage(error, t)` (`billing.errors.<code>`). Upgrade buttons follow `useCheckoutAvailable()` (`billing_public/config.checkoutAvailable`) — otherwise "Coming soon". Copy is workspace-type aware: `planCopyKey(plan, key)` picks `<key>.personal` for personal workspaces (upgrade = Personal; invitations never, `PlanHint cta={false}`).
 
+### Personal workspaces (billing contract §7, web)
+- Sign-in: `resolveWorkspaceForCurrentUser(language)` calls `ensurePersonalWorkspace` when the user owns no workspace yet (new or only invited accounts); existing owners get theirs via the backfill. `WorkspaceSummary.isPersonal`; personal sorts first.
+- `WelcomeDialog` team step in the personal workspace: "On my own" / "With a team"; team → name + invitations → `createWorkspace` (14-day trial via server trigger) → switches to it on "Go to dashboard". Invited users keep the old team step.
+- `WorkspaceMenuSection`: "Personal" section (person avatar, "Only you") above "Team workspaces", "Create team workspace".
+- Personal workspace hides invite triggers (top bar team menu, Team page, settings members, getting-started item) and the sidebar Team item; the invite modal itself explains it (`PlanHint cta={false}`).
+
 ## Notification Center (`web/components/notifications/`, 2026-10-23)
 
 - `NotificationDropdown` (`components/NotificationDropdown.tsx`): sidebar bell with unread badge (active workspace + other workspaces) and a popover **portaled to `<body>`** (fixed, beside the sidebar flush with the bottom of `.snav-card`, or flipped below/above the trigger; Escape/outside click close). One-line header: All/Unread filter tabs (replace the visible title; dialog aria-label keeps it) plus icon buttons (mark all read, notification settings → `SettingsModal` tab `notifications`, lazy), "Unread in other workspaces" (switches workspace → `/notifications`), grouped list, "View all" footer.

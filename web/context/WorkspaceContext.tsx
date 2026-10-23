@@ -52,7 +52,7 @@ export const WorkspaceConnecting = () => {
 
 export const WorkspaceProvider = ({ children }: { children: ReactNode }) => {
     const { user, isAuthReady } = useAuth();
-    const { t } = useLanguage();
+    const { t, language } = useLanguage();
     const [status, setStatus] = useState<WorkspaceStatus>('signed-out');
     const [activeWorkspaceId, setActiveWorkspaceId] = useState<string | null>(null);
     const [workspaces, setWorkspaces] = useState<WorkspaceSummary[]>([]);
@@ -60,11 +60,6 @@ export const WorkspaceProvider = ({ children }: { children: ReactNode }) => {
     const resolvedFor = useRef<string | null>(null);
     const attemptRef = useRef(0);
 
-    const defaultName = useCallback(() => {
-        const current = auth.currentUser;
-        const name = current?.displayName || (current?.email || '').split('@')[0];
-        return name ? t('workspace.defaultName').replace('{name}', name) : t('workspace.defaultNameFallback');
-    }, [t]);
 
     const resolve = useCallback(async () => {
         const attempt = ++attemptRef.current;
@@ -84,7 +79,7 @@ export const WorkspaceProvider = ({ children }: { children: ReactNode }) => {
             const timeout = new Promise<never>((_, reject) => {
                 timer = setTimeout(() => reject(new Error('Workspace resolution timed out')), RESOLVE_TIMEOUT_MS);
             });
-            const { activeId, workspaces: list } = await Promise.race([resolveWorkspaceForCurrentUser(defaultName()), timeout]);
+            const { activeId, workspaces: list } = await Promise.race([resolveWorkspaceForCurrentUser(language), timeout]);
             if (attempt !== attemptRef.current) return;
             if (uid) writeWorkspaceSnapshot({ uid, activeId, workspaces: list });
             // Started from a snapshot of another workspace: reload into the right one (like switching).
@@ -107,7 +102,7 @@ export const WorkspaceProvider = ({ children }: { children: ReactNode }) => {
         } finally {
             clearTimeout(timer);
         }
-    }, [defaultName]);
+    }, [language]);
 
     useEffect(() => {
         if (!isAuthReady) return;
