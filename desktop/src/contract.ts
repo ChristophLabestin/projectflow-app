@@ -8,7 +8,7 @@ export const BRIDGE_VERSION = 1;
 export const CAPABILITIES = [
     'titlebar', 'app-menu', 'popout', 'badge', 'tray', 'notifications', 'language',
     'preferences', 'quick-capture', 'notification-actions', 'day-flow', 'file-drop', 'calendar', 'recents', 'windows',
-    'tray-panel'
+    'tray-panel', 'external-auth'
 ] as const;
 export type DesktopCapability = typeof CAPABILITIES[number];
 
@@ -32,7 +32,8 @@ export type DesktopCommand =
     | 'focus-resume'
     | 'focus-complete'
     | 'notification-action'
-    | 'attach-files';
+    | 'attach-files'
+    | 'auth-code';
 
 export interface DesktopCommandEvent {
     command: DesktopCommand;
@@ -132,7 +133,8 @@ export const IPC = {
     addRecent: 'pf:add-recent',
     windowPayload: 'pf:window-payload',
     upcomingEvents: 'pf:upcoming-events',
-    appAction: 'pf:app-action'
+    appAction: 'pf:app-action',
+    signInExternally: 'pf:sign-in-externally'
 } as const;
 
 /** Shell actions offered by the menu bar panel. */

@@ -8,6 +8,8 @@ import { useTheme } from '../../context/ThemeContext';
 import { useToast, useUIState } from '../../context/UIContext';
 import { SettingsModal } from '../SettingsModal';
 import { addComment } from '../../services/dataService';
+import { redeemDesktopAuthCode } from '../../services/desktopAuth';
+import { auth } from '../../services/firebase';
 import { attachFilesToItem, canAttachToItem, completeItem, filesFromPayload } from '../../services/desktopActions';
 import { useWorkspace } from '../../context/WorkspaceContext';
 import { markNotificationAsRead, subscribeToNotificationPrefs, subscribeToNotifications } from '../../services/notificationService';
@@ -187,6 +189,18 @@ export const DesktopBridge = () => {
                 case 'notification-action':
                     void handleNotificationAction(data, handlers);
                     break;
+                case 'auth-code': {
+                    const code = typeof data?.code === 'string' ? data.code : '';
+                    const verifier = typeof data?.verifier === 'string' ? data.verifier : '';
+                    if (!code || !verifier || auth.currentUser) break;
+                    redeemDesktopAuthCode(code, verifier)
+                        .then(() => { if (window.location.pathname === '/login' || window.location.pathname === '/register') handlers.navigate('/'); })
+                        .catch((error) => {
+                            console.error('Desktop sign-in handoff failed', error);
+                            handlers.showError(handlers.t('login.desktop.browserFailed'));
+                        });
+                    break;
+                }
                 case 'attach-files': {
                     const files = filesFromPayload(data?.files);
                     const item = handlers.focusItem;

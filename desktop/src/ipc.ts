@@ -7,6 +7,7 @@ import { refreshTouchBar } from './features/focus';
 import { hideCapture, isCaptureWindow, markCaptureReady, openDayWindow, showCapture } from './windows/auxWindows';
 import { hideTrayPanel } from './windows/trayPanel';
 import { upcomingEvents } from './features/calendar';
+import { startExternalSignIn } from './features/externalAuth';
 import { setLanguage } from './labels';
 import { addRecent, installMenus } from './menu';
 import { isTrustedSender } from './security';
@@ -138,6 +139,7 @@ export const registerIpc = () => {
     });
 
     handle(IPC.upcomingEvents, () => upcomingEvents());
+    handle(IPC.signInExternally, (event) => senderWindow(event) === getMainWindow() && startExternalSignIn());
 
     on(IPC.appAction, (_event, action: AppAction) => {
         hideTrayPanel();
