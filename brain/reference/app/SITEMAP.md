@@ -30,6 +30,7 @@ These routes must remain accessible without being logged in.
 - [x] `/desktop/palette` — Desktop only: command palette window (`DesktopCommandPalette`): search projects/my tasks, open, complete, start focus, create via Quick Capture.
 - [x] `/desktop/auth?challenge=…` — Browser page of the desktop OAuth handoff (`DesktopAuthHandoff`): after web sign-in it creates a one-time code and opens `projectflow://auth`.
 - [x] `/oauth/consent?request=…` — OAuth consent for AI/MCP clients (`OAuthConsent`): signed-in user picks one workspace and the scopes, then returns to the client with a code (server: `functions/src/oauth-server.ts`). Hosting rewrites `/oauth/authorize|token|register|revoke` and `/.well-known/oauth-*` go to the functions `oauth` / `mcp`, not to the SPA.
+- [x] `?openSettings=billing` (+ `&checkout=success|cancel` from Stripe) — opens the workspace settings on Billing (`BillingPanel`; Stripe Checkout/Portal return here).
 - [x] `?openSettings=account|security|notifications|preferences` — any signed-in route: opens the personal settings modal on that tab (`SettingsUrlOpener`; used by the desktop app to link accounts in the browser).
 
 ---

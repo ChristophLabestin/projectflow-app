@@ -47,6 +47,16 @@ Permissions are evaluated by context:
 Subscription constraints (Starter/Professional/Organization) are enforced separately.
 Permissions cannot override entitlements.
 
+**Implemented 2026-10-23** (`brain/plans/billing-implementation.md`): entitlements live in
+`tenants/{t}/entitlements/plan` (member-readable, server-only writes). Enforcement:
+- Rules: project create only below `projectLimit` (`projectCount`, trigger-maintained); no writes to projects in
+  `lockedProjectIds` (delete still allowed); invitation create and non-bootstrap member create only with `invitesAllowed`.
+  A missing doc = legacy grace = Team (no limits).
+- Functions: `sendInvitation` / `acceptWorkspaceInvite` check `invitesAllowed` and `memberLimit` (guests are not seats);
+  `consumeAiQuota` requires AI via a Team/trial/grace membership or the user's own OpenAI key; `aiAssist` requires a workspace with AI.
+- Billing actions (`createBillingCheckout`, `createBillingPortal`) are **Owner-only** for now; Admins/Members see the
+  billing tab read-only, guests do not see it. `tenant.billing.*`/`tenant.plan.*` nodes are not evaluated yet.
+
 ---
 
 ## 2) Role Types
