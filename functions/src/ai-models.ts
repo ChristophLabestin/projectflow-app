@@ -46,10 +46,23 @@ export interface StreamRequest {
     tools?: FunctionTool[];
     maxOutputTokens?: number;
     signal?: AbortSignal;
+    /** BYOK: run on the user's own OpenAI key. */
+    ownKey?: string;
 }
 
 let client: OpenAI | null = null;
-export const getClient = () => {
+/** Server key by default; `ownKey` = the user's own OpenAI key (BYOK, decrypted server-side, never from the client). */
+const ownKeyClients = new Map<string, OpenAI>();
+export const getClient = (ownKey?: string) => {
+    if (ownKey) {
+        let own = ownKeyClients.get(ownKey);
+        if (!own) {
+            if (ownKeyClients.size > 200) ownKeyClients.clear();
+            own = new OpenAI({ apiKey: ownKey });
+            ownKeyClients.set(ownKey, own);
+        }
+        return own;
+    }
     const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) throw new Error('OPENAI_API_KEY is not set in environment variables.');
     client = client || new OpenAI({ apiKey });
@@ -92,7 +105,7 @@ export const streamTurn = async (request: StreamRequest, onDelta: (text: string)
     let firstDeltaAt = 0;
     let stream: any;
     try {
-        stream = await getClient().responses.create(body, { signal: request.signal });
+        stream = await getClient(request.ownKey).responses.create(body, { signal: request.signal });
     } catch (error) {
         throw toModelError(error);
     }
