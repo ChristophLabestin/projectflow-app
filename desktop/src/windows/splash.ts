@@ -1,5 +1,6 @@
 import { BrowserWindow, WebContentsView, nativeTheme } from 'electron';
 import path from 'node:path';
+import { IS_DEV } from '../config';
 import { labels } from '../labels';
 import { getSettings } from '../store';
 
@@ -11,6 +12,8 @@ import { getSettings } from '../store';
 const MIN_MS = 1400;
 const MAX_MS = 25_000;
 const FADE_MS = 450;
+/** Dev/QA: PF_DESKTOP_HOLD_SPLASH=1 keeps the scene on screen (like iOS `-pfHoldLaunch`). */
+const HOLD = IS_DEV && process.env.PF_DESKTOP_HOLD_SPLASH === '1';
 
 let overlay: { view: WebContentsView; win: BrowserWindow; shownAt: number; closing: boolean } | null = null;
 
@@ -52,7 +55,7 @@ export const attachSplash = (win: BrowserWindow, onReady: () => void) => {
 /** Fade the scene out and remove it (idempotent). */
 export const finishSplash = () => {
     const current = overlay;
-    if (!current || current.closing) return;
+    if (!current || current.closing || HOLD) return;
     current.closing = true;
     const wait = Math.max(0, MIN_MS - (Date.now() - current.shownAt));
     setTimeout(() => {
