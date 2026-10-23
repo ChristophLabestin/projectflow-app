@@ -126,11 +126,13 @@ export const BillingPanel: React.FC<BillingPanelProps> = ({ tenantId, role }) =>
                     .replace('{date}', formatDate(ent.currentPeriodEnd));
             case 'past_due':
                 return t('billing.status.pastDue');
+            case 'exempt':
+                return t('billing.status.exempt');
             default:
                 return t('billing.status.free');
         }
     })();
-    const canSubscribe = !ent.hasSubscription && ent.plan !== 'organization';
+    const canSubscribe = !ent.hasSubscription && ent.plan !== 'organization' && ent.status !== 'exempt';
 
     return (
         <div className="billing-settings">

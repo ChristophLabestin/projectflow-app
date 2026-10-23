@@ -161,7 +161,13 @@ const recountProjects = async (tenantId: string) => {
 };
 
 /** Writes the effective plan; moving to Free locks projects over the limit, other plans unlock all. */
-const applyPlan = async (tenantId: string, plan: PlanId, fields: Record<string, unknown>) => {
+const applyPlan = async (tenantId: string, requestedPlan: PlanId, requestedFields: Record<string, unknown>) => {
+    // billingExempt (internal/comp, admin console) overrides trial expiry and Stripe state until it is removed.
+    const exempt = requestedFields.billingExempt === undefined
+        ? (await entRef(tenantId).get()).data()?.billingExempt === true
+        : requestedFields.billingExempt === true;
+    const plan: PlanId = exempt ? 'team' : requestedPlan;
+    const fields = exempt ? { ...requestedFields, status: 'exempt' } : requestedFields;
     const limits = { ...PLAN_LIMITS[plan], aiIncluded: aiIncludedForStatus(plan, String(fields.status || '')) };
     const projects = await recountProjects(tenantId);
     await entRef(tenantId).set({
@@ -272,6 +278,27 @@ const setAddonQuantity = async (stripe: Stripe, subscriptionId: string, quantity
     await stripe.subscriptionItems.create({
         subscription: subscriptionId, price: prices.data[0].id, quantity, proration_behavior: 'create_prorations',
     });
+};
+
+/**
+ * Internal/comp workspaces (owner decision 2026-10-23): Team scope incl. AI for all members, no payment.
+ * Only the admin console calls this (it writes the audit entry). Removing the flag returns to the Stripe
+ * state when a subscription exists, else to Free (projects over the limit become read-only).
+ */
+export const setBillingExempt = async (tenantId: string, exempt: boolean, by: string) => {
+    if (exempt) {
+        await applyPlan(tenantId, 'team', { billingExempt: true, status: 'exempt', exemptBy: by, exemptAt: FieldValue.serverTimestamp() });
+    } else {
+        const ent = (await entRef(tenantId).get()).data() || {};
+        const subId = typeof ent.stripeSubscriptionId === 'string' ? ent.stripeSubscriptionId : null;
+        await entRef(tenantId).set({ billingExempt: false, exemptBy: by, exemptAt: FieldValue.serverTimestamp() }, { merge: true });
+        if (subId && process.env.STRIPE_SECRET_KEY) {
+            await syncSubscription(await getStripe().subscriptions.retrieve(subId), tenantId);
+        } else {
+            await applyPlan(tenantId, 'free', { billingExempt: false, status: 'free', seats: 0, billingInterval: null });
+        }
+    }
+    aiAccessCache.clear();
 };
 
 // --- Callables ---

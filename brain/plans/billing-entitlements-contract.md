@@ -10,7 +10,8 @@ ein Bestandsworkspace in Grace (= Team, KI für alle, keine Limits). Clients dü
 | Feld | Typ | Bedeutung |
 |---|---|---|
 | `plan` | `free \| team \| organization` | wirksamer Plan |
-| `status` | `trialing \| active \| past_due \| grace \| free \| canceled` | Abrechnungsstatus |
+| `status` | `trialing \| active \| past_due \| grace \| free \| canceled \| exempt` | Abrechnungsstatus |
+| `billingExempt` | bool | intern/kostenlos (nur Admin-Konsole): Team inkl. KI für alle, `status: exempt`, ohne Zahlung |
 | `trialEndsAt` / `graceEndsAt` | Timestamp \| null | Ende Test (14 Tage) / Beta-Grace (Stichtag) |
 | `currentPeriodEnd`, `cancelAtPeriodEnd` | Timestamp, bool | aktuelles Abo |
 | `billingInterval` | `month \| year \| null` | |
@@ -19,7 +20,7 @@ ein Bestandsworkspace in Grace (= Team, KI für alle, keine Limits). Clients dü
 | `projectLimit` / `projectCount` | number \| null / number | 3 auf Free, sonst null; Zähler per Trigger |
 | `lockedProjectIds` | string[] | Projekte über dem Free-Limit: nur lesen (löschen erlaubt) |
 | `invitesAllowed` | bool | Free: false |
-| `aiIncluded` | bool | KI für alle Vollmitglieder (nur `trialing`/`grace`) |
+| `aiIncluded` | bool | KI für alle Vollmitglieder (`trialing`, `grace`, `exempt`) |
 | `aiAddonAvailable` | bool | KI-Paket buchbar (Team/Organization) |
 | `aiAddonSeats` / `aiMemberIds` | number / string[] | gebuchte KI-Pakete und zugewiesene Nutzer (uids) |
 | `stripeSubscriptionId` | string \| null | vorhanden = bezahltes Abo |
@@ -75,3 +76,8 @@ Pro Workspace anzeigen: `plan`, `status`, `trialEndsAt`/`graceEndsAt`, `seats`, 
 `cancelAtPeriodEnd`; MRR (netto) = `seats × (12 | 10) + aiAddonSeats × 10` je nach `billingInterval` (month | year),
 nur für `active`/`past_due`. Stripe-Kunde: `billing_customers/{tenantId}.customerId` (server-only).
 Stichtag Grace: `admin_config/billing.cutoverAt` (Timestamp).
+`billingExempt` setzen/entfernen: `setBillingExempt(tenantId, exempt, actorUid)` aus `functions/src/billing.ts` im
+`adminApi` aufrufen (mit Audit-Eintrag), **nicht** das Feld direkt schreiben — Limits/Sperren werden dabei neu berechnet.
+Entfernen → Stripe-Stand, falls Abo vorhanden, sonst Free (Projekte über 3 schreibgeschützt).
+`grace`/`cutoverAt`: kein Bestandskundenfall (Owner 2026-10-23, „noch keine Kunden“). Neue Workspaces starten immer mit Test;
+`grace` steht nur noch auf zwei Alt-Workspaces bis zur Owner-Entscheidung. `cutoverAt` bleibt ungesetzt.
