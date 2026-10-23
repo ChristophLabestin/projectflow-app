@@ -22,7 +22,8 @@ test('client cannot inject system instructions, schemas or tools', () => {
         temperature: 2
     }, 'en');
     assert.equal(spec.instructions, undefined);
-    assert.equal(spec.schema, undefined);
+    assert.equal(spec.textResult, true);
+    assert.deepEqual(spec.schema.required, ['text']);
     assert.equal(spec.webSearch, false);
     assert.equal(spec.temperature, 0.7);
     assert.ok(!spec.input.includes('free assistant'));
@@ -62,7 +63,8 @@ test('every capability builds with minimal input and a language instruction', ()
         const spec = buildCapabilityRequest(name, minimal[name], 'de');
         assert.ok(spec.input.length > 0, name);
         if (!['blogPost', 'blogTranslate'].includes(name)) assert.match(spec.input, /Respond in German/, name);
-        if (spec.schema) assert.equal(spec.schema.type, 'object', `${name} schema root must be an object`);
+        assert.equal(spec.schema.type, 'object', `${name} schema root must be an object`);
+        assert.equal(spec.schema.additionalProperties, false, `${name} schema must be strict`);
     }
 });
 

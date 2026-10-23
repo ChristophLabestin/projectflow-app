@@ -1,12 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useLanguage } from '../../context/LanguageContext';
-import { useInAppAi } from '../../hooks/useInAppAi';
-import {
-    AiAssistError,
-    streamAiAssist,
-    type AiFieldKind,
-    type AiWriteAction
-} from '../../services/aiAssistClient';
+import type { AiFieldKind, AiWriteAction } from '../../services/aiAssistClient';
+import { useAiWrite } from './core/useAiWrite';
 import './ai-text-assist.scss';
 
 /**
@@ -49,14 +44,14 @@ export const AiTextAssist: React.FC<AiTextAssistProps> = ({
     children, textareaRef, value, onApply, field, itemTitle, projectTitle, className = ''
 }) => {
     const { t } = useLanguage();
-    const { enabled, tenantId } = useInAppAi();
-    const [phase, setPhase] = useState<Phase>('idle');
-    const [suggestion, setSuggestion] = useState('');
-    const [error, setError] = useState('');
+    const writer = useAiWrite({ field, itemTitle, projectTitle });
+    const { enabled, suggestion, error } = writer;
+    const [menuOpen, setMenuOpen] = useState(false);
+    const phase: Phase = menuOpen ? 'menu' : writer.phase;
+    const setPhase = (next: 'idle') => { if (next === 'idle') setMenuOpen(false); };
     const [instruction, setInstruction] = useState('');
     const [range, setRange] = useState<{ start: number; end: number } | null>(null);
-    const lastRequest = useRef<{ action: AiWriteAction; instruction?: string } | null>(null);
-    const abortRef = useRef<AbortController | null>(null);
+    const [hasRun, setHasRun] = useState(false);
     const rootRef = useRef<HTMLDivElement>(null);
     const applyRef = useRef<HTMLButtonElement>(null);
     const getTextarea = useCallback(
@@ -65,76 +60,44 @@ export const AiTextAssist: React.FC<AiTextAssistProps> = ({
     );
 
     const close = useCallback(() => {
-        abortRef.current?.abort();
-        setPhase('idle');
-        setSuggestion('');
-        setError('');
+        writer.reset();
+        setMenuOpen(false);
         setInstruction('');
         getTextarea()?.focus();
-    }, [getTextarea]);
-
-    useEffect(() => () => abortRef.current?.abort(), []);
+    }, [getTextarea, writer]);
 
     // Click outside closes the menu (not a running/finished suggestion).
     useEffect(() => {
-        if (phase !== 'menu') return undefined;
+        if (!menuOpen) return undefined;
         const onPointer = (event: PointerEvent) => {
-            if (rootRef.current && !rootRef.current.contains(event.target as Node)) setPhase('idle');
+            if (rootRef.current && !rootRef.current.contains(event.target as Node)) setMenuOpen(false);
         };
         document.addEventListener('pointerdown', onPointer);
         return () => document.removeEventListener('pointerdown', onPointer);
-    }, [phase]);
+    }, [menuOpen]);
 
     useEffect(() => {
-        if (phase === 'done') applyRef.current?.focus();
-    }, [phase]);
+        if (writer.phase === 'done') applyRef.current?.focus();
+    }, [writer.phase]);
 
     const openMenu = useCallback(() => {
         const textarea = getTextarea();
         const start = textarea?.selectionStart ?? 0;
         const end = textarea?.selectionEnd ?? 0;
         setRange(end > start ? { start, end } : null);
-        setError('');
-        setPhase('menu');
-    }, [getTextarea]);
+        writer.reset();
+        setMenuOpen(true);
+    }, [getTextarea, writer]);
 
-    const sourceText = range ? value.slice(range.start, range.end) : value;
-
-    const run = useCallback(async (action: AiWriteAction, customInstruction?: string) => {
-        if (!tenantId) return;
-        abortRef.current?.abort();
-        const controller = new AbortController();
-        abortRef.current = controller;
-        lastRequest.current = { action, instruction: customInstruction };
-        setSuggestion('');
-        setError('');
-        setPhase('running');
-        try {
-            const result = await streamAiAssist({
-                capability: 'write',
-                tenantId,
-                input: { action, field, text: sourceText, instruction: customInstruction, itemTitle, projectTitle }
-            }, {
-                signal: controller.signal,
-                onDelta: (delta) => setSuggestion((current) => current + delta)
-            });
-            if (controller.signal.aborted) return;
-            setSuggestion(result.text.trim());
-            setPhase('done');
-        } catch (caught) {
-            if (controller.signal.aborted) return;
-            const code = caught instanceof AiAssistError ? caught.code : 'internal';
-            const key = `ai.error.${code}`;
-            const message = t(key);
-            setError(message === key ? t('ai.error.internal') : message);
-            setPhase('error');
-        }
-    }, [tenantId, field, sourceText, itemTitle, projectTitle, t]);
+    const run = (action: AiWriteAction, customInstruction?: string) => {
+        setMenuOpen(false);
+        setHasRun(true);
+        void writer.run(action, value, { range, instruction: customInstruction });
+    };
 
     const apply = () => {
-        const text = suggestion.trim();
-        if (!text) return;
-        const next = range ? `${value.slice(0, range.start)}${text}${value.slice(range.end)}` : text;
+        const next = writer.applyTo(value);
+        if (next === null) return;
         onApply(next);
         close();
     };
@@ -179,12 +142,12 @@ export const AiTextAssist: React.FC<AiTextAssistProps> = ({
                             {range ? t('ai.spark.scope.selection') : empty ? t('ai.spark.scope.empty') : t('ai.spark.scope.all')}
                         </p>
                         {empty && !range ? (
-                            <button type="button" role="menuitem" className="ai-text-assist__item" onClick={() => void run('draft')}>
+                            <button type="button" role="menuitem" className="ai-text-assist__item" onClick={() => run('draft')}>
                                 <span className="material-symbols-outlined" aria-hidden="true">{ACTION_ICONS.draft}</span>
                                 {t('ai.action.draft')}
                             </button>
                         ) : ACTIONS.map((action) => (
-                            <button key={action} type="button" role="menuitem" className="ai-text-assist__item" onClick={() => void run(action)}>
+                            <button key={action} type="button" role="menuitem" className="ai-text-assist__item" onClick={() => run(action)}>
                                 <span className="material-symbols-outlined" aria-hidden="true">{ACTION_ICONS[action]}</span>
                                 {t(`ai.action.${action}`)}
                             </button>
@@ -194,7 +157,7 @@ export const AiTextAssist: React.FC<AiTextAssistProps> = ({
                                 className="ai-text-assist__custom"
                                 onSubmit={(event) => {
                                     event.preventDefault();
-                                    if (instruction.trim()) void run('custom', instruction.trim());
+                                    if (instruction.trim()) run('custom', instruction.trim());
                                 }}
                             >
                                 <span aria-hidden="true">✦</span>
@@ -229,11 +192,11 @@ export const AiTextAssist: React.FC<AiTextAssistProps> = ({
                                 {t('ai.spark.apply')} <kbd>⏎</kbd>
                             </button>
                         )}
-                        {phase !== 'running' && lastRequest.current && (
+                        {phase !== 'running' && hasRun && (
                             <button
                                 type="button"
                                 className="ai-text-assist__btn"
-                                onClick={() => lastRequest.current && void run(lastRequest.current.action, lastRequest.current.instruction)}
+                                onClick={() => writer.retry()}
                                 aria-label={t('ai.spark.retry')}
                             >
                                 <span className="material-symbols-outlined" aria-hidden="true">refresh</span>

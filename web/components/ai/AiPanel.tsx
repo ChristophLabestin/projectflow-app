@@ -1,12 +1,9 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
-import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { useAiPanel } from '../../context/AiPanelContext';
-import { useInAppAi } from '../../hooks/useInAppAi';
-import { AiAssistError, streamAiAssist, type AiChatMessage, type AiContextEnvelope, type AiProposalPreview } from '../../services/aiAssistClient';
 import { AiActionCard } from './AiActionCard';
-import { clearThread, loadThread, saveThread, threadKey } from '../../services/aiThreads';
+import { useAiConversation } from './core/useAiConversation';
 import { AiMessageText } from './AiMessageText';
 import './ai-panel.scss';
 
@@ -24,48 +21,16 @@ const SUGGESTIONS: Record<string, string[]> = {
     other: ['ai.panel.suggest.overdue', 'ai.panel.suggest.planDay']
 };
 
-type PanelMessage = AiChatMessage & { proposals?: AiProposalPreview[] };
-
-type Chip = { kind: 'project' | 'task' | 'selection' | 'surface'; label: string };
 
 export const AiPanel: React.FC = () => {
     const { t } = useLanguage();
-    const { user } = useAuth();
     const location = useLocation();
     const { enabled, open, draft, closePanel, getContext } = useAiPanel();
-    const { tenantId: activeTenantId } = useInAppAi();
-    const tenantIdRef = useRef<string | null>(null);
-    tenantIdRef.current = activeTenantId;
-
-    const [messages, setMessages] = useState<PanelMessage[]>([]);
+    const { messages, running, steps, error, chips, context, send: sendMessage, stop, reset: resetConversation } =
+        useAiConversation({ active: open, getContext, screenKey: location.pathname });
     const [input, setInput] = useState('');
-    const [running, setRunning] = useState(false);
-    const [steps, setSteps] = useState<string[]>([]);
-    const [error, setError] = useState('');
-    const [chips, setChips] = useState<Chip[]>([]);
-    const [context, setContext] = useState<AiContextEnvelope>({ surface: 'other' });
-    const abortRef = useRef<AbortController | null>(null);
     const inputRef = useRef<HTMLTextAreaElement>(null);
     const listRef = useRef<HTMLDivElement>(null);
-    const keyRef = useRef('');
-
-    // Context + thread follow the screen while the panel is open.
-    useEffect(() => {
-        if (!open) return;
-        const next = getContext();
-        setContext(next);
-        setChips(next.entity ? [{ kind: next.entity.kind, label: t(`ai.panel.chip.${next.entity.kind}`) }] : [{ kind: 'surface', label: t(`ai.panel.surface.${next.surface}`) }]);
-        const tenantId = tenantIdRef.current;
-        if (!user || !tenantId) return;
-        const key = threadKey(tenantId, next);
-        if (key === keyRef.current) return;
-        keyRef.current = key;
-        abortRef.current?.abort();
-        setMessages([]);
-        setSteps([]);
-        setError('');
-        void loadThread(user.uid, key).then((loaded) => { if (keyRef.current === key) setMessages(loaded); });
-    }, [open, location.pathname, getContext, user, t]);
 
     useEffect(() => {
         if (!open) return;
@@ -77,69 +42,14 @@ export const AiPanel: React.FC = () => {
         listRef.current?.scrollTo({ top: listRef.current.scrollHeight });
     }, [messages, steps]);
 
-    useEffect(() => () => abortRef.current?.abort(), []);
-
-    const send = useCallback(async (text: string) => {
-        const content = text.trim();
-        const tenantId = tenantIdRef.current;
-        if (!content || running || !tenantId || !user) return;
-        const key = keyRef.current;
-        const history: AiChatMessage[] = [...messages.map(({ role, content: text }) => ({ role, content: text })), { role: 'user', content }];
-        const earlier: PanelMessage[] = [...messages, { role: 'user', content }];
-        let proposals: AiProposalPreview[] = [];
-        const show = (text: string) => setMessages([...earlier, { role: 'assistant', content: text, proposals }]);
-        show('');
+    const send = (text: string) => {
+        if (!text.trim() || running) return;
         setInput('');
-        setSteps([]);
-        setError('');
-        setRunning(true);
-        const controller = new AbortController();
-        abortRef.current = controller;
-        let answer = '';
-        try {
-            await streamAiAssist({ capability: 'assist', tenantId, messages: history, context }, {
-                signal: controller.signal,
-                onDelta: (delta) => {
-                    answer += delta;
-                    show(answer);
-                },
-                onProposal: (proposal) => {
-                    proposals = [...proposals, proposal];
-                    show(answer);
-                },
-                onStep: ({ tool }) => setSteps((current) => [...current, tool]),
-                onContext: (resolved: any) => {
-                    const next: Chip[] = [];
-                    if (resolved.project?.title) next.push({ kind: 'project', label: resolved.project.title });
-                    if (resolved.task?.title) next.push({ kind: 'task', label: resolved.task.title });
-                    if (resolved.selected) next.push({ kind: 'selection', label: t('ai.panel.chip.selected').replace('{count}', String(resolved.selected)) });
-                    if (next.length) setChips(next);
-                }
-            });
-            const finalText = answer.trim() || (proposals.length ? t('ai.panel.proposed') : t('ai.panel.empty'));
-            setMessages([...earlier, { role: 'assistant', content: finalText, proposals }]);
-            if (keyRef.current === key) void saveThread(user.uid, key, tenantId, [...history, { role: 'assistant', content: finalText }]).catch(() => undefined);
-        } catch (caught) {
-            if (controller.signal.aborted) {
-                setMessages(answer || proposals.length ? [...earlier, { role: 'assistant', content: answer, proposals }] : earlier);
-                return;
-            }
-            const code = caught instanceof AiAssistError ? caught.code : 'internal';
-            const messageKey = `ai.error.${code}`;
-            const message = t(messageKey);
-            setError(message === messageKey ? t('ai.error.internal') : message);
-            setMessages(answer || proposals.length ? [...earlier, { role: 'assistant', content: answer, proposals }] : earlier);
-        } finally {
-            setRunning(false);
-            setSteps([]);
-        }
-    }, [messages, running, user, context, t]);
+        void sendMessage(text);
+    };
 
     const reset = () => {
-        abortRef.current?.abort();
-        setMessages([]);
-        setError('');
-        if (user && keyRef.current) void clearThread(user.uid, keyRef.current).catch(() => undefined);
+        resetConversation();
         inputRef.current?.focus();
     };
 
@@ -181,7 +91,7 @@ export const AiPanel: React.FC = () => {
                         <p>{t('ai.panel.intro')}</p>
                         <div className="ai-panel__suggestions">
                             {suggestions.map((key) => (
-                                <button key={key} type="button" className="ai-panel__suggestion" onClick={() => void send(t(key))}>
+                                <button key={key} type="button" className="ai-panel__suggestion" onClick={() => send(t(key))}>
                                     {t(key)}
                                 </button>
                             ))}
@@ -208,7 +118,7 @@ export const AiPanel: React.FC = () => {
                 {error && <p className="ai-panel__error" role="alert">{error}</p>}
             </div>
 
-            <form className="ai-panel__composer" onSubmit={(event) => { event.preventDefault(); void send(input); }}>
+            <form className="ai-panel__composer" onSubmit={(event) => { event.preventDefault(); send(input); }}>
                 <textarea
                     ref={inputRef}
                     value={input}
@@ -216,7 +126,7 @@ export const AiPanel: React.FC = () => {
                     onKeyDown={(event) => {
                         if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) {
                             event.preventDefault();
-                            void send(input);
+                            send(input);
                         }
                     }}
                     placeholder={t('ai.panel.placeholder')}
@@ -225,7 +135,7 @@ export const AiPanel: React.FC = () => {
                     aria-label={t('ai.panel.placeholder')}
                 />
                 {running ? (
-                    <button type="button" className="ai-panel__send" onClick={() => abortRef.current?.abort()} aria-label={t('ai.spark.stop')}>
+                    <button type="button" className="ai-panel__send" onClick={stop} aria-label={t('ai.spark.stop')}>
                         <span className="material-symbols-outlined" aria-hidden="true">stop</span>
                     </button>
                 ) : (

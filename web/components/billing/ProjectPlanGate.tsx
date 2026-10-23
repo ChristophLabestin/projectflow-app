@@ -1,5 +1,5 @@
 import React from 'react';
-import { Link, Outlet, useParams } from 'react-router-dom';
+import { Link, Outlet, useOutletContext, useParams } from 'react-router-dom';
 
 import { useLanguage } from '../../context/LanguageContext';
 import { useWorkspace } from '../../context/WorkspaceContext';
@@ -15,6 +15,8 @@ export const ProjectPlanGate: React.FC = () => {
     const { activeWorkspaceId } = useWorkspace();
     const ent = useEntitlements(activeWorkspaceId);
     const locked = Boolean(id && ent?.lockedProjectIds.includes(id));
+    // Pass the AppLayout outlet context through (project pages read setTaskTitle etc. from it).
+    const outletContext = useOutletContext();
     return (
         <>
             {locked && (
@@ -24,7 +26,7 @@ export const ProjectPlanGate: React.FC = () => {
                     <Link to="?openSettings=billing" className="plan-lock-banner__link">{t('billing.upgradeCta')}</Link>
                 </div>
             )}
-            <Outlet />
+            <Outlet context={outletContext} />
         </>
     );
 };

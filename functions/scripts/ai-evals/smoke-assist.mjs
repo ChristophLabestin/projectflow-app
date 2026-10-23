@@ -59,6 +59,19 @@ await call('assist/overdue', { capability: 'assist', context: { surface: 'dashbo
 if (task) {
     await call('assist/task', { capability: 'assist', context: { surface: 'task', projectId: project.id, entity: { kind: 'task', id: task.id, projectId: project.id } }, messages: [{ role: 'user', content: 'Was ist hier los und was sind die nächsten Schritte?' }] });
 }
+// Fixed capabilities (Structured Outputs via aiGenerate).
+const capability = async (label, body) => {
+    const start = Date.now();
+    const response = await fetch(URL_.replace('/aiAssist', '/runAiCapability'), {
+        method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ data: { language: 'de', ...body } })
+    });
+    const json = await response.json();
+    console.log(`\n== capability ${label}: ${Date.now() - start}ms ${response.status}\n${JSON.stringify(json.result ?? json.error).slice(0, 400)}`);
+};
+await capability('taskDraft (text)', { capability: 'taskDraft', input: { taskTitle: 'Login nach Passwort-Reset schlägt fehl', projectTitle: 'iOS-App' } });
+await capability('blogTopics (json)', { capability: 'blogTopics', input: { project: { title: 'ProjectFlow', description: 'Projektmanagement für kleine Teams' } } });
+
 const credits = await admin.firestore().doc(`tenants/${TENANT}/ai_credits/${new Date().toISOString().slice(0, 7)}`).get();
 console.log('\ncredits doc:', JSON.stringify(credits.data()));
 

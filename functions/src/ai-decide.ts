@@ -65,19 +65,24 @@ export interface GenerateRequest {
     /** JSON schema (strict: every property required, additionalProperties false). */
     schema: { name: string; schema: Record<string, unknown> };
     maxOutputTokens?: number;
+    /** BYOK: the user's own OpenAI key (resolved server-side via billing.resolveAiAccess). */
+    ownKey?: string;
+    /** Allow the hosted web search tool (blog research). */
+    webSearch?: boolean;
 }
 
 export const aiGenerate = async <T>(request: GenerateRequest): Promise<{ data: T; usage: ModelUsage }> => {
     const { model, effort, serviceTier } = tierModel(request.tier);
     let response: any;
     try {
-        response = await getClient().responses.create({
+        response = await getClient(request.ownKey).responses.create({
             model,
             service_tier: serviceTier,
             reasoning: { effort },
             instructions: request.instructions,
             input: request.input,
             max_output_tokens: request.maxOutputTokens || 2000,
+            ...(request.webSearch ? { tools: [{ type: 'web_search_preview' }] } : {}),
             text: { format: { type: 'json_schema', name: request.schema.name, schema: request.schema.schema, strict: true } }
         } as any);
     } catch (error) {

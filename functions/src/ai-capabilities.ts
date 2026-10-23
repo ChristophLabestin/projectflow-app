@@ -15,6 +15,21 @@ export interface CapabilityRequest {
     webSearch: boolean;
 }
 
+/** What `buildCapabilityRequest` returns: every capability has a strict JSON schema (Structured Outputs). */
+export interface CapabilitySpec extends CapabilityRequest {
+    schema: Record<string, unknown>;
+    /** Plain-text capabilities are wrapped in `{ text }`; `runAiCapability` unwraps them for the client. */
+    textResult: boolean;
+}
+
+/** Schema for plain-text results. */
+export const TEXT_RESULT_SCHEMA = {
+    type: 'object',
+    additionalProperties: false,
+    properties: { text: { type: 'string' } },
+    required: ['text']
+};
+
 export class CapabilityInputError extends Error {}
 
 type Input = Record<string, unknown>;
@@ -316,10 +331,13 @@ const BUILDERS = {
 export type AiCapability = keyof typeof BUILDERS;
 export const AI_CAPABILITIES = Object.keys(BUILDERS) as AiCapability[];
 
-export const buildCapabilityRequest = (capability: unknown, input: unknown, language: unknown): CapabilityRequest => {
+export const buildCapabilityRequest = (capability: unknown, input: unknown, language: unknown): CapabilitySpec => {
     const name = oneOf(capability, AI_CAPABILITIES);
     if (!name) throw new CapabilityInputError('Unknown AI capability');
-    return BUILDERS[name](asObject(input), normalizeLanguage(language));
+    const spec = BUILDERS[name](asObject(input), normalizeLanguage(language));
+    return spec.schema
+        ? { ...spec, schema: spec.schema, textResult: false }
+        : { ...spec, schema: TEXT_RESULT_SCHEMA, textResult: true };
 };
 
 // --- Image inputs ---
