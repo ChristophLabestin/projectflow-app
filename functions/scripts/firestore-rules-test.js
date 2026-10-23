@@ -96,6 +96,16 @@ const seedData = async (testEnv) => {
         await set('legal_acceptances/memberA/events/e1', { type: 'terms', version: 1, decision: 'accepted' });
         await set('legal_mail_jobs/terms_v1', { type: 'terms', version: 1, open: false });
 
+        const event = (projectId, extra = {}) => ({
+            v: 1, type: 'task.created', domain: 'task', actorId: 'ownerA', projectId,
+            actor: { kind: 'user', id: 'ownerA', name: 'Owner' }, object: { type: 'task', id: 'taskA', title: 'Task A' }, ...extra
+        });
+        await set(`${T}/activity/evA`, event('projectA'));
+        await set(`${T}/activity/evMember`, event('memberProject'));
+        await set(`${T}/activity/evWorkspace`, event(null, { type: 'project.created', domain: 'project' }));
+        await set(`${T}/insights_daily/latest`, { day: '2026-10-23' });
+        await set(`${T}/insights_reports/2026-W43`, { markdown: 'Report' });
+
         await set('tenants/tenantB', { tenantId: 'tenantB', name: 'Tenant B', ownerId: 'ownerB' });
         await set('tenants/tenantB/members/ownerB', { uid: 'ownerB', role: 'Owner' });
     });
@@ -319,6 +329,27 @@ const run = async () => {
         await check('member cannot forge consent event', 'deny', () =>
             member.collection('legal_acceptances/memberA/events').add({ type: 'terms', version: 1, decision: 'accepted' }));
         await check('platform admin cannot read mail jobs', 'deny', () => platformAdmin.doc('legal_mail_jobs/terms_v1').get());
+        // Activity stream (server-written; guests only for their projects, filtered by projectId)
+        const activity = (db) => db.collection(`${T}/activity`);
+        await check('member lists workspace activity', 'allow', () => activity(member).orderBy('createdAt', 'desc').limit(30).get());
+        await check('member reads workspace-level event', 'allow', () => member.doc(`${T}/activity/evWorkspace`).get());
+        await check('guest reads event of own project', 'allow', () => guest.doc(`${T}/activity/evA`).get());
+        await check('guest lists own project activity', 'allow', () => activity(guest).where('projectId', '==', 'projectA').get());
+        await check('guest lists own projects via in', 'allow', () => activity(guest).where('projectId', 'in', ['projectA']).get());
+        await check('guest cannot read other project event', 'deny', () => guest.doc(`${T}/activity/evMember`).get());
+        await check('guest cannot read workspace-level event', 'deny', () => guest.doc(`${T}/activity/evWorkspace`).get());
+        await check('guest cannot list unfiltered activity', 'deny', () => activity(guest).limit(30).get());
+        await check('guest cannot list other project activity', 'deny', () => activity(guest).where('projectId', '==', 'memberProject').get());
+        await check('outsider cannot read activity', 'deny', () => outsider.doc(`${T}/activity/evA`).get());
+        await check('owner cannot write activity', 'deny', () => owner.doc(`${T}/activity/forged`).set({ type: 'task.created', projectId: 'projectA' }));
+        await check('member cannot update activity', 'deny', () => member.doc(`${T}/activity/evA`).update({ type: 'x' }));
+        await check('admin cannot delete activity', 'deny', () => admin.doc(`${T}/activity/evA`).delete());
+        await check('member reads insights', 'allow', () => member.doc(`${T}/insights_daily/latest`).get());
+        await check('member reads insights report', 'allow', () => member.doc(`${T}/insights_reports/2026-W43`).get());
+        await check('guest cannot read insights', 'deny', () => guest.doc(`${T}/insights_daily/latest`).get());
+        await check('guest cannot read insights report', 'deny', () => guest.doc(`${T}/insights_reports/2026-W43`).get());
+        await check('owner cannot write insights', 'deny', () => owner.doc(`${T}/insights_daily/latest`).set({ day: 'x' }));
+
         // Removed Finance V2 module: its data stays in Firestore but is closed to clients.
         await check('owner cannot read legacy finance data', 'deny', () => owner.doc(`${T}/finance_accounts/acc1`).get());
         await check('member cannot write legacy finance data', 'deny', () => member.doc(`${T}/finance_journal/j1`).set({ amount: 1 }));
