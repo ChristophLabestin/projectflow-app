@@ -3803,6 +3803,9 @@ const en = {
     'activity.types.file.deleted': '{actor} deleted {object}',
     'activity.types.doc.created': '{actor} created {object}',
     'activity.types.doc.updated': '{actor} updated {object}',
+    'activity.types.doc.archived': '{actor} moved {object} to the trash',
+    'activity.types.doc.restored': '{actor} restored {object}',
+    'activity.types.doc.deleted': '{object} was deleted permanently',
     'activity.types.automation.ran': '{actor} ran on {object}',
     'activity.types.automation.failed': '{actor} failed on {object}',
     'activity.types.fallback': '{actor} · {object}',
@@ -3893,6 +3896,18 @@ const en = {
     'insights.report.copy': 'Copy',
     'insights.report.copied': 'Copied',
     'insights.report.error': 'The report could not be generated. Please try again later.',
+    'taskDetail.docs.title': 'Linked docs',
+    'taskDetail.docs.link': 'Link a wiki page',
+    'taskDetail.docs.new': 'New page for this task',
+    'taskDetail.docs.search': 'Search pages…',
+    'taskDetail.docs.noMatches': 'No matching pages.',
+    'taskDetail.docs.empty': 'No wiki pages linked yet.',
+    'taskDetail.docs.unlink': 'Unlink page',
+    'taskDetail.docs.mentioned': 'Mentioned on the page',
+    'taskDetail.docs.untitled': 'Untitled',
+    'taskDetail.docs.error': 'That did not work. Please try again.',
+    'search.section.docs': 'Wiki pages',
+    'search.scope.docs': 'Wiki',
 };
 
 export default en;

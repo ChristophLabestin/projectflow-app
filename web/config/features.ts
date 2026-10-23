@@ -13,7 +13,7 @@ export const isCoraStudioEnabled = () => import.meta.env.VITE_CORA_STUDIO_ENABLE
  */
 export const WORKSPACE_AREAS = {
     documents: false,
-    wiki: false,
+    wiki: true,
     flows: false,
 } as const;
 

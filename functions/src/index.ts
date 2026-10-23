@@ -140,6 +140,7 @@ export {
 } from './legal';
 // iOS backend work package (contracts C1-C5): side-effect triggers, reminders, nudges, Live Activity sync.
 export { onTaskWritten, onSubtaskWritten, onCommentCreated, onProjectWritten } from './task-triggers';
+export { onWikiDocWritten } from './wiki-triggers';
 export { computeWorkspaceInsights, refreshWorkspaceInsights, generateWeeklyInsightsReport } from './insights';
 export { deliverReminders } from './reminders';
 export { sendNudges } from './nudges';

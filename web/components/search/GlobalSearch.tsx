@@ -5,6 +5,10 @@ import { format, parseISO, isValid } from 'date-fns';
 import { auth } from '../../services/firebase';
 import { getAllWorkspaceProjects, getAllWorkspaceTasks } from '../../services/dataService';
 import { getWorkspaceInitiatives } from '../../services/domain/initiativesService';
+import { getAccessibleWikiDocs } from '../../services/wiki/wikiService';
+import { getActiveTenantId } from '../../services/domain/authService';
+import { isGuestInActiveWorkspace } from '../../services/internal/workspaceDataCore';
+import type { WikiDocMeta } from '../../types/wiki';
 import { isContainerProject } from '../../config/projectTemplates';
 import { useLanguage } from '../../context/LanguageContext';
 import { useTheme } from '../../context/ThemeContext';
@@ -29,7 +33,7 @@ import {
 // Types
 // ----------------------------------------------------------------------
 
-type ItemKind = 'project' | 'task' | 'initiative' | 'page' | 'action' | 'help';
+type ItemKind = 'project' | 'task' | 'initiative' | 'doc' | 'page' | 'action' | 'help';
 type Tone = 'primary' | 'success' | 'warning' | 'error' | 'muted';
 
 interface SearchItem {
@@ -61,9 +65,10 @@ interface WorkspaceIndex {
     projects: Project[];
     tasks: Task[];
     initiatives: Initiative[];
+    docs: WikiDocMeta[];
 }
 
-type SectionId = 'recent' | 'queries' | 'actions' | 'pages' | 'projects' | 'tasks' | 'initiatives' | 'help';
+type SectionId = 'recent' | 'queries' | 'actions' | 'pages' | 'projects' | 'tasks' | 'initiatives' | 'docs' | 'help';
 
 interface Section {
     id: SectionId;
@@ -90,7 +95,14 @@ const loadIndex = (tenantId?: string, force = false): Promise<WorkspaceIndex> =>
         getAllWorkspaceProjects(tenantId).catch(() => [] as Project[]),
         getAllWorkspaceTasks(tenantId).catch(() => [] as Task[]),
         getWorkspaceInitiatives(tenantId).catch(() => [] as Initiative[]),
-    ]).then(([projects, tasks, initiatives]) => ({ projects, tasks, initiatives }));
+    ]).then(async ([projects, tasks, initiatives]) => {
+        // Wiki pages: full members read all; guests only their projects' pages.
+        const wikiTenant = tenantId || getActiveTenantId();
+        const docs = wikiTenant
+            ? await getAccessibleWikiDocs(wikiTenant, isGuestInActiveWorkspace() ? projects.map((p) => p.id) : undefined).catch(() => [] as WikiDocMeta[])
+            : [];
+        return { projects, tasks, initiatives, docs };
+    });
     indexCache = { key, at: Date.now(), promise };
     return promise;
 };
@@ -123,7 +135,7 @@ const writeRecents = (next: { items: RecentItem[]; queries: string[] }) => {
 // Helpers
 // ----------------------------------------------------------------------
 
-const SCOPES: SearchScope[] = ['all', 'projects', 'tasks', 'initiatives', 'commands', 'help'];
+const SCOPES: SearchScope[] = ['all', 'projects', 'tasks', 'initiatives', 'docs', 'commands', 'help'];
 const ALL_SCOPE_LIMIT = 5;
 const SCOPED_LIMIT = 50;
 const PRIORITY_RANK: Record<string, number> = { Urgent: 4, High: 3, Medium: 2, Low: 1 };
@@ -347,7 +359,7 @@ export const GlobalSearch: React.FC<GlobalSearchProps> = ({ tenantId }) => {
     // ---- Data items ------------------------------------------------------------
 
     const dataItems = React.useMemo(() => {
-        if (!index) return { projects: [] as SearchItem[], tasks: [] as SearchItem[], initiatives: [] as SearchItem[] };
+        if (!index) return { projects: [] as SearchItem[], tasks: [] as SearchItem[], initiatives: [] as SearchItem[], docs: [] as SearchItem[] };
         const projectsById = new Map(index.projects.map((p) => [p.id, p]));
         const projectLabel = (projectId?: string) => {
             const project = projectId ? projectsById.get(projectId) : undefined;
@@ -408,7 +420,19 @@ export const GlobalSearch: React.FC<GlobalSearchProps> = ({ tenantId }) => {
             status: initiative.status,
         }));
 
-        return { projects, tasks, initiatives };
+        const docs: SearchItem[] = (index.docs || []).map((doc) => ({
+            key: `doc:${doc.id}`,
+            kind: 'doc',
+            title: doc.title || t('taskDetail.docs.untitled'),
+            subtitle: doc.projectId ? projectLabel(doc.projectId) : t('nav.wiki'),
+            keywords: [doc.searchText || doc.excerpt || ''],
+            icon: 'description',
+            tone: 'muted',
+            href: doc.spaceType === 'project' && doc.projectId ? `/project/${doc.projectId}/wiki/${doc.id}` : `/wiki/${doc.id}`,
+            projectId: doc.projectId || undefined,
+        }));
+
+        return { projects, tasks, initiatives, docs };
     }, [index, t, tenantId, uid]);
 
     // ---- Matching ---------------------------------------------------------------
@@ -464,6 +488,8 @@ export const GlobalSearch: React.FC<GlobalSearchProps> = ({ tenantId }) => {
                         || (a.dueDate || '9999').localeCompare(b.dueDate || '9999')));
                 case 'initiatives':
                     return browse('initiatives', t('nav.initiatives'), [...dataItems.initiatives].sort((a, b) => inCurrentProjectFirst(a, b) || byTitle(a, b)));
+                case 'docs':
+                    return browse('docs', t('search.section.docs'), [...dataItems.docs].sort((a, b) => inCurrentProjectFirst(a, b) || byTitle(a, b)));
                 case 'commands':
                     return [
                         { id: 'actions', title: t('search.section.actions'), items: actionItems, total: actionItems.length },
@@ -516,6 +542,7 @@ export const GlobalSearch: React.FC<GlobalSearchProps> = ({ tenantId }) => {
             push('tasks', t('nav.tasks'), tasks, 'tasks');
         }
         if (include('initiatives') && !parsed.hasTaskFilters) push('initiatives', t('nav.initiatives'), rank(dataItems.initiatives, { boostCurrentProject: true }), 'initiatives');
+        if (include('docs') && !parsed.hasTaskFilters) push('docs', t('search.section.docs'), rank(dataItems.docs, { boostCurrentProject: true }), 'docs');
         if (include('help') && !parsed.hasTaskFilters) push('help', t('topbar.helpCenter'), rank(helpItems), 'help');
         return list;
     }, [hasInput, recents, t, actionItems, pageItems, effectiveScope, parsed, rank, dataItems, filterTasks, helpItems, currentProjectId]);
@@ -642,6 +669,7 @@ export const GlobalSearch: React.FC<GlobalSearchProps> = ({ tenantId }) => {
         projects: t('nav.projects'),
         tasks: t('nav.tasks'),
         initiatives: t('nav.initiatives'),
+        docs: t('search.scope.docs'),
         commands: t('search.scope.commands'),
         help: t('topbar.helpCenter'),
     };
@@ -709,7 +737,7 @@ export const GlobalSearch: React.FC<GlobalSearchProps> = ({ tenantId }) => {
     };
 
     let runningIndex = 0;
-    const browsingData = !hasInput && ['projects', 'tasks', 'initiatives'].includes(effectiveScope);
+    const browsingData = !hasInput && ['projects', 'tasks', 'initiatives', 'docs'].includes(effectiveScope);
     const showLoading = indexLoading && !index && (hasInput || browsingData);
     const showEmpty = (hasInput || browsingData) && !showLoading && flatItems.length === 0;
 

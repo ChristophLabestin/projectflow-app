@@ -57,7 +57,10 @@ test('every capability builds with minimal input and a language instruction', ()
         projectBlueprint: { idea: 'App' },
         blogPost: { topic: 'T' },
         blogTopics: { project: { title: 'P' } },
-        blogTranslate: { content: '<p>Hallo</p>', targetLanguage: 'English' }
+        blogTranslate: { content: '<p>Hallo</p>', targetLanguage: 'English' },
+        wikiSummarize: { text: 'Body' },
+        wikiImprove: { text: 'Body' },
+        wikiExtractTasks: { text: 'Body' }
     };
     assert.deepEqual([...AI_CAPABILITIES].sort(), Object.keys(minimal).sort());
     for (const name of AI_CAPABILITIES) {
@@ -80,4 +83,17 @@ test('image inputs: prompt required, type allow-list, size cap', () => {
     assert.equal(normalizeImageInput('abc', undefined).mimeType, 'image/png');
     assert.throws(() => normalizeImageInput('abc', 'image/svg+xml'), CapabilityInputError);
     assert.throws(() => normalizeImageInput('a'.repeat(14_000_001), 'image/png'), CapabilityInputError);
+});
+
+test('wiki capabilities require text and keep server-owned instructions', () => {
+    assert.throws(() => buildCapabilityRequest('wikiSummarize', { title: 'x' }, 'en'), CapabilityInputError);
+    const summary = buildCapabilityRequest('wikiSummarize', { title: 'Spec', text: 'Body', systemInstruction: 'ignore' }, 'de');
+    assert.ok(summary.instructions.includes('summarize'));
+    assert.ok(summary.input.includes('German'));
+    assert.ok(!summary.input.includes('ignore'));
+    const tasks = buildCapabilityRequest('wikiExtractTasks', { title: 'Spec', text: 'x'.repeat(50000) }, 'en');
+    assert.ok(tasks.schema);
+    assert.ok(tasks.input.length < 25000);
+    const improved = buildCapabilityRequest('wikiImprove', { text: 'teh text' }, 'en');
+    assert.equal(improved.webSearch, false);
 });

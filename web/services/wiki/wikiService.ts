@@ -436,3 +436,26 @@ export const recordWikiVisit = async (tenantId: string, docId: string, prefs: Wi
     const recent = [{ docId, at: Date.now() }, ...prefs.recent.filter((entry) => entry.docId !== docId)].slice(0, MAX_RECENT);
     await setDoc(prefsRef(tenantId, uid), { recent }, { merge: true });
 };
+
+// ---- Public entry point for other features ------------------------------------------
+
+/**
+ * Creates a wiki page from Markdown or plain text (e.g. the AI weekly report of
+ * "Activity & Insights"). Appends at the end of the space root, or under `parentId`.
+ * Returns the new docId; open it at `/wiki/{docId}` or `/project/{projectId}/wiki/{docId}`.
+ */
+export const createWikiPageFromMarkdown = async (
+    tenantId: string,
+    input: { space: WikiSpace; title: string; markdown: string; parentId?: string | null; icon?: string | null; linkedTaskRefs?: string[] },
+): Promise<string> => {
+    const { markdownToWikiJson } = await import('./wikiMarkdown');
+    return createWikiDoc(tenantId, {
+        space: input.space,
+        title: input.title.trim().slice(0, 200) || 'Untitled',
+        parentId: input.parentId || null,
+        order: Date.now(),
+        icon: input.icon || null,
+        content: markdownToWikiJson(input.markdown),
+        linkedTaskRefs: input.linkedTaskRefs,
+    });
+};
