@@ -85,6 +85,8 @@ export interface DesktopBridge {
     platform: DesktopPlatform;
     windowKind: DesktopWindowKind;
     isDev: boolean;
+    /** Since shell 0.2: last UI language persisted by the shell. */
+    language?: 'de' | 'en';
     getWindowState(): Promise<DesktopWindowState | null>;
     onWindowStateChange(callback: (state: DesktopWindowState) => void): () => void;
     windowAction(action: 'minimize' | 'toggle-maximize' | 'close' | 'back' | 'forward'): void;

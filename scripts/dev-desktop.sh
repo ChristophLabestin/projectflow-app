@@ -8,7 +8,8 @@
 #   E2E_LOGIN=outsider bash scripts/dev-desktop.sh    # signed in as the outsider (no workspace)
 #   E2E_FUNCTIONS=0 bash scripts/dev-desktop.sh       # skip the Functions emulator (faster start)
 #   DESKTOP_REUSE=1 PORT=3000 bash scripts/dev-desktop.sh   # attach to an already running web-e2e server
-#   DESKTOP_KEEP_PROFILE=1 bash scripts/dev-desktop.sh      # reuse the dev profile (window state etc.)
+#   DESKTOP_KEEP_PROFILE=1 bash scripts/dev-desktop.sh      # also reuse the browser profile (localStorage, IndexedDB)
+#   DESKTOP_SETTINGS_DIR=… bash scripts/dev-desktop.sh      # where shell settings persist (default: ~/Library/Application Support/ProjectFlow Dev)
 #
 # The Electron renderer exposes Chrome DevTools Protocol on DEBUG_PORT (default 9333) for
 # Playwright/browser tooling: chromium.connectOverCDP('http://127.0.0.1:9333').
@@ -82,7 +83,10 @@ fi
 
 echo "Desktop app → http://localhost:$PORT (CDP on 127.0.0.1:$DEBUG_PORT)"
 cd "$DESKTOP"
-PF_DESKTOP_URL="http://localhost:$PORT" PF_DESKTOP_USER_DATA="$PROFILE_DIR" \
+# Shell settings (language, window layout, desktop preferences) survive the throw-away browser profile.
+SETTINGS_DIR="${DESKTOP_SETTINGS_DIR:-$HOME/Library/Application Support/ProjectFlow Dev}"
+mkdir -p "$SETTINGS_DIR"
+PF_DESKTOP_URL="http://localhost:$PORT" PF_DESKTOP_USER_DATA="$PROFILE_DIR" PF_DESKTOP_SETTINGS_DIR="$SETTINGS_DIR" \
     "$DESKTOP/node_modules/.bin/electron" . --remote-debugging-port="$DEBUG_PORT" ${MAIN_INSPECT_PORT:+--inspect="$MAIN_INSPECT_PORT"} &
 ELECTRON_PID=$!
 

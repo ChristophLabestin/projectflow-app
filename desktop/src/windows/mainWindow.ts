@@ -4,7 +4,7 @@ import { APP_ORIGIN, APP_URL, IS_DEV, appUrlFor, isAppUrl } from '../config';
 import { IPC, type DesktopCommandEvent, type DesktopWindowState, type TitleBarTheme, type WindowKind } from '../contract';
 import { hardenAppContents, openExternalSafe } from '../security';
 import { getSettings, updateSettings, visibleBounds } from '../store';
-import { labels } from '../labels';
+import { currentLanguage, labels } from '../labels';
 
 export const TITLEBAR_HEIGHT = 40;
 const TRAFFIC_LIGHT_X = 14;
@@ -30,7 +30,7 @@ export const windowWebPreferences = (kind: WindowKind) => ({
     webSecurity: true,
     spellcheck: true,
     backgroundThrottling: kind !== 'main',
-    additionalArguments: [`--pf-origin=${APP_ORIGIN}`, `--pf-window=${kind}`, `--pf-dev=${IS_DEV ? 1 : 0}`]
+    additionalArguments: [`--pf-origin=${APP_ORIGIN}`, `--pf-window=${kind}`, `--pf-dev=${IS_DEV ? 1 : 0}`, `--pf-lang=${currentLanguage()}`]
 });
 
 const windowState = (win: BrowserWindow): DesktopWindowState => ({

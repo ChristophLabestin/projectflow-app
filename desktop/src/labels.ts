@@ -1,4 +1,5 @@
 import { app } from 'electron';
+import { getSettings, updateSettings } from './store';
 
 /**
  * Native UI strings (menus, tray, context menu, offline page). The shell owns these few strings;
@@ -167,14 +168,20 @@ const DE: NativeLabels = {
 let current: NativeLabels | null = null;
 
 export const labels = (): NativeLabels => {
-    if (!current) current = app.getLocale().toLowerCase().startsWith('de') ? DE : EN;
+    if (!current) {
+        const saved = getSettings().language;
+        current = saved ? (saved === 'de' ? DE : EN) : app.getLocale().toLowerCase().startsWith('de') ? DE : EN;
+    }
     return current;
 };
+
+export const currentLanguage = (): 'de' | 'en' => (labels() === DE ? 'de' : 'en');
 
 /** Returns true when the language actually changed (menus/tray need a rebuild). */
 export const setLanguage = (language: unknown) => {
     if (language !== 'de' && language !== 'en') return false;
     const next = language === 'de' ? DE : EN;
+    if (getSettings().language !== language) updateSettings({ language });
     if (next === current) return false;
     current = next;
     return true;

@@ -6,6 +6,7 @@ import de from '../locales/de';
 import { enUS, de as deLocale } from 'date-fns/locale';
 import { Locale } from 'date-fns';
 import { getUserProfile, updateUserData } from '../services/domain/usersService';
+import { getDesktopBridge } from '../services/desktop';
 
 export type Language = 'en' | 'de';
 export type DateFormat = 'MM/dd/yyyy' | 'dd/MM/yyyy' | 'yyyy-MM-dd' | 'd. MMM yyyy' | 'dd.MM.yyyy' | 'MMM d, yyyy' | 'MMMM d, yyyy' | 'd MMMM yyyy' | 'yyyy/MM/dd';
@@ -296,8 +297,20 @@ export function LanguageProvider({
 
     const [language, setLanguageState] = useState<Language>(() => {
         const stored = localStorage.getItem(storageKey);
-        return isValidLanguage(stored) ? stored : defaultLanguage;
+        if (isValidLanguage(stored)) return stored;
+        // Desktop app: the shell remembers the last language even when the browser profile is new.
+        const desktopLanguage = getDesktopBridge()?.language;
+        return isValidLanguage(desktopLanguage) ? desktopLanguage : defaultLanguage;
     });
+
+    // Language changes in another tab / desktop window (shared localStorage) apply here too.
+    useEffect(() => {
+        const handleStorage = (event: StorageEvent) => {
+            if (event.key === storageKey && isValidLanguage(event.newValue)) setLanguageState(event.newValue);
+        };
+        window.addEventListener('storage', handleStorage);
+        return () => window.removeEventListener('storage', handleStorage);
+    }, [storageKey]);
     // Without an explicit preference the date format follows the UI language (de -> dd.MM.yyyy).
     const [dateFormatPreference, setDateFormatState] = useState<DateFormat | null>(
         () => (localStorage.getItem('pf-date-format') as DateFormat) || null

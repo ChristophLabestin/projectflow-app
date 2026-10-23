@@ -29,6 +29,7 @@ const argValue = (name: string) => {
 const appOrigin = argValue('pf-origin');
 const windowKind = (argValue('pf-window') || 'main') as WindowKind;
 const isDev = argValue('pf-dev') === '1';
+const language = argValue('pf-lang') === 'de' ? 'de' : 'en';
 const platform = process.platform;
 
 const subscribe = <T>(channel: string, callback: (payload: T) => void) => {
@@ -57,6 +58,8 @@ if (location.origin === appOrigin) {
         platform,
         windowKind,
         isDev,
+        /** Last UI language known to the shell (persisted); the web app's fallback when it has none stored. */
+        language,
         getWindowState: (): Promise<DesktopWindowState> => ipcRenderer.invoke(IPC.windowState),
         onWindowStateChange: (callback: (state: DesktopWindowState) => void) => subscribe(IPC.windowStateChanged, callback),
         windowAction: (action: WindowAction) => ipcRenderer.send(IPC.windowAction, action),

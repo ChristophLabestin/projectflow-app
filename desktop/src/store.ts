@@ -33,6 +33,8 @@ export interface DesktopSettings {
     recents: { path: string; title: string }[];
     /** Extra windows restored on launch. */
     secondaryWindows: { path: string; bounds?: Rectangle }[];
+    /** UI language chosen in the web app; drives native strings and the web app's initial language. */
+    language?: 'de' | 'en';
 }
 
 const DEFAULTS: DesktopSettings = {
@@ -53,7 +55,11 @@ const DEFAULTS: DesktopSettings = {
 let cache: DesktopSettings | null = null;
 let writeTimer: NodeJS.Timeout | null = null;
 
-const filePath = () => path.join(app.getPath('userData'), 'settings.json');
+/**
+ * Shell settings live in userData; the dev script points PF_DESKTOP_SETTINGS_DIR at a stable folder so they survive
+ * its throw-away browser profiles (language, window layout, preferences).
+ */
+const filePath = () => path.join(process.env.PF_DESKTOP_SETTINGS_DIR || app.getPath('userData'), 'settings.json');
 
 export const getSettings = (): DesktopSettings => {
     if (cache) return cache;

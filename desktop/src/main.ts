@@ -1,4 +1,4 @@
-import { app, globalShortcut } from 'electron';
+import { app, globalShortcut, session } from 'electron';
 import { startDayFlow, stopDayFlow } from './features/dayFlow';
 import { filesFromArgv, queueFilesForFocus } from './features/files';
 import { refreshTouchBar } from './features/focus';
@@ -121,6 +121,8 @@ if (!app.requestSingleInstanceLock()) {
     app.on('before-quit', () => {
         setQuitting();
         flushSettings();
+        // localStorage (language, theme, …) is written lazily by Chromium; make sure it reaches disk.
+        session.defaultSession.flushStorageData();
     });
 
     app.on('will-quit', () => {
