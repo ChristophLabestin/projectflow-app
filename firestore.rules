@@ -369,6 +369,56 @@ service cloud.firestore {
         allow read, write: if authed() && request.auth.uid == userId && isTenantMember(tenantId);
       }
 
+      // Wiki & Docs (brain/plans/wiki-concept.md). Workspace pages: full members only.
+      // Project pages: like project tasks (full members + guests of that project).
+      // The page body lives in chunks below the meta doc so the tree stays cheap.
+      match /docs/{docId} {
+        function docPath() {
+          return /databases/$(database)/documents/tenants/$(tenantId)/docs/$(docId);
+        }
+        function canAccessDocSpace(data) {
+          return isFullMember(tenantId) || (
+            data.spaceType == 'project' && data.projectId is string &&
+            canAccessProjectById(tenantId, data.projectId)
+          );
+        }
+        function validSpace(data) {
+          return data.tenantId == tenantId && (
+            (data.spaceType == 'workspace' && data.projectId == null) ||
+            (data.spaceType == 'project' && data.projectId is string && projectExists(tenantId, data.projectId))
+          );
+        }
+
+        allow read: if canAccessDocSpace(resource.data);
+        allow create: if validSpace(request.resource.data) &&
+          request.resource.data.createdBy == request.auth.uid &&
+          canAccessDocSpace(request.resource.data);
+        allow update: if canAccessDocSpace(resource.data) &&
+          !request.resource.data.diff(resource.data).affectedKeys().hasAny(['tenantId', 'spaceType', 'projectId', 'createdBy', 'createdAt']);
+        allow delete: if canAccessDocSpace(resource.data) &&
+          (isTenantAdmin(tenantId) || resource.data.createdBy == request.auth.uid);
+
+        match /body/{chunkId} {
+          allow read: if canAccessDocSpace(get(docPath()).data);
+          allow create, update: if canAccessDocSpace(getAfter(docPath()).data);
+          allow delete: if exists(docPath()) && canAccessDocSpace(get(docPath()).data);
+        }
+
+        match /versions/{versionId} {
+          allow read, delete: if exists(docPath()) && canAccessDocSpace(get(docPath()).data);
+          allow create: if canAccessDocSpace(getAfter(docPath()).data) &&
+            request.resource.data.createdBy == request.auth.uid;
+          allow update: if false;
+        }
+
+        // Presence heartbeat ("X is editing"): everyone with access reads, each user writes their own.
+        match /editors/{userId} {
+          allow read: if exists(docPath()) && canAccessDocSpace(get(docPath()).data);
+          allow write: if authed() && request.auth.uid == userId &&
+            exists(docPath()) && canAccessDocSpace(get(docPath()).data);
+        }
+      }
+
       // finance_* collections: data of the removed Finance V2 module (2026-10-23). Kept in
       // Firestore but closed to clients — the generic rules below exclude them.
 
@@ -412,7 +462,8 @@ service cloud.firestore {
               'files',
               'file_upload_drafts',
               'notifications',
-              'notificationDeliveryLogs'
+              'notificationDeliveryLogs',
+              'docs'
             ]
           );
       }

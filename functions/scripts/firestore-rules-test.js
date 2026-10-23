@@ -76,6 +76,13 @@ const seedData = async (testEnv) => {
         await set(`${T}/notificationDeliveryLogs/logMember`, { notificationId: 'nMember', userId: 'memberA', channel: 'fcm', status: 'sent' });
         await set(`${T}/notificationDeliveryLogs/logOwner`, { notificationId: 'nOwner', userId: 'ownerA', channel: 'fcm', status: 'sent' });
 
+        const wikiMeta = (extra) => ({ tenantId: 'tenantA', parentId: null, order: 1, title: 'Page', createdBy: 'memberA', ...extra });
+        await set(`${T}/docs/wsDoc`, wikiMeta({ spaceType: 'workspace', projectId: null }));
+        await set(`${T}/docs/wsDoc/body/0`, { i: 0, data: '{}' });
+        await set(`${T}/docs/wsDoc/versions/v1`, { data: '{}', createdBy: 'memberA' });
+        await set(`${T}/docs/projDoc`, wikiMeta({ spaceType: 'project', projectId: 'projectA' }));
+        await set(`${T}/docs/projDoc/body/0`, { i: 0, data: '{}' });
+        await set(`${T}/docs/otherProjDoc`, wikiMeta({ spaceType: 'project', projectId: 'memberProject' }));
         await set('legal_documents/terms', { type: 'terms', currentVersion: 1, versions: [] });
         await set('legal_documents/terms/versions/1', { type: 'terms', version: 1, status: 'published' });
         await set('legal_documents/terms/drafts/current', { type: 'terms', title: { de: 'Entwurf', en: 'Draft' } });
@@ -285,6 +292,47 @@ const run = async () => {
         await check('member cannot forge consent event', 'deny', () =>
             member.collection('legal_acceptances/memberA/events').add({ type: 'terms', version: 1, decision: 'accepted' }));
         await check('platform admin cannot read mail jobs', 'deny', () => platformAdmin.doc('legal_mail_jobs/terms_v1').get());
+        // Wiki & Docs
+        const newMeta = (uid, extra) => ({ tenantId: 'tenantA', parentId: null, order: 2, title: 'New', createdBy: uid, ...extra });
+        await check('member reads workspace doc', 'allow', () => member.doc(`${T}/docs/wsDoc`).get());
+        await check('member reads workspace doc body', 'allow', () => member.doc(`${T}/docs/wsDoc/body/0`).get());
+        await check('guest cannot read workspace doc', 'deny', () => guest.doc(`${T}/docs/wsDoc`).get());
+        await check('guest cannot read workspace doc body', 'deny', () => guest.doc(`${T}/docs/wsDoc/body/0`).get());
+        await check('guest cannot list all docs', 'deny', () => guest.collection(`${T}/docs`).get());
+        await check('guest reads own project doc', 'allow', () => guest.doc(`${T}/docs/projDoc`).get());
+        await check('guest lists own project docs', 'allow', () =>
+            guest.collection(`${T}/docs`).where('spaceType', '==', 'project').where('projectId', '==', 'projectA').get());
+        await check('guest cannot read other project doc', 'deny', () => guest.doc(`${T}/docs/otherProjDoc`).get());
+        await check('guest cannot list other project docs', 'deny', () =>
+            guest.collection(`${T}/docs`).where('spaceType', '==', 'project').where('projectId', '==', 'memberProject').get());
+        await check('guest edits own project doc', 'allow', () => guest.doc(`${T}/docs/projDoc`).update({ title: 'Edited' }));
+        await check('guest writes own project doc body', 'allow', () => guest.doc(`${T}/docs/projDoc/body/0`).set({ i: 0, data: '{"a":1}' }));
+        await check('guest creates page in own project', 'allow', () =>
+            guest.doc(`${T}/docs/guestNew`).set(newMeta('guestA', { spaceType: 'project', projectId: 'projectA' })));
+        await check('guest cannot create workspace page', 'deny', () =>
+            guest.doc(`${T}/docs/guestWs`).set(newMeta('guestA', { spaceType: 'workspace', projectId: null })));
+        await check('member creates workspace page', 'allow', () =>
+            member.doc(`${T}/docs/memberNew`).set(newMeta('memberA', { spaceType: 'workspace', projectId: null })));
+        await check('member cannot forge createdBy', 'deny', () =>
+            member.doc(`${T}/docs/forged`).set(newMeta('ownerA', { spaceType: 'workspace', projectId: null })));
+        await check('member cannot create page for missing project', 'deny', () =>
+            member.doc(`${T}/docs/ghost`).set(newMeta('memberA', { spaceType: 'project', projectId: 'nope' })));
+        await check('member cannot move page to another project', 'deny', () =>
+            member.doc(`${T}/docs/projDoc`).update({ projectId: 'memberProject' }));
+        await check('guest cannot delete page of another author', 'deny', () => guest.doc(`${T}/docs/projDoc`).delete());
+        await check('member writes version', 'allow', () =>
+            member.doc(`${T}/docs/wsDoc/versions/v2`).set({ data: '{}', createdBy: 'memberA' }));
+        await check('member cannot forge version author', 'deny', () =>
+            member.doc(`${T}/docs/wsDoc/versions/v3`).set({ data: '{}', createdBy: 'ownerA' }));
+        await check('member cannot rewrite version', 'deny', () =>
+            member.doc(`${T}/docs/wsDoc/versions/v1`).update({ data: 'x' }));
+        await check('member writes own editor presence', 'allow', () =>
+            member.doc(`${T}/docs/wsDoc/editors/memberA`).set({ uid: 'memberA', at: 1 }));
+        await check('member cannot write presence for others', 'deny', () =>
+            member.doc(`${T}/docs/wsDoc/editors/ownerA`).set({ uid: 'ownerA', at: 1 }));
+        await check('outsider cannot read docs', 'deny', () => outsider.doc(`${T}/docs/wsDoc`).get());
+        await check('admin deletes any workspace page', 'allow', () => admin.doc(`${T}/docs/memberNew`).delete());
+        await check('author deletes own page', 'allow', () => guest.doc(`${T}/docs/guestNew`).delete());
         // Removed Finance V2 module: its data stays in Firestore but is closed to clients.
         await check('owner cannot read legacy finance data', 'deny', () => owner.doc(`${T}/finance_accounts/acc1`).get());
         await check('member cannot write legacy finance data', 'deny', () => member.doc(`${T}/finance_journal/j1`).set({ amount: 1 }));
