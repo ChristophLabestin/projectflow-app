@@ -135,6 +135,7 @@ public struct PFDock: View {
 
     let axis: Axis
     let accessory: PFDockAccessory?
+    let focus: PFDockFocus?
 
     private static let searchId = "__search"
     private static let accessoryId = "__accessory"
@@ -144,9 +145,10 @@ public struct PFDock: View {
     /// `axis: .vertical` turns the dock into a side rail (iPhone Duo opened); `accessory` adds one extra
     /// toggle after search (the rail's list-column switch).
     public init(items: [PFDockItem], selection: Binding<String>, searchLabel: String, isSearchSelected: Bool,
-                axis: Axis = .horizontal, accessory: PFDockAccessory? = nil,
+                axis: Axis = .horizontal, accessory: PFDockAccessory? = nil, focus: PFDockFocus? = nil,
                 onSearch: @escaping () -> Void, onReselect: @escaping (String) -> Void) {
         self.axis = axis
+        self.focus = focus
         self.accessory = accessory
         self.items = items
         self._selection = selection
@@ -162,6 +164,14 @@ public struct PFDock: View {
         let vertical = axis == .vertical
         let layout = vertical ? AnyLayout(VStackLayout(spacing: 2)) : AnyLayout(HStackLayout(spacing: 2))
         return layout {
+            if vertical, let focus {
+                focusItem(focus)
+                Capsule()
+                    .fill(PFColor.hairlineStrong)
+                    .frame(width: 28, height: 1)
+                    .padding(.vertical, 3)
+                    .accessibilityHidden(true)
+            }
             ForEach(items) { item in
                 itemButton(id: item.id, title: item.title, systemImage: item.systemImage, badge: item.badge) {
                     if item.id == selection && !isSearchSelected {
@@ -262,6 +272,59 @@ public struct PFDockAccessory {
     }
 }
 
+/// The running focus as the rail's first item (side rail only): a dock-styled "Fokus" entry with a live
+/// pulse; tap opens the focus room, completing is a VoiceOver action (and lives in the room itself).
+public struct PFDockFocus {
+    let label: String
+    let accessibilityLabel: String
+    let completeLabel: String
+    let isBlocked: Bool
+    let onOpen: () -> Void
+    let onComplete: () -> Void
+
+    public init(label: String, accessibilityLabel: String, completeLabel: String, isBlocked: Bool,
+                onOpen: @escaping () -> Void, onComplete: @escaping () -> Void) {
+        self.label = label
+        self.accessibilityLabel = accessibilityLabel
+        self.completeLabel = completeLabel
+        self.isBlocked = isBlocked
+        self.onOpen = onOpen
+        self.onComplete = onComplete
+    }
+}
+
+extension PFDock {
+    func focusItem(_ focus: PFDockFocus) -> some View {
+        let tint = focus.isBlocked ? PFColor.danger : PFColor.primary
+        return Button {
+            PFHaptics.selection()
+            focus.onOpen()
+        } label: {
+            VStack(spacing: 3) {
+                Image(systemName: "scope")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundStyle(tint)
+                    .frame(width: 28, height: 24)
+                    .overlay(alignment: .topTrailing) {
+                        PFPulseDot(color: tint)
+                            .scaleEffect(0.8)
+                            .offset(x: 3, y: -1)
+                    }
+                Text(focus.label)
+                    .pfText(.tab)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+                    .foregroundStyle(PFColor.textMain)
+            }
+            .frame(width: 58, height: 56)
+            .contentShape(.rect(cornerRadius: 19))
+        }
+        .buttonStyle(PFDockPressStyle())
+        .accessibilityLabel(focus.accessibilityLabel)
+        .accessibilityAction(named: focus.completeLabel) { focus.onComplete() }
+    }
+}
+
 struct PFDockPressStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
@@ -278,15 +341,11 @@ public struct PFFocusBar: View {
     let subtitle: String
     let completeLabel: String
     let isBlocked: Bool
-    let axis: Axis
     let onOpen: () -> Void
     let onComplete: () -> Void
 
-    /// `axis: .vertical` is the compact form that stacks above the side rail (iPhone Duo outer display):
-    /// pulse + focus glyph opens the room, the check completes; title and status are spoken, not shown.
-    public init(title: String, subtitle: String, completeLabel: String, isBlocked: Bool = false, axis: Axis = .horizontal,
+    public init(title: String, subtitle: String, completeLabel: String, isBlocked: Bool = false,
                 onOpen: @escaping () -> Void, onComplete: @escaping () -> Void) {
-        self.axis = axis
         self.title = title
         self.subtitle = subtitle
         self.completeLabel = completeLabel
@@ -296,43 +355,6 @@ public struct PFFocusBar: View {
     }
 
     public var body: some View {
-        if axis == .vertical { vertical } else { horizontal }
-    }
-
-    private var vertical: some View {
-        VStack(spacing: 8) {
-            Button(action: onOpen) {
-                VStack(spacing: 6) {
-                    PFPulseDot(color: isBlocked ? PFColor.danger : PFColor.primary)
-                    Image(systemName: "scope")
-                        .font(.system(size: 18, weight: .semibold))
-                        .foregroundStyle(PFColor.textMain)
-                }
-                .frame(width: 58, height: 58)
-                .contentShape(.rect)
-            }
-            .buttonStyle(.pfPressable)
-            .accessibilityLabel("\(title), \(subtitle)")
-            Button {
-                PFHaptics.success()
-                onComplete()
-            } label: {
-                Image(systemName: "checkmark")
-                    .font(.system(size: 15, weight: .bold))
-                    .foregroundStyle(PFColor.onPrimary)
-                    .frame(width: 44, height: 44)
-                    .background(PFColor.primary, in: .circle)
-            }
-            .buttonStyle(.pfPressable)
-            .accessibilityLabel(completeLabel)
-        }
-        .padding(.vertical, 7)
-        .frame(width: PFDock.railWidth)
-        .pfFrost(in: RoundedRectangle(cornerRadius: 26, style: .continuous))
-        .accessibilityElement(children: .contain)
-    }
-
-    private var horizontal: some View {
         HStack(spacing: 12) {
             Button(action: onOpen) {
                 HStack(spacing: 12) {

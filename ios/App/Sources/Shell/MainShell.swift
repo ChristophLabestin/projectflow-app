@@ -74,13 +74,7 @@ struct MainShell: View {
                 // Same gap to the screen edge (right and bottom) as to the content's right edge, so the
                 // rail sits concentric in the rounded corner.
                 let gap = ((side + PFSpace.page - PFDock.railWidth) / 2).rounded()
-                VStack(spacing: 10) {
-                    if let focus = model.profile?.focus {
-                        focusBar(focus, axis: .vertical)
-                            .transition(.move(edge: .trailing).combined(with: .opacity))
-                    }
-                    dock(axis: .vertical, listToggle: false)
-                }
+                dock(axis: .vertical, listToggle: false, showsFocus: true)
                 .padding(.trailing, gap)
                 .padding(.bottom, gap)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
@@ -101,7 +95,7 @@ struct MainShell: View {
         @Bindable var router = model.router
         VStack(spacing: 10) {
             if let focus = model.profile?.focus, !router.isFocusRoomOpen, sideRegionWidth == nil {
-                focusBar(focus, axis: .horizontal)
+                focusBar(focus)
                     .frame(maxWidth: isWide ? 560 : nil)
                 .transition(.move(edge: .bottom).combined(with: .opacity))
             }
@@ -117,13 +111,12 @@ struct MainShell: View {
     }
 
     /// Bottom dock on iPhone, side rail when opened or in the closed Duo's side region. The rail's extra toggle folds the list column away.
-    private func focusBar(_ focus: PFModel.FocusState, axis: Axis) -> some View {
+    private func focusBar(_ focus: PFModel.FocusState) -> some View {
         PFFocusBar(
             title: focus.title,
             subtitle: FocusController.subtitle(for: focus),
             completeLabel: L10n.t("focus.complete"),
             isBlocked: focus.status == .blocked,
-            axis: axis,
             onOpen: { model.router.isFocusRoomOpen = true },
             onComplete: { Task { await FocusController(model: model).complete() } }
         )
@@ -131,7 +124,7 @@ struct MainShell: View {
 
     private var hasBottomDock: Bool { !isWide && sideRegionWidth == nil }
 
-    private func dock(axis: Axis, listToggle: Bool) -> some View {
+    private func dock(axis: Axis, listToggle: Bool, showsFocus: Bool = false) -> some View {
         @Bindable var router = model.router
         let hasListColumn = listToggle && (router.isSearchActive || router.tab != .today)
         return PFDock(
@@ -151,6 +144,13 @@ struct MainShell: View {
                                   systemImage: "sidebar.left", isOn: !router.isListColumnHidden,
                                   action: { router.isListColumnHidden.toggle() })
                 : nil,
+            focus: showsFocus ? model.profile?.focus.map { focus in
+                PFDockFocus(label: L10n.t("focus.room.runningNoTime"),
+                            accessibilityLabel: "\(focus.title), \(FocusController.subtitle(for: focus))",
+                            completeLabel: L10n.t("focus.complete"), isBlocked: focus.status == .blocked,
+                            onOpen: { router.isFocusRoomOpen = true },
+                            onComplete: { Task { await FocusController(model: model).complete() } })
+            } : nil,
             onSearch: { withAnimation(PFMotion.snappy) { router.isSearchActive.toggle() } },
             onReselect: { router.reselect(AppTab(rawValue: $0) ?? .today) }
         )
