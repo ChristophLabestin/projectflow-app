@@ -249,39 +249,9 @@
     margin: 0 -12px;
 }
 
-// ---- Ask CORA ---------------------------------------------------------------
+// ---- Ask AI -----------------------------------------------------------------
 
-.help-cora {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    padding: 16px;
-    border-radius: var(--radius-card);
-    background: var(--color-surface-hover-light);
-}
-
-.help-cora__head {
-    display: flex;
-    gap: 12px;
-
-    > .material-symbols-outlined {
-        font-size: 1.25rem;
-        color: var(--brand-violet-text);
-    }
-}
-
-.help-cora__title {
-    font-size: 0.875rem;
-    font-weight: 600;
-    color: var(--color-text-main);
-}
-
-.help-cora__subtitle {
-    font-size: 0.8125rem;
-    color: var(--color-text-muted);
-}
-
-.help-cora__ask {
+.help-ask-ai {
     align-self: flex-start;
     max-width: 100%;
     padding: 8px 14px;
@@ -298,24 +268,6 @@
     &:hover {
         opacity: 0.9;
     }
-
-    &:disabled {
-        cursor: progress;
-        opacity: 0.6;
-    }
-}
-
-.help-cora__answer,
-.help-cora__error {
-    margin: 0;
-    font-size: 0.875rem;
-    line-height: 1.6;
-    white-space: pre-wrap;
-    color: var(--color-text-main);
-}
-
-.help-cora__error {
-    color: var(--color-error);
 }
 
 // ---- Article ------------------------------------------------------------------

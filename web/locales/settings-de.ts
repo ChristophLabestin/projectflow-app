@@ -158,7 +158,7 @@ const deSettings = {
     'settings.general.onboarding.toast.restarted': 'Das Dashboard-Onboarding wird beim nächsten Besuch erneut angezeigt.',
     'settings.general.onboarding.errors.restartFailed': 'Onboarding konnte nicht neu gestartet werden. Bitte versuche es erneut.',
     'settings.prebeta.title': 'Pre-Alpha-Einstellungen',
-    'settings.prebeta.subtitle': 'Konfiguriere deine persönlichen CORA-Einstellungen für die Pre-Alpha-Phase.',
+    'settings.prebeta.subtitle': 'Konfiguriere deine persönlichen KI-Einstellungen für die Pre-Alpha-Phase.',
     'settings.prebeta.notice.title': 'Pre-Alpha-Hinweis',
     'settings.prebeta.notice.body': 'In dieser Phase stellen wir keinen systemweiten Gemini-API-Schlüssel bereit. Du musst deinen eigenen Gemini-API-Schlüssel verwenden. Konten können zurückgesetzt werden.',
     'settings.prebeta.apiKey.label': 'Gemini API-Schlüssel',

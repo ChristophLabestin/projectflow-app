@@ -54,7 +54,7 @@ These routes are rendered inside the authenticated app shell/layout.
 - [x] `/tasks` — Global tasks overview (SCSS refactor, common controls, board + modal alignment)
 - [x] `/calendar` — Global calendar view (SCSS refactor, common components, schedule modal + tooltip alignment) Phones (< 768 px, week view): date strip + agenda of the selected day (`.calendar-agenda`).
 - [ ] `/finance*` — **removed 2026-10-23** (Finance V2 cockpit, bookings, receivables, payables, bank, tax, reports, functions, exports, sync, settings). Old links land on 404. Backend removed too: the 47 `finance-v2` Cloud Functions were deleted in production (139 → 92 functions); the `finance_*` tenant collections stay in Firestore but are closed to clients (no read/write rule, covered by the rules test).
-- [x] `/brainstorm` — Brainstorming / ideation hub (SCSS refactor, AI Studio components aligned to common Button/Card/TextArea/Badge) — **disabled by default since 2026-09-26** (`VITE_CORA_STUDIO_ENABLED`, `web/config/features.ts`): redirects to `/`, nav entries hidden; code kept.
+- [x] `/brainstorm` — removed 2026-10-23 together with CORA / AI Studio; redirects to `/` (`Router.tsx`). The in-app AI (✦, ⌘J) replaced it.
 - [x] `/create` — Legacy create-project deep link that opens the global Create Project modal with one project purpose field, optional success criteria/cadence, and returns to `/projects`
 - [x] `/team` — Team / members management
 - [x] `/files` — Documents: all files the user may see (list/grid, filters, trash, quota); `?file=<id>` opens a preview, `?type=image` presets the type filter (brain/plans/files-concept.md)

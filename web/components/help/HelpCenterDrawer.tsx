@@ -4,7 +4,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { Input } from '../ui/Input';
 import { useHelpCenter } from '../../context/HelpCenterContext';
 import { useLanguage } from '../../context/LanguageContext';
-import { answerQuestionWithContext } from '../../services/aiSearchService';
+import { useInAppAi } from '../../hooks/useInAppAi';
 import { HelpArticleView } from './HelpArticleView';
 import { searchHelp } from './helpSearch';
 import { getHelpContextForPath } from './helpRouting';
@@ -12,7 +12,7 @@ import type { HelpArticle, HelpCategoryId } from './helpTypes';
 import { useHelpContent } from './useHelpContent';
 import './help-center.scss';
 
-const CATEGORY_ORDER: HelpCategoryId[] = ['basics', 'work', 'planning', 'collaboration', 'cora', 'workspace'];
+const CATEGORY_ORDER: HelpCategoryId[] = ['basics', 'work', 'planning', 'collaboration', 'ai', 'workspace'];
 
 const ArticleRow = ({ article, onOpen }: { article: HelpArticle; onOpen: (id: string) => void }) => (
     <button type="button" className="help-row" onClick={() => onOpen(article.id)}>
@@ -39,14 +39,11 @@ export const HelpCenterDrawer = () => {
     const { t } = useLanguage();
     const location = useLocation();
     const navigate = useNavigate();
+    const { enabled: aiEnabled } = useInAppAi();
 
     const [shouldRender, setShouldRender] = useState(isOpen);
-    const [aiAnswer, setAiAnswer] = useState<string | null>(null);
-    const [aiError, setAiError] = useState<string | null>(null);
-    const [isAiLoading, setIsAiLoading] = useState(false);
     const bodyRef = useRef<HTMLDivElement | null>(null);
     const searchInputRef = useRef<HTMLInputElement | null>(null);
-    const aiRequestRef = useRef(0);
 
     const content = useHelpContent(shouldRender);
     const articles = content?.articles ?? [];
@@ -105,13 +102,6 @@ export const HelpCenterDrawer = () => {
         return () => window.clearTimeout(timeout);
     }, [activeArticle, activeSectionId, isOpen, trimmedQuery]);
 
-    useEffect(() => {
-        aiRequestRef.current += 1;
-        setAiAnswer(null);
-        setAiError(null);
-        setIsAiLoading(false);
-    }, [trimmedQuery]);
-
     const openArticle = (articleId: string, sectionId?: string) => {
         setSearchQuery('');
         setActivePage(articleId);
@@ -128,21 +118,10 @@ export const HelpCenterDrawer = () => {
         navigate(href);
     };
 
-    const handleAskCora = async () => {
+    const handleAskAi = () => {
         if (!trimmedQuery) return;
-        const requestId = aiRequestRef.current + 1;
-        aiRequestRef.current = requestId;
-        setIsAiLoading(true);
-        setAiError(null);
-        setAiAnswer(null);
-        try {
-            const response = await answerQuestionWithContext(trimmedQuery);
-            if (aiRequestRef.current === requestId) setAiAnswer(response.answer);
-        } catch (error: any) {
-            if (aiRequestRef.current === requestId) setAiError(error?.message || t('help.drawer.aiError'));
-        } finally {
-            if (aiRequestRef.current === requestId) setIsAiLoading(false);
-        }
+        closeHelpCenter();
+        window.dispatchEvent(new CustomEvent('pf:open-ai-panel', { detail: { prompt: trimmedQuery } }));
     };
 
     if (!shouldRender) return null;
@@ -172,20 +151,11 @@ export const HelpCenterDrawer = () => {
                     ))}
                 </div>
             )}
-            <div className="help-cora">
-                <div className="help-cora__head">
-                    <span className="material-symbols-outlined" aria-hidden="true">auto_awesome</span>
-                    <div>
-                        <div className="help-cora__title">{t('help.drawer.askAiTitle')}</div>
-                        <div className="help-cora__subtitle">{t('help.drawer.askAiSubtitle')}</div>
-                    </div>
-                </div>
-                <button type="button" className="help-cora__ask" onClick={handleAskCora} disabled={isAiLoading}>
-                    {isAiLoading ? t('help.drawer.askAiLoading') : t('help.drawer.askAiPrompt').replace('{query}', trimmedQuery)}
+            {aiEnabled && (
+                <button type="button" className="help-ask-ai" onClick={handleAskAi}>
+                    {t('help.drawer.askAi')}
                 </button>
-                {aiAnswer && <p className="help-cora__answer">{aiAnswer}</p>}
-                {aiError && <p className="help-cora__error">{aiError}</p>}
-            </div>
+            )}
         </div>
     );
 

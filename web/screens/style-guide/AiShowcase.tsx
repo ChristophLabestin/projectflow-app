@@ -9,8 +9,8 @@ import type { AiProposalPreview } from '../../services/aiAssistClient';
 import './ai-showcase.scss';
 
 /**
- * `/ui` → AI: the in-app AI design system with simulated streaming (no model calls).
- * Field ✦ (popover at the field/selection) and ⌘J (popover top centre, chips, suggestions, card).
+ * `/ui` → AI: the in-app AI design system, variants A/B/C side by side (static) plus live demos
+ * with simulated streaming (no model calls): field ✦ (popover at the field) and ⌘J (top centre).
  */
 const FIELD_ANSWER = 'After a password reset, the iOS app rejects the new password with "invalid session". Steps: 1) reset via email link, 2) sign in on iOS 18 with the new password. Expected: sign-in works. Actual: "Invalid session" until the app is reinstalled.';
 const PANEL_ANSWER = '**Overdue (2):**\n- [Conflict resolution for offline edits](pf://task/p-app/t-sync) — urgent, since Oct 22\n- [Set up 301 redirects](pf://task/p-website/t-redirects) — since Oct 19\n\nStart with the offline conflicts; I prepared a subtask for the regression test below.';
@@ -53,8 +53,50 @@ const useFakeStream = () => {
     return { text, phase, start, reset };
 };
 
+type Variant = 'a' | 'b' | 'c';
+const VARIANTS: Variant[] = ['a', 'b', 'c'];
+
+/** Static, in-place popovers for the side-by-side comparison. */
+const VariantColumn: React.FC<{ variant: Variant }> = ({ variant }) => {
+    const { t } = useLanguage();
+    const noop = () => undefined;
+    return (
+        <div className="ai-showcase__variant">
+            <h3>{t(`styleGuide.ai.variant.${variant}`)}</h3>
+            <p>{t(`styleGuide.ai.variant.${variant}.hint`)}</p>
+            <AiPopover open inline variant={variant} onClose={noop} label={t('ai.label')} ariaLabel={t('ai.panel.title')}
+                footer={(
+                    <div className="ai-composer">
+                        <input placeholder={t('ai.panel.placeholder')} aria-label={t('ai.panel.placeholder')} />
+                        <button type="button" className="ai-send" aria-label={t('ai.panel.send')}><span className="material-symbols-outlined" aria-hidden="true">arrow_upward</span></button>
+                    </div>
+                )}>
+                <div className="ai-chips">
+                    <span className="ai-chip"><span className="material-symbols-outlined" aria-hidden="true">folder</span>Mobile App v2</span>
+                    <span className="ai-chip"><span className="material-symbols-outlined" aria-hidden="true">task_alt</span>Conflict resolution…</span>
+                </div>
+                <div className="ai-message"><AiMessageText text={PANEL_ANSWER} /></div>
+                <AiActionCard proposal={DEMO_PROPOSAL} onApply={() => Promise.resolve({ canUndo: true, createdId: null })} onUndo={() => Promise.resolve()} />
+            </AiPopover>
+            <AiPopover open inline variant={variant} onClose={noop} label={t('ai.label')} ariaLabel={t('ai.spark.menuLabel')}>
+                <AiThinking label={t('ai.step.my_today')} lines={2} />
+            </AiPopover>
+            <AiPopover open inline variant={variant} onClose={noop} label={t('ai.label')} ariaLabel={t('ai.spark.menuLabel')}>
+                <div className="ai-options" role="menu">
+                    {ACTIONS.slice(0, 4).map(([icon, key]) => (
+                        <button key={key} type="button" role="menuitem" className="ai-option">
+                            <span className="material-symbols-outlined" aria-hidden="true">{icon}</span>{t(key)}
+                        </button>
+                    ))}
+                </div>
+            </AiPopover>
+        </div>
+    );
+};
+
 export const AiShowcase: React.FC = () => {
     const { t } = useLanguage();
+    const [variant, setVariant] = useState<Variant>('a');
     const fieldRef = useRef<HTMLTextAreaElement>(null);
     const [fieldValue, setFieldValue] = useState('login after pw reset broken on ios, invalid session, only ios 18');
     const [fieldAnchor, setFieldAnchor] = useState<AiAnchor>(null);
@@ -82,9 +124,23 @@ export const AiShowcase: React.FC = () => {
                 <div className="ai-showcase__item"><AiSpark size="sm" /><span>sm</span></div>
                 <div className="ai-showcase__item"><AiSpark size="md" /><span>md</span></div>
                 <div className="ai-showcase__item"><AiSpark size="lg" /><span>lg</span></div>
-                <div className="ai-showcase__item"><AiSpark size="lg" state="generating" /><span>generating</span></div>
                 <div className="ai-showcase__item"><AiSparkButton size="sm" aria-label="AI" /><span>button sm</span></div>
                 <div className="ai-showcase__item"><AiSparkButton size="md" aria-label="AI" /><span>button md</span></div>
+            </div>
+
+            <div className="ai-showcase__variants">
+                {VARIANTS.map((entry) => <VariantColumn key={entry} variant={entry} />)}
+            </div>
+
+            <div className="ai-showcase__live">
+                <h3>{t('styleGuide.ai.liveTitle')}</h3>
+                <div className="ai-showcase__switch" role="radiogroup" aria-label={t('styleGuide.ai.liveTitle')}>
+                    {VARIANTS.map((entry) => (
+                        <button key={entry} type="button" role="radio" aria-checked={variant === entry} className={`ai-btn${variant === entry ? ' ai-btn--primary' : ''}`} onClick={() => setVariant(entry)}>
+                            {entry.toUpperCase()}
+                        </button>
+                    ))}
+                </div>
             </div>
 
             <div className="ai-showcase__grid">
@@ -100,7 +156,7 @@ export const AiShowcase: React.FC = () => {
                 <div className="ai-showcase__demo">
                     <h3>{t('styleGuide.ai.globalTitle')}</h3>
                     <p>{t('styleGuide.ai.globalHint')}</p>
-                    <button type="button" className="ai-btn ai-btn--primary" onClick={() => { panel.reset(); setPanelOpen(true); }}>
+                    <button type="button" className="ai-btn" onClick={() => { panel.reset(); setPanelOpen(true); }}>
                         <AiSpark size="sm" /> {t('styleGuide.ai.openGlobal')} <kbd>⌘J</kbd>
                     </button>
                 </div>
@@ -111,6 +167,8 @@ export const AiShowcase: React.FC = () => {
                 onClose={() => { field.reset(); setFieldOpen(false); }}
                 anchor={fieldAnchor}
                 generating={generating(field.phase)}
+                variant={variant}
+                label={t('ai.label')}
                 ariaLabel={t('ai.spark.menuLabel')}
                 width={360}
                 closeLabel={t('common.close')}
@@ -144,6 +202,8 @@ export const AiShowcase: React.FC = () => {
                 onClose={() => { panel.reset(); setPanelOpen(false); setExpanded(false); }}
                 anchor={null}
                 generating={generating(panel.phase)}
+                variant={variant}
+                label={t('ai.label')}
                 expanded={expanded}
                 onExpandedChange={setExpanded}
                 ariaLabel={t('ai.panel.title')}

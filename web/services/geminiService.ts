@@ -1,4 +1,4 @@
-import { Project, Task, ProjectBlueprint, Milestone, Activity, StudioTool } from "../types";
+import { Project, Task, Milestone, Activity } from "../types";
 import { functions } from "./firebase";
 import { httpsCallable } from 'firebase/functions';
 import { getAIResponseInstruction } from "../utils/aiLanguage";
@@ -8,10 +8,8 @@ import { getAIResponseInstruction } from "../utils/aiLanguage";
  * live in `functions/src/ai-capabilities.ts`; the client only sends field values for a named capability.
  */
 type AiCapability =
-    | 'studioChat'
     | 'taskDescription'
     | 'projectReport'
-    | 'projectBlueprint'
     | 'blogPost'
     | 'blogTopics'
     | 'blogTranslate';
@@ -24,34 +22,6 @@ const runAiCapability = async (capability: AiCapability, input: Record<string, u
     const { language } = getAIResponseInstruction();
     const { data } = await call({ capability, input, language });
     return data?.text || '';
-};
-
-type CoraChatMessage = {
-    role: 'user' | 'assistant';
-    content: string;
-};
-
-export const chatWithCora = async (
-    messages: CoraChatMessage[],
-    options?: {
-        mode?: StudioTool | null;
-        useSearch?: boolean;
-        model?: 'gpt-5-mini';
-        tenantContext?: {
-            name?: string;
-            description?: string;
-            projects?: string[];
-            projectCount?: number;
-        };
-    }
-): Promise<string> => {
-    const { mode, useSearch, tenantContext } = options || {};
-    return runAiCapability('studioChat', {
-        messages: messages.slice(-12),
-        mode: mode || null,
-        useSearch: Boolean(useSearch),
-        tenantContext: tenantContext || {}
-    });
 };
 
 export const generateProjectDescription = async (projectName: string, context: string): Promise<string> => {
@@ -102,21 +72,6 @@ export const generateProjectReport = async (
         return text || "Report unavailable.";
     } catch (error) {
         console.error("AI Report Error:", error);
-        throw error;
-    }
-};
-
-export const generateProjectBlueprint = async (prompt: string): Promise<ProjectBlueprint> => {
-    try {
-        const text = await runAiCapability('projectBlueprint', { idea: prompt });
-        const blueprint = JSON.parse(text || "{}");
-        return {
-            ...blueprint,
-            id: `blueprint - ${Date.now()} `,
-            createdAt: new Date(),
-        } as ProjectBlueprint;
-    } catch (error) {
-        console.error("AI Blueprint Error:", error);
         throw error;
     }
 };

@@ -30,7 +30,7 @@ const article: HelpArticle = {
                         { term: 'Notifications', text: 'What reaches you by push and email, plus your morning briefing and day close. See the Notifications article.' },
                         { term: 'Desktop app', text: 'Only visible in the desktop app. See the Desktop app article.' },
                         { term: 'Security', text: '**Two-Factor Authentication** and **Passkeys** (sign in with Face ID, Touch ID or Windows Hello).' },
-                        { term: 'Pre-Alpha Config', text: 'Your personal Gemini API key and monthly token limit for CORA during the pre-alpha period.' },
+                        { term: 'Pre-Alpha Config', text: 'Your personal Gemini API key and monthly token limit for the AI during the pre-alpha period.' },
                     ],
                 },
             ],

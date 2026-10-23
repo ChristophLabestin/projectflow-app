@@ -9,8 +9,6 @@ import { GlobalConfirmationModal } from './components/ui/GlobalConfirmationModal
 import { Dashboard } from './screens/Dashboard';
 import { ProjectsList } from './screens/ProjectsList';
 import { Tasks } from './screens/Tasks';
-import { Brainstorming } from './screens/Brainstorming';
-import { isCoraStudioEnabled } from './config/features';
 import { AuthAction } from './screens/AuthAction';
 import { Login } from './screens/Login';
 import { Calendar } from './screens/Calendar';
@@ -268,7 +266,7 @@ export const AppRouter = () => {
                         <Route path="/projects" element={<ProjectsList />} />
                         <Route path="/tasks" element={<Tasks />} />
                         <Route path="/calendar" element={<Calendar />} />
-                        <Route path="/brainstorm" element={isCoraStudioEnabled() ? <Brainstorming /> : <Navigate to="/" replace />} />
+                        <Route path="/brainstorm" element={<Navigate to="/" replace />} />
                         <Route path="/create" element={<CreateProjectModalRoute />} />
                         <Route path="/team" element={<Team />} />
                         <Route path="/activity" element={withRouteSuspense(<WorkspaceActivity />)} />

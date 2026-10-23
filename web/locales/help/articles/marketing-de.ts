@@ -2,10 +2,10 @@ import type { HelpArticle } from '../../../components/help/helpTypes';
 
 const article: HelpArticle = {
     id: 'marketing',
-    category: 'cora',
+    category: 'ai',
     icon: 'edit_note',
     title: 'Marketing: Projekt-Blog',
-    summary: 'Verbinde den Blog deiner Website mit einem Projekt, schreibe Beiträge mit CORA und veröffentliche sie.',
+    summary: 'Verbinde den Blog deiner Website mit einem Projekt, schreibe Beiträge mit der KI und veröffentliche sie.',
     keywords: ['Blog', 'Beiträge', 'veröffentlichen', 'CMS', 'Inhalte', 'API', 'Artikel', 'Entwurf', 'Übersetzung', 'Marketing-Modul', 'blog', 'posts', 'publish', 'content'],
     sections: [
         {
@@ -56,11 +56,11 @@ const article: HelpArticle = {
             ],
         },
         {
-            id: 'cora-and-languages',
-            title: 'Hilft CORA bei Beiträgen und Übersetzungen?',
-            keywords: ['KI', 'CORA', 'generieren', 'Themen', 'übersetzen', 'Sprache', 'Websuche', 'ai', 'translate'],
+            id: 'ai-and-languages',
+            title: 'Hilft die KI bei Beiträgen und Übersetzungen?',
+            keywords: ['KI', 'generieren', 'Themen', 'übersetzen', 'Sprache', 'Websuche', 'ai', 'translate'],
             blocks: [
-                { type: 'text', text: 'Ja. **CORA fragen** im Editor öffnet den **CORA Blog-Assistenten**. Beschreibe, worum es im Beitrag gehen soll, oder klicke auf **Themen vorschlagen**, und dann auf **Kompletten Beitrag erstellen**, um einen Entwurf zu erhalten. Mit **Websuche** kann CORA Quellen nutzen.' },
+                { type: 'text', text: 'Ja. **✦ KI fragen** im Editor öffnet den **KI-Blog-Assistenten**. Beschreibe, worum es im Beitrag gehen soll, oder klicke auf **Themen vorschlagen**, und dann auf **Kompletten Beitrag erstellen**, um einen Entwurf zu erhalten. Mit **Websuche** kann die KI Quellen nutzen.' },
                 { type: 'text', text: 'Unterstützt deine Blog-Verbindung mehrere Sprachen, wechselst du die Beitragssprache mit **Sprache auswählen**. ProjectFlow fragt dann, ob der Inhalt zuerst per KI übersetzt werden soll.' },
                 { type: 'callout', tone: 'note', text: 'KI-Entwürfe sind ein Ausgangspunkt. Lies und überarbeite sie, bevor du veröffentlichst.' },
             ],

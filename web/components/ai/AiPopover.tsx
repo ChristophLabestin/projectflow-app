@@ -5,10 +5,10 @@ import { AiSpark } from './AiSpark';
 import './ai-ds.scss';
 
 /**
- * The one surface for every AI interaction (STYLING.md §1.9, COMPONENTS „In-app AI“): a floating glass
- * popover anchored at a point (caret), a rect (selection, field, button) or the top centre (⌘J).
- * Drag it by its header, expand it for long answers, Esc closes. While `generating`, a quiet shimmer
- * runs along the top edge and the spark turns.
+ * The one surface for every AI interaction (STYLING.md §1.9, COMPONENTS „In-app AI“): a floating
+ * popover in the app's popover style, anchored at a point (caret), a rect (selection, field, button)
+ * or the top centre (⌘J). Drag it by its header, expand it for long answers, Esc closes. Marked only
+ * by a small „✦ KI“ label.
  */
 export type AiAnchor = { x: number; y: number } | DOMRect | null;
 
@@ -31,6 +31,10 @@ export interface AiPopoverProps {
     collapseLabel?: string;
     closeLabel?: string;
     className?: string;
+    /** a = neutral, b = neutral + blue accent, c = slightly raised surface (STYLING §1.9). */
+    variant?: 'a' | 'b' | 'c';
+    /** Render in place (no portal, no positioning) — style guide comparisons. */
+    inline?: boolean;
 }
 
 const MARGIN = 12;
@@ -60,7 +64,8 @@ const place = (anchor: AiAnchor | undefined, width: number, height: number) => {
 
 export const AiPopover: React.FC<AiPopoverProps> = ({
     open, onClose, anchor, generating = false, expanded = false, onExpandedChange, label, headerExtra, footer, children,
-    width = 380, closeOnOutside = false, ariaLabel, expandLabel = 'Expand', collapseLabel = 'Collapse', closeLabel = 'Close', className = ''
+    width = 380, closeOnOutside = false, ariaLabel, expandLabel = 'Expand', collapseLabel = 'Collapse', closeLabel = 'Close', className = '',
+    variant = 'a', inline = false
 }) => {
     const { mounted, exiting } = usePresence(open);
     const ref = useRef<HTMLDivElement>(null);
@@ -131,14 +136,15 @@ export const AiPopover: React.FC<AiPopoverProps> = ({
 
     if (!mounted) return null;
 
-    return createPortal(
+    const surface = (
         <div
             ref={ref}
             role="dialog"
             aria-label={ariaLabel}
-            className={`ai-popover ${expanded ? 'ai-popover--expanded' : ''} ${exiting ? 'is-exiting' : ''} ${className}`.trim()}
+            className={`ai-popover ${inline ? 'ai-popover--inline' : ''} ${expanded ? 'ai-popover--expanded' : ''} ${exiting ? 'is-exiting' : ''} ${className}`.trim()}
             data-generating={generating ? 'true' : 'false'}
-            style={{
+            data-variant={variant}
+            style={inline ? { width: '100%' } : {
                 width: currentWidth,
                 left: position?.left ?? -9999,
                 top: position?.top ?? -9999,
@@ -148,13 +154,13 @@ export const AiPopover: React.FC<AiPopoverProps> = ({
         >
             <div
                 className="ai-popover__head"
-                onPointerDown={onHeaderPointerDown}
-                onPointerMove={onHeaderPointerMove}
+                onPointerDown={inline ? undefined : onHeaderPointerDown}
+                onPointerMove={inline ? undefined : onHeaderPointerMove}
                 onPointerUp={endDrag}
                 onPointerCancel={endDrag}
             >
                 <span className="ai-popover__label">
-                    <AiSpark size="sm" state={generating ? 'generating' : 'active'} />
+                    <AiSpark size="sm" />
                     {label}
                 </span>
                 <div className="ai-popover__head-actions">
@@ -171,7 +177,7 @@ export const AiPopover: React.FC<AiPopoverProps> = ({
             </div>
             <div className="ai-popover__body">{children}</div>
             {footer && <div className="ai-popover__footer">{footer}</div>}
-        </div>,
-        document.body
+        </div>
     );
+    return inline ? surface : createPortal(surface, document.body);
 };

@@ -14,7 +14,7 @@ import { DesktopAppPromo } from './desktop/DesktopAppPromo';
 import logo from '../assets/logo.svg';
 import type { Project, ProjectExternalResource } from '../types';
 import { useWorkspace } from '../context/WorkspaceContext';
-import { isCoraStudioEnabled, isWorkspaceAreaEnabled } from '../config/features';
+import { isWorkspaceAreaEnabled } from '../config/features';
 import { WorkspaceMenuSection } from './workspace/WorkspaceMenuSection';
 import { InlineMenu, type InlineMenuOption } from './work/InlineMenu';
 import { PROJECTS_CHANGED_EVENT, readRecentProjectAccess, recentProjectsStorageKey } from '../utils/recentProjects';
@@ -493,7 +493,6 @@ export const SidebarNavigator: React.FC<SidebarNavigatorProps> = ({ isDrawer = f
         ...(activeWorkspace?.role === 'Owner' || activeWorkspace?.role === 'Admin'
             ? [{ key: 'workspaceSettings', to: '', icon: 'settings', label: t('workspaceSettings.title'), onSelect: () => { closeOnNavigate?.(); setWorkspaceSettingsOpen(true); } }]
             : []),
-        ...(isCoraStudioEnabled() ? [{ key: 'aiStudio', to: '/brainstorm', icon: 'auto_awesome', label: t('nav.aiStudio') }] : []),
     ];
 
     // New accounts see Media behind "More" until they open it;

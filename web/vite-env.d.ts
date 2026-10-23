@@ -3,7 +3,6 @@
 interface ImportMetaEnv {
     // Firebase
     readonly VITE_USE_FIREBASE_EMULATORS?: string;
-    readonly VITE_CORA_STUDIO_ENABLED?: string;
     readonly VITE_FIREBASE_API_KEY: string;
     readonly VITE_FIREBASE_AUTH_DOMAIN: string;
     readonly VITE_FIREBASE_PROJECT_ID: string;

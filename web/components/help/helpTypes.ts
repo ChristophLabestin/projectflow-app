@@ -4,7 +4,7 @@
  * Keep the same article/section ids and block order in every language (parity test in `__tests__`).
  */
 
-export type HelpCategoryId = 'basics' | 'work' | 'planning' | 'collaboration' | 'cora' | 'workspace';
+export type HelpCategoryId = 'basics' | 'work' | 'planning' | 'collaboration' | 'ai' | 'workspace';
 
 export type HelpBlock =
     | { type: 'text'; text: string }

@@ -103,14 +103,6 @@ These colors are reserved for specific pre-beta settings. Do not introduce them 
 | `--color-blue-600` | `#2563eb` |
 | `--color-blue-900` | `#1e3a8a` |
 
-### 1.6 AI Studio Mode Accents
-
-| Token | Value | Description |
-|------|-------|-------------|
-| `--color-mode-architect` | `#4285f4` | Accent color for AI Studio Architect mode |
-| `--color-mode-brainstormer` | `#ea4335` | Accent color for AI Studio Brainstormer mode |
-| `--color-mode-riskscout` | `#34a853` | Accent color for AI Studio RiskScout mode |
-
 ### 1.7 Legacy Alias Tokens (Migration)
 
 These aliases exist for legacy styles during the Tailwind → SCSS migration. Prefer the canonical tokens above for new UI work.
@@ -152,29 +144,27 @@ Use these RGB triplets with `rgba(var(--token), alpha)` when a translucent surfa
 
 ---
 
-## 1.9 In-app AI surface (2026-10-23)
+## 1.9 In-app AI surface (2026-10-23, revised after review)
 
-The AI has no name or persona; its only mark is ✦. Every AI interaction uses one floating surface
-(`AiPopover`) that stands apart from the regular UI but is built from its tokens. Tokens live in
-`web/styles/_tokens.scss` (light + `html.dark`), components in `web/components/ai/` (`ai-ds.scss`),
-live demo on `/ui` → AI (`screens/style-guide/AiShowcase.tsx`).
+The AI has no name or persona; it is marked by a small static „✦ KI/AI“ label and its content, not by
+effects. Every AI interaction uses one floating surface (`AiPopover`) in the app's popover style.
+Tokens in `web/styles/_tokens.scss` (light + `html.dark`), components in `web/components/ai/`
+(`ai-ds.scss`), demo on `/ui` → AI (`screens/style-guide/AiShowcase.tsx`, variants side by side).
 
 | Token | Use |
 |---|---|
-| `--ai-glass-bg`, `--ai-glass-blur` | glass base of the popover and spark buttons (`backdrop-filter`) |
-| `--ai-veil` | quiet brand wash (blue top-left, violet top-right) layered over the glass |
-| `--ai-glow` | elevation: coloured soft glow + `--shadow-lg` (no borders) |
-| `--ai-spark-gradient` | ✦ glyph, primary AI buttons, send button, caret |
-| `--ai-accent`, `--ai-accent-soft` | links, icons, hover/selection tint inside AI surfaces |
-| `--ai-inner-bg` | chips, options, composer, action cards inside the popover |
-| `--ai-shimmer` | generating sweep along the popover's top edge, thinking lines |
+| `--ai-surface` / `--ai-surface-raised` | popover surface (variant c uses the raised one) |
+| `--ai-hairline` | 1px ring as box-shadow (the app is borderless; reads as a hairline) |
+| `--ai-shadow` | popover elevation (= `--shadow-lg`) |
+| `--ai-inner-bg` | chips, cards, skeleton lines inside the popover |
+| `--ai-mark` | colour of ✦ (muted) |
+| `--ai-accent`, `--ai-accent-soft` | variant b only: one blue accent for ✦, links, hover icons |
 | `--ai-radius`, `--ai-text-fade` | popover radius; fade-in of streamed text |
 
-Rules: the AI style appears only on AI surfaces (✦ triggers, `AiPopover` and what it contains). Enter =
-rise + scale + un-blur (`--motion-duration-slow`, ease-out); exit shorter. Streamed text fades in per
-chunk/line; while generating the spark turns and the top edge shimmers. All motion is transform /
-opacity / filter and stops under `prefers-reduced-motion`. Section 1.6 (AI Studio mode accents) is
-legacy and goes with CORA.
+Variants (`data-variant`, pending the user's choice): **a** neutral, **b** neutral + one blue accent,
+**c** slightly raised surface. Rules: no multi-colour gradients, no coloured glow, no rotating mark;
+primary actions are the app's primary buttons. Working state = a status line with a soft text shimmer
+plus neutral skeleton lines; streamed text fades in. Motion stops under `prefers-reduced-motion`.
 
 ## 2) Border Radius
 
@@ -382,7 +372,7 @@ Treat these as v1 defaults before creating one-off versions in feature screens; 
 - Keep previews scoped to the real customer-facing surface, but make them opt-in when the editor is already dense; do not keep counters or status strips visible by default.
 - Prefer dense rows for ordered editable items; reserve larger panels for the currently selected item editor.
 - Put publishing, links, tokens, and embed data behind a Share/Access mode instead of mixing them into the primary editing canvas.
-- Project creation should open with compact project-type selection and then stay name-first and optional after the required basics; do not ask users to choose between manual creation and CORA in the wizard. Type, module, startup workstream, member, and visibility choices should share the same selection-card contract with equal-height rows, readable wrapped descriptions, and copy lengths that stay roughly balanced inside a grid. Team assignment and visibility rules are separate decisions and should live in separate steps; never auto-select a workspace group when the user chooses group visibility. Use one user-facing project purpose field; do not ask for a separate goal/objective later in the wizard. For company projects, setup workstreams belong in their own quiet checklist step before module selection; avoid oversized cards, heavy panels, and prominent seed-count chips there. Startup/company founding context is prompted from the project overview after creation, not collected in the create wizard. Timeline fields use flat grids and rows; cover images, GitHub, and resource links belong in overview/settings surfaces after creation.
+- Project creation should open with compact project-type selection and then stay name-first and optional after the required basics; do not ask users to choose between manual creation and AI generation in the wizard. Type, module, startup workstream, member, and visibility choices should share the same selection-card contract with equal-height rows, readable wrapped descriptions, and copy lengths that stay roughly balanced inside a grid. Team assignment and visibility rules are separate decisions and should live in separate steps; never auto-select a workspace group when the user chooses group visibility. Use one user-facing project purpose field; do not ask for a separate goal/objective later in the wizard. For company projects, setup workstreams belong in their own quiet checklist step before module selection; avoid oversized cards, heavy panels, and prominent seed-count chips there. Startup/company founding context is prompted from the project overview after creation, not collected in the create wizard. Timeline fields use flat grids and rows; cover images, GitHub, and resource links belong in overview/settings surfaces after creation.
 
 ## 6.3) Project Lifecycle Recovery Pattern
 

@@ -58,7 +58,7 @@ export const getAIUsage = async (userId: string): Promise<AIUsage | null> => {
         }
         return usage;
     } catch (error) {
-        console.warn('Failed to get CORA usage', error);
+        console.warn('Failed to get AI usage', error);
         return null;
     }
 };

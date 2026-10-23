@@ -30,7 +30,7 @@ const article: HelpArticle = {
                         { term: 'Benachrichtigungen', text: 'Was dich per Push und E-Mail erreicht, dazu Morgenbriefing und Tagesabschluss. Siehe den Artikel zu Benachrichtigungen.' },
                         { term: 'Desktop-App', text: 'Nur in der Desktop-App sichtbar. Siehe den Artikel zur Desktop-App.' },
                         { term: 'Sicherheit', text: '**Zwei-Faktor-Authentifizierung** und **Passkeys** (Anmeldung mit Face ID, Touch ID oder Windows Hello).' },
-                        { term: 'Pre-Alpha-Konfiguration', text: 'Dein persönlicher Gemini API-Schlüssel und das monatliche Token-Limit für CORA während der Pre-Alpha-Phase.' },
+                        { term: 'Pre-Alpha-Konfiguration', text: 'Dein persönlicher Gemini API-Schlüssel und das monatliche Token-Limit für die KI während der Pre-Alpha-Phase.' },
                     ],
                 },
             ],

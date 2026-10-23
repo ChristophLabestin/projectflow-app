@@ -117,7 +117,7 @@ export const saveGeminiReport = async (projectId: string, content: string, tenan
 
     await logProjectActivity(projectId, resolvedTenant, {
         action: 'Generated project report',
-        target: 'CORA Report',
+        target: 'AI Report',
         details: content,
         type: 'report'
     });

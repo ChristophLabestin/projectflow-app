@@ -38,8 +38,7 @@ export const AppLayout = () => {
     const location = useLocation();
     const isFullWidthRoute = location.pathname.includes('/marketing')
         || location.pathname.includes('/activity')
-        || location.pathname.includes('/team')
-        || location.pathname.includes('/brainstorm');
+        || location.pathname.includes('/team');
 
     // Derived project ID from URL if not in params (e.g. nested routes)
     const derivedProjectId = useMemo(() => {

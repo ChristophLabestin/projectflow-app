@@ -92,14 +92,73 @@ function storyScene(mobile: boolean) {
         return g.y0 + Math.max(0, (g.y1 - g.y0 - h) / 2);
     };
 
+    /** Bottom edge of the board area that is actually shown (rows below y1 are faded out). */
+    const boardBottom = (g: Geo) => {
+        const rows = Math.max(...[0, 1, 2, 3].map((c) => cards.filter((card) => colOf(card, true) === c).length));
+        let shown = 0;
+        for (let r = 0; r < rows; r += 1) {
+            if (boardY(g) + 36 + r * (CARD_H + 8) + CARD_H <= g.y1 + 30) shown = r + 1;
+        }
+        return boardY(g) + 36 + shown * (CARD_H + 8) - 8;
+    };
+
+    /** Ink boxes of the hero copy (words, text lines, buttons) in stage coordinates, padded. */
+    const copyRects = () => {
+        const sr = stage.getBoundingClientRect();
+        const pad = 14;
+        const rects: DOMRect[] = [];
+        $$('.word', acts[0]).forEach((w) => rects.push(w.getBoundingClientRect()));
+        $$('.act__text, .act__platforms', acts[0]).forEach((el) => {
+            const range = document.createRange();
+            range.selectNodeContents(el);
+            rects.push(...Array.from(range.getClientRects()));
+        });
+        $$('.act__ctas .btn', acts[0]).forEach((b) => rects.push(b.getBoundingClientRect()));
+        return rects.filter((r) => r.width > 0).map((r) => ({
+            left: r.left - sr.left - pad, right: r.right - sr.left + pad, top: r.top - sr.top - pad, bottom: r.bottom - sr.top + pad,
+        }));
+    };
+
     /** Pose of every visible card in act k. */
     const poses = (k: number): Pose[] => {
         const g = geo();
         if (k === 0) {
             const pts = mobile ? NOISE_MOBILE : NOISE_DESKTOP;
+            const s = mobile ? 0.8 : 1;
+            const w = g.cw * s + 12; // rotation + shadow margin
+            const h = CARD_H * s + 12;
+            const blocks = copyRects();
+            const hits = (x: number, y: number) => blocks.find((b) => x < b.right && x + w > b.left && y < b.bottom && y + h > b.top);
+            const inside = (x: number, y: number) => x >= 0 && x + w <= g.W && y >= HEADER && y + h <= g.H;
+            const placed: { x: number; y: number }[] = [];
+            const crowded = (x: number, y: number) => placed.some((p) => {
+                const ox = Math.min(x + w, p.x + w) - Math.max(x, p.x);
+                const oy = Math.min(y + h, p.y + h) - Math.max(y, p.y);
+                return ox > 0 && oy > 0 && (ox * oy) / (w * h) > 0.3;
+            });
             return cards.map((_, i) => {
                 const [nx, ny, r] = pts[i % pts.length];
-                return { x: nx * (g.W - g.cw * (mobile ? 0.8 : 1)), y: ny * (g.H - CARD_H), r, s: mobile ? 0.8 : 1, o: 1 };
+                let x = nx * (g.W - g.cw * s);
+                let y = ny * (g.H - CARD_H);
+                // Keep headline, text and buttons readable: move a fragment just clear of whatever it would cover.
+                const b = hits(x, y);
+                if (b) {
+                    const options = [
+                        { x: b.left - w, y }, { x: b.right, y }, { x, y: b.bottom }, { x, y: b.top - h },
+                    ].filter((o) => inside(o.x, o.y) && !hits(o.x, o.y))
+                        .sort((p1, p2) => Math.hypot(p1.x - x, p1.y - y) - Math.hypot(p2.x - x, p2.y - y));
+                    if (!options.length) return { x, y, r, s, o: 0 };
+                    ({ x, y } = options[0]);
+                }
+                // Avoid fragments piling up on each other after being pushed out of the copy.
+                if (crowded(x, y)) {
+                    const alt = [-0.7, 0.7, -1.4, 1.4].map((f) => ({ x: x + f * w, y }))
+                        .find((o) => inside(o.x, o.y) && !hits(o.x, o.y) && !crowded(o.x, o.y));
+                    if (!alt) return { x, y, r, s, o: 0 };
+                    ({ x, y } = alt);
+                }
+                placed.push({ x, y });
+                return { x, y, r, s, o: 1 };
             });
         }
         if (k === 1) {
@@ -128,11 +187,14 @@ function storyScene(mobile: boolean) {
     const tl = gsap.timeline({ defaults: { ease: 'power2.inOut', duration: 0.7 } });
     const at = (k: number) => k - 1;
 
+    // Act 0 pose lives inside the timeline so it is re-measured on every refresh (fonts, resize).
     cards.forEach((card, i) => {
-        gsap.set(card, {
+        const pose0 = {
             x: () => poses(0)[i].x, y: () => poses(0)[i].y, rotation: () => poses(0)[i].r,
-            scale: () => poses(0)[i].s, transformOrigin: '0 0', autoAlpha: 1,
-        });
+            scale: () => poses(0)[i].s, autoAlpha: () => poses(0)[i].o, transformOrigin: '0 0',
+        };
+        gsap.set(card, pose0);
+        tl.set(card, pose0, 0);
     });
     gsap.set([inboxHead, ...heads, veil, ...toasts, frame, phone], { autoAlpha: 0 });
     gsap.set(focus, { autoAlpha: 0 });
@@ -182,24 +244,39 @@ function storyScene(mobile: boolean) {
         const ty = () => {
             const g = geo();
             if (!mobile) return Math.max(HEADER + 12, boardY(g) - 132) + i * 60;
-            const rows = Math.max(...[0, 1].map((c) => cards.filter((card) => colOf(card, true) === c).length));
-            return Math.min(boardY(g) + 36 + rows * (CARD_H + 8) + 4, g.y1 - 40);
+            return boardBottom(g) + 12;
         };
+        // Phones: one toast, and only if it fits between the board and the copy.
+        const fits = () => !mobile || ty() + toast.offsetHeight <= geo().y1 + 24;
         if (mobile && i > 0) { gsap.set(toast, { display: 'none' }); return; }
         tl.fromTo(toast, { autoAlpha: 0, x: () => tx() + 24, y: ty },
-            { autoAlpha: 1, x: tx, y: ty, duration: 0.35, ease: 'power3.out', immediateRender: false }, at(4) + 0.45 + i * 0.15);
+            { autoAlpha: () => (fits() ? 1 : 0), x: tx, y: ty, duration: 0.35, ease: 'power3.out', immediateRender: false }, at(4) + 0.45 + i * 0.15);
     });
     // Act 5 – the board sits in a real app frame; the phone joins; cards become clickable.
     const frameBox = () => {
         const g = geo();
-        const rows = Math.max(...[0, 1, 2, 3].map((c) => cards.filter((card) => colOf(card, true) === c).length));
-        return { x: boardX(g) - 16, y: boardY(g) - 56, w: boardW(g) + 32, h: 36 + rows * (CARD_H + 8) + 72 };
+        return { x: boardX(g) - 16, y: boardY(g) - 56, w: boardW(g) + 32, h: boardBottom(g) - boardY(g) + 76 };
+    };
+    /** The phone sits below the column with the fewest cards, so it never covers a card. */
+    const phonePos = () => {
+        const g = geo();
+        const counts = [0, 1, 2, 3].map((c) => cards.filter((card) => colOf(card, true) === c).length);
+        const col = counts.slice(0, g.cols).reduce((best, n, c) => (n < counts[best] ? c : best), 0);
+        const pw = phone.offsetWidth;
+        const ph = phone.offsetHeight;
+        const top = boardY(g) + 36 + counts[col] * (CARD_H + 8) + 16;
+        const sc = Math.min(1, (g.cw + g.gap) / pw);
+        return {
+            x: boardX(g) + col * (g.cw + g.gap) + (g.cw - pw) / 2,
+            y: Math.min(top, g.H - ph * sc - 12),
+            s: sc,
+        };
     };
     tl.to(toasts, { autoAlpha: 0, duration: 0.3 }, at(5))
         .fromTo(frame, { autoAlpha: 0, x: () => frameBox().x, y: () => frameBox().y, width: () => frameBox().w, height: () => frameBox().h, scale: 1.03 },
-            { autoAlpha: 1, x: () => frameBox().x, y: () => frameBox().y, width: () => frameBox().w, height: () => frameBox().h, scale: 1, duration: 0.5, immediateRender: false }, at(5) + 0.1)
-        .fromTo(phone, { autoAlpha: 0, x: () => geo().x1 - 200, y: () => geo().y1 - 230 },
-            { autoAlpha: 1, x: () => geo().x1 - 200, y: () => geo().y1 - 290, duration: 0.5, ease: 'power3.out', immediateRender: false }, at(5) + 0.3)
+            { autoAlpha: mobile ? 0 : 1, x: () => frameBox().x, y: () => frameBox().y, width: () => frameBox().w, height: () => frameBox().h, scale: 1, duration: 0.5, immediateRender: false }, at(5) + 0.1)
+        .fromTo(phone, { autoAlpha: 0, x: () => phonePos().x, y: () => phonePos().y + 60, scale: () => phonePos().s, transformOrigin: '50% 0' },
+            { autoAlpha: 1, x: () => phonePos().x, y: () => phonePos().y, scale: () => phonePos().s, duration: 0.5, ease: 'power3.out', immediateRender: false }, at(5) + 0.3)
         .to({}, { duration: 0.3 }, ACTS - 0.3);
 
     // ---------------------------------------------------------------- discrete, reversible states

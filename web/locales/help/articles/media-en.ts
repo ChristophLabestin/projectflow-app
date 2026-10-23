@@ -2,7 +2,7 @@ import type { HelpArticle } from '../../../components/help/helpTypes';
 
 const article: HelpArticle = {
     id: 'media',
-    category: 'cora',
+    category: 'ai',
     icon: 'perm_media',
     title: 'Media library',
     summary: 'Keep images and videos in one place, upload new files, edit images and pick media where you need it.',
