@@ -70,6 +70,7 @@ Deploy only touched functions when possible, for example: `cd functions && fireb
 - `npm run build` — typecheck + static build to `landing/dist/` (pages rendered from TS templates).
 - `npm run deploy:preview` — build + `firebase hosting:channel:deploy preview` on site `getprojectflow` (uses `landing/firebase.json`, independent from the app's root `firebase.json`).
 - `npm run deploy` — live deploy of the landing site (only after the owner signs off).
+- From the repo root (matches the `firebase deploy` allow rule): `npm --prefix landing run build`, then `firebase deploy --config landing/firebase.json --only hosting --project projectflow-labestin` (live) or `firebase hosting:channel:deploy preview --config landing/firebase.json --project projectflow-labestin --expires 30d`. Without `--config` the root `firebase.json` deploys the **app** instead.
 - Domain: connect `getprojectflow.com` (+ `www`) to Hosting site `getprojectflow` in the Firebase console; `app.getprojectflow.com` stays on site `projectflow-labestin`.
 
 ## Firestore Commands
