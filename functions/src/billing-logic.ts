@@ -7,7 +7,24 @@ export type PlanId = 'free' | 'team' | 'organization' | 'personal';
 /** `personal` = each user's own workspace (id personal_{uid}), 1 member, never Team (contract §7). */
 export type WorkspaceType = 'personal' | 'team';
 export const personalWorkspaceId = (uid: string) => `personal_${uid}`;
-export const PERSONAL_STORAGE_BYTES = 10 * 1024 * 1024 * 1024;
+const GB = 1024 * 1024 * 1024;
+const MB = 1024 * 1024;
+/** Storage per plan (orchestrator/owner 2026-10-23): Free 1 GB, Personal 25 GB, Team 10 GB per seat pooled (min 25 GB),
+ *  Organization 50 GB per seat; exempt = like its paid plan. Max file: 50 MB, Team/Organization 250 MB. */
+export const PERSONAL_STORAGE_BYTES = 25 * GB;
+export const storageFor = (plan: PlanId, fullMembers: number) => {
+    const seats = Math.max(1, fullMembers);
+    switch (plan) {
+        case 'team':
+            return { storageQuotaBytes: Math.max(25 * GB, 10 * GB * seats), maxFileBytes: 250 * MB };
+        case 'organization':
+            return { storageQuotaBytes: 50 * GB * seats, maxFileBytes: 250 * MB };
+        case 'personal':
+            return { storageQuotaBytes: PERSONAL_STORAGE_BYTES, maxFileBytes: 50 * MB };
+        default:
+            return { storageQuotaBytes: 1 * GB, maxFileBytes: 50 * MB };
+    }
+};
 /** `exempt` = internal/comp workspace (admin console flag `billingExempt`): Team scope incl. AI, no payment. */
 export type BillingStatus = 'trialing' | 'active' | 'past_due' | 'grace' | 'free' | 'canceled' | 'exempt';
 export type BillingInterval = 'month' | 'year';

@@ -14,7 +14,7 @@ export const TEAM_MEMBER_LIMIT = 50;
 export const TEAM_PRICE = { month: 12, year: 10 } as const;
 /** Personal plan, net per month (EUR). */
 export const PERSONAL_PRICE = { month: 5, year: 4 } as const;
-export const PERSONAL_STORAGE_GB = 10;
+export const PERSONAL_STORAGE_GB = 25;
 /** AI add-on, net per user and month (EUR), Team/Organization only. */
 export const AI_ADDON_PRICE = 10;
 
@@ -118,3 +118,8 @@ export const toPlanState = (ent: Entitlements): PlanState => ({
     can: (feature, projectId) => canUse(ent, feature, projectId),
     aiEnabledFor: (uid) => aiEnabledFor(ent, uid),
 });
+
+
+/** Locale key variant for plan copy: personal workspaces upgrade to "Personal", team workspaces to "Team". */
+export const planCopyKey = (ent: Pick<Entitlements, 'workspaceType'> | null | undefined, key: string) =>
+    ent?.workspaceType === 'personal' ? `${key}.personal` : key;

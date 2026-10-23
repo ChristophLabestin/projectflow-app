@@ -33,7 +33,8 @@ Fazit: Teamplätze liegen bei 8–12 €; KI ist oft ein Aufpreis (8–10 $). Pr
 |---|---|---|---|---|
 | Preis | 0 € | **4 €**/Monat jährlich · **5 €** monatlich | **10 €**/Platz/Monat jährlich · **12 €** monatlich | ab **18 €**/Platz/Monat jährlich, ab 10 Plätzen, Angebot |
 | Für | Einzelpersonen | dein persönlicher Workspace (jeder Nutzer hat einen, auch Team-Mitglieder) | Teams bis 50 Mitglieder | Unternehmen mit Governance-Bedarf |
-| Projekte | bis 3 | unbegrenzt (+ Flows, mehr Dateispeicher) | unbegrenzt | unbegrenzt |
+| Projekte | bis 3 | unbegrenzt (+ Flows wie ein Team-Platz) | unbegrenzt | unbegrenzt |
+| Dateispeicher | 1 GB · max. 50 MB/Datei | 25 GB · max. 50 MB/Datei | 10 GB pro Platz, gepoolt, mind. 25 GB · max. 250 MB/Datei | 50 GB pro Platz · max. 250 MB/Datei |
 | Mitglieder | 1 | 1 (keine Einladungen) | bis 50 | unbegrenzt |
 | Externe pro Projekt | – | – | unbegrenzt, kostenlos | unbegrenzt, kostenlos |
 | Web, Desktop, iPhone | ✓ | ✓ | ✓ | ✓ |
@@ -78,7 +79,9 @@ Begründungen:
 - ✅ 2026-10-23: KI als Zusatzpaket für 10 € pro Nutzer/Monat (schaltet KI-Funktionen frei).
 - ✅ 2026-10-23: KI-Paket für Team/Organization pro Nutzer buchbar; Free nutzt KI nur mit eigenem Schlüssel.
 - ✅ 2026-10-23 (später): **Personal**-Plan 5 €/Monat bzw. 4 €/Monat jährlich für den persönlichen Workspace jedes Nutzers (auch Team-Mitglieder):
-  unbegrenzte Projekte, Flows, mehr Dateispeicher, KI-Paket zubuchbar, keine Mitglieder/Einladungen, getrennt vom Team-Abo.
+  unbegrenzte Projekte, Flows, 25 GB Dateispeicher, KI-Paket zubuchbar, keine Mitglieder/Einladungen, getrennt vom Team-Abo.
+- ✅ 2026-10-23: Speicher Free 1 GB · Personal 25 GB · Team 10 GB/Platz gepoolt (mind. 25 GB) · Organization 50 GB/Platz;
+  max. Dateigröße 50 MB (Free/Personal) bzw. 250 MB (Team/Org). Eigener OpenAI-Schlüssel ist in allen Plänen möglich.
 - Offen: Gründungspreis ja/nein, Höhe und Dauer (bis dahin nicht auf der Website).
 - Offen: Organization-Preis (Vorschlag ab 18 €) und SSO-Umsetzung.
 - Ab wann zahlen Beta-Workspaces (Stichtag + Vorlaufzeit von mind. 30 Tagen Ankündigung).

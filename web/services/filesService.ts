@@ -285,8 +285,10 @@ export const uploadFiles = async (input: {
 }) => {
     const failures: UploadFailure[] = [];
     let done = 0;
+    // Max size per file depends on the plan (50 MB; Team/Organization 250 MB); the server checks again.
+    const maxFileBytes = await getWorkspaceFileQuota(input.tenantId).then((quota) => quota.maxFileBytes).catch(() => MAX_FILE_BYTES);
     for (const file of input.files) {
-        if (file.size > MAX_FILE_BYTES) {
+        if (file.size > maxFileBytes) {
             failures.push({ file, reason: 'too-large' });
         } else {
             try {

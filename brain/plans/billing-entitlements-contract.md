@@ -104,14 +104,20 @@ Jeder Nutzer hat genau **einen persönlichen Workspace**, auch wer nur in ein Te
 
 | Plan | `plan` | Preis netto | Projekte | Mitglieder | Flows | Dateispeicher | KI |
 |---|---|---|---|---|---|---|---|
-| Free (persönlich) | `free` | 0 € | 3 | 1 | Free-Kontingent | 5 GB | eigener OpenAI-Schlüssel |
-| Personal | `personal` | **5 €**/Monat · **4 €**/Monat jährlich | unbegrenzt | 1 | wie 1 Team-Platz | **10 GB** | KI-Paket zubuchbar (10 €, Menge 1) oder eigener Schlüssel |
+| Free (persönlich) | `free` | 0 € | 3 | 1 | Free-Kontingent | 1 GB | eigener OpenAI-Schlüssel |
+| Personal | `personal` | **5 €**/Monat · **4 €**/Monat jährlich | unbegrenzt | 1 | wie 1 Team-Platz | **25 GB** | KI-Paket zubuchbar (10 €, Menge 1) oder eigener Schlüssel |
 
 - `personal` ist nur für `workspaceType: 'personal'` buchbar; `team`/`organization` nur für Team-Workspaces. Ein persönlicher
   Workspace wechselt nie auf Team, wer ein Team will, legt einen neuen Workspace an. Fehlercode `plan-workspace-type-mismatch`.
 - Eigene **Stripe-Subscription** je Workspace (persönlich und Team sind getrennte Abos, auch beim selben Nutzer). Lookup-Keys
   `personal_monthly` (500), `personal_yearly` (4800); KI-Paket wie Team (`ai_addon_*`, Menge 1, nur der Owner).
-- `entitlements/plan` zusätzlich: `workspaceType`, `storageQuotaBytes` (10 GB auf Personal), `flowsQuota: 'seat' | 'free'`.
+- `entitlements/plan` zusätzlich: `workspaceType`, `storageQuotaBytes`, `maxFileBytes`, `flowsQuota: 'seat' | 'free'`.
+- **Dateispeicher (Entscheidung 2026-10-23, vor Live änderbar):** Free 1 GB · Personal 25 GB · Team 10 GB pro Vollmitglied,
+  gepoolt, mindestens 25 GB · Organization 50 GB pro Vollmitglied · `exempt` wie der bezahlte Plan des Typs. Max. pro Datei
+  50 MB (Free/Personal), 250 MB (Team/Organization). Berechnet in `storageFor` und bei jedem Planwechsel/Mitgliederwechsel neu
+  geschrieben; `storageQuotaOverrideBytes` (Plattform-Admin) hat Vorrang. Über dem Limit wird nichts gelöscht, nur neue
+  Uploads abgelehnt: `HttpsError` mit `details.code` = `plan-storage-limit` bzw. `plan-file-too-large` (`details.reason`
+  bleibt `quota`/`too-large`).
 - `can('invite')` ist auf persönlichen Workspaces immer `false`; `can('upgradeToTeam')` gibt es nicht. UI: Workspace-Umschalter zeigt
   den persönlichen Workspace als „Persönlich“, Upgrade-Weg im Billing-Tab („Personal buchen“).
 - Admin-MRR: `personal` = 5 € (Monat) bzw. 4 € (Jahr) + `aiAddonSeats × 10`.
