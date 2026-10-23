@@ -42,7 +42,7 @@ enum AccountStrings {
         "security.apple.link": "Apple verknüpfen",
         "security.apple.footer": "Verknüpfe Apple mit diesem Konto, damit „E-Mail verbergen“ bei Einladungen nicht stört.",
         "security.apple.linked": "Apple ist jetzt verknüpft",
-        "security.twoFactor": "Zwei-Faktor", "security.twoFactor.off": "Nicht eingerichtet",
+        "security.twoFactor": "Zwei-Faktor", "security.twoFactor.off": "Aus",
         "security.twoFactor.footer": "Einrichten und Verwalten geht im Web. Ein Passkey mit Face ID gilt bereits als zweiter Faktor.",
         "security.twoFactor.web": "Im Web einrichten",
         // Web wording
@@ -113,7 +113,7 @@ enum AccountStrings {
         "security.apple.link": "Link Apple",
         "security.apple.footer": "Link Apple to this account so “Hide My Email” doesn't get in the way of invitations.",
         "security.apple.linked": "Apple is now linked",
-        "security.twoFactor": "Two-factor", "security.twoFactor.off": "Not set up",
+        "security.twoFactor": "Two-factor", "security.twoFactor.off": "Off",
         "security.twoFactor.footer": "Set up and manage it on the web. A passkey with Face ID already counts as a second factor.",
         "security.twoFactor.web": "Set up on the web",
         "settings.security.passkeys.title": "Passkeys", "settings.security.passkeys.addButton": "Add Passkey",
