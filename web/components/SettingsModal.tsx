@@ -75,10 +75,10 @@ interface SettingsModalProps {
 type TokenPreset = 'codex-full' | 'read-only' | 'write-no-delete';
 
 const TOKEN_PERMISSION_PRESETS: Record<TokenPreset, APITokenPermission[]> = {
+    // Coding agents never need to delete whole projects; that stays an explicit opt-in.
     'codex-full': [
         'projects:read',
         'projects:write',
-        'projects:delete',
         'tasks:read',
         'tasks:write',
         'tasks:delete',

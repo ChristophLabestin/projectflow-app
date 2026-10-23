@@ -489,7 +489,8 @@ ProjectFlow API tokens use coarse API permission strings rather than the in-app 
 - Codex session listing and inbox reads require `tasks:read`.
 - Codex task sessions, checkpoints, finish calls, and follow-up creation require `tasks:write`.
 - Starting a Codex session with `entity: "initiative"` requires `initiatives:write`.
-- The Settings API token preset "Codex Full Access" includes project, task, and initiative read/write/delete permissions and is the recommended token for the Codex plugin.
+- The Settings API token preset "Codex Full Access" includes project read/write, and task and initiative read/write/delete permissions (no `projects:delete` since 2026-10-23) and is the recommended token for the Codex plugin.
+- Workspace API tokens act as their creator (`createdBy`): a token only works while that creator is still a non-guest member of the token's workspace and the token is unexpired (`checkApiTokenUsable` in `functions/src/authUtils.ts`, applied to `/api/projectflow` and `/mcp`). Removing or demoting the creator to Guest disables all their tokens; tokens without `createdBy` are rejected.
 
 Codex follow-up tasks remain normal project tasks, so in-app visibility follows existing project membership and task visibility rules.
 

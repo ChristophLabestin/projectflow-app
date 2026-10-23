@@ -15,7 +15,9 @@ A remote [Model Context Protocol](https://modelcontextprotocol.io) server so Cla
 - Every tool calls the public REST API route in-process (`handleProjectflowApiRoute`) with the caller's token, so permissions, project-scoped tokens, workspace isolation, validation and activity logging are identical to `/api/projectflow`.
 - `tools/list` only contains tools the token's permissions allow (`projects:*`, `tasks:*`, `initiatives:*`).
 - API errors come back as tool results with `isError: true` and the API message.
-- Token lookup (`findApiToken` in `authUtils.ts`) uses a collection-group query on `api_tokens.tokenHash` (field override in `firestore.indexes.json`) and falls back to scanning tenants if the index is missing.
+- Token lookup (`findApiToken` in `authUtils.ts`) uses a collection-group query on `api_tokens.tokenHash` (field override in `firestore.indexes.json`), no tenant scan. `checkApiTokenUsable` rejects expired tokens and tokens whose creator is no longer a non-guest workspace member.
+- Every tool carries all four annotations (`ANNOTATIONS.read|create|update|destroy`: readOnly/destructive/idempotent/openWorld=false).
+- Successor design (OAuth, per-user grants, policy): `brain/plans/ai-integrations-concept.md`.
 
 ## Tools
 

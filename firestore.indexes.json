@@ -266,6 +266,20 @@
       ]
     },
     {
+      "collectionGroup": "marketing_recipients",
+      "fieldPath": "unsubscribeToken",
+      "indexes": [
+        {
+          "order": "ASCENDING",
+          "queryScope": "COLLECTION"
+        },
+        {
+          "order": "ASCENDING",
+          "queryScope": "COLLECTION_GROUP"
+        }
+      ]
+    },
+    {
       "collectionGroup": "api_tokens",
       "fieldPath": "tokenHash",
       "indexes": [
