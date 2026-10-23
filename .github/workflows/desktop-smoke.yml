@@ -1,0 +1,57 @@
+# Desktop smoke test: package the shell unsigned (--dir) and start it, then check over CDP that the
+# main window loaded the hosted web app. Covers what we cannot run locally (Windows); manual checks:
+# brain/operations/desktop-windows-test.md.
+name: Desktop smoke
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths: ['desktop/**', '.github/workflows/desktop-smoke.yml']
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    name: Smoke (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+        working-directory: desktop
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: desktop/package-lock.json
+      - run: npm ci
+      - run: npm run build
+      - name: Package (unsigned, unpacked)
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+        run: npx electron-builder --dir --publish never
+      - name: Start and probe
+        run: |
+          if [[ "$RUNNER_OS" == "Windows" ]]; then
+            APP=$(ls -d release/win-*unpacked | head -1)/ProjectFlow.exe
+          else
+            APP=$(ls -d release/mac*/ProjectFlow.app | head -1)/Contents/MacOS/ProjectFlow
+          fi
+          "$APP" --remote-debugging-port=9555 > smoke.log 2>&1 &
+          PID=$!
+          for i in $(seq 1 45); do
+            sleep 2
+            URLS=$(curl -s http://127.0.0.1:9555/json/list || true)
+            if echo "$URLS" | grep -q '"url": *"https://app.getprojectflow.com'; then break; fi
+          done
+          echo "$URLS"
+          kill $PID 2>/dev/null || true
+          if ! echo "$URLS" | grep -q '"url": *"https://app.getprojectflow.com'; then
+            echo "::error::Main window did not load the web app"; cat smoke.log; exit 1
+          fi

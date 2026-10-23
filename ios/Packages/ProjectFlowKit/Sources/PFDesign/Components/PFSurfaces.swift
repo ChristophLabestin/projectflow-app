@@ -39,6 +39,16 @@ public extension View {
         modifier(PFFrostModifier(shape: shape, tint: tint))
     }
 
+    /// Surface of a pill (choice chips, capture chips, small inline actions): primary fill when selected,
+    /// otherwise the frosted chrome of the round back button, so pills and back buttons read as one family.
+    @ViewBuilder func pfPillSurface(selected: Bool = false) -> some View {
+        if selected {
+            background(PFColor.primary, in: .capsule)
+        } else {
+            pfGlass(in: Capsule())
+        }
+    }
+
     /// Same as `pfGlass`, named for what it is.
     func pfFrost<S: Shape>(in shape: S, tint: Color? = nil) -> some View {
         modifier(PFFrostModifier(shape: shape, tint: tint))

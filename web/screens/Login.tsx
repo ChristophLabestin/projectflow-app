@@ -9,7 +9,7 @@ import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
 import { WorkspaceConnecting } from '../context/WorkspaceContext';
 import { loginWithPasskey, preparePasskeyLogin, shouldAutoPrompt } from '../services/passkeyService';
-import { isDesktop } from '../services/desktop';
+import { getDesktopBridge, hasDesktopCapability, isDesktop } from '../services/desktop';
 import { COMPANY_NAME } from '../config/company';
 import { AppleLogo } from '../components/ui/AppleLogo';
 import './login.scss';
@@ -78,6 +78,20 @@ export const Login = () => {
 
         setIsRegister(false);
     }, [inviteTenantId, location.state, searchParams, location.pathname]);
+
+    // Desktop: OAuth providers run in the system browser and come back via projectflow://auth (DesktopBridge).
+    const canSignInExternally = isDesktopApp && hasDesktopCapability('external-auth');
+    const [browserSignInStarted, setBrowserSignInStarted] = useState(false);
+    const handleBrowserSignIn = async () => {
+        setError('');
+        try {
+            await getDesktopBridge()?.signInExternally?.();
+            setBrowserSignInStarted(true);
+        } catch (err) {
+            console.error(err);
+            setError(t('login.desktop.browserFailed'));
+        }
+    };
 
     const handleAuthSuccess = async (target: string = redirectUrl) => {
         setPendingRedirect(target);
@@ -468,7 +482,26 @@ export const Login = () => {
                     )}
 
                     {!isRegister && !showMfaStep && isDesktopApp && (
-                        <p className="login-page__desktop-hint">{t('login.desktop.oauthHint')}</p>
+                        canSignInExternally ? (
+                            <>
+                                <div className="login-page__divider">{t('login.divider.orContinue')}</div>
+                                <Button
+                                    type="button"
+                                    variant="secondary"
+                                    className="login-page__primary"
+                                    onClick={handleBrowserSignIn}
+                                    disabled={isBusy}
+                                    icon={<span className="material-symbols-outlined">open_in_browser</span>}
+                                >
+                                    {t('login.desktop.browserAction')}
+                                </Button>
+                                <p className="login-page__desktop-hint">
+                                    {t(browserSignInStarted ? 'login.desktop.browserWaiting' : 'login.desktop.browserHint')}
+                                </p>
+                            </>
+                        ) : (
+                            <p className="login-page__desktop-hint">{t('login.desktop.oauthHint')}</p>
+                        )
                     )}
 
                     {!isRegister && !showMfaStep && !isDesktopApp && (

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+    allowsPushNotification,
     DEFAULT_DAY_CLOSE_TIME,
     DEFAULT_MORNING_TIME,
     isValidTime,
@@ -47,5 +48,15 @@ describe('notificationPrefs', () => {
         const stored = toStoredNotificationPrefs(resolveNotificationPrefs(undefined, 'UTC'));
         expect(JSON.parse(JSON.stringify(stored))).toEqual(stored);
         expect(Object.keys(stored).sort()).toEqual(['dayClose', 'email', 'morningBriefing', 'push', 'timezone']);
+    });
+});
+
+describe('allowsPushNotification', () => {
+    it('follows the push toggle of the category and lets transactional types through', () => {
+        const prefs = resolveNotificationPrefs({ push: { comments: false } });
+        expect(allowsPushNotification('comment_added', prefs)).toBe(false);
+        expect(allowsPushNotification('task_status_changed', prefs)).toBe(false);
+        expect(allowsPushNotification('comment_mention', prefs)).toBe(true);
+        expect(allowsPushNotification('workspace_invite', prefs)).toBe(true);
     });
 });

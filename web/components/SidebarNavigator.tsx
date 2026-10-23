@@ -10,6 +10,7 @@ import { useAuth } from '../context/AuthContext';
 import { usePermissions } from '../context/PermissionContext';
 import { useUIState } from '../context/UIContext';
 import { NotificationDropdown } from './NotificationDropdown';
+import { DesktopAppPromo } from './desktop/DesktopAppPromo';
 import logo from '../assets/logo.svg';
 import type { Project, ProjectExternalResource } from '../types';
 import { useWorkspace } from '../context/WorkspaceContext';
@@ -727,6 +728,9 @@ export const SidebarNavigator: React.FC<SidebarNavigatorProps> = ({ isDrawer = f
 
                         </div>
                     </div>
+
+                    {/* Browser on macOS / Windows: offer the desktop app once a release exists */}
+                    <DesktopAppPromo onNavigate={closeOnNavigate} />
 
                     {/* Project dock — quick switch, always one click */}
                     <div className="snav-dock">

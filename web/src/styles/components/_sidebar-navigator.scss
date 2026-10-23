@@ -54,6 +54,7 @@
 .snav-group--pins .snav-row,
 .snav-row--external,
 .snav-dock,
+.desktop-promo,
 .snav-footer {
     transition:
         max-height var(--transition-normal),
@@ -68,6 +69,7 @@
 .snav-group--pins .snav-row,
 .snav-row--external { max-height: 38px; }
 .snav-dock,
+.desktop-promo,
 .snav-footer { max-height: 400px; }
 
 .snav-row__label,
@@ -134,6 +136,7 @@
         .snav-group--pins .snav-row,
         .snav-row--external,
         .snav-dock,
+        .desktop-promo,
         .snav-footer {
             max-height: 0;
             padding-top: 0;
@@ -141,6 +144,11 @@
             margin-bottom: 0;
             opacity: 0;
             overflow: hidden;
+        }
+
+        .desktop-promo {
+            margin-top: 0;
+            border-width: 0;
         }
     }
 }
@@ -430,7 +438,7 @@
     display: flex;
     align-items: center;
     gap: 6px;
-    padding: 10px 10px;
+    padding: 10px 10px 2px;
 }
 
 .snav-dock__home,

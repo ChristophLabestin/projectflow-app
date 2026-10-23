@@ -422,3 +422,31 @@ route `/desktop/tray`, `web/screens/DesktopTrayPanel.tsx`), right click keeps th
   encryption fuse, zoom restore, language flip-flop, capture payload queue + ready signal, shortcut validation with
   conflict rollback, calendar enable/disable race, hidden launch at login, page shortcuts not registered in the
   macOS menu, bounded command queue, exact offline-page match, `PF_DESKTOP_SETTINGS_DIR` dev-only.
+
+## 18. Open points round (2026-10-23, after v0.1.0)
+
+- **Notifications follow the push toggles**: `DesktopBridge` subscribes to `users/{uid}.notificationPrefs` and drops
+  native notifications whose category push toggle is off (`allowsPushNotification` in `web/utils/notificationPrefs.ts`
+  mirrors `CATEGORY_BY_TYPE` of `functions/src/notification-prefs.ts` — keep both in sync). Transactional types pass.
+- **OAuth via the system browser** (Phase 1b, capability `external-auth`): Login shows "Sign in with the browser" →
+  shell creates a PKCE verifier, opens `/desktop/auth?challenge=sha256(verifier)` (`web/screens/DesktopAuthHandoff.tsx`;
+  not signed in → `/login?redirect=…`, any provider) → `createDesktopAuthCode` (one-time code, hash stored in
+  `desktop_auth_codes`, 2 min, admin-only) → `projectflow://auth?code=…` → shell adds the verifier (only for a sign-in
+  it started, ≤15 min) → `DesktopBridge` calls `exchangeDesktopAuthCode` → `signInWithCustomToken`. Code:
+  `functions/src/desktopAuth.ts`, `desktop/src/features/externalAuth.ts`, `web/services/desktopAuth.ts`.
+  Verified against the emulator (unauth / wrong verifier / reuse rejected, token signs in) and the handoff page in a
+  browser; the full click path through a real browser + Google needs a packaged build (protocol registration).
+- **DMG signing**: signed builds pass `-c.dmg.sign=true`; with the API key the DMG is notarized + stapled after the
+  build and re-uploaded (`gh release upload --clobber`). The updater uses the zip, so the changed DMG hash is fine.
+- **Windows signing**: optional Azure Trusted Signing (`AZURE_*` secrets + variables, see workflow header) besides the
+  `.pfx` path; `publisherName` also lets electron-updater verify updates. Needs an Azure Trusted Signing account (user).
+- **Windows test**: `.github/workflows/desktop-smoke.yml` (PRs touching `desktop/`, manual) packages + starts the app on
+  Windows and macOS runners and checks the main window over CDP; manual checklist
+  `brain/operations/desktop-windows-test.md`.
+- **Spotlight** (capability `spotlight`, macOS): `desktop/native/spotlight-index.swift` → `pf-spotlight` in
+  `Contents/MacOS` (must live there so CoreSpotlight attributes items to the app bundle; dev copies it next to the dev
+  Electron binary). Web sends active projects + my open project/personal tasks of the active workspace 20 s after start
+  and every 30 min (`web/services/desktopSpotlight.ts`), `[]` on sign-out; Settings → Desktop → "Spotlight search".
+  A click arrives as `continue-activity` (`com.apple.corespotlightitem`, `NSUserActivityTypes`) → item id = app path.
+  Verified: helper indexes inside the bundle, packaged layout + Info.plist. Not verified: clicking a result in the
+  Spotlight UI. Windows Search: not planned.

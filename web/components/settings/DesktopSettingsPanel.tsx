@@ -238,6 +238,9 @@ export const DesktopSettingsPanel = () => {
                 {row(t('settings.desktop.mediaKeys.title'), t('settings.desktop.mediaKeys.hint'), (
                     <SettingsSwitch checked={prefs.mediaKeysEnabled} label={t('settings.desktop.mediaKeys.title')} onChange={(value) => void update({ mediaKeysEnabled: value })} />
                 ))}
+                {prefs.supports.spotlight && row(t('settings.desktop.spotlight.title'), t('settings.desktop.spotlight.hint'), (
+                    <SettingsSwitch checked={prefs.spotlightEnabled !== false} label={t('settings.desktop.spotlight.title')} onChange={(value) => void update({ spotlightEnabled: value })} />
+                ))}
                 {prefs.supports.touchBar && <p className="notification-settings__note">{t('settings.desktop.touchBar.note')}</p>}
             </section>
         </div>

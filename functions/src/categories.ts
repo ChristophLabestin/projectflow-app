@@ -2,6 +2,7 @@ import * as functions from 'firebase-functions/v1';
 import { db } from './init';
 import { corsMiddleware } from './corsConfig';
 import { validateAPIToken, getAuthToken } from './authUtils';
+import { authorizePlatformAdmin } from './platform-admin';
 import { FieldValue } from 'firebase-admin/firestore';
 
 const REGION = 'europe-west3';
@@ -75,9 +76,10 @@ export const manageCategories = functions.region(REGION).https.onRequest((req, r
             return;
         }
 
-        const validation = await validateAPIToken(token, 'blog:categories:write');
-        if (!validation.valid) {
-            res.status(401).json({ success: false, error: validation.error });
+        // Global public blog: platform admins only (a workspace token's permission alone is not enough).
+        const access = await authorizePlatformAdmin(token, 'blog:categories:write');
+        if (!access.ok) {
+            res.status(access.status).json({ success: false, error: access.error });
             return;
         }
 

@@ -11,6 +11,7 @@ struct WelcomeOnboardingView: View {
 
     @Environment(AppModel.self) private var model
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
 
     @State private var step: Step = .name
     @State private var markCenter: CGPoint?
@@ -29,6 +30,12 @@ struct WelcomeOnboardingView: View {
     @State private var error: String?
     @State private var loaded = false
     @State private var goingBack = false
+    @State private var trailingInset: CGFloat = 0
+
+    /// iPhone Duo outer display: back and next move into the side region, like on pushed pages.
+    private var sideRegion: CGFloat {
+        PFLayout.sideRegionWidth(trailingInset: trailingInset, isCompact: horizontalSizeClass == .compact)
+    }
 
     private var isOwner: Bool { model.session?.role == .owner }
     private var steps: [Step] { [.name, .about, .team, .how, .notifications] }
@@ -65,6 +72,8 @@ struct WelcomeOnboardingView: View {
             }
         }
         .safeAreaInset(edge: .bottom, spacing: 0) { footer }
+        .overlay { if sideRegion > 0 { sideControls } }
+        .onGeometryChange(for: CGFloat.self) { $0.safeAreaInsets.trailing } action: { trailingInset = $0 }
         .task {
             guard !loaded else { return }
             loaded = true
@@ -78,18 +87,25 @@ struct WelcomeOnboardingView: View {
 
     private var header: some View {
         HStack(spacing: PFSpace.s) {
-            Button { go(back: true) } label: {
-                Image(systemName: "chevron.left")
-                    .font(.system(size: 14, weight: .bold))
-                    .foregroundStyle(PFColor.textMain)
-                    .frame(width: 36, height: 36)
-                    .background(PFColor.raised, in: .circle)
+            // iPhone Duo outer display: back lives in the side column instead.
+            if stepIndex > 0, sideRegion == 0 {
+                PFIconButton("chevron.left", label: L10n.t("welcome.back")) { go(back: true) }
+                    .disabled(isBusy)
             }
-            .buttonStyle(.pfPressable)
-            .opacity(stepIndex == 0 ? 0 : 1)
-            .disabled(stepIndex == 0 || isBusy)
-            .accessibilityLabel(L10n.t("welcome.back"))
-            Spacer()
+            Spacer(minLength: 0)
+            if let skipTitle {
+                Button { skipCurrent() } label: {
+                    Text(skipTitle).pfText(.buttonSmall).foregroundStyle(PFColor.textMain)
+                        .padding(.horizontal, 14).frame(minHeight: 36)
+                        .pfPillSurface()
+                }
+                .buttonStyle(.pfPressable)
+                .disabled(isBusy)
+                .accessibilityLabel(skipAccessibilityLabel)
+            }
+        }
+        .frame(minHeight: 44)
+        .overlay {
             HStack(spacing: 6) {
                 ForEach(steps.indices, id: \.self) { index in
                     Capsule()
@@ -100,11 +116,24 @@ struct WelcomeOnboardingView: View {
             .animation(reduceMotion ? nil : .spring(response: 0.4, dampingFraction: 0.85), value: stepIndex)
             .accessibilityElement(children: .ignore)
             .accessibilityLabel(L10n.t("welcome.step", ["n": "\(stepIndex + 1)", "total": "\(steps.count)"]))
-            Spacer()
-            Color.clear.frame(width: 36, height: 36)
         }
         .padding(.horizontal, PFSpace.page)
         .padding(.top, PFSpace.s)
+    }
+
+    /// Survey screens can be skipped, the notification screen can start without notifications.
+    private var skipTitle: String? {
+        if isSurveyStep { return L10n.t("survey.skip") }
+        if step == .notifications { return L10n.t("welcome.notify.later") }
+        return nil
+    }
+
+    private var skipAccessibilityLabel: String {
+        step == .notifications ? L10n.t("welcome.notify.skip") : L10n.t("survey.skip")
+    }
+
+    private func skipCurrent() {
+        if step == .notifications { finish() } else { skip() }
     }
 
     private var footer: some View {
@@ -115,22 +144,40 @@ struct WelcomeOnboardingView: View {
                     .foregroundStyle(PFColor.dangerText)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
-            PFButton(primaryTitle, systemImage: step == .notifications ? "bell.badge" : "arrow.right", size: .large, fullWidth: true) { primaryAction() }
-                .disabled(isBusy || !canContinue)
-                .overlay(alignment: .trailing) { if isBusy { ProgressSpinner().padding(.trailing, 20) } }
-            if isSurveyStep {
-                PFButton(L10n.t("survey.skip"), kind: .ghost, size: .medium, fullWidth: true) { skip() }
-                    .disabled(isBusy)
-            }
-            if step == .notifications {
-                PFButton(L10n.t("welcome.notify.skip"), kind: .ghost, size: .medium, fullWidth: true) { finish() }
-                    .disabled(isBusy)
+            if sideRegion == 0 {
+                PFButton(primaryTitle, systemImage: primaryIcon, size: .large, fullWidth: true) { primaryAction() }
+                    .disabled(isBusy || !canContinue)
+                    .overlay(alignment: .trailing) { if isBusy { ProgressSpinner().padding(.trailing, 20) } }
             }
         }
         .padding(.horizontal, PFSpace.page)
-        .padding(.top, PFSpace.s)
-        .padding(.bottom, PFSpace.s)
-        .background(.regularMaterial)
+        .padding(.top, footerIsEmpty ? 0 : PFSpace.s)
+        .padding(.bottom, footerIsEmpty ? 0 : PFSpace.s)
+        .background(footerIsEmpty ? AnyShapeStyle(.clear) : AnyShapeStyle(.regularMaterial))
+    }
+
+    /// Side region: nothing left at the bottom unless there is an error.
+    private var footerIsEmpty: Bool { sideRegion > 0 && error == nil }
+
+    /// Next above back (back lowest, under the thumb), as on pushed pages.
+    private var sideControls: some View {
+        PFSideColumn(side: sideRegion) {
+            PFIconButton(primaryIcon, label: primaryTitle, style: .primary) { primaryAction() }
+                .disabled(isBusy || !canContinue)
+                .opacity(isBusy || !canContinue ? 0.4 : 1)
+            if stepIndex > 0 {
+                PFIconButton("chevron.left", label: L10n.t("welcome.back")) { go(back: true) }
+                    .disabled(isBusy)
+            }
+        }
+    }
+
+    private var primaryIcon: String {
+        switch step {
+        case .notifications: "bell.badge"
+        case .team where invitesEnabled && !parsedEmails.isEmpty: "paperplane"
+        default: "arrow.right"
+        }
     }
 
     // MARK: Steps

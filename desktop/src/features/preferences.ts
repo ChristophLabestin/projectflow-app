@@ -6,6 +6,7 @@ import { toggleCapture } from '../windows/auxWindows';
 import { toggleQuickAccess } from '../windows/quickAccess';
 import { applyCalendarSettings, calendarStatus, calendarSupported } from './calendar';
 import { applyMediaKeySetting } from './focus';
+import { reindexSpotlight, spotlightSupported } from './spotlight';
 
 const isMac = process.platform === 'darwin';
 
@@ -68,11 +69,13 @@ export const getPreferences = (): DesktopPreferencesInfo => {
         focusShortcutOn: settings.focusShortcutOn,
         focusShortcutOff: settings.focusShortcutOff,
         mediaKeysEnabled: settings.mediaKeysEnabled,
+        spotlightEnabled: settings.spotlightEnabled,
         supports: {
             calendar: calendarSupported(),
             focusShortcuts: isMac,
             touchBar: isMac,
-            notificationActions: isMac
+            notificationActions: isMac,
+            spotlight: spotlightSupported()
         },
         calendarStatus: calendarStatus()
     };
@@ -90,7 +93,7 @@ export const setPreferences = async (patch: unknown): Promise<DesktopPreferences
     if (!patch || typeof patch !== 'object') return getPreferences();
     const input = patch as Partial<DesktopPreferences>;
     const next: Partial<ReturnType<typeof getSettings>> = {};
-    const bool = (key: 'launchAtLogin' | 'dayStartEnabled' | 'dayCloseEnabled' | 'calendarEnabled' | 'mediaKeysEnabled') => {
+    const bool = (key: 'launchAtLogin' | 'dayStartEnabled' | 'dayCloseEnabled' | 'calendarEnabled' | 'mediaKeysEnabled' | 'spotlightEnabled') => {
         if (typeof input[key] === 'boolean') next[key] = input[key];
     };
     bool('launchAtLogin');
@@ -98,6 +101,7 @@ export const setPreferences = async (patch: unknown): Promise<DesktopPreferences
     bool('dayCloseEnabled');
     bool('calendarEnabled');
     bool('mediaKeysEnabled');
+    bool('spotlightEnabled');
     if (typeof input.dayCloseTime === 'string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(input.dayCloseTime)) {
         next.dayCloseTime = input.dayCloseTime;
         next.lastDayClose = undefined;
@@ -122,6 +126,7 @@ export const setPreferences = async (patch: unknown): Promise<DesktopPreferences
         }
     }
     if ('mediaKeysEnabled' in next) applyMediaKeySetting();
+    if ('spotlightEnabled' in next) reindexSpotlight();
     if ('calendarEnabled' in next && next.calendarEnabled !== before.calendarEnabled) await applyCalendarSettings();
     return getPreferences();
 };

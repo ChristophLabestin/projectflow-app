@@ -1318,100 +1318,142 @@ html.is-desktop.desktop-window-tray {
 // Desktop app banner (web app in macOS / Windows browsers) → /download
 // ---------------------------------------------------------------------------
 
-.desktop-banner {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    max-width: 80rem;
-    margin: 0 auto 16px;
-    padding: 10px 12px 10px 16px;
-    border: 1px solid var(--color-surface-border);
-    border-radius: 14px;
-    background: linear-gradient(90deg, rgba(var(--color-primary-rgb), 0.06), var(--color-surface-card) 60%);
-    animation: desktop-banner-in 0.3s ease-out;
+// Desktop-app promo card in the sidebar, above the project dock (web app in macOS / Windows browsers).
+// Inverted card (primary surface) so it reads as an offer, not as navigation; flips with the theme.
+.desktop-promo {
+    position: relative;
+    overflow: hidden;
+    margin: 4px 10px 6px;
+    padding: 12px 12px 10px;
+    border-radius: var(--radius-lg);
+    background: linear-gradient(150deg, var(--color-primary-light), var(--color-primary) 70%);
+    color: var(--color-primary-text);
+    box-shadow: var(--shadow-md);
+    animation: desktop-promo-in 0.3s ease-out;
 }
 
-@keyframes desktop-banner-in {
-    from { opacity: 0; transform: translateY(-6px); }
+@keyframes desktop-promo-in {
+    from { opacity: 0; transform: translateY(6px); }
     to { opacity: 1; transform: none; }
 }
 
-.desktop-banner__icon {
+.desktop-promo__watermark {
+    position: absolute;
+    right: -14px;
+    bottom: -18px;
+    width: 92px;
+    height: 92px;
+    font-size: 92px;
+    opacity: 0.08;
+    pointer-events: none;
+}
+
+.desktop-promo__close {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    display: inline-flex;
+    padding: 3px;
+    border: 0;
+    border-radius: var(--radius-md);
+    background: transparent;
+    color: rgba(var(--color-primary-text-rgb), 0.55);
+    cursor: pointer;
+
+    .material-symbols-outlined {
+        font-size: 16px;
+    }
+
+    &:hover,
+    &:focus-visible {
+        background: rgba(var(--color-primary-text-rgb), 0.12);
+        color: var(--color-primary-text);
+    }
+}
+
+.desktop-promo__head {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding-right: 18px;
+}
+
+.desktop-promo__icon {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 34px;
-    height: 34px;
+    width: 30px;
+    height: 30px;
     flex-shrink: 0;
-    border-radius: 10px;
-    background: var(--color-primary);
-    color: var(--color-primary-text);
-    font-size: 19px;
+    border-radius: var(--radius-md);
+    background: rgba(var(--color-primary-text-rgb), 0.12);
 }
 
-.desktop-banner__text {
-    flex: 1;
-    min-width: 0;
+.desktop-promo__mark {
+    width: 16px;
+    height: 16px;
+    font-size: 17px;
+}
+
+.desktop-promo__title {
     margin: 0;
+    font-size: 0.8125rem;
+    font-weight: 700;
+    line-height: 1.25;
+}
+
+.desktop-promo__body {
+    position: relative;
+    margin: 8px 0 10px;
+    color: rgba(var(--color-primary-text-rgb), 0.7);
+    font-size: 0.72rem;
+    line-height: 1.4;
+}
+
+.desktop-promo__actions {
+    position: relative;
     display: flex;
     flex-wrap: wrap;
-    column-gap: 8px;
-    font-size: 0.88rem;
-
-    strong {
-        color: var(--color-text-main);
-    }
-
-    span {
-        color: var(--color-text-muted);
-    }
+    align-items: center;
+    gap: 4px 8px;
 }
 
-.desktop-banner__cta {
+.desktop-promo__cta {
     display: inline-flex;
     align-items: center;
     gap: 4px;
-    flex-shrink: 0;
-    height: 32px;
+    height: 28px;
     padding: 0 12px;
-    border-radius: 9px;
-    background: var(--color-primary);
-    color: var(--color-primary-text);
-    font-size: 0.82rem;
+    border-radius: var(--radius-full);
+    background: var(--color-primary-text);
+    color: var(--color-primary);
+    font-size: 0.75rem;
     font-weight: 650;
     text-decoration: none;
 
     .material-symbols-outlined {
-        font-size: 17px;
+        font-size: 15px;
+        transition: transform var(--transition-fast);
     }
 
-    &:hover {
-        background: var(--color-primary-hover);
+    &:hover .material-symbols-outlined {
+        transform: translateX(2px);
     }
 }
 
-.desktop-banner__close {
-    display: inline-flex;
-    flex-shrink: 0;
-    padding: 4px;
+.desktop-promo__never {
+    padding: 4px 2px;
     border: 0;
-    border-radius: 6px;
     background: transparent;
-    color: var(--color-text-subtle);
+    color: rgba(var(--color-primary-text-rgb), 0.6);
+    font-size: 0.7rem;
+    font-weight: 500;
     cursor: pointer;
 
-    .material-symbols-outlined {
-        font-size: 18px;
-    }
-
-    &:hover {
-        background: var(--color-surface-hover);
-        color: var(--color-text-main);
-    }
-}
-
-@media (max-width: 720px) {
-    .desktop-banner__text span {
-        display: none;
+    &:hover,
+    &:focus-visible {
+        color: var(--color-primary-text);
+        text-decoration: underline;
     }
 }

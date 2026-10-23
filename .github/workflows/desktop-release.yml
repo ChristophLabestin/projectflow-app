@@ -8,7 +8,11 @@ name: Desktop release
 # Signing (optional, picked up automatically when the secrets exist):
 #   macOS:   MAC_CSC_LINK (base64 Developer ID Application .p12), MAC_CSC_KEY_PASSWORD,
 #            APPLE_API_KEY (contents of the App Store Connect .p8), APPLE_API_KEY_ID, APPLE_API_ISSUER → notarized.
-#   Windows: WIN_CSC_LINK (base64 .pfx), WIN_CSC_KEY_PASSWORD.
+#   Windows: either Azure Trusted Signing (recommended; OV/EV certificates are HSM-only since 2023, so a .pfx
+#            for CI is rarely available): secrets AZURE_TENANT_ID, AZURE_CLIENT_ID, AZURE_CLIENT_SECRET and
+#            repository variables AZURE_SIGN_ENDPOINT (e.g. https://weu.codesigning.azure.net),
+#            AZURE_SIGN_ACCOUNT, AZURE_SIGN_PROFILE, WIN_PUBLISHER_NAME (certificate subject CN)
+#            — or WIN_CSC_LINK (base64 .pfx) + WIN_CSC_KEY_PASSWORD.
 # Without them the builds are unsigned (macOS Gatekeeper blocks a double-click; Windows shows SmartScreen).
 
 'on':
@@ -109,7 +113,8 @@ jobs:
             unset CSC_LINK CSC_KEY_PASSWORD
             export CSC_KEYCHAIN="$KEYCHAIN"
             export CSC_NAME="Christoph Labestin (48BM67TY9G)"
-            EXTRA+=(-c.extraMetadata.pfSigned=true)
+            # Sign the DMG itself too (electron-builder only signs the .app by default).
+            EXTRA+=(-c.extraMetadata.pfSigned=true -c.dmg.sign=true)
             if [[ -n "$APPLE_API_KEY_CONTENT" ]]; then
               echo "$APPLE_API_KEY_CONTENT" > "$RUNNER_TEMP/apple-api-key.p8"
               export APPLE_API_KEY="$RUNNER_TEMP/apple-api-key.p8"
@@ -120,18 +125,41 @@ jobs:
             echo "::warning::macOS build is unsigned (no MAC_CSC_LINK secret)."
           fi
           npx electron-builder --mac --publish always -c.publish.releaseType=draft "${EXTRA[@]}"
+          if [[ -n "${APPLE_API_KEY:-}" ]]; then
+            # electron-builder notarizes the app inside, not the DMG: notarize + staple the DMG so it also
+            # opens offline without a Gatekeeper lookup, then replace the uploaded file. The updater uses the
+            # zip (latest-mac.yml), so the changed DMG checksum does not matter.
+            xcrun notarytool submit release/ProjectFlow-mac.dmg --key "$APPLE_API_KEY" \
+              --key-id "$APPLE_API_KEY_ID" --issuer "$APPLE_API_ISSUER" --wait
+            xcrun stapler staple release/ProjectFlow-mac.dmg
+            gh release upload "v${{ needs.prepare.outputs.version }}" release/ProjectFlow-mac.dmg --clobber --repo "${{ github.repository }}"
+          fi
       - name: Package and upload (Windows)
         if: runner.os == 'Windows'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
           CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+          AZURE_SIGN_ENDPOINT: ${{ vars.AZURE_SIGN_ENDPOINT }}
+          AZURE_SIGN_ACCOUNT: ${{ vars.AZURE_SIGN_ACCOUNT }}
+          AZURE_SIGN_PROFILE: ${{ vars.AZURE_SIGN_PROFILE }}
+          WIN_PUBLISHER_NAME: ${{ vars.WIN_PUBLISHER_NAME }}
         run: |
-          if [[ -z "$CSC_LINK" ]]; then
+          EXTRA=()
+          if [[ -n "$AZURE_CLIENT_SECRET" && -n "$AZURE_SIGN_ENDPOINT" ]]; then
+            unset CSC_LINK CSC_KEY_PASSWORD
+            EXTRA+=(-c.win.azureSignOptions.endpoint="$AZURE_SIGN_ENDPOINT"
+              -c.win.azureSignOptions.codeSigningAccountName="$AZURE_SIGN_ACCOUNT"
+              -c.win.azureSignOptions.certificateProfileName="$AZURE_SIGN_PROFILE"
+              -c.win.azureSignOptions.publisherName="$WIN_PUBLISHER_NAME")
+          elif [[ -z "$CSC_LINK" ]]; then
             export CSC_IDENTITY_AUTO_DISCOVERY=false
-            echo "::warning::Windows build is unsigned (no WIN_CSC_LINK secret)."
+            echo "::warning::Windows build is unsigned (no Azure Trusted Signing / WIN_CSC_LINK)."
           fi
-          npx electron-builder --win --publish always -c.publish.releaseType=draft
+          npx electron-builder --win --publish always -c.publish.releaseType=draft "${EXTRA[@]}"
 
   publish:
     name: Publish release

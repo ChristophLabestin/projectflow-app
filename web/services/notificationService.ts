@@ -15,7 +15,8 @@ import {
 import type { DocumentReference, WriteBatch } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import { db, auth, app, firebaseConfig, functions as cloudFunctions } from './firebase';
-import type { Notification } from '../types';
+import type { Notification, NotificationPrefs } from '../types';
+import { resolveNotificationPrefs, type ResolvedNotificationPrefs } from '../utils/notificationPrefs';
 import { getCachedTenantId } from './internal/workspaceDataCore';
 import { isDesktop } from './desktop';
 
@@ -330,3 +331,11 @@ export const deleteAllNotifications = async (userId: string, tenantId?: string):
     const snapshot = await getDocs(query(getNotificationsCollection(tid), where('userId', '==', userId)));
     await commitInChunks(snapshot.docs.map((d) => d.ref), (batch, ref) => batch.delete(ref));
 };
+
+/** Live users/{uid}.notificationPrefs (resolved with defaults), e.g. to filter native desktop notifications. */
+export const subscribeToNotificationPrefs = (userId: string, onChange: (prefs: ResolvedNotificationPrefs) => void) =>
+    onSnapshot(
+        doc(db, 'users', userId),
+        (snapshot) => onChange(resolveNotificationPrefs(snapshot.data()?.notificationPrefs as NotificationPrefs | undefined)),
+        () => onChange(resolveNotificationPrefs(undefined))
+    );

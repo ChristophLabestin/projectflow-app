@@ -3,6 +3,7 @@ import * as functions from 'firebase-functions/v1';
 
 import { hashToken, type ApiPermission } from './authUtils';
 import { db } from './init';
+import { PLATFORM_ADMIN_PERMISSIONS } from './platform-admin';
 import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 
 const REGION = 'europe-west3';
@@ -327,7 +328,11 @@ export const createWorkspaceApiToken = functions.region(REGION).https.onCall(asy
         throw new functions.https.HttpsError('invalid-argument', 'At least one permission is required.');
     }
 
-    if (permissions.some((permission: string) => !ALLOWED_API_PERMISSIONS.includes(permission as ApiPermission))) {
+    // Blog permissions write the global public blog: only platform admins may put them on a token.
+    const allowed = context.auth?.token?.platformAdmin === true
+        ? [...ALLOWED_API_PERMISSIONS, ...PLATFORM_ADMIN_PERMISSIONS]
+        : ALLOWED_API_PERMISSIONS;
+    if (permissions.some((permission: string) => !allowed.includes(permission as ApiPermission))) {
         throw new functions.https.HttpsError('invalid-argument', 'One or more permissions are not allowed.');
     }
 
