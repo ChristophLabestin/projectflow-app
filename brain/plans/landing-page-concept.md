@@ -44,7 +44,11 @@ Board 2 Spalten, weniger Karten, Akt 6 = Browser + iPhone).
 - **Letzter Akt = die Seite wird zur App**: Board im Browserrahmen, Karten anklickbar (abhaken), CTA daneben.
 - **MCP als eigene Szene** statt Logo-Band: ein Agent ruft `upsert_task` auf, die Karte erscheint im Board.
 
-## Nach der Story (kompakt, ohne Pin)
+## Nach der Story (Stand 2026-10-23, erweitert)
+Reihenfolge: Für wen (Agenturen, Produktteams, Gründer:innen) → Apps (Desktop-Kürzel, iPhone) → KI & MCP-Szene →
+Funktionen → Preise (geplant, Monat/Jahr-Umschalter; Quelle `brain/plans/pricing-strategy.md`) → FAQ → CTA.
+
+### Ursprüngliche Planung
 1. **Mehr als Aufgaben** – Bento mit echten UI-Fragmenten: Task-Workbench, KI-Assistenz (OpenAI), Initiativen & Sprints,
    Passkeys & 2FA, Daten in der EU. Kacheln reagieren auf Cursor (Licht).
 2. **Deine KI arbeitet mit** – MCP-Band: Claude, ChatGPT, Codex, Cursor, VS Code, Gemini CLI; Link `/docs/mcp`.

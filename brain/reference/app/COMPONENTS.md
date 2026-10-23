@@ -345,3 +345,8 @@ Concept: `brain/plans/help-center-rework.md`.
 - `userPrivateData` (`web/services/domain/`): owner-only user data (`private/usage`, `private/workspace`, `private/onboarding`); `emailVerification` helpers for sending/rechecking the confirmation mail.
 
 - `DashboardSkeleton` (`web/components/dashboard/DashboardSkeleton.tsx`, 2026-10-23): loading state of the Dashboard in its real Today layout (same containers, measured heights), shown until projects *and* tasks are loaded; styles at the end of `src/styles/components/_dashboard.scss`.
+
+## In-app AI (`web/components/ai/`, 2026-10-23)
+- `AiTextAssist`: ✦ for any textarea (wrap the field: `<AiTextAssist value onApply field itemTitle projectTitle>`). Writing actions on the whole text or the selection (draft, write out, shorten, rephrase, list, tone, fix, translate, custom instruction), streamed suggestion below the field, written back only on „Übernehmen“; ⌘J/Ctrl+J inside the field opens the menu; errors are shown inline. Renders just the children unless the workspace has `inAppAi` + `inAppEnabled`. `className="ai-text-assist--compact"` for single-line composers. Used in TaskCreateModal, EditTaskModal, CommentSection, ProjectEditModal.
+- `useInAppAi` (`web/hooks/`): availability of the in-app AI for the active workspace (cached policy; `forgetInAppAi` after settings changes).
+- `streamAiAssist` (`web/services/aiAssistClient.ts`): SSE client for the `aiAssist` function (`/api/assist` in production, function URL in the emulator).

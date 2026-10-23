@@ -1,3 +1,4 @@
+import { forgetInAppAi } from '../../hooks/useInAppAi';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { useLanguage } from '../../context/LanguageContext';
@@ -31,7 +32,9 @@ const TOKEN_PRESETS: Record<TokenPreset, string[]> = {
     delete: ['projects:read', 'projects:write', 'tasks:read', 'tasks:write', 'tasks:delete', 'initiatives:read', 'initiatives:write', 'initiatives:delete']
 };
 
-const POLICY_KEYS: (keyof AiPolicy)[] = ['enabled', 'allowPersonalTokens', 'allowDeleteScopes', 'allowGuests'];
+/** In-app assistant switches come first; they do not depend on the external-clients master switch. */
+const POLICY_KEYS: (keyof AiPolicy)[] = ['inAppAi', 'inAppEnabled', 'enabled', 'allowPersonalTokens', 'allowDeleteScopes', 'allowGuests'];
+const isInAppKey = (key: keyof AiPolicy) => key === 'inAppAi' || key === 'inAppEnabled';
 
 /**
  * Settings → AI & integrations: connect any MCP client (OAuth by default), see and revoke connections,
@@ -125,6 +128,7 @@ export const AiIntegrationsPanel: React.FC<AiIntegrationsPanelProps> = ({ tenant
         setPolicy({ ...policy, [key]: value });
         try {
             setPolicy(await updateWorkspaceAiPolicy(tenantId, { [key]: value }));
+            if (isInAppKey(key)) forgetInAppAi(tenantId);
         } catch (error: any) {
             setPolicy(previous);
             showError(error?.message || t('aiSettings.error'));
@@ -308,7 +312,7 @@ export const AiIntegrationsPanel: React.FC<AiIntegrationsPanelProps> = ({ tenant
                                 </div>
                                 <SettingsSwitch
                                     checked={policy[key]}
-                                    disabled={!isAdmin || (key !== 'enabled' && !policy.enabled)}
+                                    disabled={!isAdmin || (key !== 'enabled' && !isInAppKey(key) && !policy.enabled)}
                                     onChange={(value) => void changePolicy(key, value)}
                                     label={t(`aiSettings.policy.${key}`)}
                                 />

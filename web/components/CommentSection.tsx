@@ -18,6 +18,7 @@ import { FileRow } from './files/FileRow';
 import { useFileDrop, useThumbnailUrls } from './files/fileHooks';
 import { useFileActions } from './files/useFileActions';
 import { useUploadFeedback } from './files/FileAttachments';
+import { AiTextAssist } from './ai/AiTextAssist';
 
 // Simple time formatter if date-fns is not available or to reduce deps
 const timeAgo = (date: any, t: (key: string) => string) => {
@@ -435,15 +436,17 @@ export const CommentSection: React.FC<CommentSectionProps> = ({
                     {...composerDrop.dropProps}
                     onPaste={composerDrop.onPaste}
                 >
-                    <textarea
-                        ref={textareaRef}
-                        value={newComment}
-                        onChange={enhancedHandleInput}
-                        placeholder={t('comments.placeholder')}
-                        className="flex-1 min-h-[44px] max-h-[160px] p-2.5 text-[15px] bg-transparent border-0 outline-none focus:ring-0 focus:outline-none resize-none w-full text-[var(--color-text-main)] placeholder:text-[var(--color-text-muted)]"
-                        rows={1}
-                        onKeyDown={handleKeyDown}
-                    />
+                    <AiTextAssist textareaRef={textareaRef} value={newComment} onApply={setNewComment} field="comment" itemTitle={targetTitle !== 'item' ? targetTitle : undefined} className="ai-text-assist--compact">
+                        <textarea
+                            ref={textareaRef}
+                            value={newComment}
+                            onChange={enhancedHandleInput}
+                            placeholder={t('comments.placeholder')}
+                            className="flex-1 min-h-[44px] max-h-[160px] p-2.5 text-[15px] bg-transparent border-0 outline-none focus:ring-0 focus:outline-none resize-none w-full text-[var(--color-text-main)] placeholder:text-[var(--color-text-muted)]"
+                            rows={1}
+                            onKeyDown={handleKeyDown}
+                        />
+                    </AiTextAssist>
                     {pendingFiles.length > 0 && (
                         <div className="comment-composer__pending">
                             {pendingFiles.map((file, index) => (

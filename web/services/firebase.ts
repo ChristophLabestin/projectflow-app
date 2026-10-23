@@ -27,7 +27,7 @@ const resolveAuthDomain = () => {
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY || (useEmulators ? 'demo-api-key' : undefined),
   authDomain: resolveAuthDomain(),
-  projectId: useEmulators ? 'demo-projectflow' : import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  projectId: useEmulators ? (import.meta.env.VITE_EMULATOR_PROJECT_ID || 'demo-projectflow') : import.meta.env.VITE_FIREBASE_PROJECT_ID,
   storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
   messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
   appId: import.meta.env.VITE_FIREBASE_APP_ID,

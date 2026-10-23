@@ -26,7 +26,7 @@ type CrashEvent = {
 
 const useEmulators = import.meta.env.VITE_USE_FIREBASE_EMULATORS === 'true';
 const endpoint = useEmulators
-    ? `http://127.0.0.1:${import.meta.env.VITE_EMULATOR_FUNCTIONS_PORT || 5001}/demo-projectflow/europe-west3/crashIngest`
+    ? `http://127.0.0.1:${import.meta.env.VITE_EMULATOR_FUNCTIONS_PORT || 5001}/${import.meta.env.VITE_EMULATOR_PROJECT_ID || 'demo-projectflow'}/europe-west3/crashIngest`
     : '/api/crash';
 const environment = import.meta.env.DEV || useEmulators ? 'development' : 'production';
 
