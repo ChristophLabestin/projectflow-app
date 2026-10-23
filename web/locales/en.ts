@@ -695,6 +695,7 @@ const en = {
     'help.drawer.aiError': 'CORA search failed',
     'help.drawer.resultPage': 'Page',
     'help.drawer.resultSection': 'Section',
+    'help.drawer.loading': 'Loading guides...',
     'help.category.basics': 'Basics',
     'help.category.workflows': 'Workflows',
     'help.category.aiStudio': 'CORA Studio',

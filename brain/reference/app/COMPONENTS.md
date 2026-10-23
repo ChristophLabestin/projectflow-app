@@ -289,6 +289,13 @@ Ports of the iOS brand motion (`PFBrandScene.swift`) and `desktop/assets/splash.
 - `utils/notificationPresentation.ts`: icon/tone per type, `getNotificationPath` (task > initiative > project > relative `deepLink`), `getNotificationText` (renders `notifications.type.<type>.title|message` from the doc's `params`, falls back to the stored English text), `groupNotifications`.
 - `screens/Notifications.tsx` uses the same parts plus the collapsed delivery diagnostics.
 
+## Help Center (`web/components/help/`, bilingual 2026-10-23)
+
+- `HelpCenterDrawer` (mounted in `Router.tsx`, state in `context/HelpCenterContext`): search over page/section index, CORA ask, category nav, active page. On open it calls `loadHelpTranslations()`; until ready it shows `help.drawer.loading` and an empty index.
+- `helpCenterContent.ts`: `getHelpCenterPages(t)` builds the page index (title/description/keywords from `help.pages.<pageKey>.*`); `getHelpTargetForPath` maps routes to pages. `splitHelpKeywords` turns the comma-separated keywords keys into arrays (DE keywords include German and English terms).
+- `pages/*Page.tsx`: each exports the component plus `get<Page>Sections: HelpCenterSectionsBuilder` (`(t) => sections`); index ids must equal the JSX `data-section-id`. All copy via `t('help.<pageKey>.…')`; accents only via brand/status tokens (`--brand-*-text`, `rgba(var(--brand-*-rgb), a)`, `--color-status-blocked-text`), no palette classes.
+- Copy lives in `web/locales/help/<page>-en.ts|-de.ts`, aggregated by `locales/help-en.ts|help-de.ts` and lazy-loaded into the `help-i18n` chunk (`vite.config.ts`) — new help pages add a fragment pair there, not keys in `en.ts`/`de.ts`.
+
 ## Reminders and settings controls
 
 - `components/reminders/ReminderControls.tsx`: `ReminderNotifyToggle` ("Also remind assignees", `notifyAssignees`) and `ReminderSentBadge` (`sentAt`). Used by the task workbench (`ProjectTaskDetail`) and the project reminders popover (`ProjectRemindersPanel`); new reminders also set `createdBy` and `recipientIds: [uid]` (contract C2).
