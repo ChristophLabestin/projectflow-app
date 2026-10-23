@@ -384,6 +384,8 @@ Removed 2026-10-22: `project.social.*` (module removed), `project.marketing.ads.
 - `project.marketing.blog.edit` — Edit blog posts
 - `project.marketing.blog.delete` — Delete blog posts
 
+**Global ProjectFlow blog (`blog_posts`, `blog_categories`)** is platform data, not tenant data: writes via `createBlogPost` / `manageCategories` (and the `api` routes) require a **platform admin** (custom claim `platformAdmin`, `functions/scripts/grant-platform-admin.mjs`) — signed in, or a workspace API token that has the `blog:*` permission *and* was created by a platform admin (`functions/src/platform-admin.ts`). `createWorkspaceApiToken` only accepts `blog:*` permissions from platform admins. Client rules: `blog_posts` public read, no client writes; `blog_categories` deny-all.
+
 ### Settings
 - `project.marketing.settings.view` — View marketing settings
 - `project.marketing.settings.edit` — Edit marketing settings

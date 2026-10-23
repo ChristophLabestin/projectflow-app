@@ -3,6 +3,7 @@ import * as admin from 'firebase-admin';
 import { db } from './init';
 import { corsMiddleware } from './corsConfig';
 import { validateAPIToken, getAuthToken } from './authUtils';
+import { authorizePlatformAdmin } from './platform-admin';
 
 const REGION = 'europe-west3'; // Same region as newsletter function
 
@@ -150,9 +151,10 @@ export const createBlogPost = functions.region(REGION).https.onRequest((req, res
             return;
         }
 
-        const validation = await validateAPIToken(token, 'blog:write');
-        if (!validation.valid) {
-            res.status(401).json({ success: false, error: validation.error });
+        // Global public blog: platform admins only (a workspace token's permission alone is not enough).
+        const access = await authorizePlatformAdmin(token, 'blog:write');
+        if (!access.ok) {
+            res.status(access.status).json({ success: false, error: access.error });
             return;
         }
 
