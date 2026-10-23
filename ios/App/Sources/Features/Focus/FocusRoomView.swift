@@ -12,6 +12,7 @@ private typealias RoomFocus = PFModel.FocusState
 struct FocusRoomView: View {
     @Environment(AppModel.self) private var model
     @AppStorage("pf.darkFocus") private var darkFocus = false
+    @Environment(\.colorScheme) private var systemScheme
 
     enum Phase: Equatable {
         case running
@@ -45,7 +46,10 @@ struct FocusRoomView: View {
                 }
             }
         }
+        // "Dunkler Fokus": the room goes dark even in light mode (the status bar steps aside then).
+        .environment(\.colorScheme, darkFocus ? .dark : systemScheme)
         .preferredColorScheme(darkFocus ? .dark : nil)
+        .statusBarHidden(darkFocus && systemScheme == .light)
         .offset(y: dragOffset)
         .opacity(1 - min(dragOffset / 700, 0.35))
         .simultaneousGesture(dismissDrag)

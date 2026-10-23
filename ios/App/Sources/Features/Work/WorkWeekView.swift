@@ -273,7 +273,7 @@ struct WorkWeekView<Header: View>: View {
     private func autoScroll() async {
         guard coordinator.isDragging else { return }
         while coordinator.isDragging, !Task.isCancelled {
-            let step = coordinator.edgeScroll(viewportTop: 110, viewportBottom: size.height - 130)
+            let step = coordinator.edgeScroll(viewportTop: 120, viewportBottom: size.height - 120, inset: 70, maxStep: 10)
             if step != 0 { position.scrollTo(y: max(0, scrollY + step)) }
             try? await Task.sleep(for: .milliseconds(16))
         }

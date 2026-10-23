@@ -13,6 +13,14 @@ final class WorkNavigator {
     enum Mode: String, Hashable { case list, week }
 
     var mode: Mode = .list
+
+    init() {
+        #if DEBUG
+        // QA: `-pfWorkMode week` opens Arbeit in the week view (used for screenshots).
+        let arguments = ProcessInfo.processInfo.arguments
+        if let index = arguments.firstIndex(of: "-pfWorkMode"), arguments.count > index + 1, arguments[index + 1] == "week" { mode = .week }
+        #endif
+    }
     /// "YYYY-MM-DD" the week view should scroll to when `requestToken` changes.
     private(set) var requestedDay: String?
     private(set) var requestToken = 0
