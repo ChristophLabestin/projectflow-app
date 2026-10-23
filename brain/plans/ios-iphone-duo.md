@@ -129,6 +129,8 @@ Sheets weiterhin `PFPresenter`.
   Sheet-Rand. Footer-Sheets: Footer reicht in die untere Safe Area; `.fit`-Sheets ohne Footer: Inhalt reicht
   hinein (Detent um die Safe Area verkleinert), X auf der letzten Zeile; andere: X unten rechts. Option- und
   Aktionssheets haben dafür überall 20 statt 16 pt Seitenrand; Höhenwechsel (Tagesleiste ↔ Monat) animiert, Footer bleibt stehen.
+- Kontoseite (neu gestaltet): außen liegt „Profil bearbeiten“ als Seitenaktion über Zurück; aufgeklappt
+  zwei Spalten (Person + Arbeitsbereiche | Einstellungs-Kacheln, Daten, Abmelden).
 - Nebenbei behoben: „Als erledigt markieren“ im Aufgaben-Detail lag auf allen iPhones hinter der Fokusleiste
   (gepushte Seiten sehen das `safeAreaInset` der Shell nicht) → `pfBottomChromeHeight`.
 - Nebenbei behoben: `PFBoard` rechnete Drag-Treffer mit 85 % statt der gezeichneten 82 % Bahnbreite.

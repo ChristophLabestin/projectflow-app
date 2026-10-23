@@ -190,7 +190,7 @@ struct SettingsTile: View {
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }
-            .frame(maxWidth: .infinity, alignment: .topLeading)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             .padding(PFSpace.m)
             .pfCard()
             .contentShape(.rect)

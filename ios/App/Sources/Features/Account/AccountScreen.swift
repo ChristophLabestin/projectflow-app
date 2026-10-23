@@ -9,6 +9,7 @@ struct AccountScreen: View {
     @Environment(AppModel.self) private var model
     @Environment(\.openURL) private var openURL
     @Environment(\.pfIsWide) private var isWide
+    @Environment(\.pfSideRegionWidth) private var sideRegion
 
     private var profile: UserProfile? { model.profile }
     private var session: SessionStore? { model.session }
@@ -41,6 +42,10 @@ struct AccountScreen: View {
                 .padding(.bottom, PFSpace.xxl)
             }
         }
+        // iPhone Duo outer display: editing the profile is the page action, above back in the side column.
+        .pfSideAction(sideRegion > 0 ? AnyView(
+            PFIconButton("pencil", label: L10n.t("account.editProfile"), style: .primary) { model.router.push(.accountPage(.profile)) }
+        ) : nil)
     }
 
     // MARK: Identity
@@ -58,8 +63,10 @@ struct AccountScreen: View {
                 Spacer(minLength: 0)
             }
             .accessibilityElement(children: .combine)
-            PFButton(L10n.t("account.editProfile"), systemImage: "pencil", kind: .secondary, size: .small) {
-                model.router.push(.accountPage(.profile))
+            if sideRegion == 0 {
+                PFButton(L10n.t("account.editProfile"), systemImage: "pencil", kind: .secondary, size: .small) {
+                    model.router.push(.accountPage(.profile))
+                }
             }
         }
     }
@@ -130,16 +137,22 @@ struct AccountScreen: View {
     private var settingsGrid: some View {
         VStack(alignment: .leading, spacing: PFSpace.s) {
             PFEyebrow(L10n.t("account.settings"))
-            LazyVGrid(columns: [GridItem(.flexible(), spacing: PFSpace.s), GridItem(.flexible(), spacing: PFSpace.s)],
-                      spacing: PFSpace.s) {
-                SettingsTile(systemImage: "circle.lefthalf.filled", title: L10n.t("account.appearance"),
-                             subtitle: AccountLogic.appearanceSummary(profile)) { model.router.push(.appearanceSettings) }
-                SettingsTile(systemImage: "bell", title: L10n.t("account.notifications"),
-                             subtitle: L10n.t("account.notifications.hint")) { model.router.push(.notificationSettings) }
-                SettingsTile(systemImage: "lock.shield", title: L10n.t("account.security"),
-                             subtitle: L10n.t("account.security.hint")) { model.router.push(.securitySettings) }
-                SettingsTile(systemImage: "person.2", title: L10n.t("account.team"),
-                             subtitle: L10n.t("account.team.hint")) { model.router.push(.team) }
+            // Rows of two; both tiles of a row share its height even when one hint wraps.
+            VStack(spacing: PFSpace.s) {
+                HStack(spacing: PFSpace.s) {
+                    SettingsTile(systemImage: "circle.lefthalf.filled", title: L10n.t("account.appearance"),
+                                 subtitle: AccountLogic.appearanceSummary(profile)) { model.router.push(.appearanceSettings) }
+                    SettingsTile(systemImage: "bell", title: L10n.t("account.notifications"),
+                                 subtitle: L10n.t("account.notifications.hint")) { model.router.push(.notificationSettings) }
+                }
+                .fixedSize(horizontal: false, vertical: true)
+                HStack(spacing: PFSpace.s) {
+                    SettingsTile(systemImage: "lock.shield", title: L10n.t("account.security"),
+                                 subtitle: L10n.t("account.security.hint")) { model.router.push(.securitySettings) }
+                    SettingsTile(systemImage: "person.2", title: L10n.t("account.team"),
+                                 subtitle: L10n.t("account.team.hint")) { model.router.push(.team) }
+                }
+                .fixedSize(horizontal: false, vertical: true)
             }
         }
     }
