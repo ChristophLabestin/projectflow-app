@@ -491,3 +491,4 @@ route `/desktop/tray`, `web/screens/DesktopTrayPanel.tsx`), right click keeps th
   Capture with the image as attachment; saving needs a project (`#project`), then `attachFilesToItem`. Shortcut ⌃⌘S /
   Ctrl+Shift+Alt+S. Deep links `<scheme>://desktop/command/palette|screenshot`. Dev flag `PF_DESKTOP_FAKE_SCREENSHOT=1`.
   Upload verified only up to the call (emulator cannot sign upload URLs).
+- **Smoother launch handover** (2026-10-23, shell ≥ 0.1.4 for the grace): on `markRendererReady` the launch scene waits up to 1.5 s for the page's `splashDone` (Dashboard sends it once its data is in) and fades straight into the finished page; otherwise into the layout-matching `DashboardSkeleton`. Verified launch trace: splash → (skeleton under the splash) → dashboard, no first-run flash.

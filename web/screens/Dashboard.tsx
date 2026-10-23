@@ -21,13 +21,14 @@ import { useUIState } from '../context/UIContext';
 import type { PinnedItem } from '../context/PinnedTasksContext';
 import { checkPasskeyExists } from '../services/passkeyService';
 import { PasskeySetupModal } from '../components/modals/PasskeySetupModal';
-import { isDesktop } from '../services/desktop';
+import { getDesktopBridge, isDesktop } from '../services/desktop';
 import { InlineMenu } from '../components/work/InlineMenu';
 import { useWorkMembers } from '../components/work/useWorkMembers';
 import { buildAttention, type AttentionChip } from '../utils/attention';
 import { buildDayPlan } from '../utils/dayPlan';
 import { addDaysFromToday, nextMonday, toIsoDate } from '../utils/taskDates';
 import { browserTimeZone } from '../utils/zonedDate';
+import { DashboardSkeleton } from '../components/dashboard/DashboardSkeleton';
 
 type DashboardTone = 'danger' | 'warning' | 'info' | 'success' | 'neutral';
 
@@ -207,7 +208,8 @@ export const Dashboard = () => {
 
                 const displayName = user?.displayName || auth.currentUser?.displayName || profile?.displayName;
                 setUserName(displayName ? displayName.split(' ')[0] : '');
-                setLoading(false);
+                // Stay on the skeleton until the tasks are in too: rendering without them first showed the
+                // empty/first-run state and then rebuilt the whole page.
 
                 const [workspaceTasks, workspaceInitiatives, workspacePersonalTasks] = await Promise.all([
                     getWorkspaceTasks(workspaceProjects).catch(() => ({ mine: [] as Task[], others: [] as Task[] })),
@@ -683,12 +685,13 @@ export const Dashboard = () => {
     // Nothing to plan yet: talk about getting started instead of "a free day".
     const isFirstRun = projects.length === 0 && tasks.length === 0 && personalTasks.length === 0;
 
+    // Desktop launch scene: fade straight into the finished page instead of the skeleton.
+    useEffect(() => {
+        if (!loading && dashboardTranslationsReady) getDesktopBridge()?.splashDone?.();
+    }, [loading, dashboardTranslationsReady]);
+
     if (loading || !dashboardTranslationsReady) {
-        return (
-            <div className="flex items-center justify-center p-12">
-                <span className="material-symbols-outlined text-3xl dashboard-spinner">rotate_right</span>
-            </div>
-        );
+        return <DashboardSkeleton />;
     }
 
     return (

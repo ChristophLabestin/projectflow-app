@@ -52,6 +52,15 @@ export const attachSplash = (win: BrowserWindow, onReady: () => void) => {
     setTimeout(finishSplash, MAX_MS);
 };
 
+/**
+ * The app reported ready (signed-in shell rendered): give the first page a moment to report its content
+ * (`splashDone`, e.g. the Dashboard with data) so the scene fades straight into the finished page.
+ */
+const CONTENT_GRACE_MS = 1500;
+export const finishSplashSoon = () => {
+    setTimeout(finishSplash, CONTENT_GRACE_MS);
+};
+
 /** Fade the scene out and remove it (idempotent). */
 export const finishSplash = () => {
     const current = overlay;
