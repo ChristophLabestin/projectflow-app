@@ -4,7 +4,7 @@
 #   2. the demo workspace from scripts/seed-emulator.mjs plus an outsider account
 #      (no workspace) for permission tests,
 #   3. the Vite dev server in emulator mode, auto-signed-in as the demo owner.
-# Nothing here talks to production: the project id is demo-projectflow.
+# Nothing here talks to production: the project id is demo-projectflow (E2E_AI=1: see below).
 #
 #   bash scripts/dev-e2e.sh                         # app on :3000
 #   PORT=3005 bash scripts/dev-e2e.sh               # other app port
@@ -14,6 +14,10 @@
 #   E2E_LEGAL=1 bash scripts/dev-e2e.sh             # seed legal docs v1 (consent gate active) and
 #                                                   # make the demo owner a platform admin (/admin/legal)
 #   E2E_ADMIN=1 bash scripts/dev-e2e.sh             # only make the demo owner a platform admin (/admin/*)
+#   E2E_AI=1 bash scripts/dev-e2e.sh                # in-app AI with the real model: emulators run under the
+#                                                   # real project id so the Functions emulator can read
+#                                                   # OPENAI_API_KEY from Secret Manager (data stays in the
+#                                                   # emulators); turns on `inAppAi` for the demo workspace
 #
 # Emulator accounts (emulator only):
 #   demo@projectflow.test     / projectflow-demo     (seeded workspace owner)
@@ -25,6 +29,7 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PROJECT_ID="demo-projectflow"
+[[ "${E2E_AI:-0}" == "1" ]] && PROJECT_ID="projectflow-labestin"
 PORT="${PORT:-3000}"
 AUTH_PORT="${AUTH_PORT:-9631}"
 FIRESTORE_PORT="${FIRESTORE_PORT:-8631}"
@@ -69,8 +74,14 @@ for _ in $(seq 1 90); do
     sleep 1
 done
 
-FIRESTORE_EMULATOR_HOST="127.0.0.1:$FIRESTORE_PORT" FIREBASE_AUTH_EMULATOR_HOST="127.0.0.1:$AUTH_PORT" \
+SEED_PROJECT_ID="$PROJECT_ID" FIRESTORE_EMULATOR_HOST="127.0.0.1:$FIRESTORE_PORT" FIREBASE_AUTH_EMULATOR_HOST="127.0.0.1:$AUTH_PORT" \
     node scripts/seed-emulator.mjs
+
+if [[ "${E2E_AI:-0}" == "1" ]]; then
+    curl -s -X PATCH "http://127.0.0.1:$FIRESTORE_PORT/v1/projects/$PROJECT_ID/databases/(default)/documents/tenants/ws-demo-studio/ai_config/policy?updateMask.fieldPaths=inAppAi" \
+        -H 'Authorization: Bearer owner' -H 'Content-Type: application/json' \
+        -d '{"fields":{"inAppAi":{"booleanValue":true}}}' > /dev/null
+fi
 
 if [[ "${E2E_LEGAL:-0}" == "1" ]]; then
     GCLOUD_PROJECT="$PROJECT_ID" FIRESTORE_EMULATOR_HOST="127.0.0.1:$FIRESTORE_PORT" \
@@ -89,5 +100,5 @@ curl -s -X POST "http://127.0.0.1:$AUTH_PORT/identitytoolkit.googleapis.com/v1/a
 echo "App: http://localhost:$PORT (signed in as ${LOGIN_EMAIL:-nobody})"
 VITE_EMULATOR_AUTH_PORT="$AUTH_PORT" VITE_EMULATOR_FIRESTORE_PORT="$FIRESTORE_PORT" \
 VITE_EMULATOR_STORAGE_PORT="$STORAGE_PORT" VITE_EMULATOR_FUNCTIONS_PORT="$FUNCTIONS_PORT" \
-VITE_E2E_AUTO_LOGIN_EMAIL="$LOGIN_EMAIL" VITE_E2E_AUTO_LOGIN_PASSWORD="$LOGIN_PASSWORD" \
+VITE_E2E_AUTO_LOGIN_EMAIL="$LOGIN_EMAIL" VITE_E2E_AUTO_LOGIN_PASSWORD="$LOGIN_PASSWORD" VITE_EMULATOR_PROJECT_ID="$PROJECT_ID" \
     npm --prefix "$ROOT/web" run dev:emulator -- --port "$PORT" --strictPort

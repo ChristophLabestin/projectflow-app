@@ -10,7 +10,7 @@ import { getSharedProjects, getUserProjects } from '../services/domain/projectsS
 import { auth } from '../services/firebase';
 import { readRecentProjectAccess } from '../utils/recentProjects';
 import { IdeaGroup, Project, Task, TaskCategory, TaskStatus } from '../types';
-import { generateProjectDescription } from '../services/geminiService';
+import { AiTextAssist } from './ai/AiTextAssist';
 import { Button } from './common/Button/Button';
 import { Select } from './common/Select/Select';
 import { Badge } from './common/Badge/Badge';
@@ -56,7 +56,7 @@ export const TaskCreateModal: React.FC<Props> = ({ projectId, tenantId, allowPro
     const [assignedGroupIds, setAssignedGroupIds] = useState<string[]>([]);
     const [isAdding, setIsAdding] = useState(false);
     const inFlightRef = useRef(false);
-    const [isGeneratingDesc, setIsGeneratingDesc] = useState(false);
+    const descriptionRef = useRef<HTMLTextAreaElement>(null);
     const [error, setError] = useState<string | null>(null);
     const [categories, setCategories] = useState<TaskCategory[]>([]);
     const [tasks, setTasks] = useState<Task[]>([]);
@@ -218,19 +218,6 @@ export const TaskCreateModal: React.FC<Props> = ({ projectId, tenantId, allowPro
         } finally {
             inFlightRef.current = false;
             setIsAdding(false);
-        }
-    };
-
-    const handleGenerateDescription = async () => {
-        if (!title.trim()) return;
-        setIsGeneratingDesc(true);
-        try {
-            const desc = await generateProjectDescription(title, description || 'Task details');
-            setDescription(desc.slice(0, 280));
-        } catch (err) {
-            console.error('Failed to generate description', err);
-        } finally {
-            setIsGeneratingDesc(false);
         }
     };
 
@@ -429,27 +416,24 @@ export const TaskCreateModal: React.FC<Props> = ({ projectId, tenantId, allowPro
 
                     {/* Description */}
                     <div className="description-section">
-                        <TextArea
+                        <AiTextAssist
+                            textareaRef={descriptionRef}
                             value={description}
-                            onChange={handleDescriptionChange}
-                            placeholder={t('taskCreate.description.placeholder')}
-                            rows={2}
-                            aria-label={t('taskCreate.description.placeholder')}
-                            className="task-create__description-input"
-                        />
-                        {title && (
-                            <button
-                                type="button"
-                                onClick={handleGenerateDescription}
-                                disabled={isGeneratingDesc}
-                                className="generate-btn"
-                            >
-                                <span className="material-symbols-outlined generate-icon">
-                                    {isGeneratingDesc ? 'progress_activity' : 'auto_awesome'}
-                                </span>
-                                {t('taskCreate.description.generate')}
-                            </button>
-                        )}
+                            onApply={setDescription}
+                            field="description"
+                            itemTitle={title}
+                            projectTitle={activeProject?.title}
+                        >
+                            <TextArea
+                                ref={descriptionRef}
+                                value={description}
+                                onChange={handleDescriptionChange}
+                                placeholder={t('taskCreate.description.placeholder')}
+                                rows={2}
+                                aria-label={t('taskCreate.description.placeholder')}
+                                className="task-create__description-input"
+                            />
+                        </AiTextAssist>
                     </div>
 
                     {/* Subtasks Section */}
