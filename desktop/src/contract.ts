@@ -8,11 +8,11 @@ export const BRIDGE_VERSION = 1;
 export const CAPABILITIES = [
     'titlebar', 'app-menu', 'popout', 'badge', 'tray', 'notifications', 'language',
     'preferences', 'quick-capture', 'notification-actions', 'day-flow', 'file-drop', 'calendar', 'recents', 'windows',
-    'tray-panel', 'external-auth', 'spotlight', 'open-in-browser', 'updates'
+    'tray-panel', 'external-auth', 'spotlight', 'open-in-browser', 'updates', 'offline-cache', 'command-palette', 'screenshot'
 ] as const;
 export type DesktopCapability = typeof CAPABILITIES[number];
 
-export type WindowKind = 'main' | 'quick-access' | 'capture' | 'day' | 'secondary' | 'tray';
+export type WindowKind = 'main' | 'quick-access' | 'capture' | 'day' | 'secondary' | 'tray' | 'palette';
 
 /** Commands from menus, tray, dock, jump list and shortcuts; routed by the web app's DesktopBridge. */
 export type DesktopCommand =
@@ -46,6 +46,8 @@ export interface DesktopPreferences {
     launchAtLogin: boolean;
     quickCaptureShortcut: string | null;
     quickAccessShortcut: string | null;
+    paletteShortcut: string | null;
+    screenshotShortcut: string | null;
     dayStartEnabled: boolean;
     dayCloseEnabled: boolean;
     dayCloseTime: string;
@@ -141,7 +143,8 @@ export const IPC = {
     updateState: 'pf:update-state',
     updateStateChanged: 'pf:update-state-changed',
     updateAction: 'pf:update-action',
-    splashDone: 'pf:splash-done'
+    splashDone: 'pf:splash-done',
+    clearOfflineCache: 'pf:clear-offline-cache'
 } as const;
 
 /** Shell actions offered by the menu bar panel. */

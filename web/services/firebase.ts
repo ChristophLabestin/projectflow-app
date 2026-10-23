@@ -1,9 +1,14 @@
 import { initializeApp } from "firebase/app";
-import { connectAuthEmulator, getAuth, signInWithEmailAndPassword } from "firebase/auth";
-import { connectFirestoreEmulator, getFirestore } from "firebase/firestore";
+import { connectAuthEmulator, getAuth, onAuthStateChanged, signInWithEmailAndPassword } from "firebase/auth";
+import { connectFirestoreEmulator, getFirestore, initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from "firebase/firestore";
 import { connectStorageEmulator, getStorage } from "firebase/storage";
 import { connectFunctionsEmulator, getFunctions } from "firebase/functions";
 import { getDatabase, type Database } from "firebase/database";
+import { getDesktopBridge, hasDesktopCapability } from "./desktop";
+
+// Desktop app (shell with 'offline-cache'): Firestore keeps its cache on disk, so the app starts from the last
+// data and works offline; several windows share it (multi-tab manager). The shell wipes it on sign-out.
+const desktopOfflineCache = hasDesktopCapability('offline-cache');
 
 // Local-only: `VITE_USE_FIREBASE_EMULATORS=true` points Auth/Firestore/Storage at
 // the emulators from firebase.json and swaps in an offline demo project id.
@@ -42,7 +47,20 @@ let rtdb: Database | undefined;
 try {
   app = initializeApp(firebaseConfig);
   auth = getAuth(app);
-  db = getFirestore(app);
+  db = desktopOfflineCache
+    ? initializeFirestore(app, { localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }) })
+    : getFirestore(app);
+  if (desktopOfflineCache && getDesktopBridge()?.windowKind === 'main') {
+    let signedInUid: string | null = null;
+    onAuthStateChanged(auth, (user) => {
+      if (signedInUid && !user) {
+        // Local copies of workspace data (palette results) go with the Firestore cache.
+        Object.keys(localStorage).filter((key) => key.startsWith('pf_desktop_palette_items_')).forEach((key) => localStorage.removeItem(key));
+        getDesktopBridge()?.clearOfflineCache?.();
+      }
+      signedInUid = user?.uid ?? null;
+    });
+  }
   storage = getStorage(app);
   functions = getFunctions(app, 'europe-west3');
 

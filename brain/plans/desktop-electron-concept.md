@@ -476,3 +476,18 @@ route `/desktop/tray`, `web/screens/DesktopTrayPanel.tsx`), right click keeps th
   status-hue ripples, glyph disc with orbiting status dots, staggered name, loading track + "preparing" / "slow" label from
   `labels.ts`), theme from the last app background. It fades out on `markRendererReady`, a failed load (offline page),
   `splashDone` (workspace error page, `WorkspaceContext`) or after 25 s; minimum 1.4 s. Not shown for launch-at-login.
+- **Offline cache + instant start** (2026-10-23, shell ≥ 0.1.4, capability `offline-cache`): `services/firebase.ts`
+  uses `persistentLocalCache` + `persistentMultipleTabManager` in the desktop app; `desktopWorkspaceSnapshot.ts` keeps the
+  last resolved workspace per user, so `WorkspaceContext` renders at once and resolves in the background (offline: stays;
+  other workspace resolved: reload). Sign-out → `clearOfflineCache` (shell clears IndexedDB, reloads all windows) and the
+  palette's local results are removed. Verified: reload ≈0.3 s to the app (was seconds), app usable with the Firestore
+  emulator stopped.
+- **Command palette** (capability `command-palette`): `windows/paletteWindow.ts` (panel, created on first use, hidden on
+  blur), route `/desktop/palette` (`screens/DesktopCommandPalette.tsx`, data `services/desktopSearch.ts`, shared with
+  Spotlight). ↩ open in main, ⌘/Ctrl↩ complete, ⌥/Alt↩ start focus, last row = new task via Quick Capture. Shortcut ⌃⌘K /
+  Ctrl+Shift+Alt+K (Settings → Desktop). Last results cached per workspace in localStorage (shown at once / offline).
+- **Screenshot → task** (capability `screenshot`): `features/screenshot.ts` — macOS `screencapture -i` (Screen Recording
+  permission on first use), Windows `ms-screenclip:` + new clipboard image (Electron 45 async clipboard API). Opens Quick
+  Capture with the image as attachment; saving needs a project (`#project`), then `attachFilesToItem`. Shortcut ⌃⌘S /
+  Ctrl+Shift+Alt+S. Deep links `<scheme>://desktop/command/palette|screenshot`. Dev flag `PF_DESKTOP_FAKE_SCREENSHOT=1`.
+  Upload verified only up to the call (emulator cannot sign upload URLs).

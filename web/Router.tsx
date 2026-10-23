@@ -30,6 +30,7 @@ import { QuickCaptureWindow } from './screens/QuickCaptureWindow';
 import { DesktopDayWindow } from './screens/DesktopDayWindow';
 import { DesktopTrayPanel } from './screens/DesktopTrayPanel';
 import { DesktopAuthHandoff } from './screens/DesktopAuthHandoff';
+import { DesktopCommandPalette } from './screens/DesktopCommandPalette';
 import { OAuthConsent } from './screens/OAuthConsent';
 import { SettingsUrlOpener } from './components/settings/SettingsUrlOpener';
 import { DESKTOP_QUICK_ACCESS_PATH, desktopWindowKind, isDesktop } from './services/desktop';
@@ -155,7 +156,7 @@ const RootLayout = () => {
     // Desktop utility windows (Quick Access pop-out, Quick Capture, day window): only their own content,
     // none of the global overlays (no second Quick Access modal, help, banners, bridge).
     const windowKind = desktopWindowKind();
-    const isUtilityWindow = windowKind === 'quick-access' || windowKind === 'capture' || windowKind === 'day' || windowKind === 'tray';
+    const isUtilityWindow = windowKind === 'quick-access' || windowKind === 'capture' || windowKind === 'day' || windowKind === 'tray' || windowKind === 'palette';
     if (isUtilityWindow && location.pathname.startsWith('/desktop/')) {
         return (
             <>
@@ -238,6 +239,7 @@ export const AppRouter = () => {
                     <Route path="/desktop/day" element={<LegalConsentGate><DesktopDayWindow /></LegalConsentGate>} />
                     <Route path="/desktop/tray" element={<LegalConsentGate><DesktopTrayPanel /></LegalConsentGate>} />
                     <Route path="/desktop/auth" element={<DesktopAuthHandoff />} />
+                    <Route path="/desktop/palette" element={<DesktopCommandPalette />} />
                     {/* Consent first, then authorize: the gate keeps ?request=… (it never navigates). /desktop/auth stays ungated: it only hands a sign-in code to the desktop app, whose windows are gated. */}
                     <Route path="/oauth/consent" element={<LegalConsentGate><OAuthConsent /></LegalConsentGate>} />
                     {/* Public project intake was removed; old share links land on the app start. */}

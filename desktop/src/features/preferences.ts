@@ -4,6 +4,8 @@ import { IS_DEV } from '../config';
 import { getSettings, updateSettings } from '../store';
 import { toggleCapture } from '../windows/auxWindows';
 import { toggleQuickAccess } from '../windows/quickAccess';
+import { togglePalette } from '../windows/paletteWindow';
+import { captureScreenshotToTask } from './screenshot';
 import { applyCalendarSettings, calendarStatus, calendarSupported } from './calendar';
 import { applyMediaKeySetting } from './focus';
 import { reindexSpotlight, spotlightSupported } from './spotlight';
@@ -13,7 +15,9 @@ const isMac = process.platform === 'darwin';
 /** Defaults avoid bare Ctrl+Alt on Windows (AltGr on German layouts) and common macOS system shortcuts. */
 export const DEFAULT_SHORTCUTS = {
     quickAccess: isMac ? 'Alt+Command+P' : 'Control+Shift+Alt+P',
-    quickCapture: isMac ? 'Control+Command+N' : 'Control+Shift+Alt+N'
+    quickCapture: isMac ? 'Control+Command+N' : 'Control+Shift+Alt+N',
+    palette: isMac ? 'Control+Command+K' : 'Control+Shift+Alt+K',
+    screenshot: isMac ? 'Control+Command+S' : 'Control+Shift+Alt+S'
 };
 
 const registered: string[] = [];
@@ -42,7 +46,9 @@ export const applyGlobalShortcuts = () => {
     const settings = getSettings();
     const access = register(resolveShortcut(settings.quickAccessShortcut, DEFAULT_SHORTCUTS.quickAccess), toggleQuickAccess);
     const capture = register(resolveShortcut(settings.quickCaptureShortcut, DEFAULT_SHORTCUTS.quickCapture), toggleCapture);
-    return access && capture;
+    const palette = register(resolveShortcut(settings.paletteShortcut, DEFAULT_SHORTCUTS.palette), togglePalette);
+    const screenshot = register(resolveShortcut(settings.screenshotShortcut, DEFAULT_SHORTCUTS.screenshot), () => void captureScreenshotToTask());
+    return access && capture && palette && screenshot;
 };
 
 /** Launch at login only for the packaged app (dev would register the bare Electron binary). */
@@ -63,6 +69,8 @@ export const getPreferences = (): DesktopPreferencesInfo => {
         launchAtLogin: settings.launchAtLogin,
         quickCaptureShortcut: resolveShortcut(settings.quickCaptureShortcut, DEFAULT_SHORTCUTS.quickCapture),
         quickAccessShortcut: resolveShortcut(settings.quickAccessShortcut, DEFAULT_SHORTCUTS.quickAccess),
+        paletteShortcut: resolveShortcut(settings.paletteShortcut, DEFAULT_SHORTCUTS.palette),
+        screenshotShortcut: resolveShortcut(settings.screenshotShortcut, DEFAULT_SHORTCUTS.screenshot),
         dayStartEnabled: settings.dayStartEnabled,
         dayCloseEnabled: settings.dayCloseEnabled,
         dayCloseTime: settings.dayCloseTime,
@@ -115,14 +123,21 @@ export const setPreferences = async (patch: unknown): Promise<DesktopPreferences
     if (typeof input.focusShortcutOff === 'string') next.focusShortcutOff = input.focusShortcutOff.slice(0, 120);
     if ('quickCaptureShortcut' in input && isShortcut(input.quickCaptureShortcut)) next.quickCaptureShortcut = input.quickCaptureShortcut;
     if ('quickAccessShortcut' in input && isShortcut(input.quickAccessShortcut)) next.quickAccessShortcut = input.quickAccessShortcut;
+    if ('paletteShortcut' in input && isShortcut(input.paletteShortcut)) next.paletteShortcut = input.paletteShortcut;
+    if ('screenshotShortcut' in input && isShortcut(input.screenshotShortcut)) next.screenshotShortcut = input.screenshotShortcut;
 
     const before = getSettings();
     updateSettings(next);
     if ('launchAtLogin' in next) applyLoginItem();
-    if ('quickCaptureShortcut' in next || 'quickAccessShortcut' in next) {
+    if (['quickCaptureShortcut', 'quickAccessShortcut', 'paletteShortcut', 'screenshotShortcut'].some((key) => key in next)) {
         if (!applyGlobalShortcuts()) {
             // Taken by another app: keep the previous combination working and report the conflict.
-            updateSettings({ quickCaptureShortcut: before.quickCaptureShortcut, quickAccessShortcut: before.quickAccessShortcut });
+            updateSettings({
+                quickCaptureShortcut: before.quickCaptureShortcut,
+                quickAccessShortcut: before.quickAccessShortcut,
+                paletteShortcut: before.paletteShortcut,
+                screenshotShortcut: before.screenshotShortcut
+            });
             applyGlobalShortcuts();
             return { ...getPreferences(), shortcutConflict: true };
         }
