@@ -329,6 +329,16 @@ const run = async () => {
         assert.equal(due.title, '1 Aufgabe heute fällig');
         assert.equal(due.deepLink, '/tasks');
     });
+    await check('nudges: overdue pass creates one task_overdue per overdue task, once', async () => {
+        assert.equal(stats1.overdue, 1);
+        const overdue = await notifications((x) => x.type === 'task_overdue' && x.userId === OWNER);
+        assert.equal(overdue.length, 1);
+        assert.equal(overdue[0].taskId, 't-od');
+        assert.equal(overdue[0].projectId, P);
+        assert.equal(overdue[0].params.taskTitle, 'Overdue thing');
+        assert.equal(overdue[0].params.dueDate, '2026-10-20');
+        assert.equal((await runSendNudges(morning + 20 * 60 * 1000, OWNER)).overdue, 0);
+    });
     await check('nudges: nudgeLog records sent types and is idempotent', async () => {
         const log = (await db.doc(`users/${OWNER}/nudgeLog/2026-10-22`).get()).data();
         assert.deepEqual([...log.sent].sort(), ['morning_briefing', 'task_due_today']);

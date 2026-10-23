@@ -20,8 +20,11 @@ import {
     DayTask,
     DEEP_LINKS,
     dueNudgeTypes,
+    isOverdueCheckDue,
+    MAX_OVERDUE_PER_RUN,
     NudgeCopy,
     nudgeDateKey,
+    planOverdueNotifications,
     NudgeType,
     resolveNudgeLanguage
 } from './nudge-logic';
@@ -36,9 +39,12 @@ export interface NudgeRunStats {
     evaluated: number;
     sent: number;
     skipped: number;
+    /** task_overdue docs created by the overdue pass (not counted in `sent`). */
+    overdue: number;
 }
 
-const mapTask = (id: string, data: Json): DayTask => ({
+const mapTask = (id: string, data: Json, refs: { taskId?: string; projectId?: string; tenantId?: string } = {}): DayTask => ({
+    ...refs,
     id,
     title: typeof data.title === 'string' && data.title ? data.title : 'Untitled',
     dueDate: data.dueDate,
@@ -64,7 +70,11 @@ const loadUserTasks = async (uid: string, tenantIds: string[]): Promise<DayTask[
                 .limit(MAX_TASKS_PER_TENANT)
                 .get()
         ]);
-        assigned.docs.forEach((doc) => out.push(mapTask(doc.ref.path, doc.data() as Json)));
+        assigned.docs.forEach((doc) => out.push(mapTask(doc.ref.path, doc.data() as Json, {
+            taskId: doc.id,
+            projectId: doc.ref.parent.parent?.id,
+            tenantId
+        })));
         personal.docs.forEach((doc) => out.push(mapTask(doc.ref.path, doc.data() as Json)));
     }
     return out;
@@ -86,6 +96,37 @@ const statsPayload = (stats: DayStats) => ({
     waiting: stats.waiting
 });
 
+/** Overdue pass: once per local day, one `task_overdue` per open task past its (local) due day, in the task's tenant. */
+const sendOverdue = async (uid: string, tasks: DayTask[], nowMs: number, timeZone: string): Promise<number> => {
+    const candidates = planOverdueNotifications(tasks, nowMs, timeZone, uid);
+    const titles = new Map<string, string>();
+    let created = 0;
+    for (const candidate of candidates) {
+        if (created >= MAX_OVERDUE_PER_RUN) break;
+        const key = `${candidate.tenantId}/${candidate.projectId}`;
+        if (!titles.has(key)) {
+            const project = await db.doc(`tenants/${candidate.tenantId}/projects/${candidate.projectId}`).get();
+            const title = project.data()?.title;
+            titles.set(key, typeof title === 'string' ? title.trim() : '');
+        }
+        const projectTitle = titles.get(key) || '';
+        const params: Record<string, string> = { taskTitle: candidate.title, dueDate: candidate.dueDate };
+        if (projectTitle) params.projectTitle = projectTitle;
+        const wrote = await createNotificationDoc({
+            userId: uid,
+            tenantId: candidate.tenantId,
+            type: 'task_overdue',
+            title: 'Task Overdue',
+            message: `"${candidate.title}" was due on ${candidate.dueKey}`,
+            projectId: candidate.projectId,
+            taskId: candidate.taskId,
+            extra: { params }
+        }, SYSTEM_ACTOR, candidate.docId);
+        if (wrote) created += 1;
+    }
+    return created;
+};
+
 const processUser = async (uid: string, data: Json, nowMs: number, runStats: NudgeRunStats): Promise<void> => {
     const prefs = resolveNotificationPrefs(data.notificationPrefs);
     const tokens = Array.isArray(data.fcmTokens)
@@ -93,14 +134,16 @@ const processUser = async (uid: string, data: Json, nowMs: number, runStats: Nud
         : [];
 
     const dueTypes = dueNudgeTypes(nowMs, { prefs, hasPushToken: tokens.length > 0 });
-    if (dueTypes.length === 0) return;
+    const overdueDue = isOverdueCheckDue(nowMs, prefs);
+    if (dueTypes.length === 0 && !overdueDue) return;
 
     const dateKey = nudgeDateKey(nowMs, prefs.timezone);
     const logRef = db.doc(`users/${uid}/nudgeLog/${dateKey}`);
     const log = ((await logRef.get()).data() || {}) as Json;
     const handled = new Set<string>([...(Array.isArray(log.sent) ? log.sent : []), ...(Array.isArray(log.skipped) ? log.skipped : [])]);
     const todo = dueTypes.filter((type) => !handled.has(type));
-    if (todo.length === 0) return;
+    const overdueTodo = overdueDue && log.overdueChecked !== true;
+    if (todo.length === 0 && !overdueTodo) return;
     runStats.evaluated += 1;
 
     const tenantIds = await loadTenantIds(uid);
@@ -108,7 +151,8 @@ const processUser = async (uid: string, data: Json, nowMs: number, runStats: Nud
     const primaryTenant = typeof data.lastTenantId === 'string' && tenantIds.includes(data.lastTenantId) ? data.lastTenantId : tenantIds[0];
 
     const lang = resolveNudgeLanguage(data.language);
-    const dayStats = computeDayStats(await loadUserTasks(uid, tenantIds), nowMs, prefs.timezone);
+    const tasks = await loadUserTasks(uid, tenantIds);
+    const dayStats = computeDayStats(tasks, nowMs, prefs.timezone);
 
     const sent: NudgeType[] = [];
     const skipped: NudgeType[] = [];
@@ -142,6 +186,11 @@ const processUser = async (uid: string, data: Json, nowMs: number, runStats: Nud
     if (sent.length > 0) update.sent = FieldValue.arrayUnion(...sent);
     if (skipped.length > 0) update.skipped = FieldValue.arrayUnion(...skipped);
     if (sent.includes('morning_briefing')) update.briefingStops = dayStats.stops;
+
+    if (overdueTodo) {
+        runStats.overdue += await sendOverdue(uid, tasks, nowMs, prefs.timezone);
+        update.overdueChecked = true;
+    }
     await logRef.set(update, { merge: true });
 
     runStats.sent += sent.length;
@@ -149,7 +198,7 @@ const processUser = async (uid: string, data: Json, nowMs: number, runStats: Nud
 };
 
 export const runSendNudges = async (nowMs: number = Date.now(), onlyUserId?: string): Promise<NudgeRunStats> => {
-    const stats: NudgeRunStats = { users: 0, evaluated: 0, sent: 0, skipped: 0 };
+    const stats: NudgeRunStats = { users: 0, evaluated: 0, sent: 0, skipped: 0, overdue: 0 };
     const fields = ['notificationPrefs', 'language', 'fcmTokens', 'lastTenantId'];
 
     if (onlyUserId) {

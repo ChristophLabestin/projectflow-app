@@ -10,12 +10,16 @@
 
 ## Recent Sessions
 
+- Date: 2026-10-23
+  - Goal: Notification Center "does nothing" — diagnose, fix, extend (owner picked: status change, overdue, added to project, due date change; filter + grouping, localized copy, other workspaces, per-row actions; in-app not filterable).
+  - Actions: root cause = popover clipped by the sidebar card; portaled rewrite with shared list/hook/presentation util; client-side notification creation and dead join-request flow removed; rules locked to recipient-only/server-create; new triggers + `params` in functions (task-effects/task-triggers/nudges); rules tests (+23 notification checks), unit tests (functions 63, web presentation test).
+  - Validation: web typecheck/build/test:run/lint:theme green; functions build, test:unit, test:rules (73/73; 12 of the new checks fail on the old rules) green; live in emulators: Demo assigns/changes status/due/mentions/adds to project → Anna's open panel updates instantly; overdue via `runSendNudges`.
+  - Next: deploy rules + functions + hosting; watch the 15-min nudge cost (nudgeLog now read every tick after the user's briefing time).
 - Date: 2026-10-22/23
   - Goal: implement the iOS concept end to end.
   - Actions: contracts doc; backend + web work packages (merged, deployed: 15 functions, rules, indexes, hosting; pushed to main); iOS foundation (XcodeGen project, ProjectFlowKit, shell, auth, push) plus four parallel feature packages merged; owner changes applied: custom nav bar without Liquid Glass, one simulator at a time, native SwiftUI sheets/page navigation.
   - Validation: functions build, 48 unit + 28 emulator trigger + 49 rules tests; web build, 167 tests, theme lint; iOS build of all targets, 24 domain tests (golden fixtures), swiftlint 0 errors; simulator walkthrough against the emulator.
   - Next: production backfill decision, Apple/Firebase console setup, device tests, TestFlight.
-
 - Date: 2026-10-22
   - Goal: delete the old iOS app completely and conceive a new iOS app from scratch, based on the current web app.
   - Actions: removed `swift/` and the iOS/mobile reference docs; cleaned references in CLAUDE.md, AGENTS.md, README.md and Brain files; made the provisioning check skip iOS source checks; analysed the web app (feature/IA inventory, design tokens, live walkthrough in the emulator via `scripts/dev-e2e.sh`); wrote `plans/ios-app-concept.md`; ran an independent critical review agent and revised the concept.

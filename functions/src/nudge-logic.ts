@@ -1,7 +1,7 @@
 // Pure nudge logic (contract C3): local-time windows, the simplified server "day plan" and the copy.
 // No Firebase imports. Unit tested in functions/scripts/unit/nudge-logic.test.js.
 import { ResolvedNotificationPrefs } from './notification-prefs';
-import { Json, toMillis } from './task-effects';
+import { dueString, idPart, Json, toMillis } from './task-effects';
 import { isDateOnly, localDateKey, localMinutes, parseClock } from './tz-utils';
 
 export type NudgeType = 'morning_briefing' | 'task_due_today' | 'day_close';
@@ -67,6 +67,54 @@ export const dueNudgeTypes = (nowMs: number, eligibility: NudgeEligibility): Nud
     return out;
 };
 
+/** Overdue check runs once the local clock reached the due-today time (08:00 default); independent of the nudge toggles. */
+export const isOverdueCheckDue = (nowMs: number, prefs: ResolvedNotificationPrefs): boolean => {
+    const time = prefs.morningBriefing.enabled ? prefs.morningBriefing.time : DEFAULT_DUE_TODAY_TIME;
+    const start = parseClock(time);
+    return start !== null && localMinutes(nowMs, prefs.timezone) >= start;
+};
+
+export const MAX_OVERDUE_PER_RUN = 25;
+
+export interface OverdueCandidate {
+    taskId: string;
+    projectId: string;
+    tenantId: string;
+    title: string;
+    /** Due date as stored on the task. */
+    dueDate: string;
+    /** Local due day (YYYY-MM-DD) in the assignee's time zone. */
+    dueKey: string;
+    docId: string;
+}
+
+export const overdueDocId = (taskId: string, dueKey: string, uid: string): string =>
+    `overdue-${idPart(taskId)}-${idPart(dueKey)}-${idPart(uid)}`;
+
+/**
+ * Open project tasks whose local due day is before the assignee's local today, most recent due day first.
+ * The id contains the due day, so a notification is never duplicated and re-fires only after the due date changes.
+ */
+export const planOverdueNotifications = (tasks: DayTask[], nowMs: number, timeZone: string, uid: string): OverdueCandidate[] => {
+    const today = localDateKey(nowMs, timeZone);
+    const out: OverdueCandidate[] = [];
+    for (const task of tasks) {
+        if (!task.taskId || !task.projectId || !task.tenantId || !isOpenTask(task)) continue;
+        const dueKey = localDayOf(task.dueDate, timeZone);
+        if (!dueKey || dueKey >= today) continue;
+        out.push({
+            taskId: task.taskId,
+            projectId: task.projectId,
+            tenantId: task.tenantId,
+            title: task.title,
+            dueDate: dueString(task.dueDate),
+            dueKey,
+            docId: overdueDocId(task.taskId, dueKey, uid)
+        });
+    }
+    return out.sort((a, b) => (a.dueKey < b.dueKey ? 1 : a.dueKey > b.dueKey ? -1 : 0));
+};
+
 export const nudgeDateKey = (nowMs: number, timeZone: string): string => localDateKey(nowMs, timeZone);
 
 // ---------------------------------------------------------------------------
@@ -89,6 +137,10 @@ export interface DayTask {
     status?: string;
     priority?: string;
     isCompleted?: boolean;
+    /** Set for project tasks (not personal tasks): needed to address `task_overdue`. */
+    taskId?: string;
+    projectId?: string;
+    tenantId?: string;
 }
 
 export interface DayStats {

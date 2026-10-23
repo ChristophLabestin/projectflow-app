@@ -1015,17 +1015,19 @@ export type NotificationType =
     | 'task_assigned'
     | 'task_updated'
     | 'task_completed'
+    | 'task_status_changed'
+    | 'task_due_changed'
+    | 'task_overdue'
     | 'issue_assigned'
     | 'issue_updated'
     | 'project_invite'
+    | 'project_member_added'
+    | 'project_member_joined'
     | 'workspace_invite'
     | 'comment_mention'
     | 'comment_added'
     | 'project_shared'
     | 'subtask_assigned'
-    | 'project_join_request'
-    | 'project_join_request_accepted'
-    | 'project_join_request_denied'
     | 'diagnostic_test'
     | 'reminder'
     | 'task_due_today'
@@ -1055,6 +1057,19 @@ export interface Notification {
     actorName?: string;
     actorPhotoURL?: string;
     tenantId?: string;
+    /** Values for the localized title/message (written by the Cloud Functions triggers). */
+    params?: NotificationParams;
+}
+
+export interface NotificationParams {
+    taskTitle?: string;
+    subtaskTitle?: string;
+    projectTitle?: string;
+    status?: string;
+    previousStatus?: string;
+    dueDate?: string;
+    previousDueDate?: string;
+    commentSnippet?: string;
 }
 
 export interface GeminiReport {

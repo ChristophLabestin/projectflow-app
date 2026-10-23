@@ -72,6 +72,11 @@ const CATEGORY_BY_TYPE: Record<string, PrefCategory> = {
     // Activity on "my" work: grouped with comments, there is no separate toggle.
     task_completed: 'comments',
     task_updated: 'comments',
+    task_status_changed: 'comments',
+    task_due_changed: 'due',
+    task_overdue: 'due',
+    project_member_added: 'assignments',
+    project_member_joined: 'comments',
     issue_updated: 'comments',
     task_due_today: 'due',
     reminder: 'reminders'
@@ -115,6 +120,11 @@ export const APNS_CATEGORY_BY_TYPE: Record<string, string> = {
     comment_mention: 'PF_MENTION',
     comment_added: 'PF_COMMENT',
     task_due_today: 'PF_DUE',
+    task_due_changed: 'PF_DUE',
+    task_overdue: 'PF_DUE',
+    project_member_added: 'PF_ASSIGNMENT',
+    task_status_changed: 'PF_COMMENT',
+    project_member_joined: 'PF_COMMENT',
     reminder: 'PF_REMINDER',
     morning_briefing: 'PF_BRIEFING',
     day_close: 'PF_DAYCLOSE'

@@ -311,12 +311,27 @@ service cloud.firestore {
         allow write: if false;
       }
 
-      // Other direct tenant-scoped collections (notifications, groups, api tokens, etc.)
+      // Notifications are created by Cloud Functions only. The recipient may read
+      // them, flip `read` and delete them; other members can neither see nor forge them.
+      match /notifications/{notificationId} {
+        allow read, delete: if isTenantMember(tenantId) && resource.data.userId == request.auth.uid;
+        allow update: if isTenantMember(tenantId) && resource.data.userId == request.auth.uid &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read', 'readAt']);
+        allow create: if false;
+      }
+
+      // Push/e-mail delivery results per notification (server-written).
+      match /notificationDeliveryLogs/{logId} {
+        allow read: if isTenantMember(tenantId) && resource.data.userId == request.auth.uid;
+        allow write: if false;
+      }
+
+      // Other direct tenant-scoped collections (groups, labels, etc.)
       match /{subcollection}/{docId} {
-        // Guests may read/update docs addressed to them (e.g. notifications).
+        // Guests may read/update docs addressed to them.
         allow read, update: if isTenantMember(tenantId) &&
           ('userId' in resource.data) && resource.data.userId == request.auth.uid &&
-          !(subcollection.matches('finance_.*') || subcollection in ['secrets', 'api_tokens', 'file_upload_drafts']);
+          !(subcollection.matches('finance_.*') || subcollection in ['secrets', 'api_tokens', 'file_upload_drafts', 'notifications', 'notificationDeliveryLogs']);
         allow read, write: if canAccessTenant(tenantId) &&
           !(
             subcollection.matches('finance_.*') ||
@@ -331,7 +346,9 @@ service cloud.firestore {
               'users',
               'api_tokens',
               'files',
-              'file_upload_drafts'
+              'file_upload_drafts',
+              'notifications',
+              'notificationDeliveryLogs'
             ]
           );
       }

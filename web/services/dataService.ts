@@ -30,12 +30,8 @@ import { db, auth, GithubAuthProvider } from "./firebase";
 import { getTenantFileDownloadUrl, refreshFirebaseStorageUrl } from './fileStorageService';
 import type { Task, Initiative, Activity, Project, ProjectOverviewTemplate, ProjectOverviewLayout, SubTask, TaskCategory, ProjectRole, ProjectMember, Comment as ProjectComment, WorkspaceGroup, WorkspaceRole, GeminiReport, Milestone, AIUsage, Member, PersonalTask, ProjectNavPrefs, PrivacySettings } from '../types';
 import { toMillis } from "../utils/time";
-// Task / subtask / comment notifications are created by Cloud Functions (onTaskWritten,
-// onSubtaskWritten, onCommentCreated). Project and workspace invites stay client-side.
-import {
-    notifyProjectInvite,
-    createNotification
-} from './notificationService';
+// All notifications are created by Cloud Functions (onTaskWritten, onSubtaskWritten,
+// onCommentCreated, onProjectWritten, sendNudges); clients may not create them.
 import { isProjectIncludedInImportantSignals } from './healthService';
 
 import {
@@ -631,10 +627,7 @@ export const joinProject = async (projectId: string, tenantId: string, role: Pro
             tenantId
         );
 
-        // Notify project owner
-        if (data.ownerId !== user.uid) {
-            await notifyProjectInvite(data.ownerId, data.title || 'Project', projectId, tenantId);
-        }
+        // The owner is notified server-side (onProjectWritten: project_member_joined).
     }
 };
 
@@ -1704,51 +1697,6 @@ export const addProjectMember = async (
         );
     } catch (e) {
         console.warn('Failed to log activity', e);
-    }
-};
-
-export const respondToJoinRequest = async (
-    notificationId: string,
-    projectId: string,
-    requesterId: string,
-    accept: boolean,
-    tenantId?: string
-) => {
-    const resolvedTenant = resolveTenantId(tenantId);
-    const user = auth.currentUser;
-
-    // 1. Update the original notification to accepted/denied status to prevent re-use
-    // We update type so UI can show "Accepted" or "Denied" state
-    await updateDoc(doc(db, 'tenants', resolvedTenant, 'notifications', notificationId), {
-        type: accept ? 'project_join_request_accepted' : 'project_join_request_denied',
-        read: true
-    });
-
-    if (accept) {
-        // 2. Add member to project
-        await addProjectMember(projectId, requesterId, 'Editor', resolvedTenant);
-
-        // 3. Notify the requester
-        const project = await getProjectById(projectId, resolvedTenant);
-        await createNotification({
-            type: 'project_shared', // Re-using shared type for now, or could create specific 'request_approved'
-            userId: requesterId,
-            title: 'Request Approved',
-            message: `Your request to join ${project?.title || 'a project'} was approved.`,
-            projectId: projectId,
-            // tenantId: resolvedTenant // OMITTED to make it GLOBAL so user sees it anywhere
-        });
-    } else {
-        // Notify denial
-        const project = await getProjectById(projectId, resolvedTenant);
-        await createNotification({
-            type: 'project_shared', // Using generic type, message explains it
-            userId: requesterId,
-            title: 'Request Denied',
-            message: `Your request to join ${project?.title || 'a project'} was denied.`,
-            projectId: projectId,
-            // tenantId: resolvedTenant // OMITTED to make it GLOBAL
-        });
     }
 };
 

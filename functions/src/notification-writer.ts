@@ -2,7 +2,7 @@
 // reminder delivery and nudges). Docs use deterministic ids so a retried trigger never duplicates them.
 import { FieldValue } from 'firebase-admin/firestore';
 import { auth, db } from './init';
-import { Json } from './task-effects';
+import { idPart, Json } from './task-effects';
 
 export interface Actor {
     id: string;
@@ -12,8 +12,7 @@ export interface Actor {
 
 const ALREADY_EXISTS = 6;
 
-/** Firestore-safe doc id fragment. */
-export const idPart = (value: string): string => value.replace(/[^A-Za-z0-9_-]/g, '_').slice(0, 120);
+export { idPart };
 
 /** Display snapshot of a user (users/{uid}, then Auth, then email prefix). Cached per call chain via `cache`. */
 export const getActor = async (uid: string, cache?: Map<string, Actor>): Promise<Actor> => {
