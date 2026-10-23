@@ -761,23 +761,26 @@ export const SidebarNavigator: React.FC<SidebarNavigatorProps> = ({ isDrawer = f
                         />
                     </div>
 
-                    {/* Footer — theme, notifications */}
+                    {/* Footer — collapse, theme, notifications */}
                     <div className="snav-footer">
                         <div className="snav-footer__row">
-                            <ThemeToggle />
-                            <div className="snav-footer__actions">
+                            {/* Left: collapse + theme switch; right: notifications. */}
+                            <div className="snav-footer__start">
                                 {!isDrawer && onToggleCollapsed && (
                                     <button
                                         type="button"
-                                        className="snav-icon-btn"
+                                        className="snav-icon-btn snav-icon-btn--sm"
                                         onClick={(e) => { e.currentTarget.blur(); handleToggleCollapsed(); }}
                                         title={effectiveCollapsed ? t('sidebar.expand') : t('sidebar.collapse')}
                                         aria-label={effectiveCollapsed ? t('sidebar.expand') : t('sidebar.collapse')}
                                         aria-pressed={effectiveCollapsed}
                                     >
-                                        <span className="material-symbols-outlined">{effectiveCollapsed ? 'left_panel_open' : 'left_panel_close'}</span>
+                                        <span className="material-symbols-outlined" aria-hidden="true">{effectiveCollapsed ? 'left_panel_open' : 'left_panel_close'}</span>
                                     </button>
                                 )}
+                                <ThemeToggle />
+                            </div>
+                            <div className="snav-footer__actions">
                                 <NotificationDropdown position="sidebar" />
                             </div>
                         </div>
