@@ -399,3 +399,26 @@ route `/desktop/tray`, `web/screens/DesktopTrayPanel.tsx`), right click keeps th
 - Helper windows (Quick Capture, panel) are created hidden only after the main window loaded — creating them at
   startup raced the main window for sign-in / workspace resolution; they also retry a failed workspace load when shown.
 - Windows: the panel opens above the tray (taskbar at the bottom), clamped to the work area; not verified on hardware.
+
+## 17. Distribution v0.1 (2026-10-23)
+
+- **Hosting & updates**: GitHub Releases of `ChristophLabestin/projectflow-app` (public). Releases in this repo are
+  desktop releases only (tag `v<desktop version>`). Stable links `releases/latest/download/ProjectFlow-mac.dmg` and
+  `ProjectFlow-Setup.exe`; `electron-updater` reads `latest-mac.yml` / `latest.yml` from the same release.
+- **Build**: `.github/workflows/desktop-release.yml` — tag push `v*` (or manual): draft release → macOS (universal
+  dmg + zip) and Windows (NSIS x64+arm64) build in parallel and upload → publish. Windows cannot be built on the
+  Apple-silicon dev Mac (makensis needs Rosetta), so CI is the release path; `npm --prefix desktop run dist:mac`
+  builds a local unsigned mac package.
+- **Signing**: optional secrets (`MAC_CSC_LINK`, `MAC_CSC_KEY_PASSWORD`, `APPLE_API_KEY`, `APPLE_API_KEY_ID`,
+  `APPLE_API_ISSUER`, `WIN_CSC_LINK`, `WIN_CSC_KEY_PASSWORD`). Signed mac builds get `pfSigned` in package.json and
+  self-update; unsigned mac builds only announce new versions (Squirrel.Mac requires a signature). There is no
+  Developer ID Application certificate yet → v0.1 mac would be unsigned (Gatekeeper blocks double-click; users must
+  allow it in System Settings → Privacy & Security). Hardened-runtime entitlements: `desktop/build/entitlements.mac.plist`.
+- **Updater**: `desktop/src/features/updater.ts` (check 30 s after start + every 6 h, menu "Check for Updates…").
+- **Web offer**: `web/services/desktopDownloads.ts` + `components/desktop/DesktopAppPromo.tsx` (card after 15 s in
+  macOS/Windows browsers, only when the latest release has the file for that OS; Later = 14 days, close = 60 days)
+  and a "Get the Mac/Windows app" item in the user menu.
+- **Pre-release review fixes**: universal build (fuses only on the merged app, universal calendar helper), cookie
+  encryption fuse, zoom restore, language flip-flop, capture payload queue + ready signal, shortcut validation with
+  conflict rollback, calendar enable/disable race, hidden launch at login, page shortcuts not registered in the
+  macOS menu, bounded command queue, exact offline-page match, `PF_DESKTOP_SETTINGS_DIR` dev-only.
