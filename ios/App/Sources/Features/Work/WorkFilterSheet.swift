@@ -39,6 +39,9 @@ struct WorkFiltersSheet: View {
     @Environment(\.pfSideRegionWidth) private var sideRegion
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var expanded: Section?
+    /// Row heights grow with Dynamic Type; the reserved space follows.
+    @ScaledMetric(relativeTo: .body) private var optionHeight: CGFloat = 44
+    @ScaledMetric(relativeTo: .body) private var rowHeight: CGFloat = 52
 
     private var projects: [Project] {
         (model.workspace?.projects ?? []).filter { $0.status.lifecycle != .closed }
@@ -72,6 +75,10 @@ struct WorkFiltersSheet: View {
             }
             .background(PFColor.sheetGroup, in: .rect(cornerRadius: PFRadius.card, style: .continuous))
             .clipShape(.rect(cornerRadius: PFRadius.card, style: .continuous))
+            // The sheet keeps one height: room for the larger opened section is reserved up front, so opening and
+            // closing animate inside the sheet instead of fighting the system sheet's own resize (which can't be
+            // synced with SwiftUI animations and made the rows jump).
+            .frame(minHeight: reservedHeight, alignment: .top)
 
             // Filters apply live. iPhone: smart planning + Done. Duo outer display: the sheet's close button in the side
             // region already closes it, so only smart planning remains, full width on the close button's line.
@@ -90,6 +97,13 @@ struct WorkFiltersSheet: View {
         .padding(.bottom, PFSpace.l)
     }
 
+    /// Four rows plus the taller of the two opened sections (projects show at most five rows, then scroll).
+    private var reservedHeight: CGFloat {
+        let projectRows = projects.isEmpty ? 0.7 : CGFloat(min(projects.count, 5))
+        let opened = max(projectRows, 4) * optionHeight + PFSpace.xs
+        return 4 * rowHeight + 3 + opened
+    }
+
     // MARK: Rows
 
     private func icon(_ name: String) -> some View {
@@ -104,9 +118,7 @@ struct WorkFiltersSheet: View {
         let isOpen = expanded == section
         return Button {
             PFHaptics.tap()
-            // Same curve and start as the fitted sheet's own resize (PFMotion.smooth after its ~20 ms coalescing), so the
-            // sheet edge and the rows below the opened section move together instead of one chasing the other.
-            withAnimation(reduceMotion ? nil : PFMotion.smooth.delay(0.02)) { expanded = isOpen ? nil : section }
+            withAnimation(reduceMotion ? nil : PFMotion.smooth) { expanded = isOpen ? nil : section }
         } label: {
             HStack(spacing: PFSpace.s) {
                 icon(systemImage)
@@ -170,7 +182,7 @@ struct WorkFiltersSheet: View {
                 }
                 .padding(.bottom, PFSpace.xs)
             }
-            .frame(maxHeight: 44 * 5)
+            .frame(maxHeight: optionHeight * 5)
             .scrollBounceBehavior(.basedOnSize)
             .transition(.opacity)
         }

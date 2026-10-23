@@ -34,8 +34,6 @@ interface LanguageProviderState {
     loadProfileTranslations: () => Promise<void>;
     teamTranslationsReady: boolean;
     loadTeamTranslations: () => Promise<void>;
-    helpTranslationsReady: boolean;
-    loadHelpTranslations: () => Promise<void>;
     calendarTranslationsReady: boolean;
     loadCalendarTranslations: () => Promise<void>;
     authActionTranslationsReady: boolean;
@@ -65,8 +63,6 @@ const LanguageProviderContext = createContext<LanguageProviderState>({
     loadProfileTranslations: async () => undefined,
     teamTranslationsReady: true,
     loadTeamTranslations: async () => undefined,
-    helpTranslationsReady: true,
-    loadHelpTranslations: async () => undefined,
     calendarTranslationsReady: true,
     loadCalendarTranslations: async () => undefined,
     authActionTranslationsReady: true,
@@ -89,7 +85,6 @@ export function LanguageProvider({
     const [dashboardTranslations, setDashboardTranslations] = useState<Partial<Record<Language, Record<string, any>>>>({});
     const [profileTranslations, setProfileTranslations] = useState<Partial<Record<Language, Record<string, any>>>>({});
     const [teamTranslations, setTeamTranslations] = useState<Partial<Record<Language, Record<string, any>>>>({});
-    const [helpTranslations, setHelpTranslations] = useState<Partial<Record<Language, Record<string, any>>>>({});
     const [calendarTranslations, setCalendarTranslations] = useState<Partial<Record<Language, Record<string, any>>>>({});
     const [authActionTranslations, setAuthActionTranslations] = useState<Partial<Record<Language, Record<string, any>>>>({});
     const [authScreenTranslations, setAuthScreenTranslations] = useState<Partial<Record<Language, Record<string, any>>>>({});
@@ -98,7 +93,6 @@ export function LanguageProvider({
     const hasDashboardTranslations = Boolean(dashboardTranslations.en && dashboardTranslations.de);
     const hasProfileTranslations = Boolean(profileTranslations.en && profileTranslations.de);
     const hasTeamTranslations = Boolean(teamTranslations.en && teamTranslations.de);
-    const hasHelpTranslations = Boolean(helpTranslations.en && helpTranslations.de);
     const hasCalendarTranslations = Boolean(calendarTranslations.en && calendarTranslations.de);
     const hasAuthActionTranslations = Boolean(authActionTranslations.en && authActionTranslations.de);
     const hasAuthScreenTranslations = Boolean(authScreenTranslations.en && authScreenTranslations.de);
@@ -107,7 +101,6 @@ export function LanguageProvider({
     const [dashboardTranslationsReady, setDashboardTranslationsReady] = useState<boolean>(false);
     const [profileTranslationsReady, setProfileTranslationsReady] = useState<boolean>(false);
     const [teamTranslationsReady, setTeamTranslationsReady] = useState<boolean>(false);
-    const [helpTranslationsReady, setHelpTranslationsReady] = useState<boolean>(false);
     const [calendarTranslationsReady, setCalendarTranslationsReady] = useState<boolean>(false);
     const [authActionTranslationsReady, setAuthActionTranslationsReady] = useState<boolean>(false);
     const [authScreenTranslationsReady, setAuthScreenTranslationsReady] = useState<boolean>(false);
@@ -196,23 +189,6 @@ export function LanguageProvider({
         });
         setTeamTranslationsReady(true);
     }, [hasTeamTranslations]);
-    const loadHelpTranslations = useCallback(async () => {
-        if (hasHelpTranslations) {
-            setHelpTranslationsReady(true);
-            return;
-        }
-
-        const [{ default: nextHelpEn }, { default: nextHelpDe }] = await Promise.all([
-            import('../locales/help-en'),
-            import('../locales/help-de')
-        ]);
-
-        setHelpTranslations({
-            en: nextHelpEn,
-            de: nextHelpDe
-        });
-        setHelpTranslationsReady(true);
-    }, [hasHelpTranslations]);
     const loadCalendarTranslations = useCallback(async () => {
         if (hasCalendarTranslations) {
             setCalendarTranslationsReady(true);
@@ -337,7 +313,6 @@ export function LanguageProvider({
             const currentDashboardTranslations = dashboardTranslations[targetLang];
             const currentProfileTranslations = profileTranslations[targetLang];
             const currentTeamTranslations = teamTranslations[targetLang];
-            const currentHelpTranslations = helpTranslations[targetLang];
             const currentCalendarTranslations = calendarTranslations[targetLang];
             const currentAuthActionTranslations = authActionTranslations[targetLang];
             const currentAuthScreenTranslations = authScreenTranslations[targetLang];
@@ -360,9 +335,6 @@ export function LanguageProvider({
             }
             if (currentTeamTranslations && currentTeamTranslations[key] !== undefined) {
                 return currentTeamTranslations[key];
-            }
-            if (currentHelpTranslations && currentHelpTranslations[key] !== undefined) {
-                return currentHelpTranslations[key];
             }
             if (currentCalendarTranslations && currentCalendarTranslations[key] !== undefined) {
                 return currentCalendarTranslations[key];
@@ -402,7 +374,6 @@ export function LanguageProvider({
             const englishDashboardTranslations = dashboardTranslations.en;
             const englishProfileTranslations = profileTranslations.en;
             const englishTeamTranslations = teamTranslations.en;
-            const englishHelpTranslations = helpTranslations.en;
             const englishCalendarTranslations = calendarTranslations.en;
             const englishAuthActionTranslations = authActionTranslations.en;
             const englishAuthScreenTranslations = authScreenTranslations.en;
@@ -424,9 +395,6 @@ export function LanguageProvider({
             }
             if (englishTeamTranslations && englishTeamTranslations[key] !== undefined) {
                 return englishTeamTranslations[key];
-            }
-            if (englishHelpTranslations && englishHelpTranslations[key] !== undefined) {
-                return englishHelpTranslations[key];
             }
             if (englishCalendarTranslations && englishCalendarTranslations[key] !== undefined) {
                 return englishCalendarTranslations[key];
@@ -454,7 +422,7 @@ export function LanguageProvider({
 
             return value !== undefined ? value : (fallback || key);
         };
-    }, [authActionTranslations, authScreenTranslations, calendarTranslations, dashboardTranslations, helpTranslations, language, profileTranslations, projectOverviewTranslations, settingsTranslations, teamTranslations, translations]);
+    }, [authActionTranslations, authScreenTranslations, calendarTranslations, dashboardTranslations, language, profileTranslations, projectOverviewTranslations, settingsTranslations, teamTranslations, translations]);
 
     const setLanguage = (nextLanguage: Language) => {
         localStorage.setItem(storageKey, nextLanguage);
@@ -497,8 +465,6 @@ export function LanguageProvider({
                 loadProfileTranslations,
                 teamTranslationsReady,
                 loadTeamTranslations,
-                helpTranslationsReady,
-                loadHelpTranslations,
                 calendarTranslationsReady,
                 loadCalendarTranslations,
                 authActionTranslationsReady,

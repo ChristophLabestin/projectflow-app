@@ -283,12 +283,13 @@ Ports of the iOS brand motion (`PFBrandScene.swift`) and `desktop/assets/splash.
 - `utils/notificationPresentation.ts`: icon/tone per type, `getNotificationPath` (task > initiative > project > relative `deepLink`), `getNotificationText` (renders `notifications.type.<type>.title|message` from the doc's `params`, falls back to the stored English text), `groupNotifications`.
 - `screens/Notifications.tsx` uses the same parts plus the collapsed delivery diagnostics.
 
-## Help Center (`web/components/help/`, bilingual 2026-10-23)
+## Help Center (`web/components/help/`, rebuilt 2026-10-23)
 
-- `HelpCenterDrawer` (mounted in `Router.tsx`, state in `context/HelpCenterContext`): search over page/section index, CORA ask, category nav, active page. On open it calls `loadHelpTranslations()`; until ready it shows `help.drawer.loading` and an empty index.
-- `helpCenterContent.ts`: `getHelpCenterPages(t)` builds the page index (title/description/keywords from `help.pages.<pageKey>.*`); `getHelpTargetForPath` maps routes to pages. `splitHelpKeywords` turns the comma-separated keywords keys into arrays (DE keywords include German and English terms).
-- `pages/*Page.tsx`: each exports the component plus `get<Page>Sections: HelpCenterSectionsBuilder` (`(t) => sections`); index ids must equal the JSX `data-section-id`. All copy via `t('help.<pageKey>.…')`; accents only via brand/status tokens (`--brand-*-text`, `rgba(var(--brand-*-rgb), a)`, `--color-status-blocked-text`), no palette classes.
-- Copy lives in `web/locales/help/<page>-en.ts|-de.ts`, aggregated by `locales/help-en.ts|help-de.ts` and lazy-loaded into the `help-i18n` chunk (`vite.config.ts`) — new help pages add a fragment pair there, not keys in `en.ts`/`de.ts`.
+Concept: `brain/plans/help-center-rework.md`.
+- `HelpCenterDrawer` (mounted in `Router.tsx`, state in `context/HelpCenterContext`; `activePageId` = article id, `null` = home): floating one-column sheet (`--help-center-width`, inset 12 px, full screen < 720 px). Views: **Home** ("For this page" via `helpRouting.ts` + articles by category) → **Article** (`HelpArticleView`) or **Search** (`searchHelp` + Ask CORA). Back arrow returns home, Esc/scrim close. Opened by `?`, the top-bar help button, ⌘K results, the desktop menu, and `HelpCenterFloatingButton` (`.help-fab`) on public routes.
+- Content: `web/locales/help/articles/<id>-en|de.ts` (one `HelpArticle` each, typed by `helpTypes.ts`), ordered in `articles-en|de.ts`; loaded per language by `useHelpContent()` (chunks `help-content-en|de`). Blocks: text, steps, list, callout (tip/note/warning), terms, shortcuts; inline `**bold**`, `` `code` ``, `[label](/route)` (`HelpInline`).
+- `__tests__/helpCenter.test.ts` enforces EN/DE structural parity, unique ids, valid routes, no retired concepts (Flows/Issues/Social), and that every routed article/section exists.
+- Styling: `help-center.scss` only (borderless, surface contrast, brand tokens for callouts) — no Tailwind in help components.
 
 ## Reminders and settings controls
 

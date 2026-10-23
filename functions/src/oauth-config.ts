@@ -8,6 +8,13 @@ import { MCP_RESOURCES } from './oauth-core';
 const REGION = 'europe-west3';
 export const APP_ORIGIN = 'https://app.getprojectflow.com';
 
+/**
+ * Human docs linked from the OAuth / protected-resource metadata. Points to the in-app setup page until
+ * getprojectflow.com/docs/mcp is live on the landing site; then set MCP_DOCS_URL (functions env) or change
+ * the default (brain/operations/domains-setup.md).
+ */
+export const MCP_DOCS_URL = process.env.MCP_DOCS_URL || `${APP_ORIGIN}/?openSettings=ai`;
+
 const isEmulator = () => process.env.FUNCTIONS_EMULATOR === 'true';
 const projectId = () => process.env.GCLOUD_PROJECT || process.env.GCP_PROJECT || 'demo-projectflow';
 

@@ -151,8 +151,7 @@
 
   /* Layout */
   --app-sidebar-width: 0px;
-  --help-center-width-collapsed: calc((100vw - var(--app-sidebar-width)) * 0.75);
-  --help-center-width-expanded: calc(100vw - var(--app-sidebar-width));
+  --help-center-width: 680px;
 }
 
 @media (min-width: 768px) {
