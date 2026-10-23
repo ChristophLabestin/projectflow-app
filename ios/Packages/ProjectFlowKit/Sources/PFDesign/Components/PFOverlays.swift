@@ -154,6 +154,7 @@ struct PFSheetContent: View {
     var body: some View {
         ScrollView {
             sheet.content
+                .environment(\.pfSideRegionWidth, sideRegion)
                 .frame(maxWidth: .infinity, alignment: .top)
                 // Fitted sheets without a footer end on their own action row: close sits beside it.
                 .overlay(alignment: .bottomTrailing) {
@@ -198,6 +199,16 @@ struct PFSheetContent: View {
                             .ignoresSafeArea(edges: [.bottom, .trailing])
                     }
                     .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { footerHeight = $0 }
+            }
+        }
+        // Side region: a sheet's secondary control (`pfSheetSideAction`) sits top right, in the close button's column.
+        .overlayPreferenceValue(PFSheetSideActionKey.self) { action in
+            if sideRegion > 0, let action {
+                action.view
+                    .frame(width: 44)
+                    .padding([.trailing, .top], PFSpace.page)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
+                    .ignoresSafeArea(.container)
             }
         }
         .onGeometryChange(for: CGFloat.self) { $0.safeAreaInsets.trailing } action: { trailingInset = $0 }
@@ -324,6 +335,23 @@ public extension View {
     /// Declares a non-standard bottom padding of sheet content, so side controls still line up with the last row.
     func pfSheetBottomInset(_ inset: CGFloat) -> some View {
         preference(key: PFSheetBottomInsetKey.self, value: inset)
+    }
+}
+
+struct PFSheetSideAction {
+    let view: AnyView
+}
+
+struct PFSheetSideActionKey: PreferenceKey {
+    static let defaultValue: PFSheetSideAction? = nil
+    static func reduce(value: inout PFSheetSideAction?, nextValue: () -> PFSheetSideAction?) { value = value ?? nextValue() }
+}
+
+public extension View {
+    /// A sheet's secondary header control. iPhone Duo outer display: shown top right in the sheet's side region,
+    /// above the close button; elsewhere the sheet shows it in place (read `pfSideRegionWidth`).
+    func pfSheetSideAction<Action: View>(@ViewBuilder _ action: () -> Action) -> some View {
+        preference(key: PFSheetSideActionKey.self, value: PFSheetSideAction(view: AnyView(action())))
     }
 }
 

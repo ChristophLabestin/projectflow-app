@@ -18,19 +18,16 @@ struct DateSheet: View {
     @AppStorage("pf.dateSheet.month") private var prefersMonth = false
     /// Local mirror so the switch runs in an animation transaction (AppStorage writes don't animate).
     @State private var showsMonth = false
+    @Environment(\.pfSideRegionWidth) private var sideRegion
 
     var body: some View {
         VStack(alignment: .leading, spacing: PFSpace.m) {
             PFSheetHeader(eyebrow, title: title)
-                .padding(.trailing, 44)
+                .padding(.trailing, sideRegion > 0 ? 0 : 44)
                 .overlay(alignment: .topTrailing) {
-                    PFIconButton(showsMonth ? "calendar.day.timeline.left" : "calendar",
-                                 label: L10n.t(showsMonth ? "taskDetail.date.strip" : "taskDetail.date.month"), style: .raised, size: 36) {
-                        PFHaptics.selection()
-                        withAnimation(PFMotion.respecting(PFMotion.smooth)) { showsMonth.toggle() }
-                        prefersMonth = showsMonth
+                    if sideRegion == 0 {
+                        modeToggle.padding(.trailing, PFSpace.page)
                     }
-                    .padding(.trailing, PFSpace.page)
                 }
             PFDateStrip(quick: [PFDateStrip.Quick(id: "none", label: L10n.t("common.noDate"), date: nil)] + Formatting.quickDates.compactMap { quick in
                 Formatting.date(quick.value).map { PFDateStrip.Quick(id: quick.id, label: quick.label, date: $0) }
@@ -46,9 +43,21 @@ struct DateSheet: View {
             }
             .padding(.horizontal, PFSpace.page)
         }
+        .pfSheetSideAction { if sideRegion > 0 { modeToggle } }
         .onAppear {
             selection = initial.flatMap { Formatting.date($0) }
             showsMonth = prefersMonth
+        }
+    }
+
+    /// Day strip ↔ month. iPhone: in the header; iPhone Duo outer display: top right in the side region.
+    private var modeToggle: some View {
+        PFIconButton(showsMonth ? "calendar.day.timeline.left" : "calendar",
+                     label: L10n.t(showsMonth ? "taskDetail.date.strip" : "taskDetail.date.month"),
+                     style: sideRegion > 0 ? .glass : .raised, size: sideRegion > 0 ? 44 : 36) {
+            PFHaptics.selection()
+            withAnimation(PFMotion.respecting(PFMotion.smooth)) { showsMonth.toggle() }
+            prefersMonth = showsMonth
         }
     }
 }
