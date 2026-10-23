@@ -58,8 +58,56 @@ public struct PFBoard<Item: Identifiable, Card: View>: View where Item.ID == Str
     }
 
     public var body: some View {
+        VStack(spacing: 0) {
+            columnSwitcher
+            lanes
+        }
+    }
+
+    /// Chips for every column (dot · title · count); the visible lane is highlighted, a tap jumps to it.
+    private var columnSwitcher: some View {
+        let active = position.viewID(type: String.self) ?? columns.first?.id
+        return ScrollViewReader { reader in
+            ScrollView(.horizontal) {
+                HStack(spacing: 6) {
+                    ForEach(columns) { column in
+                        let selected = column.id == active
+                        Button {
+                            PFHaptics.selection()
+                            withAnimation(PFMotion.respecting(PFMotion.snappy)) { position.scrollTo(id: column.id) }
+                        } label: {
+                            HStack(spacing: 6) {
+                                PFDot(column.dot, size: 7)
+                                Text(column.title).pfText(.buttonSmall).lineLimit(1)
+                                Text("\(items[column.id]?.count ?? 0)")
+                                    .font(.system(size: 12, weight: .bold)).monospacedDigit()
+                                    .foregroundStyle(selected ? PFColor.onPrimary.opacity(0.75) : PFColor.textMuted)
+                            }
+                            .foregroundStyle(selected ? PFColor.onPrimary : PFColor.textMain)
+                            .padding(.horizontal, 12)
+                            .frame(minHeight: 32)
+                            .background(selected ? PFColor.primary : PFColor.card, in: .capsule)
+                            .overlay { Capsule().strokeBorder(PFColor.hairline, lineWidth: selected ? 0 : 1) }
+                        }
+                        .buttonStyle(.pfPressable)
+                        .id(column.id)
+                        .accessibilityAddTraits(selected ? [.isButton, .isSelected] : .isButton)
+                    }
+                }
+                .padding(.horizontal, PFSpace.page)
+                .padding(.vertical, 10)
+            }
+            .scrollIndicators(.hidden)
+            .onChange(of: active) { _, id in
+                guard let id else { return }
+                withAnimation(PFMotion.respecting(PFMotion.snappy)) { reader.scrollTo(id, anchor: .center) }
+            }
+        }
+    }
+
+    private var lanes: some View {
         GeometryReader { proxy in
-            let laneWidth = (proxy.size.width * 0.85).rounded()
+            let laneWidth = (proxy.size.width * 0.82).rounded()
             ScrollView(.horizontal) {
                 LazyHStack(alignment: .top, spacing: spacing) {
                     ForEach(columns) { column in
@@ -106,7 +154,8 @@ public struct PFBoard<Item: Identifiable, Card: View>: View where Item.ID == Str
                 Spacer(minLength: 0)
             }
             .padding(.horizontal, 14)
-            .frame(height: 46)
+            .padding(.top, 8)
+            .frame(height: 54)
             .accessibilityElement(children: .combine)
             .accessibilityAddTraits(.isHeader)
 
@@ -135,10 +184,19 @@ public struct PFBoard<Item: Identifiable, Card: View>: View where Item.ID == Str
             .scrollDisabled(drag != nil)
         }
         .frame(width: width, height: height)
-        .background(PFColor.raised.opacity(isTarget ? 0.95 : 0.5), in: .rect(cornerRadius: 22, style: .continuous))
+        // Lanes read as their own surface: solid raised fill with a faint status tint, hairline ring
+        // and a status-coloured accent along the top edge.
+        .background {
+            let shape = RoundedRectangle(cornerRadius: 22, style: .continuous)
+            ZStack(alignment: .top) {
+                shape.fill(PFColor.raised)
+                shape.fill(column.dot.opacity(isTarget ? 0.16 : 0.07))
+                Capsule().fill(column.dot).frame(width: 36, height: 4).padding(.top, 6)
+            }
+        }
         .overlay {
             RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .strokeBorder(column.dot.opacity(isTarget ? 0.7 : 0), lineWidth: 2)
+                .strokeBorder(isTarget ? column.dot.opacity(0.8) : PFColor.hairlineStrong.opacity(0.7), lineWidth: isTarget ? 2 : 1)
         }
         .animation(PFMotion.fast, value: isTarget)
     }
