@@ -58,5 +58,5 @@ initiatives + initiative detail, sprints, milestones, activity, details, effort,
   (replaced by `SidebarNavigator`) but carry ~55 hardcoded palette classes; delete them. S.
 - ✅ **Done 2026-10-23 (web-app), see finding 18.** **Button icon size:** give `.btn__icon .material-symbols-outlined` a size per button size (sm 16 / md 18 / lg 20) and
   drop the per-call `text-[18px]` overrides. S/M, touches many call sites.
-- **Calendar on phones:** the stacked week works, but a real day/agenda view with a date strip would fit the iOS app's
+- ✅ **Done 2026-10-23 (web-app):** week view < 768 px shows `.calendar-agenda` (date strip like iOS `PFWeekStrip` with load dots + list of the selected day, rows open the task); desktop grid unchanged. Original note — **Calendar on phones:** the stacked week works, but a real day/agenda view with a date strip would fit the iOS app's
   pattern better. M.

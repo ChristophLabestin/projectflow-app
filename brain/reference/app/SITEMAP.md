@@ -49,7 +49,7 @@ These routes are rendered inside the authenticated app shell/layout.
 - Consent gate: every signed-in route (incl. `/desktop/quick-access|capture|day|tray`) is wrapped in `LegalConsentGate`; contract `brain/plans/legal-consent-contract.md`.
 - [x] `/projects` — Projects list (SCSS refactor complete: cards/spotlight/suggestion/table/toolbars aligned to tokens + common components; company/startup projects are grouped separately with linked workstreams, and bottom lifecycle lists separate backlog/planning, paused, completed, and canceled projects)
 - [x] `/tasks` — Global tasks overview (SCSS refactor, common controls, board + modal alignment)
-- [x] `/calendar` — Global calendar view (SCSS refactor, common components, schedule modal + tooltip alignment)
+- [x] `/calendar` — Global calendar view (SCSS refactor, common components, schedule modal + tooltip alignment) Phones (< 768 px, week view): date strip + agenda of the selected day (`.calendar-agenda`).
 - [x] `/finance` — Finance V2 cockpit (tracking + ledger/subledgers + bank/reconciliation + tax/reports + exports/close + BWL/AI-token planning with project profitability)
 - [x] `/finance/cockpit` — Finance V2 cockpit overview (KPI, period status, warnings)
 - [x] `/finance/bookings` — Journal and booking workflows (postings + drilldown)
