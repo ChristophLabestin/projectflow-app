@@ -70,7 +70,6 @@ if (!app.requestSingleInstanceLock()) {
             applicationVersion: app.getVersion(),
             copyright: '© Labestin Digital'
         });
-        if (process.platform === 'darwin' && IS_DEV) app.dock?.setIcon(path.join(__dirname, '..', 'assets', 'icon.png'));
 
         createMainWindow(coldStartPath ?? '/');
         coldStartPath = null;
