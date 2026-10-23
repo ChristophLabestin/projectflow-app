@@ -59,12 +59,18 @@ struct PFSideControls {
     var back: AnyView?
 }
 
-/// The stacked column, placed bottom-trailing in the side region.
-struct PFSideColumn<Content: View>: View {
+/// The stacked column, placed bottom-trailing in the side region. Screens outside a `PFNavigator`
+/// (e.g. the welcome onboarding) place their own controls with it.
+public struct PFSideColumn<Content: View>: View {
     let side: CGFloat
-    @ViewBuilder let content: Content
+    let content: Content
 
-    var body: some View {
+    public init(side: CGFloat, @ViewBuilder content: () -> Content) {
+        self.side = side
+        self.content = content()
+    }
+
+    public var body: some View {
         let gap = PFLayout.sideGap(side)
         VStack(spacing: 10) { content }
             .frame(width: PFDock.railWidth)
