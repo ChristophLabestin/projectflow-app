@@ -17,7 +17,11 @@ enum L10n {
 
     /// Applies the user's profile language (`users/{uid}.language`) when set.
     static func apply(profileLanguage: String?) {
-        guard let profileLanguage, let language = Language(rawValue: String(profileLanguage.prefix(2))) else { return }
+        guard let profileLanguage, let language = Language(rawValue: String(profileLanguage.prefix(2))) else {
+            // No explicit choice (or "system"): follow the device language again.
+            self.language = (Locale.preferredLanguages.first ?? "de").hasPrefix("de") ? .de : .en
+            return
+        }
         self.language = language
     }
 

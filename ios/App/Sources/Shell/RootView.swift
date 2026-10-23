@@ -1,4 +1,5 @@
 import SwiftUI
+import UserNotifications
 import PFData
 import PFDesign
 
@@ -34,7 +35,12 @@ struct RootView: View {
         .animation(PFMotion.respecting(PFMotion.normal), value: model.auth.phase)
         .task(id: model.auth.phase) { await model.syncSession() }
         .task(id: model.session?.activeWorkspaceId) { model.bindWorkspace() }
-        .onChange(of: model.profile?.language) { _, language in L10n.apply(profileLanguage: language) }
+        .onChange(of: model.profile?.language) { _, language in
+            L10n.apply(profileLanguage: language)
+            // Push action titles are registered once at launch — re-register them in the new language.
+            UNUserNotificationCenter.current().setNotificationCategories(NotificationCategories.all)
+            SnapshotPublisher.publish(model: model)
+        }
         .preferredColorScheme(model.colorScheme)
         .tint(PFColor.primary)
     }

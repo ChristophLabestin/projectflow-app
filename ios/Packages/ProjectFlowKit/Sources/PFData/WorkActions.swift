@@ -302,8 +302,11 @@ public struct ProfileActions {
         try await PFPath.user(uid).setData(["theme": theme], merge: true)
     }
 
+    /// "de" / "en" store an explicit choice; anything else ("system") removes the field so web, iOS and
+    /// the server nudges all fall back to the device/browser language (web only accepts en|de).
     public func setLanguage(_ language: String) async throws {
-        try await PFPath.user(uid).setData(["language": language], merge: true)
+        let value: Any = (language == "de" || language == "en") ? language : FieldValue.delete()
+        try await PFPath.user(uid).setData(["language": value], merge: true)
     }
 
     public func registerFCMToken(_ token: String, deviceId: String, appVersion: String) async throws {
