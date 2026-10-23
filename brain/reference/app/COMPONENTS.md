@@ -326,3 +326,5 @@ Ports of the iOS brand motion (`PFBrandScene.swift`) and `desktop/assets/splash.
 - `GettingStartedCard` (`web/components/onboarding/`): dashboard checklist (confirm email, first project, three tasks, invite, passkey/2FA) derived from live data; hides when done or dismissed.
 - `useOnboarding` (`web/hooks/`): shared first-run state from `users/{uid}/private/onboarding`. Only accounts whose first workspace was created after the rework have this doc — older accounts never see welcome, checklist or the sidebar "More" grouping.
 - `userPrivateData` (`web/services/domain/`): owner-only user data (`private/usage`, `private/workspace`, `private/onboarding`); `emailVerification` helpers for sending/rechecking the confirmation mail.
+
+- `DashboardSkeleton` (`web/components/dashboard/DashboardSkeleton.tsx`, 2026-10-23): loading state of the Dashboard in its real Today layout (same containers, measured heights), shown until projects *and* tasks are loaded; styles at the end of `src/styles/components/_dashboard.scss`.

@@ -6,6 +6,8 @@ Living log of pitfalls, edge cases, and workflow surprises discovered while work
 - `YYYY-MM-DD | Area | Short title` - One sentence describing the gotcha and how to avoid it.
 
 ## Log
+- `2026-10-23 | Web | web/screens/dashboard.scss is not loaded` - The Dashboard's styles live in `web/src/styles/components/_dashboard.scss` (imported by `main.scss`); `web/screens/dashboard.scss` is imported nowhere, so rules added there silently do nothing.
+- `2026-10-23 | Desktop | CSS entrance animations can freeze in an occluded window` - In a covered Electron window Chromium stops producing frames, and an `opacity: 0 → 1` entrance animation with `fill-mode: both` stayed at its first frame (page invisible). Do not hide content behind entrance animations; swap a layout-matching skeleton instead.
 - `2026-10-23 | Desktop | Electron 45 clipboard is async` - `clipboard.readImage()` and other sync readers are gone in Electron 45; use `await clipboard.read()` (ClipboardItem[]) and `item.getType('image/png')` (Blob), `readText()` returns a Promise.
 - `2026-10-23 | Desktop | Hidden panels get no reliable window focus event` - Re-showing a hidden `type: 'panel'` window did not fire the page's `window` `focus` event, so per-open resets (command palette query) must come from the shell (`windowPayload` on show), like Quick Capture.
 - `2026-10-23 | Desktop | Dev build took over projectflow:// system-wide` - `app.setAsDefaultProtocolClient` on macOS sets the Launch Services default handler, so every dev run made the dev Electron bundle the handler for `projectflow://` (deep links and the browser sign-in landed in the dev app). Dev now uses `projectflow-dev://`; an existing wrong mapping is fixed by starting the installed ProjectFlow once (it re-registers itself on launch).

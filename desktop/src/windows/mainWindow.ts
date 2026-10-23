@@ -3,7 +3,7 @@ import path from 'node:path';
 import { APP_ORIGIN, APP_URL, IS_DEV, appUrlFor, isAppUrl } from '../config';
 import { IPC, type DesktopCommandEvent, type DesktopWindowState, type TitleBarTheme, type WindowKind } from '../contract';
 import { hardenAppContents, openExternalSafe } from '../security';
-import { attachSplash, finishSplash } from './splash';
+import { attachSplash, finishSplash, finishSplashSoon } from './splash';
 import { getSettings, updateSettings, visibleBounds } from '../store';
 import { currentLanguage, labels } from '../labels';
 
@@ -92,7 +92,7 @@ export const markRendererReady = () => {
     rendererReady = true;
     const win = getMainWindow();
     if (!win) return;
-    finishSplash();
+    finishSplashSoon();
     const queued = pendingCommands;
     pendingCommands = [];
     queued.forEach((event) => win.webContents.send(IPC.command, event));
