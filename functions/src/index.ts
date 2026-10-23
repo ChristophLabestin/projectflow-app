@@ -16,6 +16,7 @@ import { requestNewsletterSignup, confirmNewsletterSignup } from './newsletter-p
 import { sendContactFormEmail } from './contact';
 import { askCora, generateImage, editImage, runAiCapability } from './ai-service';
 import { aiAssist } from './ai-assist';
+import { aiApplyProposal, aiUndoProposal } from './ai-actions';
 import { getInitiativeFeedbackForm, saveInitiativeFeedbackConfig, submitInitiativeFeedback } from './initiative-feedback';
 import { getProjectIntakeForm, saveProjectIntakeConfig, submitProjectIntake } from './project-intake';
 import { autoStartSprints, dailyHealthSnapshots } from './scheduler';
@@ -89,6 +90,8 @@ export {
     editImage,
     runAiCapability,
     aiAssist,
+    aiApplyProposal,
+    aiUndoProposal,
     saveInitiativeFeedbackConfig,
     getInitiativeFeedbackForm,
     submitInitiativeFeedback,
@@ -144,10 +147,6 @@ export { exportMyData, deleteMyAccount } from './account-data';
 export { deleteProject } from './project-delete';
 export { adminApi } from './admin-console';
 export {
-    saveLegalDraft,
-    deleteLegalDraft,
-    publishLegalDraft,
-    getLegalAdminOverview,
     acceptLegalDocuments,
     declineLegalDocuments,
     legalDocument,
@@ -161,7 +160,7 @@ export { computeWorkspaceInsights, refreshWorkspaceInsights, generateWeeklyInsig
 // Flows (automations): brain/plans/flows-concept.md
 export {
     onAutomationEvent, runAutomationSchedules, saveAutomation, setAutomationEnabled, deleteAutomation,
-    runAutomation, retryAutomationRun, previewAutomation
+    runAutomation, retryAutomationRun, previewAutomation, draftAutomationFromText
 } from './automations';
 export { deliverReminders } from './reminders';
 export { sendNudges } from './nudges';

@@ -175,5 +175,31 @@ export const WorkspaceProvider = ({ children }: { children: ReactNode }) => {
         );
     }
 
+    const suspended = user && status === 'ready' ? value.activeWorkspace?.suspended === true : false;
+    if (suspended) {
+        const others = workspaces.filter((workspace) => workspace.id !== activeWorkspaceId && !workspace.suspended);
+        getDesktopBridge()?.splashDone?.();
+        return (
+            <div className="workspace-gate" role="alert">
+                <div className="workspace-gate__panel">
+                    <span className="material-symbols-outlined workspace-gate__icon workspace-gate__icon--error">block</span>
+                    <p className="workspace-gate__title">{t('workspace.suspended.title').replace('{name}', value.activeWorkspace?.name || '')}</p>
+                    <p className="workspace-gate__text">{t('workspace.suspended.text')}</p>
+                    <div className="workspace-gate__actions">
+                        {others.map((workspace) => (
+                            <button key={workspace.id} type="button" className="workspace-gate__button" onClick={() => void switchWorkspaceAndReload(workspace.id, '/')}>
+                                {t('workspace.suspended.switch').replace('{name}', workspace.name)}
+                            </button>
+                        ))}
+                        <a className="workspace-gate__button workspace-gate__button--ghost" href="mailto:support@getprojectflow.com">{t('workspace.suspended.contact')}</a>
+                        <button type="button" className="workspace-gate__button workspace-gate__button--ghost" onClick={() => void signOut(auth)}>
+                            {t('workspace.gate.signOut')}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
     return <WorkspaceContext.Provider value={value}>{children}</WorkspaceContext.Provider>;
 };

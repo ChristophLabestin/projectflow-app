@@ -225,6 +225,18 @@ const pricing = (t: SiteCopy) => {
             </li>`;
             }).join('')}
         </ul>
+        <div class="addon" data-reveal data-spot>
+            <div class="addon__head">
+                <span class="more__icon">${icon('sparkles')}</span>
+                <div>
+                    <h3>${esc(p.addon.name)}</h3>
+                    <p class="addon__price"><b>+${p.addon.price}&nbsp;${p.currency}</b> ${esc(p.addon.unit)}</p>
+                </div>
+            </div>
+            <p class="addon__text">${esc(p.addon.text)}</p>
+            <ul class="ticks">${p.addon.points.map((pt) => `<li>${icon('check')}${esc(pt)}</li>`).join('')}</ul>
+            <p class="fineprint">${esc(p.addon.note)}</p>
+        </div>
         <p class="fineprint pricing__note">${esc(p.note)}</p>
     </div>
 </section>`;

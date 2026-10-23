@@ -38,6 +38,10 @@ export const EVENT_TO_TRIGGER: Record<string, TriggerType> = {
     'project.member_added': 'project.member_added'
 };
 
+/** summarize / draft_*: Structured Outputs; classify_*: Decisions API (choice). */
+export const AI_ACTION_MODES = ['summarize', 'draft_comment', 'draft_task', 'classify_priority', 'classify_label'] as const;
+export type AiActionMode = (typeof AI_ACTION_MODES)[number];
+
 export const ACTION_TYPES = [
     'set_field',
     'assign',
@@ -53,7 +57,7 @@ export const ACTION_TYPES = [
 ] as const;
 export type ActionType = (typeof ACTION_TYPES)[number];
 
-export const OPERATORS = ['eq', 'neq', 'in', 'not_in', 'contains', 'not_contains', 'empty', 'not_empty', 'lt', 'gt', 'due_within_days'] as const;
+export const OPERATORS = ['eq', 'neq', 'in', 'not_in', 'contains', 'not_contains', 'empty', 'not_empty', 'lt', 'gt', 'due_within_days', 'ai'] as const;
 export type Operator = (typeof OPERATORS)[number];
 
 export const CONDITION_FIELDS = [
@@ -67,7 +71,9 @@ export const CONDITION_FIELDS = [
     'task.isSubtask',
     'project.id',
     'actor.id',
-    'comment.text'
+    'comment.text',
+    /** KI-Bedingung (Decisions API): rule.ai holds kind, question and threshold. */
+    'ai'
 ] as const;
 export type ConditionField = (typeof CONDITION_FIELDS)[number];
 
@@ -83,6 +89,7 @@ export const AUTOMATION_LIMITS = {
     actionsPerFlow: 10,
     conditionGroups: 5,
     rulesPerGroup: 10,
+    aiConditions: 3,
     runsPerMonth: 2000,
     aiStepsPerMonth: 200,
     runsPerMinute: 60,
@@ -116,7 +123,21 @@ export const resolveLimits = (tenant: Json | null | undefined): AutomationLimits
 // Schema
 // ---------------------------------------------------------------------------
 
-export interface ConditionRule { field: ConditionField; operator: Operator; value?: unknown }
+export interface AiConditionConfig {
+    kind: 'predicate' | 'choice' | 'score';
+    /** Plain-language question, e.g. "Beschreibt der Kommentar einen Blocker?" */
+    question: string;
+    /** predicate: pass when probability >= threshold. */
+    threshold?: number;
+    /** choice: possible answers and the ones that pass. */
+    choices?: string[];
+    accept?: string[];
+    minConfidence?: number;
+    /** score: scale 1..levels, pass when score >= minScore. */
+    levels?: number;
+    minScore?: number;
+}
+export interface ConditionRule { field: ConditionField; operator: Operator; value?: unknown; ai?: AiConditionConfig }
 export interface ConditionGroup { op: 'and' | 'or'; rules: ConditionRule[] }
 export interface Conditions { op: 'and' | 'or'; groups: ConditionGroup[] }
 export interface ScheduleConfig { frequency: 'daily' | 'weekly'; time: string; weekday?: number; timezone: string }
@@ -200,10 +221,32 @@ const normalizeTrigger = (raw: Json): Trigger => {
     return { type: type as TriggerType, config: out };
 };
 
+const clamp = (value: unknown, min: number, max: number, fallback: number) => {
+    if (value === null || value === undefined || value === '') return fallback;
+    const n = Number(value);
+    return Number.isFinite(n) ? Math.min(max, Math.max(min, n)) : fallback;
+};
+
+export const normalizeAiCondition = (raw: Json | undefined): AiConditionConfig => {
+    const kind = oneOf(raw?.kind, ['predicate', 'choice', 'score'] as const) || fail('Unknown AI condition type.');
+    const question = str(raw?.question, 500);
+    if (question.length < 3) fail('Write the question for the AI condition.');
+    if (kind === 'predicate') return { kind, question, threshold: Math.round(clamp(raw?.threshold, 0.5, 0.99, 0.8) * 100) / 100 };
+    if (kind === 'choice') {
+        const choices = strList(raw?.choices, 10).map((c) => c.slice(0, 60));
+        if (choices.length < 2) fail('An AI choice needs at least two answers.');
+        const accept = strList(raw?.accept, 10).filter((c) => choices.includes(c));
+        if (!accept.length) fail('Pick at least one answer that lets the flow continue.');
+        return { kind, question, choices, accept, minConfidence: Math.round(clamp(raw?.minConfidence, 0, 0.99, 0) * 100) / 100 };
+    }
+    const levels = Math.round(clamp(raw?.levels, 2, 10, 5));
+    return { kind, question, levels, minScore: Math.round(clamp(raw?.minScore, 1, levels, Math.max(1, levels - 1)) * 10) / 10 };
+};
+
 const normalizeConditions = (raw: Json | undefined): Conditions => {
     const groups = Array.isArray(raw?.groups) ? raw!.groups : [];
     if (groups.length > AUTOMATION_LIMITS.conditionGroups) fail(`At most ${AUTOMATION_LIMITS.conditionGroups} condition groups.`);
-    return {
+    const out: Conditions = {
         op: raw?.op === 'or' ? 'or' : 'and',
         groups: groups.map((group: Json) => {
             const rules = Array.isArray(group?.rules) ? group.rules : [];
@@ -211,6 +254,7 @@ const normalizeConditions = (raw: Json | undefined): Conditions => {
             return {
                 op: group?.op === 'or' ? 'or' : 'and',
                 rules: rules.map((rule: Json) => {
+                    if (rule?.field === 'ai') return { field: 'ai', operator: 'ai', ai: normalizeAiCondition(rule.ai) } as ConditionRule;
                     const field = oneOf(rule?.field, CONDITION_FIELDS) || fail('Unknown condition field.');
                     const operator = oneOf(rule?.operator, OPERATORS) || fail('Unknown condition operator.');
                     const value = Array.isArray(rule.value)
@@ -223,6 +267,9 @@ const normalizeConditions = (raw: Json | undefined): Conditions => {
             } as ConditionGroup;
         }).filter((group: ConditionGroup) => group.rules.length > 0)
     };
+    const aiRules = out.groups.reduce((sum, group) => sum + group.rules.filter((rule) => rule.field === 'ai').length, 0);
+    if (aiRules > AUTOMATION_LIMITS.aiConditions) fail(`At most ${AUTOMATION_LIMITS.aiConditions} AI conditions per flow.`);
+    return out;
 };
 
 const people = (raw: Json): Json => ({
@@ -289,12 +336,19 @@ const normalizeAction = (raw: Json, index: number): Action => {
             config = { projectId: str(c.projectId, 200) || fail('Target project is required.') };
             break;
         case 'ai': {
-            const mode = oneOf(c.mode, ['summarize', 'classify_label', 'classify_priority'] as const) || fail('Unknown AI mode.');
+            const mode = oneOf(c.mode, AI_ACTION_MODES) || fail('Unknown AI mode.');
             config = { mode, instructions: str(c.instructions, 500) };
             if (mode === 'summarize') config.postComment = c.postComment !== false;
             if (mode === 'classify_label') {
-                config.options = strList(c.options, 20);
-                if (!config.options.length) fail('Classification needs at least one label option.');
+                config.options = strList(c.options, 10).map((o) => o.slice(0, 60));
+                if (config.options.length < 2) fail('Classification needs at least two label options.');
+            }
+            if (mode === 'classify_label' || mode === 'classify_priority') {
+                config.minConfidence = Math.round(clamp(c.minConfidence, 0, 0.99, 0.5) * 100) / 100;
+            }
+            if (mode === 'draft_task') {
+                config.asSubtask = c.asSubtask === true;
+                config.projectId = str(c.projectId, 200) || null;
             }
             break;
         }
@@ -493,7 +547,9 @@ const fieldValue = (field: ConditionField, ctx: EvalContext): unknown => {
         case 'project.id': return ctx.projectId;
         case 'actor.id': return ctx.actorId;
         case 'comment.text': return ctx.commentText;
+        case 'ai': return null; // evaluated through the Decisions API, see evaluateConditionsTri
     }
+    return null;
 };
 
 const isEmpty = (value: unknown) =>
@@ -541,17 +597,121 @@ export const evaluateRule = (rule: ConditionRule, ctx: EvalContext): boolean => 
     return false;
 };
 
-export const evaluateConditions = (conditions: Conditions | null | undefined, ctx: EvalContext): boolean => {
+/** Stable key of a rule (used to name Decisions API questions and look up their verdicts). */
+export const ruleKey = (groupIndex: number, ruleIndex: number) => `c${groupIndex}_${ruleIndex}`;
+
+/** Verdicts of AI rules by rule key. Missing = not evaluated yet (unknown). */
+export type AiVerdicts = Record<string, boolean>;
+
+type Tri = boolean | null;
+const all = (values: Tri[]): Tri => (values.some((v) => v === false) ? false : values.every((v) => v === true) ? true : null);
+const any = (values: Tri[]): Tri => (values.some((v) => v === true) ? true : values.every((v) => v === false) ? false : null);
+
+/**
+ * Three-valued evaluation: AI rules without a verdict are unknown. Returns null when the outcome
+ * depends on them, so the engine only pays for AI when the cheap rules cannot decide.
+ */
+export const evaluateConditionsTri = (conditions: Conditions | null | undefined, ctx: EvalContext, verdicts: AiVerdicts = {}): Tri => {
     const groups = conditions?.groups || [];
     if (groups.length === 0) return true;
-    const groupResult = (group: ConditionGroup) =>
-        group.op === 'or' ? group.rules.some((rule) => evaluateRule(rule, ctx)) : group.rules.every((rule) => evaluateRule(rule, ctx));
-    return conditions!.op === 'or' ? groups.some(groupResult) : groups.every(groupResult);
+    const results = groups.map((group, gi) => {
+        const values = group.rules.map((rule, ri): Tri => {
+            if (rule.field === 'ai') {
+                const key = ruleKey(gi, ri);
+                return Object.prototype.hasOwnProperty.call(verdicts, key) ? verdicts[key] : null;
+            }
+            return evaluateRule(rule, ctx);
+        });
+        return group.op === 'or' ? any(values) : all(values);
+    });
+    return conditions!.op === 'or' ? any(results) : all(results);
+};
+
+/** Deterministic evaluation; unknown AI rules count as not passed. */
+export const evaluateConditions = (conditions: Conditions | null | undefined, ctx: EvalContext, verdicts: AiVerdicts = {}): boolean =>
+    evaluateConditionsTri(conditions, ctx, verdicts) === true;
+
+export const aiRulesOf = (conditions: Conditions | null | undefined): { key: string; ai: AiConditionConfig }[] =>
+    (conditions?.groups || []).flatMap((group, gi) => group.rules
+        .map((rule, ri) => ({ key: ruleKey(gi, ri), rule }))
+        .filter(({ rule }) => rule.field === 'ai' && rule.ai)
+        .map(({ key, rule }) => ({ key, ai: rule.ai! })));
+
+export interface AiQuestion {
+    type: 'predicate' | 'choice' | 'score';
+    name: string;
+    instructions: string;
+    choices?: { value: string; description: string }[];
+    levels?: { label: string; description: string }[];
+}
+
+/** Decisions API question for an AI condition. Score levels are labelled 1..N. */
+export const aiQuestionFor = (key: string, ai: AiConditionConfig): AiQuestion => {
+    const instructions = `${ai.question}\nAnswer about the work item described in the input.`;
+    if (ai.kind === 'choice') {
+        return { type: 'choice', name: key, instructions, choices: (ai.choices || []).map((value) => ({ value, description: value })) };
+    }
+    if (ai.kind === 'score') {
+        const levels = ai.levels || 5;
+        return {
+            type: 'score', name: key, instructions,
+            levels: Array.from({ length: levels }, (_v, i) => ({ label: String(i + 1), description: i === 0 ? 'lowest' : i === levels - 1 ? 'highest' : `level ${i + 1} of ${levels}` }))
+        };
+    }
+    return { type: 'predicate', name: key, instructions };
+};
+
+export interface AiDecisionRecord {
+    key: string;
+    kind: AiConditionConfig['kind'];
+    question: string;
+    passed: boolean;
+    probability?: number;
+    choice?: string;
+    confidence?: number;
+    /** 1-based score (probability-weighted). */
+    score?: number;
+    refused?: boolean;
+}
+
+/** Map a Decisions API answer to pass/fail plus what the run log shows. Refusals fail. */
+export const aiVerdictFor = (key: string, ai: AiConditionConfig, answer: Json | undefined): AiDecisionRecord => {
+    const base = { key, kind: ai.kind, question: ai.question };
+    if (!answer || answer.type === 'refusal') return { ...base, passed: false, refused: true };
+    const round = (n: unknown) => Math.round((Number(n) || 0) * 1000) / 1000;
+    if (ai.kind === 'predicate') {
+        const probability = round(answer.probability);
+        return { ...base, passed: probability >= (ai.threshold ?? 0.8), probability };
+    }
+    if (ai.kind === 'choice') {
+        const choice = String(answer.choice || '');
+        const confidence = round(answer.confidence);
+        return { ...base, passed: (ai.accept || []).includes(choice) && confidence >= (ai.minConfidence ?? 0), choice, confidence };
+    }
+    const score = Math.round(((Number(answer.score) || 0) + 1) * 100) / 100;
+    return { ...base, passed: score >= (ai.minScore ?? 4), score, confidence: round(answer.confidence) };
 };
 
 /** Conditions that look at a task need one; taskless contexts fail them. */
 export const conditionsNeedTask = (conditions: Conditions | null | undefined): boolean =>
     (conditions?.groups || []).some((group) => group.rules.some((rule) => rule.field.startsWith('task.')));
+
+/** Compact, language-neutral description of the work item for AI calls (no personal data beyond names). */
+export const aiWorkItemText = (input: { task: Json | null; projectTitle?: string; commentText?: string; eventType?: string | null }): string => {
+    const task = input.task || {};
+    const lines = [
+        input.eventType ? `Event: ${input.eventType}` : '',
+        input.projectTitle ? `Project: ${input.projectTitle}` : '',
+        task.title ? `Task: ${task.title}` : '',
+        task.status ? `Status: ${task.status}` : '',
+        task.priority ? `Priority: ${task.priority}` : '',
+        labelsOf(task).length ? `Labels: ${labelsOf(task).join(', ')}` : '',
+        dateKeyOf(task.dueDate) ? `Due: ${dateKeyOf(task.dueDate)}` : '',
+        task.description ? `Description: ${String(task.description).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').slice(0, 2500)}` : '',
+        input.commentText ? `New comment: ${input.commentText}` : ''
+    ];
+    return lines.filter(Boolean).join('\n') || 'No work item details.';
+};
 
 // ---------------------------------------------------------------------------
 // Templates

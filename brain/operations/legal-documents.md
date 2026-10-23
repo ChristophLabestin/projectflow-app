@@ -5,13 +5,14 @@ iOS. Client contract: [../plans/legal-consent-contract.md](../plans/legal-consen
 
 ## Access
 
-`/admin/legal` (web/desktop), platform admins only (custom claim `platformAdmin`, grant with
-`node functions/scripts/grant-platform-admin.mjs <email>`, then sign out/in).
+Admin console → **Rechtsdokumente** (`https://admin.getprojectflow.com/legal`, fallback
+`https://projectflow-admin.web.app/legal`), platform admins only (claim + allowlist + TOTP, grant with
+`node functions/scripts/grant-platform-admin.mjs <email>`). The app route `/admin/legal` redirects there.
 
 ## Publish a new version
 
-1. `/admin/legal` → tab (Datenschutz / AGB / Impressum) → **Neuer Entwurf** (prefilled with the
-   current version). Or import Markdown files: `node functions/scripts/import-legal-docs.mjs legal`
+1. Console → Rechtsdokumente → document → **Neuen Entwurf beginnen** (prefilled with the
+   current version; tab „Diff“ compares with it). Or import Markdown files: `node functions/scripts/import-legal-docs.mjs legal`
    (files `legal/<type>.<lang>.md`, optional `legal/<type>.summary.<lang>.md`; the first `# ` line
    is the title) — this only creates drafts.
 2. Edit DE and EN (Markdown subset, see contract), check **Vorschau** and **Diff zur aktuellen**.
@@ -31,7 +32,7 @@ iOS. Client contract: [../plans/legal-consent-contract.md](../plans/legal-consen
 
 ## Monitoring
 
-- Version history in `/admin/legal`: acceptance rate per version (users whose accepted version
+- Version history in the console (Rechtsdokumente): acceptance rate per version (users whose accepted version
   ≥ n / all user profiles) and mail job status (`geplant` / `wird versendet` / `fertig`, sent /
   failed counts).
 - Mail log per recipient: `legal_mail_jobs/{type}_v{n}/recipients/{uid}` (`sent` | `failed` +

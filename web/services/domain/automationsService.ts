@@ -33,11 +33,11 @@ export type FlowActionType =
     | 'delay';
 
 export type FlowOperator =
-    | 'eq' | 'neq' | 'in' | 'not_in' | 'contains' | 'not_contains' | 'empty' | 'not_empty' | 'lt' | 'gt' | 'due_within_days';
+    | 'eq' | 'neq' | 'in' | 'not_in' | 'contains' | 'not_contains' | 'empty' | 'not_empty' | 'lt' | 'gt' | 'due_within_days' | 'ai';
 
 export type FlowConditionField =
     | 'task.status' | 'task.priority' | 'task.labels' | 'task.assigneeIds' | 'task.createdBy' | 'task.dueDate'
-    | 'task.title' | 'task.isSubtask' | 'project.id' | 'actor.id' | 'comment.text';
+    | 'task.title' | 'task.isSubtask' | 'project.id' | 'actor.id' | 'comment.text' | 'ai';
 
 export type FlowDynamicPerson = 'assignees' | 'creator' | 'actor' | 'project_owner' | 'admins' | 'flow_owner' | 'event_users';
 
@@ -60,10 +60,35 @@ export interface FlowTrigger {
     };
 }
 
+/** KI-Bedingung (Decisions API). */
+export interface FlowAiCondition {
+    kind: 'predicate' | 'choice' | 'score';
+    question: string;
+    threshold?: number;
+    choices?: string[];
+    accept?: string[];
+    minConfidence?: number;
+    levels?: number;
+    minScore?: number;
+}
+
 export interface FlowConditionRule {
     field: FlowConditionField;
     operator: FlowOperator;
     value?: string | string[] | number | boolean;
+    ai?: FlowAiCondition;
+}
+
+export interface FlowAiDecision {
+    key: string;
+    kind: FlowAiCondition['kind'];
+    question: string;
+    passed: boolean;
+    probability?: number;
+    choice?: string;
+    confidence?: number;
+    score?: number;
+    refused?: boolean;
 }
 
 export interface FlowConditionGroup {
@@ -122,6 +147,7 @@ export interface FlowRunStep {
     status: 'ok' | 'noop' | 'skipped' | 'failed';
     output?: string;
     error?: string;
+    decision?: { choice: string; confidence: number };
 }
 
 export interface FlowRun {
@@ -133,6 +159,7 @@ export interface FlowRun {
     taskId: string | null;
     depth: number;
     steps: FlowRunStep[];
+    decisions: FlowAiDecision[];
     error?: string;
     skipReason?: string;
     attempt: number;
@@ -178,6 +205,7 @@ const toRun = (id: string, data: Record<string, any>): FlowRun => ({
     taskId: data.taskId || null,
     depth: Number(data.depth) || 1,
     steps: Array.isArray(data.steps) ? data.steps.filter(Boolean) : [],
+    decisions: Array.isArray(data.decisions) ? data.decisions : [],
     error: data.error,
     skipReason: data.skipReason,
     attempt: Number(data.attempt) || 1,
@@ -255,6 +283,8 @@ export interface FlowPreviewTask {
     status: string;
     priority: string;
     labels: string[];
+    /** Only AI conditions decide; evaluated in the per-task test run. */
+    aiPending?: boolean;
 }
 
 export interface FlowPreviewResult {
@@ -265,6 +295,8 @@ export interface FlowPreviewResult {
 
 export interface FlowDryRunResult {
     matches: boolean;
+    decisions?: FlowAiDecision[];
+    aiError?: string;
     steps: { actionId: string; type: FlowActionType; status: string; output?: string; error?: string }[];
 }
 
@@ -276,3 +308,14 @@ export const dryRunFlow = (tenantId: string, automation: FlowDefinition, taskId:
 
 /** Message of a callable error (validation messages from the server are user-facing). */
 export const flowErrorMessage = (error: unknown): string => (error as { message?: string })?.message || '';
+
+export interface FlowDraftResult {
+    draft: FlowDefinition;
+    warnings: ('unknown_person' | 'unknown_project' | 'dropped_condition' | 'dropped_action')[];
+}
+
+/** "Flow aus Satz": Structured Outputs draft, validated server-side, never saved or enabled. */
+export const draftFlowFromText = (tenantId: string, text: string, projectId: string | null) =>
+    call<FlowDraftResult>('draftAutomationFromText', {
+        tenantId, text, projectId, timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'Europe/Berlin',
+    });

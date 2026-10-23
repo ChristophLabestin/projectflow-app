@@ -8,6 +8,7 @@ import { useConfirm, useToast } from '../../context/UIContext';
 import { Button } from '../../components/common/Button/Button';
 import { Select } from '../../components/common/Select/Select';
 import { TextInput } from '../../components/common/Input/TextInput';
+import { TextArea } from '../../components/common/Input/TextArea';
 import { Checkbox } from '../../components/common/Checkbox/Checkbox';
 import { EmptyState } from '../../components/common/EmptyState/EmptyState';
 import { Skeleton } from '../../components/common/Skeleton/Skeleton';
@@ -34,6 +35,7 @@ import {
 import { getFlowTemplate } from '../../config/flowTemplates';
 import {
     deleteFlow,
+    draftFlowFromText,
     flowErrorMessage,
     runFlow,
     saveFlow,
@@ -121,6 +123,9 @@ const FlowEditorView = () => {
     const [error, setError] = useState<string | null>(null);
     const [sideTab, setSideTab] = useState<'preview' | 'log'>(searchParams.get('tab') === 'log' ? 'log' : 'preview');
     const [pickedTemplate, setPickedTemplate] = useState(Boolean(searchParams.get('template')) || searchParams.get('blank') === '1');
+    const [sentence, setSentence] = useState('');
+    const [drafting, setDrafting] = useState(false);
+    const [fromText, setFromText] = useState<string[] | null>(null);
 
     // New flow: from template (?template=…&projectId=…) or blank.
     useEffect(() => {
@@ -181,6 +186,26 @@ const FlowEditorView = () => {
         );
     }
 
+    const draftFromSentence = async () => {
+        if (!tenantId || sentence.trim().length < 8) {
+            setError(t('flows.fromText.tooShort'));
+            return;
+        }
+        setDrafting(true);
+        setError(null);
+        try {
+            const result = await draftFlowFromText(tenantId, sentence.trim(), searchParams.get('projectId'));
+            setDraft({ ...result.draft, enabled: false });
+            setFromText(result.warnings);
+            setDirty(true);
+            setPickedTemplate(true);
+        } catch (err) {
+            setError(flowErrorMessage(err) || t('flows.fromText.failed'));
+        } finally {
+            setDrafting(false);
+        }
+    };
+
     if (isNew && !draft) {
         return (
             <div className="flows-page">
@@ -192,6 +217,26 @@ const FlowEditorView = () => {
                             <p>{t('flows.templates.subtitle')}</p>
                         </div>
                     </header>
+                    <section className="flow-from-text" aria-label={t('flows.fromText.title')}>
+                        <div className="flow-from-text__head">
+                            <span className="material-symbols-outlined" aria-hidden="true">auto_awesome</span>
+                            <div>
+                                <h2>{t('flows.fromText.title')}</h2>
+                                <p>{t('flows.fromText.hint')}</p>
+                            </div>
+                        </div>
+                        <TextArea rows={2} value={sentence} placeholder={t('flows.fromText.placeholder')} aria-label={t('flows.fromText.title')}
+                            onChange={(e) => setSentence(e.target.value)}
+                            onKeyDown={(e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) void draftFromSentence(); }} />
+                        {error && <p className="flow-panel__error" role="alert">{error}</p>}
+                        <div className="flow-from-text__actions">
+                            <Button onClick={() => void draftFromSentence()} isLoading={drafting} disabled={sentence.trim().length < 8}
+                                icon={<span className="material-symbols-outlined">auto_awesome</span>}>
+                                {t('flows.fromText.create')}
+                            </Button>
+                        </div>
+                    </section>
+                    <h2 className="flows-section-title">{t('flows.templates.title')}</h2>
                     <FlowTemplateGallery t={t} onPick={(templateId) => {
                         const params = new URLSearchParams(searchParams);
                         if (templateId) params.set('template', templateId);
@@ -336,6 +381,15 @@ const FlowEditorView = () => {
                         </div>
                     )}
                     {!editable && <div className="flow-banner" role="status">{t('flows.readOnly')}</div>}
+                    {fromText && (
+                        <div className="flow-banner flow-banner--ai" role="status">
+                            <span className="material-symbols-outlined">auto_awesome</span>
+                            <span>
+                                {t('flows.fromText.review')}
+                                {fromText.length > 0 && ` ${fromText.map((warning) => t(`flows.fromText.warning.${warning}`)).join(' ')}`}
+                            </span>
+                        </div>
+                    )}
                     {error && <div className="flow-banner flow-banner--error" role="alert">{error}</div>}
                 </header>
 

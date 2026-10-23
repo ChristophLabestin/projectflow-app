@@ -15,6 +15,7 @@ export type DirectoryUser = {
     disabled: boolean;
     emailVerified: boolean;
     platformAdmin: boolean;
+    reviewAccount: boolean;
 };
 
 const CACHE_MS = 60_000;
@@ -35,6 +36,7 @@ export const toDirectoryUser = (u: UserRecord): DirectoryUser => ({
     disabled: u.disabled,
     emailVerified: u.emailVerified,
     platformAdmin: u.customClaims?.platformAdmin === true,
+    reviewAccount: u.customClaims?.reviewAccount === true,
 });
 
 export const listDirectory = async (fresh = false): Promise<DirectoryUser[]> => {
@@ -51,3 +53,17 @@ export const listDirectory = async (fresh = false): Promise<DirectoryUser[]> => 
 };
 
 export const invalidateDirectory = () => { cache = null; };
+
+/**
+ * Apple App Review demo account (functions/scripts/create-review-account.mjs): Auth claim `reviewAccount`,
+ * `users/{uid}.isReviewAccount`, `tenants/{id}.isReviewAccount`. It never counts in KPIs, lists or insights.
+ */
+export const listRealUsers = async (fresh = false) => (await listDirectory(fresh)).filter((u) => !u.reviewAccount);
+
+let reviewTenants: { at: number; ids: Set<string> } | null = null;
+export const reviewTenantIds = async (db: FirebaseFirestore.Firestore): Promise<Set<string>> => {
+    if (reviewTenants && Date.now() - reviewTenants.at < CACHE_MS) return reviewTenants.ids;
+    const snap = await db.collection('tenants').where('isReviewAccount', '==', true).select().get();
+    reviewTenants = { at: Date.now(), ids: new Set(snap.docs.map((d) => d.id)) };
+    return reviewTenants.ids;
+};

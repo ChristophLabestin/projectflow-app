@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { adminApi } from '../lib/api';
 import { dateTime, num, relative } from '../lib/format';
 import { useAdminQuery } from '../lib/useAsync';
-import { AreaChart } from '../ui/charts';
+import { AreaChart, Meter } from '../ui/charts';
 import { DataTable, type Column } from '../ui/DataTable';
 import { Drawer, useUi } from '../ui/Overlay';
 import { Badge, Card, Empty, ErrorNote, PageHead, Segmented, Skeleton, Tabs } from '../ui/primitives';
@@ -11,17 +11,109 @@ import { dayKeyList } from '../lib/days';
 import { GrantsTable, roleTone, UserDrawer } from './Users';
 
 type Ws = { id: string; name: string; ownerId: string | null; ownerEmail: string | null; createdAt: number | null; suspendedAt: number | null; members: number; guests: number; projects: number; lastProjectUpdate: number | null; grants: number; aiEnabled: boolean };
-type Policy = { enabled: boolean; allowGuests: boolean; allowDeleteScopes: boolean; allowPersonalTokens: boolean };
+type Policy = { enabled: boolean; allowGuests: boolean; allowDeleteScopes: boolean; allowPersonalTokens: boolean; inAppEnabled: boolean; inAppAi: boolean; monthlyCredits?: number | null };
 type WsDetail = {
-    id: string; name: string; ownerId: string | null; createdAt: number | null; suspendedAt: number | null; suspendedReason: string | null; modules: string[] | null;
+    id: string; name: string; ownerId: string | null; createdAt: number | null; suspendedAt: number | null; suspendedReason: string | null; suspensionLog: { id: string; suspended: boolean; reason: string; email: string; at: number | null }[]; modules: string[] | null;
     members: { uid: string; email: string; displayName: string; role: string; joinedAt: number | null; lastActiveAt: number | null }[];
     projects: { id: string; title: string; status: string; updatedAt: number | null; createdAt: number | null }[];
-    aiPolicy: Policy; grants: any[]; machineWrites: { day: string; writes: number }[];
+    flows: {
+        allowMemberFlows: boolean; month: string; usage: { runs: number; aiSteps: number; skipped: number };
+        limits: { runsPerMonth: number; aiStepsPerMonth: number; activeFlowsPerWorkspace: number };
+        flows: { id: string; name: string; scope: string; projectId: string | null; enabled: boolean; trigger: string; pausedReason: string | null; lastRunAt: number | null; lastStatus: string | null; lastError: string | null; consecutiveFailures: number }[];
+        failedRuns: { id: string; name: string; error: string | null; startedAt: number | null }[];
+    };
+    aiPolicy: Policy; credits: { month: string; credits: number; limit: number | null; requests: number; costMicros: number; defaultLimit: number }; grants: any[]; machineWrites: { day: string; writes: number }[];
     apiTokens: { id: string; name: string; createdAt: number | null; lastUsedAt: number | null; expiresAt: number | null; permissions: string[] }[];
     activity: { id: string; type: string; actor: string; object: string; projectTitle: string | null; createdAt: number | null }[];
 };
 
-const POLICY_LABEL: Record<keyof Policy, string> = { enabled: 'KI-/MCP-Zugriff erlaubt', allowGuests: 'Gäste dürfen verbinden', allowDeleteScopes: 'Lösch-Scopes erlaubt', allowPersonalTokens: 'Persönliche Tokens erlaubt' };
+type PolicyFlag = 'enabled' | 'allowGuests' | 'allowDeleteScopes' | 'allowPersonalTokens' | 'inAppAi' | 'inAppEnabled';
+const POLICY_LABEL: Record<PolicyFlag, string> = { inAppAi: 'In-App-KI freigeschaltet (Rollout)', inAppEnabled: 'In-App-KI vom Workspace eingeschaltet', enabled: 'KI-/MCP-Zugriff erlaubt', allowGuests: 'Gäste dürfen verbinden', allowDeleteScopes: 'Lösch-Scopes erlaubt', allowPersonalTokens: 'Persönliche Tokens erlaubt' };
+
+const CreditsCard: React.FC<{ id: string; credits: WsDetail['credits']; override: number | null; onSaved: () => void }> = ({ id, credits, override, onSaved }) => {
+    const { toast } = useUi();
+    const [value, setValue] = useState(override ? String(override) : '');
+    const save = async (monthlyCredits: number | null) => {
+        try { await adminApi('workspaces.setAiPolicy', { id, policy: { monthlyCredits } }); toast('Credit-Limit gespeichert'); onSaved(); } catch (err: any) { toast(err.message, 'error'); }
+    };
+    const limit = credits.limit || override || credits.defaultLimit;
+    return (
+        <Card title={`In-App-KI-Credits ${credits.month}`} subtitle={`${num(credits.credits)} von ${num(limit)} · ${num(credits.requests)} Anfragen · ca. ${(credits.costMicros / 1_000_000).toFixed(2).replace('.', ',')} $`}>
+            <div className="ac-row">
+                <input className="ac-input" type="number" min={1} placeholder={`Default ${credits.defaultLimit}`} value={value} onChange={(e) => setValue(e.target.value)} style={{ width: 160 }} />
+                <button className="ac-btn ac-btn--primary" disabled={!value || Number(value) === override} onClick={() => save(Math.floor(Number(value)))}>Limit setzen</button>
+                {override && <button className="ac-btn" onClick={() => { setValue(''); void save(null); }}>Auf Default</button>}
+            </div>
+        </Card>
+    );
+};
+
+const FlowsTab: React.FC<{ data: WsDetail; onSaved: () => void }> = ({ data, onSaved }) => {
+    const { confirm, toast } = useUi();
+    const f = data.flows;
+    const active = f.flows.filter((x) => x.enabled).length;
+    const paused = f.flows.filter((x) => x.pausedReason);
+    const setMember = async (allow: boolean) => {
+        if (!(await confirm({ title: `Mitglieder-Flows ${allow ? 'erlauben' : 'sperren'}?`, message: 'Setzt automationPolicy.allowMemberFlows dieses Workspace. Owner/Admins behalten ihre Flows.', confirmLabel: 'Ändern', danger: !allow }))) return;
+        try { await adminApi('workspaces.setFlowPolicy', { id: data.id, allowMemberFlows: allow }); toast('Flow-Policy geändert'); onSaved(); } catch (err: any) { toast(err.message, 'error'); }
+    };
+    return (
+        <div className="ac-stack">
+            <div className="ac-grid ac-grid--3">
+                <Card title="Aktive Flows"><b>{num(active)} / {num(f.limits.activeFlowsPerWorkspace)}</b> <span className="ac-muted">({num(f.flows.length)} gesamt)</span></Card>
+                <Card title={`Läufe ${f.month}`}><b>{num(f.usage.runs)} / {num(f.limits.runsPerMonth)}</b><div style={{ marginTop: 6 }}><Meter value={f.usage.runs / Math.max(1, f.limits.runsPerMonth)} /></div></Card>
+                <Card title="KI-Schritte"><b>{num(f.usage.aiSteps)} / {num(f.limits.aiStepsPerMonth)}</b> <span className="ac-muted">· {num(f.usage.skipped)} übersprungen</span></Card>
+            </div>
+            <label className="ac-check"><input type="checkbox" checked={f.allowMemberFlows} onChange={(e) => setMember(e.target.checked)} />Mitglieder dürfen Flows anlegen (automationPolicy.allowMemberFlows)</label>
+            {paused.length > 0 && <div className="ac-alert ac-alert--error">{paused.length} pausiert: {paused.map((p) => `${p.name} (${p.pausedReason === 'errors' ? 'Fehler' : 'Owner ohne Zugriff'})`).join(', ')}</div>}
+            {f.flows.length ? (
+                <table className="ac-table"><thead><tr><th>Flow</th><th>Trigger</th><th>Status</th><th>Letzter Lauf</th><th className="is-num">Fehler in Folge</th></tr></thead>
+                    <tbody>{f.flows.map((x) => (
+                        <tr key={x.id}><td className="ac-strong">{x.name}<span className="ac-muted"> · {x.scope === 'project' ? 'Projekt' : 'Workspace'}</span></td><td className="mono ac-muted">{x.trigger}</td>
+                            <td>{x.pausedReason ? <Badge tone="red">pausiert</Badge> : x.enabled ? <Badge tone="green">aktiv</Badge> : <Badge>aus</Badge>}</td>
+                            <td title={x.lastError || ''}>{relative(x.lastRunAt)}{x.lastStatus ? <span className="ac-muted"> · {x.lastStatus}</span> : ''}</td><td className="is-num">{x.consecutiveFailures || '–'}</td></tr>
+                    ))}</tbody></table>
+            ) : <Empty title="Keine Flows" />}
+            {f.failedRuns.length > 0 && (
+                <Card title="Letzte fehlgeschlagene Läufe" flush>
+                    <table className="ac-table"><thead><tr><th>Zeit</th><th>Flow</th><th>Fehler</th></tr></thead>
+                        <tbody>{f.failedRuns.map((r) => <tr key={r.id}><td>{relative(r.startedAt)}</td><td>{r.name}</td><td className="is-wrap ac-muted">{r.error || '–'}</td></tr>)}</tbody></table>
+                </Card>
+            )}
+        </div>
+    );
+};
+
+const SuspendCard: React.FC<{ data: WsDetail; onSaved: () => void }> = ({ data, onSaved }) => {
+    const { confirm, toast } = useUi();
+    const [reason, setReason] = useState('');
+    const suspend = !data.suspendedAt;
+    const run = async () => {
+        const ok = await confirm({
+            title: suspend ? `„${data.name}“ sperren?` : `„${data.name}“ freigeben?`,
+            message: suspend
+                ? `Alle ${data.members.length} Mitglieder verlieren sofort den Zugriff auf Projekte, Aufgaben und Dateien. API-/MCP-Tokens, Flows, Erinnerungen und Briefings stoppen (spätestens nach 60 s). Daten bleiben erhalten.`
+                : 'Der Workspace ist danach sofort wieder nutzbar.',
+            danger: suspend,
+            confirmLabel: suspend ? 'Sperren' : 'Freigeben',
+            requireText: suspend ? data.name : undefined,
+        });
+        if (!ok) return;
+        try { await adminApi('workspaces.setSuspended', { id: data.id, suspended: suspend, reason }); toast(suspend ? 'Workspace gesperrt' : 'Workspace freigegeben'); setReason(''); onSaved(); } catch (err: any) { toast(err.message, 'error'); }
+    };
+    return (
+        <Card title={suspend ? 'Workspace sperren' : 'Gesperrt'} subtitle={data.suspendedAt ? `seit ${dateTime(data.suspendedAt)} · ${data.suspendedReason || ''}` : 'Sperrt alle Daten-, Token- und Automationszugriffe. Begründung ist Pflicht und wird protokolliert.'}>
+            <div className="ac-stack">
+                <textarea className="ac-textarea" rows={2} placeholder="Begründung (mind. 10 Zeichen, z. B. Missbrauchsmeldung #123)" value={reason} onChange={(e) => setReason(e.target.value)} />
+                <div><button className={`ac-btn ${suspend ? 'ac-btn--danger' : 'ac-btn--primary'}`} disabled={reason.trim().length < 10} onClick={run}>{suspend ? 'Sperren …' : 'Freigeben …'}</button></div>
+                {data.suspensionLog.length > 0 && (
+                    <table className="ac-table"><thead><tr><th>Zeit</th><th>Aktion</th><th>Begründung</th><th>Admin</th></tr></thead>
+                        <tbody>{data.suspensionLog.map((l) => <tr key={l.id}><td>{dateTime(l.at)}</td><td>{l.suspended ? <Badge tone="red">gesperrt</Badge> : <Badge tone="green">freigegeben</Badge>}</td><td className="is-wrap">{l.reason}</td><td className="ac-muted">{l.email}</td></tr>)}</tbody></table>
+                )}
+            </div>
+        </Card>
+    );
+};
 
 const WorkspaceDrawer: React.FC<{ id: string; onClose: () => void; onOpenUser: (uid: string) => void }> = ({ id, onClose, onOpenUser }) => {
     const { confirm, toast } = useUi();
@@ -29,7 +121,7 @@ const WorkspaceDrawer: React.FC<{ id: string; onClose: () => void; onOpenUser: (
     const [tab, setTab] = useState('members');
     const days = dayKeyList(30);
 
-    const setPolicy = async (key: keyof Policy, value: boolean) => {
+    const setPolicy = async (key: PolicyFlag, value: boolean) => {
         if (!(await confirm({ title: `${POLICY_LABEL[key]}: ${value ? 'an' : 'aus'}?`, message: 'Ändert die KI-Policy dieses Workspaces (wirkt nach spätestens 60 s auf MCP/API-Zugriffe). Wird protokolliert.', danger: !value && key === 'enabled', confirmLabel: 'Ändern' }))) return;
         try { await adminApi('workspaces.setAiPolicy', { id, policy: { [key]: value } }); toast('Policy geändert'); reload(); } catch (err: any) { toast(err.message, 'error'); }
     };
@@ -52,8 +144,12 @@ const WorkspaceDrawer: React.FC<{ id: string; onClose: () => void; onOpenUser: (
                         { value: 'members', label: `Mitglieder ${data.members.length}` },
                         { value: 'projects', label: `Projekte ${data.projects.length}` },
                         { value: 'ai', label: 'KI & API' },
+                        { value: 'flows', label: `Flows ${data.flows.flows.filter((x) => x.enabled).length}${data.flows.flows.some((x) => x.pausedReason) ? ' ●' : ''}` },
                         { value: 'activity', label: 'Aktivität' },
+                        { value: 'status', label: data.suspendedAt ? 'Sperre ●' : 'Sperre' },
                     ]} />
+                    {tab === 'status' && <SuspendCard data={data} onSaved={reload} />}
+                    {tab === 'flows' && <FlowsTab data={data} onSaved={reload} />}
                     {tab === 'members' && (
                         <table className="ac-table"><thead><tr><th>Mitglied</th><th>Rolle</th><th>Beigetreten</th><th>Zuletzt aktiv</th></tr></thead>
                             <tbody>{data.members.sort((a, b) => ['Owner', 'Admin', 'Member', 'Guest'].indexOf(a.role) - ['Owner', 'Admin', 'Member', 'Guest'].indexOf(b.role)).map((m) => (
@@ -67,10 +163,11 @@ const WorkspaceDrawer: React.FC<{ id: string; onClose: () => void; onOpenUser: (
                     {tab === 'ai' && (
                         <div className="ac-stack">
                             <Card title="KI-Policy (MCP/API)">
-                                <div className="ac-stack">{(Object.keys(POLICY_LABEL) as (keyof Policy)[]).map((key) => (
+                                <div className="ac-stack">{(Object.keys(POLICY_LABEL) as PolicyFlag[]).map((key) => (
                                     <label key={key} className="ac-check"><input type="checkbox" checked={data.aiPolicy[key] === true} onChange={(e) => setPolicy(key, e.target.checked)} />{POLICY_LABEL[key]}</label>
                                 ))}</div>
                             </Card>
+                            <CreditsCard id={id} credits={data.credits} override={data.aiPolicy.monthlyCredits ?? null} onSaved={reload} />
                             <Card title="Maschinen-Schreibzugriffe pro Tag" subtitle="Abuse-Bremse 5.000/Tag">
                                 <AreaChart days={days} bars series={[{ label: 'Writes', values: days.map((d) => data.machineWrites.find((w) => w.day === d)?.writes || 0) }]} height={140} />
                             </Card>
@@ -100,11 +197,11 @@ export const WorkspacesScreen: React.FC = () => {
     const { data, loading, error, reload } = useAdminQuery<{ workspaces: Ws[] }>('workspaces.list');
     const q = search.trim().toLowerCase();
     const rows = (data?.workspaces || []).filter((w) => (!q || `${w.name} ${w.ownerEmail} ${w.id}`.toLowerCase().includes(q))
-        && (filter === 'all' || (filter === 'team' && w.members > 1) || (filter === 'mcp' && w.grants > 0) || (filter === 'empty' && w.projects === 0)));
+        && (filter === 'all' || (filter === 'team' && w.members > 1) || (filter === 'mcp' && w.grants > 0) || (filter === 'empty' && w.projects === 0) || (filter === 'suspended' && Boolean(w.suspendedAt))));
     const setOpen = (id: string | null) => setParams((p) => { const n = new URLSearchParams(p); if (id) n.set('id', id); else n.delete('id'); return n; });
 
     const columns: Column<Ws>[] = [
-        { key: 'name', label: 'Workspace', render: (w) => <span className="ac-strong">{w.name}</span> },
+        { key: 'name', label: 'Workspace', render: (w) => <span className="ac-row" style={{ flexWrap: 'nowrap' }}><span className="ac-strong">{w.name}</span>{w.suspendedAt && <Badge tone="red">gesperrt</Badge>}</span> },
         { key: 'ownerEmail', label: 'Owner', render: (w) => <span className="ac-muted">{w.ownerEmail || w.ownerId}</span> },
         { key: 'members', label: 'Mitglieder', num: true, render: (w) => <>{num(w.members)}{w.guests ? <span className="ac-muted"> +{w.guests} Gäste</span> : ''}</> },
         { key: 'projects', label: 'Projekte', num: true },
@@ -122,7 +219,7 @@ export const WorkspacesScreen: React.FC = () => {
             <DataTable id="workspaces" rows={data ? rows : null} loading={loading} columns={columns} rowKey={(w) => w.id} onOpen={(w) => setOpen(w.id)} selectedKey={openId} defaultSort={{ key: 'createdAt', dir: 'desc' }}
                 toolbar={<>
                     <div className="ac-search"><input className="ac-input" placeholder="Name, Owner, ID …" value={search} onChange={(e) => setSearch(e.target.value)} /></div>
-                    <Segmented value={filter} onChange={setFilter} options={[{ value: 'all', label: 'Alle' }, { value: 'team', label: 'Teams' }, { value: 'mcp', label: 'Mit MCP' }, { value: 'empty', label: 'Leer' }]} />
+                    <Segmented value={filter} onChange={setFilter} options={[{ value: 'all', label: 'Alle' }, { value: 'team', label: 'Teams' }, { value: 'mcp', label: 'Mit MCP' }, { value: 'empty', label: 'Leer' }, { value: 'suspended', label: 'Gesperrt' }]} />
                 </>} />
             {openId && <WorkspaceDrawer id={openId} onClose={() => setOpen(null)} onOpenUser={setUser} />}
             {user && <UserDrawer uid={user} onClose={() => setUser(null)} />}

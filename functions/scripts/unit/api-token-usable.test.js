@@ -30,3 +30,11 @@ test('denied: creator removed, demoted to guest, or member of another tenant onl
 test('denied: token without creator', async () => {
     assert.equal((await checkApiTokenUsable({}, 't1', deps)).ok, false);
 });
+
+test('refused: workspace suspended by a platform admin', async () => {
+    const suspended = { ...deps, isSuspended: async (tenantId) => tenantId === 't1' };
+    const result = await checkApiTokenUsable({ createdBy: 'owner' }, 't1', suspended);
+    assert.equal(result.ok, false);
+    assert.equal(result.status, 403);
+    assert.match(result.error, /suspended/);
+});

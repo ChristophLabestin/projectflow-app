@@ -46,8 +46,16 @@ export type AiAssistRequest =
     | { capability: 'write'; tenantId: string; input: AiWriteInput }
     | { capability: 'assist'; tenantId: string; messages: AiChatMessage[]; context: AiContextEnvelope };
 
+export interface AiProposalPreview {
+    id: string;
+    tool: 'create_task' | 'update_task' | 'add_comment' | 'add_subtask';
+    target: { projectId: string; projectTitle?: string; taskId?: string; taskTitle?: string };
+    changes: Array<{ field: string; from?: unknown; to: unknown }>;
+}
+
 export interface AiStreamHandlers {
     onDelta?: (text: string) => void;
+    onProposal?: (proposal: AiProposalPreview) => void;
     onContext?: (context: Record<string, unknown>) => void;
     onStep?: (step: { tool: string }) => void;
     signal?: AbortSignal;
@@ -116,6 +124,8 @@ export const streamAiAssist = async (request: AiAssistRequest, handlers: AiStrea
                     handlers.onContext?.(payload);
                 } else if (event === 'step') {
                     handlers.onStep?.(payload);
+                } else if (event === 'proposal') {
+                    handlers.onProposal?.(payload);
                 } else if (event === 'done') {
                     result.credits = payload.credits;
                     result.limit = payload.limit;

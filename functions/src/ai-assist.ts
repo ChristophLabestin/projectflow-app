@@ -6,7 +6,8 @@
  *
  * Events: `context` (resolved chips), `step` (tool call), `delta` (text), `done` (credits), `error`.
  * Tools run through the REST API with the user's own ID token, so the assistant never exceeds the
- * user's rights. Write tools are not offered yet (proposals with confirmation follow in P3).
+ * user's rights. Write tools only create proposals (`proposal` event); the user applies them via
+ * `aiApplyProposal` (ai-actions.ts).
  */
 import { onRequest } from 'firebase-functions/v2/https';
 import { getAuth } from 'firebase-admin/auth';
@@ -14,6 +15,7 @@ import { getAuth } from 'firebase-admin/auth';
 import { db } from './init';
 import { ALLOWED_ORIGINS } from './corsConfig';
 import { normalizeRole } from './ai-access';
+import { isTenantSuspended, SUSPENDED_MESSAGE } from './tenant-status';
 import { aiPolicyRef, loadAiPolicy } from './ai-store';
 import { consumeAiQuota, trackUsage } from './ai-service';
 import { tenantIncludesAi } from './billing';
@@ -24,6 +26,7 @@ import {
     renderContextBlock, type AssistContext, type ResolvedContext
 } from './ai-assist-prompts';
 import { AI_TOOLS, findTool, parseToolArgs, serializeToolResult, toOpenAiTools, ToolError, type ToolContext } from './ai-tools/registry';
+import { createProposal, MAX_PROPOSALS_PER_TURN } from './ai-actions';
 import { callApi, compact, summarizeProject } from './ai-tools/api';
 
 const REGION = 'europe-west3';
@@ -62,6 +65,7 @@ const authorizeWorkspace = async (tenantId: string, uid: string) => {
         loadAiPolicy(tenantId),
         aiPolicyRef(tenantId).get()
     ]);
+    if (await isTenantSuspended(tenantId)) throw new HttpError(403, SUSPENDED_MESSAGE, 'suspended');
     const role = normalizeRole(member.data()?.role);
     if (!member.exists || !role) throw new HttpError(403, 'Not a member of this workspace.', 'forbidden');
     const flag = rawPolicy.data()?.inAppAi;
@@ -118,7 +122,8 @@ const runAssist = async (body: any, ctx: ToolContext, send: Send, signal: AbortS
         selected: context.selectionIds.length || undefined
     }));
 
-    const tools = AI_TOOLS.filter((entry) => entry.kind === 'read');
+    const tools = AI_TOOLS;
+    let proposals = 0;
     const instructions = buildAssistInstructions(context.language, renderContextBlock(context, resolved));
     const usage: ModelUsage = { inputTokens: 0, outputTokens: 0, cachedTokens: 0 };
     let turn = await streamTurn({ tier: 'agent', instructions, input: messages, tools: toOpenAiTools(tools), signal }, (delta) => send('delta', { text: delta }));
@@ -130,10 +135,18 @@ const runAssist = async (body: any, ctx: ToolContext, send: Send, signal: AbortS
             send('step', { tool: call.name });
             let output: string;
             try {
-                if (!entry || entry.kind !== 'read') throw new ToolError(`Unknown tool ${call.name}.`);
-                output = serializeToolResult(await entry.run(ctx, parseToolArgs(entry, call.arguments)));
+                if (!entry) throw new ToolError(`Unknown tool ${call.name}.`);
+                if (entry.kind === 'write') {
+                    // Never executed here: the user confirms the card (P3).
+                    if (++proposals > MAX_PROPOSALS_PER_TURN) throw new ToolError('Too many changes in one answer; ask the user to narrow it down.');
+                    const preview = await createProposal(ctx, call.name, call.arguments);
+                    send('proposal', preview);
+                    output = JSON.stringify({ status: 'proposed', proposalId: preview.id, note: 'Shown to the user as a card to confirm. Not applied yet.' });
+                } else {
+                    output = serializeToolResult(await entry.run(ctx, parseToolArgs(entry, call.arguments)));
+                }
             } catch (error: any) {
-                output = JSON.stringify({ error: error instanceof ToolError ? error.message : 'Tool failed.' });
+                output = JSON.stringify({ error: error instanceof ToolError || error instanceof Error ? error.message : 'Tool failed.' });
             }
             return { type: 'function_call_output' as const, call_id: call.callId, output };
         }));

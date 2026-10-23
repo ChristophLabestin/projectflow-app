@@ -12,6 +12,7 @@ import {
     type FlowPreviewResult,
 } from '../../services/domain/automationsService';
 import { TASKLESS_TRIGGERS, actionSentence, type FlowNameLookup } from './flowText';
+import { AiDecisionList } from './FlowRunLog';
 
 interface FlowPreviewPanelProps {
     t: (key: string) => string;
@@ -87,6 +88,7 @@ export const FlowPreviewPanel: React.FC<FlowPreviewPanelProps> = ({ t, tenantId,
                             <li key={task.id} className="flow-preview__task">
                                 <div className="flow-preview__task-main">
                                     <Link to={`/project/${task.projectId}/tasks/${task.id}`} className="flow-preview__task-title">{task.title || task.id}</Link>
+                                    {task.aiPending && <span className="flow-preview__ai">{t('flows.preview.aiPending')}</span>}
                                     <span className="flow-preview__task-meta">
                                         {[names.project(task.projectId), task.status && t(`flows.status.${task.status}`), task.priority && t(`flows.priority.${task.priority}`)]
                                             .filter(Boolean).join(' · ')}
@@ -101,6 +103,13 @@ export const FlowPreviewPanel: React.FC<FlowPreviewPanelProps> = ({ t, tenantId,
                                             icon={<span className="material-symbols-outlined">play_arrow</span>} aria-label={t('flows.run.onTask')} title={t('flows.run.onTask')} />
                                     )}
                                 </div>
+                                {dryRun?.taskId === task.id && Boolean(dryRun.result.decisions?.length || dryRun.result.aiError) && (
+                                    <div className="flow-preview__decisions">
+                                        <AiDecisionList t={t} decisions={dryRun.result.decisions || []} />
+                                        {dryRun.result.aiError && <p className="flow-panel__error">{dryRun.result.aiError}</p>}
+                                        {!dryRun.result.matches && <p className="flow-hint">{t('flows.preview.wouldNotRun')}</p>}
+                                    </div>
+                                )}
                                 {dryRun?.taskId === task.id && (
                                     <ol className="flow-dry-run">
                                         {dryRun.result.steps.map((step) => {

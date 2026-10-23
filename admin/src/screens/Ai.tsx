@@ -12,6 +12,42 @@ type UsageRow = { uid: string; email: string; tenantId: string | null; tenantNam
 type Usage = { days: string[]; text: number[]; images: number[]; users: UsageRow[]; workspaces: { tenantId: string; name: string; users: number; monthTokens: number; monthImages: number; costUsd: number; text: number }[]; limits: { dailyText: number; dailyImage: number; monthlyTokens: number; monthlyImages: number }; pricing: { usdPerMTokens: number; usdPerImage: number }; month: { tokens: number; images: number; costUsd: number } };
 type Grant = { id: string; uid: string; email: string; tenantId: string; tenantName: string; kind: string; clientName: string; scopes: string[]; tokenPrefix: string | null; createdAt: number | null; lastUsedAt: number | null; revokedAt: number | null; expiresAt: number | null };
 type Client = { id: string; name: string; clientId: string; source: string; verified: boolean; redirectUris: string[]; clientUri: string | null; createdAt: number | null; activeGrants: number };
+type CreditRow = { tenantId: string; name: string; inAppAi: boolean; inAppAiExplicit: boolean; inAppEnabled: boolean; mcpEnabled: boolean; monthlyCredits: number | null; limit: number; credits: number; requests: number; tokensIn: number; tokensOut: number; costUsd: number; byCapability: Record<string, { requests: number; credits: number }> };
+
+const CreditsTab: React.FC = () => {
+    const { confirm, toast } = useUi();
+    const [selected, setSelected] = useState<string[]>([]);
+    const { data, loading, error, reload } = useAdminQuery<{ month: string; rolloutDefault: boolean; workspaces: CreditRow[] }>('ai.credits');
+    const rollout = async (inAppAi: boolean) => {
+        if (!(await confirm({ title: `In-App-KI für ${selected.length} Workspace(s) ${inAppAi ? 'freischalten' : 'abschalten'}?`, message: 'Setzt das Rollout-Flag inAppAi in ai_config/policy (wirkt nach spätestens 60 s). Der Owner/Admin-Schalter des Workspace bleibt unberührt.', danger: !inAppAi, confirmLabel: inAppAi ? 'Freischalten' : 'Abschalten' }))) return;
+        try { await adminApi('ai.setRollout', { tenantIds: selected, inAppAi }); toast('Rollout geändert'); setSelected([]); reload(); } catch (err: any) { toast(err.message, 'error'); }
+    };
+    const toggle = (id: string) => setSelected((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]));
+    const columns: Column<CreditRow>[] = [
+        { key: 'select', label: '', value: () => '', width: 28, render: (w) => <input type="checkbox" aria-label={`${w.name} auswählen`} checked={selected.includes(w.tenantId)} onClick={(e) => e.stopPropagation()} onChange={() => toggle(w.tenantId)} /> },
+        { key: 'name', label: 'Workspace', render: (w) => <span className="ac-strong">{w.name}</span> },
+        { key: 'inAppAi', label: 'Rollout', value: (w) => (w.inAppAi ? 1 : 0), render: (w) => <Badge tone={w.inAppAi ? 'green' : 'neutral'} title={w.inAppAiExplicit ? 'explizit gesetzt' : 'Default'}>{w.inAppAi ? 'frei' : 'aus'}{w.inAppAiExplicit ? '' : ' (Default)'}</Badge> },
+        { key: 'inAppEnabled', label: 'Workspace-Schalter', value: (w) => (w.inAppEnabled ? 1 : 0), render: (w) => (w.inAppEnabled ? <span>an</span> : <span className="ac-muted">aus</span>) },
+        { key: 'credits', label: 'Credits', num: true, render: (w) => <span title={`Limit ${w.limit}${w.monthlyCredits ? ' (Override)' : ''}`}>{num(w.credits)} / {num(w.limit)}</span> },
+        { key: 'share', label: 'Verbrauch', value: (w) => w.credits / Math.max(1, w.limit), render: (w) => <div style={{ width: 90 }}><Meter value={w.credits / Math.max(1, w.limit)} color={w.credits / Math.max(1, w.limit) > 0.8 ? 'var(--color-error)' : undefined} /></div> },
+        { key: 'requests', label: 'Anfragen', num: true },
+        { key: 'tokens', label: 'Tokens in/out', value: (w) => w.tokensIn + w.tokensOut, render: (w) => `${compact(w.tokensIn)} / ${compact(w.tokensOut)}` },
+        { key: 'costUsd', label: 'Kosten', num: true, render: (w) => usd(w.costUsd) },
+    ];
+    return (
+        <>
+            <ErrorNote error={error} onRetry={reload} />
+            {data && <p className="ac-muted" style={{ margin: '0 0 10px' }}>Monat {data.month} · Rollout-Default {data.rolloutDefault ? 'frei' : 'aus'} (Env AI_IN_APP_DEFAULT) · Credits laut tenants/&#123;t&#125;/ai_credits · Limit-Override und Schalter je Workspace im Workspace-Drawer.</p>}
+            <DataTable id="ai-credits" rows={data?.workspaces ?? null} loading={loading} columns={columns} rowKey={(w) => w.tenantId} defaultSort={{ key: 'credits', dir: 'desc' }}
+                toolbar={<>
+                    <button className="ac-btn ac-btn--sm" onClick={() => setSelected(selected.length ? [] : (data?.workspaces || []).map((w) => w.tenantId))}>{selected.length ? 'Auswahl aufheben' : 'Alle wählen'}</button>
+                    <button className="ac-btn ac-btn--sm ac-btn--primary" disabled={!selected.length} onClick={() => rollout(true)}>Freischalten ({selected.length})</button>
+                    <button className="ac-btn ac-btn--sm ac-btn--danger" disabled={!selected.length} onClick={() => rollout(false)}>Abschalten</button>
+                </>} />
+        </>
+    );
+};
+
 type AuditEntry = { id: string; tenantId: string; kind: string; actorId: string; credentialLabel: string; clientName: string; permission: string; method: string; path: string; status: number | null; createdAt: number | null };
 
 const UsageTab: React.FC<{ onUser: (uid: string) => void }> = ({ onUser }) => {
@@ -118,8 +154,9 @@ export const AiScreen: React.FC = () => {
     return (
         <div className="ac-page">
             <PageHead title="KI & MCP" subtitle="In-App-KI (Kontingente in ai_usage_quotas), MCP/OAuth-Verbindungen, registrierte Clients und das API-Zugriffsprotokoll." />
-            <Tabs value={tab} onChange={setTab} tabs={[{ value: 'usage', label: 'Nutzung & Kosten' }, { value: 'grants', label: 'Verbindungen' }, { value: 'clients', label: 'OAuth-Clients' }, { value: 'audit', label: 'API-Protokoll' }]} />
+            <Tabs value={tab} onChange={setTab} tabs={[{ value: 'usage', label: 'Nutzung & Kosten' }, { value: 'credits', label: 'In-App-KI & Credits' }, { value: 'grants', label: 'Verbindungen' }, { value: 'clients', label: 'OAuth-Clients' }, { value: 'audit', label: 'API-Protokoll' }]} />
             {tab === 'usage' && <UsageTab onUser={setUser} />}
+            {tab === 'credits' && <CreditsTab />}
             {tab === 'grants' && <GrantsTab onUser={setUser} />}
             {tab === 'clients' && <ClientsTab />}
             {tab === 'audit' && <AuditTab />}

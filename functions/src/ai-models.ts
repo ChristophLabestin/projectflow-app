@@ -49,7 +49,7 @@ export interface StreamRequest {
 }
 
 let client: OpenAI | null = null;
-const getClient = () => {
+export const getClient = () => {
     const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) throw new Error('OPENAI_API_KEY is not set in environment variables.');
     client = client || new OpenAI({ apiKey });
@@ -62,7 +62,7 @@ export class ModelError extends Error {
     }
 }
 
-const toModelError = (error: any): ModelError => {
+export const toModelError = (error: any): ModelError => {
     const status = Number(error?.status);
     console.error('AI provider error', { status, message: error?.message });
     if (status === 429) return new ModelError('AI provider is busy or out of credit.', 'quota');

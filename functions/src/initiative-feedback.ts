@@ -1,4 +1,5 @@
 import * as admin from 'firebase-admin';
+import { assertTenantActive } from './tenant-status';
 import * as crypto from 'crypto';
 import * as functions from 'firebase-functions/v1';
 
@@ -256,6 +257,7 @@ const requireProjectAccess = async (
     projectId: string,
     context: functions.https.CallableContext,
 ) => {
+    await assertTenantActive(tenantId);
     const uid = requireAuth(context);
     const projectSnap = await getProjectRef(tenantId, projectId).get();
 
