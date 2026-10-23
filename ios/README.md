@@ -76,6 +76,12 @@ open `/admin/crashes`. Release = `MARKETING_VERSION`, build = `CURRENT_PROJECT_V
 - **Accessibility**: every icon-only control has a label; components expose traits/actions; respect
   Dynamic Type (`pfText`) and Reduce Motion (`PFMotion.respecting`).
 
+## Platform signals (admin console)
+
+`Features/Platform`: workspace suspension (`tenants/{id}.suspendedAt` → `SuspendedWorkspaceView`, live via `SessionStore`) and the
+announcement banner (`platform_config/announcement` → `AnnouncementStore`, shown in `MainShell` above every tab; dismissed per
+version in `pf.announcement.dismissed`). Contract: admin-console iOS note, `brain/reference/app/FIRESTORE_STRUCTURE.md`.
+
 ## Startup template seed data
 
 `App/Resources/StartupSeeds.json` holds the content of the `startup_company_formation` template (tracks,

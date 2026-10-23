@@ -16,6 +16,8 @@ final class AppModel {
     let toasts = PFToastCenter()
     let swipes = PFSwipeCoordinator()
     let network = NetworkMonitor()
+    /// Platform announcement banner (`platform_config/announcement`).
+    let announcements = AnnouncementStore()
 
     private(set) var session: SessionStore?
     private(set) var workspace: WorkspaceStore?
@@ -56,6 +58,13 @@ final class AppModel {
     /// Rebuilds the workspace store when the active workspace changes.
     func bindWorkspace() {
         guard let session, let tenantId = session.activeWorkspaceId else { return }
+        // Suspended by the platform: load nothing tenant-scoped (the rules deny it); RootView shows the notice.
+        if session.isActiveSuspended {
+            workspace?.stop()
+            workspace = nil
+            router.reset()
+            return
+        }
         guard workspace?.tenantId != tenantId else { return }
         workspace?.stop()
         router.reset()

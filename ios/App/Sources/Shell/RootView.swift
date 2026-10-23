@@ -20,7 +20,7 @@ struct RootView: View {
     private var isPreparing: Bool {
         guard case .signedIn = model.auth.phase else { return false }
         if case .failed? = model.session?.state { return false }
-        return !(model.session?.state == .ready && model.workspace != nil)
+        return !(model.session?.state == .ready && (model.workspace != nil || model.session?.isActiveSuspended == true))
     }
 
     private var showsLaunch: Bool {
@@ -47,6 +47,9 @@ struct RootView: View {
                 case .signedIn:
                     if case .failed(let message)? = model.session?.state {
                         SessionErrorView(message: message)
+                    } else if model.session?.isActiveSuspended == true {
+                        SuspendedWorkspaceView()
+                            .transition(.opacity)
                     } else {
                         // Strings re-render through the observable LanguageStore; no rebuild, so navigation is kept.
                         MainShell()
@@ -76,7 +79,8 @@ struct RootView: View {
             introPlayed = true
         }
         .task(id: model.auth.phase) { await model.syncSession() }
-        .task(id: model.session?.activeWorkspaceId) { model.bindWorkspace() }
+        // Rebinds on a workspace switch and when the platform suspends or releases the active workspace.
+        .task(id: "\(model.session?.activeWorkspaceId ?? "")|\(model.session?.isActiveSuspended == true)") { model.bindWorkspace() }
         .onChange(of: model.profile?.language) { _, language in
             L10n.apply(profileLanguage: language)
             // Push action titles are registered once at launch — re-register them in the new language.

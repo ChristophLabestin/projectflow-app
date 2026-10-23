@@ -25,6 +25,9 @@ public final class SessionStore {
     public private(set) var profile: UserProfile?
     public private(set) var workspaces: [WorkspaceSummary] = []
     public private(set) var activeWorkspaceId: String?
+    /// Workspaces the platform suspended (`tenants/{id}.suspendedAt`, admin console). Kept live per tenant doc;
+    /// members may still read the tenant doc, every other tenant-scoped read is denied by the rules.
+    public private(set) var suspendedWorkspaceIds: Set<String> = []
     public private(set) var state: State = .idle
     /// `users/{uid}/private/onboarding.welcomePending`: the first-sign-in onboarding is still open (shared with web).
     public private(set) var welcomePending = false
@@ -44,6 +47,7 @@ public final class SessionStore {
 
     public var activeWorkspace: WorkspaceSummary? { workspaces.first { $0.id == activeWorkspaceId } }
     public var role: WorkspaceRole { activeWorkspace?.role ?? .member }
+    public var isActiveSuspended: Bool { activeWorkspaceId.map(suspendedWorkspaceIds.contains) ?? false }
 
     public func start(defaultWorkspaceName: String) async {
         guard state != .loading else { return }
@@ -53,6 +57,7 @@ public final class SessionStore {
         do {
             try await ensureUserProfile()
             try await loadWorkspaces(defaultWorkspaceName: defaultWorkspaceName)
+            listenSuspensions()
             state = .ready
         } catch {
             state = .failed(error.localizedDescription)
@@ -63,6 +68,26 @@ public final class SessionStore {
 
     public func reloadWorkspaces() async {
         try? await loadWorkspaces(defaultWorkspaceName: nil)
+        listenSuspensions()
+    }
+
+    /// One listener per workspace tenant doc, so a suspension or release applies live.
+    private func listenSuspensions() {
+        let ids = Set(workspaces.map(\.id))
+        suspendedWorkspaceIds.formIntersection(ids)
+        for id in ids {
+            let registration = PFFirebase.db.collection("tenants").document(id).addSnapshotListener { [weak self] snapshot, _ in
+                MainActor.assumeIsolated {
+                    guard let self, let snapshot else { return }
+                    if snapshot.data()?["suspendedAt"].map({ !($0 is NSNull) }) == true {
+                        self.suspendedWorkspaceIds.insert(id)
+                    } else {
+                        self.suspendedWorkspaceIds.remove(id)
+                    }
+                }
+            }
+            listeners.set("tenant.\(id)", registration)
+        }
     }
 
     public func switchWorkspace(to id: String) {
