@@ -8,14 +8,15 @@ data/behaviour contracts with backend and web: `brain/plans/ios-implementation-c
 ```bash
 cd ios && xcodegen generate            # after adding/removing files (the project is generated, not synchronized)
 xcodebuild -project ios/ProjectFlow.xcodeproj -scheme ProjectFlow \
-  -destination 'platform=iOS Simulator,name=ProjectFlow iPhone 18 Pro' -derivedDataPath .xcodebuild build
+  -destination 'generic/platform=iOS Simulator' -derivedDataPath .xcodebuild build
 ```
 
 - Simulators per session: `scripts/sim-session.sh create <name>` clones the shut-down device
   "ProjectFlow Golden" (iPhone 18 Pro, iOS 27.0, app preinstalled) to `PF-<name>`. The clone is
   APFS copy-on-write, ~0 MB at first and a few hundred MB once booted. At most 3 run at once.
+  For the iPhone Duo use `create <name> duo` (golden "ProjectFlow Golden Duo", iOS 27.1).
   Remove it with `delete <name>`, and `prune` drops all shut-down clones. After larger app changes,
-  refresh the golden device with `scripts/sim-session.sh golden`.
+  refresh the golden devices with `scripts/sim-session.sh golden` and `golden duo`.
 - Scheme `ProjectFlow` runs the **Emulator** configuration: Firebase project `demo-projectflow` on
   `127.0.0.1` (auth 9631, firestore 8631, functions 5631). Start the emulators + seed with
   `PORT=3030 bash scripts/dev-e2e.sh`. Login: `demo@projectflow.test` / `projectflow-demo`

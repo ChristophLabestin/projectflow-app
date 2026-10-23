@@ -23,7 +23,7 @@ Die Prüfung bleibt Pflicht — nur der Weg ist billiger.
 
 ## iOS (`ios/`)
 
-1. Jede Session bekommt einen eigenen Klon: `UDID=$(scripts/sim-session.sh create <session>)`.
+1. Jede Session bekommt einen eigenen Klon: `UDID=$(scripts/sim-session.sh create <session>)` (iPhone Duo: `create <session> duo`).
    Der Klon ist ein APFS-Klon von "ProjectFlow Golden" und belegt anfangs ~0 MB. Höchstens 3 Klone
    laufen gleichzeitig, `create` wartet sonst. Für Install, Launch und Simulator-Tools immer diese
    UDID verwenden (`device: <UDID>`). Am Ende ausnahmslos `scripts/sim-session.sh delete <session>`.

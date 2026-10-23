@@ -59,7 +59,7 @@ Teilweise erzwungen über `.claude/token-guard.json` (Hook). Bewusster Einmal-By
 - Desktop app: `bash scripts/dev-desktop.sh` (signed in against emulators), `npm --prefix desktop run build` (typecheck + bundle); release = tag `v<desktop version>` (see `brain/commands-and-environment.md`).
 - After completing a task, run the build for the surface you touched:
   - Web app work: `cd web && npm run build`.
-  - iOS app work: `cd ios && xcodegen generate`, then `xcodebuild -project ios/ProjectFlow.xcodeproj -scheme ProjectFlow -destination 'platform=iOS Simulator,name=ProjectFlow iPhone 18 Pro' -derivedDataPath .xcodebuild build` (conventions in `ios/README.md`).
+  - iOS app work: `cd ios && xcodegen generate`, then `xcodebuild -project ios/ProjectFlow.xcodeproj -scheme ProjectFlow -destination 'generic/platform=iOS Simulator' -derivedDataPath .xcodebuild build` (conventions in `ios/README.md`).
 - After changing Cloud Functions, deploy only the functions you touched (for example: `cd functions && firebase deploy --only functions:callGemini`).
 - After changing Firestore rules or indexes, deploy them to Firebase (for example: `firebase deploy --only firestore:rules` or `firebase deploy --only firestore:indexes`).
 - Full command and environment reference: `brain/commands-and-environment.md`.

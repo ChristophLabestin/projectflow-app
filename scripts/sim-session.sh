@@ -1,23 +1,34 @@
 #!/usr/bin/env bash
-# Per-session iOS simulators as APFS copy-on-write clones of one golden device.
+# Per-session iOS simulators as APFS copy-on-write clones of a golden device.
 # A fresh clone costs ~0 MB on disk; the iOS runtime is shared by all devices.
+# Variant: iphone (default, "ProjectFlow Golden", iPhone 18 Pro / iOS 27.0)
+#          duo    ("ProjectFlow Golden Duo", iPhone Duo / iOS 27.1)
 #
-#   scripts/sim-session.sh golden [app_path]  create/refresh "ProjectFlow Golden" (app installed, shut down)
-#   scripts/sim-session.sh create <name>      clone golden to "PF-<name>", boot it, print its UDID
-#   scripts/sim-session.sh delete <name>      shut down and delete "PF-<name>"
-#   scripts/sim-session.sh list               list golden and all PF-* clones
-#   scripts/sim-session.sh prune              delete every PF-* clone that is shut down
+#   scripts/sim-session.sh golden [variant] [app_path]  create/refresh a golden device (app installed, shut down)
+#   scripts/sim-session.sh create <name> [variant]      clone golden to "PF-<name>", boot it, print its UDID
+#   scripts/sim-session.sh delete <name>                shut down and delete "PF-<name>"
+#   scripts/sim-session.sh list                         list golden devices and all PF-* clones
+#   scripts/sim-session.sh prune                        delete every PF-* clone that is shut down
 #
 # Builds: -destination "id=<UDID>" (or generic/platform=iOS Simulator), install with
 # xcrun simctl install <UDID> <app>. At most PF_SIM_MAX (default 3) clones run at once.
 set -euo pipefail
 
-GOLDEN="ProjectFlow Golden"
-DEVICE_TYPE="com.apple.CoreSimulator.SimDeviceType.iPhone-18-Pro"
-RUNTIME="com.apple.CoreSimulator.SimRuntime.iOS-27-0"
 MAX="${PF_SIM_MAX:-3}"
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 DEFAULT_APP="$ROOT/.xcodebuild/Build/Products/Debug-iphonesimulator/ProjectFlow.app"
+
+variant() {
+    case "${1:-iphone}" in
+        iphone) GOLDEN="ProjectFlow Golden"
+                DEVICE_TYPE="com.apple.CoreSimulator.SimDeviceType.iPhone-18-Pro"
+                RUNTIME="com.apple.CoreSimulator.SimRuntime.iOS-27-0" ;;
+        duo)    GOLDEN="ProjectFlow Golden Duo"
+                DEVICE_TYPE="com.apple.CoreSimulator.SimDeviceType.iPhone-Duo"
+                RUNTIME="com.apple.CoreSimulator.SimRuntime.iOS-27-1" ;;
+        *)      echo "Unknown variant: $1 (iphone|duo)" >&2; exit 1 ;;
+    esac
+}
 
 udid_of() {
     xcrun simctl list devices | grep -F "    $1 (" | head -1 | sed -E 's/.*\(([0-9A-F-]{36})\).*/\1/' || true
@@ -30,7 +41,8 @@ booted_clones() {
 cmd="${1:-}"
 case "$cmd" in
     golden)
-        app="${2:-$DEFAULT_APP}"
+        variant "${2:-iphone}"
+        app="${3:-$DEFAULT_APP}"
         [ -d "$app" ] || { echo "App not found: $app (build first)" >&2; exit 1; }
         id="$(udid_of "$GOLDEN")"
         [ -n "$id" ] || id="$(xcrun simctl create "$GOLDEN" "$DEVICE_TYPE" "$RUNTIME")"
@@ -42,8 +54,9 @@ case "$cmd" in
         ;;
     create)
         name="${2:?name required}"
+        variant "${3:-iphone}"
         golden="$(udid_of "$GOLDEN")"
-        [ -n "$golden" ] || { echo "No golden device; run: $0 golden" >&2; exit 1; }
+        [ -n "$golden" ] || { echo "No golden device; run: $0 golden ${3:-iphone}" >&2; exit 1; }
         existing="$(udid_of "PF-$name")"
         if [ -z "$existing" ]; then
             until [ "$(booted_clones)" -lt "$MAX" ]; do
@@ -63,14 +76,14 @@ case "$cmd" in
         xcrun simctl delete "$id"
         ;;
     list)
-        xcrun simctl list devices | grep -E "^    ($GOLDEN|PF-)" || true
+        xcrun simctl list devices | grep -E "^    (ProjectFlow Golden|PF-)" || true
         ;;
     prune)
         xcrun simctl list devices | grep -E '^    PF-.*\(Shutdown\)' \
             | sed -E 's/.*\(([0-9A-F-]{36})\).*/\1/' | while read -r id; do xcrun simctl delete "$id"; done
         ;;
     *)
-        sed -n '2,12p' "$0"
+        sed -n '2,14p' "$0"
         exit 1
         ;;
 esac
