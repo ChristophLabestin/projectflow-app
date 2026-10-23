@@ -39,9 +39,7 @@ public struct CockpitHeader: View {
     public var body: some View {
         let hasCover = coverURL != nil
         VStack(alignment: .leading, spacing: 0) {
-            ZStack(alignment: .topLeading) {
-                art(hasCover: hasCover)
-                VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: 12) {
                     Color.clear.frame(height: topInset + (hasCover ? 150 : 58))
                     if !hasCover {
                         PFProjectGlyph(title: title, imageURL: iconURL, size: 56)
@@ -61,7 +59,9 @@ public struct CockpitHeader: View {
                     }
                 }
                 .padding(.horizontal, PFSpace.page)
-            }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                // The monogram / cover is decoration only: as a background it never adds height.
+                .background(alignment: .topLeading) { art(hasCover: hasCover) }
         }
     }
 
