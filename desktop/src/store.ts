@@ -29,6 +29,8 @@ export interface DesktopSettings {
     focusShortcutOn: string;
     focusShortcutOff: string;
     mediaKeysEnabled: boolean;
+    /** Index projects/tasks of the active workspace in Spotlight (macOS). */
+    spotlightEnabled: boolean;
     /** Recently opened projects (Dock menu / Windows jump list). */
     recents: { path: string; title: string }[];
     /** Extra windows restored on launch. */
@@ -48,6 +50,7 @@ const DEFAULTS: DesktopSettings = {
     focusShortcutOn: '',
     focusShortcutOff: '',
     mediaKeysEnabled: false,
+    spotlightEnabled: true,
     recents: [],
     secondaryWindows: []
 };

@@ -122,8 +122,8 @@ Sheets weiterhin `PFPresenter`.
   kein Abbrechen/Speichern mehr; die Formatleiste hat stattdessen „Tastatur schließen“. Duo außen: Formatleiste
   versteckt, ein „Aa“-Button in der Seitenspalte (nur bei offener Tastatur) blendet sie über der Tastatur ein.
 - Willkommens-Onboarding außen: Weiter (rund, primär) und Zurück stehen wie auf Unterseiten unten rechts in der
-  Seitenregion (`PFSideColumn`, jetzt public, da das Onboarding außerhalb eines `PFNavigator` liegt); Überspringen,
-  „Später“ und Fehler bleiben unten, der Footer verschwindet, wenn sonst nichts drinsteht.
+  Seitenregion (`PFSideColumn`, jetzt public, da das Onboarding außerhalb eines `PFNavigator` liegt); Überspringen/„Später“
+  sitzen (auf allen iPhones) als Pill oben rechts in der Zeile der Schrittanzeige; unten bleibt außen nur ein evtl. Fehler.
 - Fälligkeits-Sheet: Umschalter oben rechts zwischen Tagesleiste und Monatsansicht (`PFDateStrip(showsMonth:)`,
   wird gemerkt), weniger Leerraum unter „Save“ (`pfSheetBottomInset`).
 - Root-Tabs außen: Header-Aktionen (`PFRootActions`: Heute + und Avatar, Arbeit +, Projekte +, Eingang

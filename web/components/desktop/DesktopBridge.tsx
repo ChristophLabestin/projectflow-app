@@ -8,9 +8,13 @@ import { useTheme } from '../../context/ThemeContext';
 import { useToast, useUIState } from '../../context/UIContext';
 import { SettingsModal } from '../SettingsModal';
 import { addComment } from '../../services/dataService';
+import { redeemDesktopAuthCode } from '../../services/desktopAuth';
+import { buildSpotlightEntries } from '../../services/desktopSpotlight';
+import { auth } from '../../services/firebase';
 import { attachFilesToItem, canAttachToItem, completeItem, filesFromPayload } from '../../services/desktopActions';
 import { useWorkspace } from '../../context/WorkspaceContext';
-import { markNotificationAsRead, subscribeToNotifications } from '../../services/notificationService';
+import { markNotificationAsRead, subscribeToNotificationPrefs, subscribeToNotifications } from '../../services/notificationService';
+import { allowsPushNotification, resolveNotificationPrefs, type ResolvedNotificationPrefs } from '../../utils/notificationPrefs';
 import { DESKTOP_OPEN_SEARCH_EVENT, getDesktopBridge, hasDesktopCapability, pinnedItemPath, type DesktopCommandEvent } from '../../services/desktop';
 import type { Notification } from '../../types';
 
@@ -186,6 +190,18 @@ export const DesktopBridge = () => {
                 case 'notification-action':
                     void handleNotificationAction(data, handlers);
                     break;
+                case 'auth-code': {
+                    const code = typeof data?.code === 'string' ? data.code : '';
+                    const verifier = typeof data?.verifier === 'string' ? data.verifier : '';
+                    if (!code || !verifier || auth.currentUser) break;
+                    redeemDesktopAuthCode(code, verifier)
+                        .then(() => { if (window.location.pathname === '/login' || window.location.pathname === '/register') handlers.navigate('/'); })
+                        .catch((error) => {
+                            console.error('Desktop sign-in handoff failed', error);
+                            handlers.showError(handlers.t('login.desktop.browserFailed'));
+                        });
+                    break;
+                }
                 case 'attach-files': {
                     const files = filesFromPayload(data?.files);
                     const item = handlers.focusItem;
@@ -258,6 +274,37 @@ export const DesktopBridge = () => {
         });
     }, [bridge, focusItem, focusState, pinnedItems, unreadCount, snoozeTick]);
 
+    // Spotlight (macOS): projects and my open tasks of the active workspace; cleared on sign-out.
+    useEffect(() => {
+        if (!bridge?.indexSpotlight || !hasDesktopCapability('spotlight')) return undefined;
+        if (!user || !activeWorkspaceId) {
+            if (isAuthReady && !user) bridge.indexSpotlight([]);
+            return undefined;
+        }
+        let cancelled = false;
+        const refresh = () => {
+            const { t: translate } = handlersRef.current;
+            buildSpotlightEntries(activeWorkspaceId, { project: translate('desktop.spotlight.project'), personalTask: translate('desktop.spotlight.personalTask') })
+                .then((entries) => { if (!cancelled) bridge.indexSpotlight?.(entries); })
+                .catch((error) => console.warn('Spotlight index failed', error));
+        };
+        // Not at startup: sign-in and workspace resolution come first.
+        const first = window.setTimeout(refresh, 20_000);
+        const interval = window.setInterval(refresh, 30 * 60 * 1000);
+        return () => {
+            cancelled = true;
+            window.clearTimeout(first);
+            window.clearInterval(interval);
+        };
+    }, [bridge, user, activeWorkspaceId, isAuthReady, language]);
+
+    // Push channel toggles (Settings → Notifications) also gate native desktop notifications.
+    const pushPrefsRef = useRef<ResolvedNotificationPrefs>(resolveNotificationPrefs(undefined));
+    useEffect(() => {
+        if (!bridge || !user) return undefined;
+        return subscribeToNotificationPrefs(user.uid, (prefs) => { pushPrefsRef.current = prefs; });
+    }, [bridge, user]);
+
     // Badge + native notifications for the active workspace.
     useEffect(() => {
         if (!bridge || !user) {
@@ -282,7 +329,7 @@ export const DesktopBridge = () => {
                 return;
             }
             if (document.hasFocus()) return;
-            fresh.slice(0, 3).forEach((notification) => {
+            fresh.filter((notification) => allowsPushNotification(notification.type, pushPrefsRef.current)).slice(0, 3).forEach((notification) => {
                 bridge.notify({
                     id: notification.id,
                     title: notification.title,

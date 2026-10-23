@@ -158,7 +158,7 @@ struct TodayStopRow: View {
                 } label: {
                     Text(L10n.t("today.forToday")).pfText(.buttonSmall).foregroundStyle(PFColor.textMain)
                         .padding(.horizontal, 12).frame(minHeight: 32)
-                        .background(PFColor.raised, in: .capsule)
+                        .pfPillSurface()
                 }
                 .buttonStyle(.pfPressable)
             )

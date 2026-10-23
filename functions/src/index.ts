@@ -196,6 +196,7 @@ export {
     upsertFinanceTaxCode
 };
 export * from './passkeys';
+export * from './desktopAuth';
 export { mcp } from './mcp-server';
 export { transferWorkspaceOwnership, deleteWorkspace } from './workspace-lifecycle';
 export { exportMyData, deleteMyAccount } from './account-data';

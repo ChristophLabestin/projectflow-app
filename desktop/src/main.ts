@@ -2,6 +2,8 @@ import { app, globalShortcut, session } from 'electron';
 import { startDayFlow, stopDayFlow } from './features/dayFlow';
 import { startUpdater, stopUpdater } from './features/updater';
 import { filesFromArgv, queueFilesForFocus } from './features/files';
+import { handleAuthCallback } from './features/externalAuth';
+import { spotlightActivityPath } from './features/spotlight';
 import { refreshTouchBar } from './features/focus';
 import { initPreferences, launchedHidden } from './features/preferences';
 import { stopCalendar } from './features/calendar';
@@ -39,6 +41,7 @@ const deepLinkFromArgv = (argv: string[]) => argv.map(deepLinkPath).find((value)
 
 /** `/desktop/command/<name>` deep links come from the Windows jump list. */
 const handleDeepLinkPath = (target: string | null) => {
+    if (handleAuthCallback(target)) return;
     if (target === '/desktop/command/quick-capture') {
         showCapture();
         return;
@@ -77,6 +80,15 @@ if (!app.requestSingleInstanceLock()) {
         handleDeepLinkPath(deepLinkFromArgv(argv));
     });
 
+    // macOS: a Spotlight result was opened (item id = app path).
+    app.on('continue-activity', (event, type, userInfo) => {
+        const target = spotlightActivityPath(type, userInfo);
+        if (!target) return;
+        event.preventDefault();
+        if (app.isReady()) handleDeepLinkPath(target);
+        else coldStartPath = target;
+    });
+
     // macOS: files dropped onto the Dock icon (may arrive before ready).
     app.on('open-file', (event, filePath) => {
         event.preventDefault();
@@ -94,7 +106,8 @@ if (!app.requestSingleInstanceLock()) {
             copyright: '© Labestin Digital'
         });
 
-        const coldStart = coldStartPath;
+        // An auth callback cannot belong to this process (its verifier died with the previous one).
+        const coldStart = coldStartPath?.startsWith('/auth?') ? null : coldStartPath;
         coldStartPath = null;
         const mainWindow = createMainWindow(coldStart?.startsWith('/desktop/command/') ? '/' : coldStart ?? '/', { hidden: launchedHidden() && !coldStart });
         // Preload the hidden helper windows (instant Quick Capture / menu bar panel) only after the main window

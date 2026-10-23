@@ -9,7 +9,9 @@ export type DesktopWindowKind = 'main' | 'quick-access' | 'capture' | 'day' | 's
 export type DesktopCapability =
     | 'titlebar' | 'app-menu' | 'popout' | 'badge' | 'tray' | 'notifications' | 'language'
     | 'preferences' | 'quick-capture' | 'notification-actions' | 'day-flow' | 'file-drop' | 'calendar' | 'recents' | 'windows'
-    | 'tray-panel';
+    | 'tray-panel'
+    | 'external-auth'
+    | 'spotlight';
 
 export type DesktopCommand =
     | 'new-task'
@@ -28,7 +30,8 @@ export type DesktopCommand =
     | 'focus-resume'
     | 'focus-complete'
     | 'notification-action'
-    | 'attach-files';
+    | 'attach-files'
+    | 'auth-code';
 
 export interface DesktopCommandEvent {
     command: DesktopCommand;
@@ -48,10 +51,11 @@ export interface DesktopPreferences {
     focusShortcutOn: string;
     focusShortcutOff: string;
     mediaKeysEnabled: boolean;
+    spotlightEnabled?: boolean;
 }
 
 export interface DesktopPreferencesInfo extends DesktopPreferences {
-    supports: { calendar: boolean; focusShortcuts: boolean; touchBar: boolean; notificationActions: boolean };
+    supports: { calendar: boolean; focusShortcuts: boolean; touchBar: boolean; notificationActions: boolean; spotlight?: boolean };
     calendarStatus: 'unknown' | 'granted' | 'denied' | 'unavailable';
     shortcutConflict?: boolean;
 }
@@ -117,6 +121,10 @@ export interface DesktopBridge {
     // Since capability 'tray-panel':
     getUpcomingEvents?(): Promise<{ id: string; title: string; start: string; end: string }[]>;
     appAction?(action: 'show-main' | 'quick-access' | 'capture' | 'settings' | 'day-close' | 'quit'): void;
+    // Since capability 'external-auth': opens the sign-in page in the system browser (OAuth handoff).
+    signInExternally?(): Promise<boolean>;
+    // Since capability 'spotlight': replaces the Spotlight index (macOS); [] clears it.
+    indexSpotlight?(items: { id: string; title: string; subtitle?: string; keywords?: string[] }[]): void;
 }
 
 declare global {

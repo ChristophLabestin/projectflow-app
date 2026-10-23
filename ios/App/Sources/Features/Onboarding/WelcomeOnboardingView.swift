@@ -87,18 +87,25 @@ struct WelcomeOnboardingView: View {
 
     private var header: some View {
         HStack(spacing: PFSpace.s) {
-            Button { go(back: true) } label: {
-                Image(systemName: "chevron.left")
-                    .font(.system(size: 14, weight: .bold))
-                    .foregroundStyle(PFColor.textMain)
-                    .frame(width: 36, height: 36)
-                    .background(PFColor.raised, in: .circle)
+            // iPhone Duo outer display: back lives in the side column instead.
+            if stepIndex > 0, sideRegion == 0 {
+                PFIconButton("chevron.left", label: L10n.t("welcome.back")) { go(back: true) }
+                    .disabled(isBusy)
             }
-            .buttonStyle(.pfPressable)
-            .opacity(stepIndex == 0 || sideRegion > 0 ? 0 : 1)
-            .disabled(stepIndex == 0 || isBusy || sideRegion > 0)
-            .accessibilityLabel(L10n.t("welcome.back"))
-            Spacer()
+            Spacer(minLength: 0)
+            if let skipTitle {
+                Button { skipCurrent() } label: {
+                    Text(skipTitle).pfText(.buttonSmall).foregroundStyle(PFColor.textMain)
+                        .padding(.horizontal, 14).frame(minHeight: 36)
+                        .pfPillSurface()
+                }
+                .buttonStyle(.pfPressable)
+                .disabled(isBusy)
+                .accessibilityLabel(skipAccessibilityLabel)
+            }
+        }
+        .frame(minHeight: 44)
+        .overlay {
             HStack(spacing: 6) {
                 ForEach(steps.indices, id: \.self) { index in
                     Capsule()
@@ -109,11 +116,24 @@ struct WelcomeOnboardingView: View {
             .animation(reduceMotion ? nil : .spring(response: 0.4, dampingFraction: 0.85), value: stepIndex)
             .accessibilityElement(children: .ignore)
             .accessibilityLabel(L10n.t("welcome.step", ["n": "\(stepIndex + 1)", "total": "\(steps.count)"]))
-            Spacer()
-            Color.clear.frame(width: 36, height: 36)
         }
         .padding(.horizontal, PFSpace.page)
         .padding(.top, PFSpace.s)
+    }
+
+    /// Survey screens can be skipped, the notification screen can start without notifications.
+    private var skipTitle: String? {
+        if isSurveyStep { return L10n.t("survey.skip") }
+        if step == .notifications { return L10n.t("welcome.notify.later") }
+        return nil
+    }
+
+    private var skipAccessibilityLabel: String {
+        step == .notifications ? L10n.t("welcome.notify.skip") : L10n.t("survey.skip")
+    }
+
+    private func skipCurrent() {
+        if step == .notifications { finish() } else { skip() }
     }
 
     private var footer: some View {
@@ -129,14 +149,6 @@ struct WelcomeOnboardingView: View {
                     .disabled(isBusy || !canContinue)
                     .overlay(alignment: .trailing) { if isBusy { ProgressSpinner().padding(.trailing, 20) } }
             }
-            if isSurveyStep {
-                PFButton(L10n.t("survey.skip"), kind: .ghost, size: .medium, fullWidth: true) { skip() }
-                    .disabled(isBusy)
-            }
-            if step == .notifications {
-                PFButton(L10n.t("welcome.notify.skip"), kind: .ghost, size: .medium, fullWidth: true) { finish() }
-                    .disabled(isBusy)
-            }
         }
         .padding(.horizontal, PFSpace.page)
         .padding(.top, footerIsEmpty ? 0 : PFSpace.s)
@@ -144,10 +156,8 @@ struct WelcomeOnboardingView: View {
         .background(footerIsEmpty ? AnyShapeStyle(.clear) : AnyShapeStyle(.regularMaterial))
     }
 
-    /// Side region: nothing but the side controls left at the bottom (no secondary button, no error).
-    private var footerIsEmpty: Bool {
-        sideRegion > 0 && error == nil && !isSurveyStep && step != .notifications
-    }
+    /// Side region: nothing left at the bottom unless there is an error.
+    private var footerIsEmpty: Bool { sideRegion > 0 && error == nil }
 
     /// Next above back (back lowest, under the thumb), as on pushed pages.
     private var sideControls: some View {

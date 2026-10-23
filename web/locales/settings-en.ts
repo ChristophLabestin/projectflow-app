@@ -34,6 +34,8 @@ const enSettings = {
     'settings.desktop.focusOff.title': 'Shortcut when a focus ends',
     'settings.desktop.focusOff.hint': 'Name of a macOS Shortcut to run when the focus is paused, blocked or done.',
     'settings.desktop.focusOff.placeholder': 'e.g. ProjectFlow Focus off',
+    'settings.desktop.spotlight.title': 'Spotlight search',
+    'settings.desktop.spotlight.hint': 'Find projects and your open tasks of the current workspace in Spotlight (⌘ Space). Stored only on this Mac.',
     'settings.desktop.mediaKeys.title': 'Play/Pause key controls the focus',
     'settings.desktop.mediaKeys.hint': 'While a focus task exists, the media key pauses and resumes it (music players no longer get the key).',
     'settings.desktop.touchBar.note': 'On Macs with a Touch Bar, the focus task, Pause/Done, Quick Capture and Quick Access appear there automatically.',

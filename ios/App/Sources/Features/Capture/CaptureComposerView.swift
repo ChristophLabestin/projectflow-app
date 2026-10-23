@@ -87,7 +87,7 @@ struct CaptureComposerView: View {
                 .foregroundStyle(PFColor.textMain)
                 .padding(.horizontal, 10)
                 .frame(minHeight: 32)
-                .background(PFColor.raised, in: .capsule)
+                .pfPillSurface()
                 .contentShape(.capsule)
             }
             .buttonStyle(.pfPressable)
