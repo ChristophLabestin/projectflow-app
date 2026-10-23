@@ -16,6 +16,11 @@ const Onboarding = named(() => import('./screens/Onboarding'), 'Onboarding');
 const BlogList = named(() => import('./screens/Blog'), 'BlogList');
 const BlogEditor = named(() => import('./screens/Blog'), 'BlogEditor');
 const Leads = named(() => import('./screens/Leads'), 'Leads');
+const Overview = named(() => import('./screens/Overview'), 'Overview');
+const UsersScreen = named(() => import('./screens/Users'), 'UsersScreen');
+const WorkspacesScreen = named(() => import('./screens/Workspaces'), 'WorkspacesScreen');
+const AiScreen = named(() => import('./screens/Ai'), 'AiScreen');
+const SystemScreen = named(() => import('./screens/System'), 'SystemScreen');
 
 const Splash: React.FC<{ text?: string }> = ({ text }) => <div className="ac-splash"><div style={{ display: 'grid', gap: 12, justifyItems: 'center' }}><LoadingTrack />{text}</div></div>;
 
@@ -30,7 +35,11 @@ const Gate: React.FC = () => {
         <Suspense fallback={<Splash />}>
             <Routes>
                 <Route element={<Layout />}>
-                    <Route index element={<Navigate to="/crashes" replace />} />
+                    <Route index element={<Overview />} />
+                    <Route path="users" element={<UsersScreen />} />
+                    <Route path="workspaces" element={<WorkspacesScreen />} />
+                    <Route path="ai" element={<AiScreen />} />
+                    <Route path="system" element={<SystemScreen />} />
                     <Route path="audit" element={<AuditLog />} />
                     <Route path="crashes" element={<Crashes />} />
                     <Route path="crashes/:id" element={<CrashDetail />} />

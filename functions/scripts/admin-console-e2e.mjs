@@ -108,6 +108,58 @@ await check('unknown action is rejected', async () => {
     const out = await call(adminToken, 'users.impersonate', {}, sessionId);
     assert.equal(out.error, 'NOT_FOUND');
 });
+await check('normal user cannot read user details', () => refused(call(outsider, 'users.get', { uid: 'x' }, sessionId), 'not-admin'));
+await check('admin overview aggregates', async () => {
+    const out = await call(adminToken, 'overview.get', { days: 30 }, sessionId);
+    assert.ok(out.result?.users?.total >= 2, JSON.stringify(out).slice(0, 300));
+    assert.equal(out.result.days.length, 30);
+    assert.ok(out.result.ai.monthTokens > 0 && out.result.mcp.active >= 2, 'seeded AI/MCP expected');
+});
+await check('admin lists users and workspaces', async () => {
+    const users = await call(adminToken, 'users.list', {}, sessionId);
+    assert.ok(users.result?.users?.some((u) => u.email === 'outsider@projectflow.test'), JSON.stringify(users).slice(0, 200));
+    const ws = await call(adminToken, 'workspaces.list', {}, sessionId);
+    assert.ok(ws.result?.workspaces?.length >= 1);
+    const detail = await call(adminToken, 'workspaces.get', { id: ws.result.workspaces[0].id }, sessionId);
+    assert.ok(Array.isArray(detail.result?.members), JSON.stringify(detail).slice(0, 200));
+});
+await check('admin opens a user (audited read) and revokes their sessions', async () => {
+    const uid = (await admin.auth().getUserByEmail('outsider@projectflow.test')).uid;
+    const detail = await call(adminToken, 'users.get', { uid }, sessionId);
+    assert.equal(detail.result?.auth?.email, 'outsider@projectflow.test', JSON.stringify(detail).slice(0, 300));
+    const out = await call(adminToken, 'users.revokeSessions', { uid }, sessionId);
+    assert.equal(out.result?.ok, true);
+    const audit = await call(adminToken, 'audit.list', { limit: 10 }, sessionId);
+    assert.ok(audit.result.entries.some((e) => e.action === 'users.get' && e.target === `users/${uid}`), 'read audited');
+});
+await check('admin cannot lock or revoke their own account', async () => {
+    const uid = (await admin.auth().getUserByEmail('demo@projectflow.test')).uid;
+    assert.equal((await call(adminToken, 'users.setDisabled', { uid, disabled: true }, sessionId)).error, 'INVALID_ARGUMENT');
+    assert.equal((await call(adminToken, 'users.revokeSessions', { uid }, sessionId)).error, 'INVALID_ARGUMENT');
+});
+await check('admin disconnects an MCP grant (tokens deleted)', async () => {
+    const out = await call(adminToken, 'users.revokeGrant', { grantId: 'seed-grant-claude' }, sessionId);
+    assert.equal(out.result?.ok, true, JSON.stringify(out));
+    assert.equal((await admin.firestore().doc('ai_tokens/seed-token-claude').get()).exists, false);
+    assert.ok((await admin.firestore().doc('ai_grants/seed-grant-claude').get()).get('revokedAt'));
+});
+await check('admin exports user data', async () => {
+    const uid = (await admin.auth().getUserByEmail('demo@projectflow.test')).uid;
+    const out = await call(adminToken, 'users.export', { uid }, sessionId);
+    assert.ok(out.result?.json?.length > 100, JSON.stringify(out).slice(0, 200));
+});
+await check('admin reads AI usage, grants, clients, API log and system status', async () => {
+    for (const action of ['ai.overview', 'ai.grants', 'ai.clients', 'ai.audit', 'system.status']) {
+        const out = await call(adminToken, action, {}, sessionId);
+        assert.ok(out.result && !out.error, `${action}: ${JSON.stringify(out).slice(0, 200)}`);
+    }
+    const usage = await call(adminToken, 'ai.overview', { days: 30 }, sessionId);
+    assert.ok(usage.result.users.length >= 1 && usage.result.month.tokens > 0);
+});
+await check('pricing input is validated and audited', async () => {
+    assert.equal((await call(adminToken, 'system.setPricing', { usdPerMTokens: -1, usdPerImage: 0 }, sessionId)).error, 'INVALID_ARGUMENT');
+    assert.equal((await call(adminToken, 'system.setPricing', { usdPerMTokens: 1.2, usdPerImage: 0.02 }, sessionId)).result?.ok, true);
+});
 await check('idle session expires server-side', async () => {
     const ref = admin.firestore().collection('admin_sessions').doc((await admin.auth().getUserByEmail('demo@projectflow.test')).uid);
     const lastSeen = (await ref.get()).get('lastSeenAt');

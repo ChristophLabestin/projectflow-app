@@ -1,0 +1,131 @@
+import React, { useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { adminApi } from '../lib/api';
+import { dateTime, num, relative } from '../lib/format';
+import { useAdminQuery } from '../lib/useAsync';
+import { AreaChart } from '../ui/charts';
+import { DataTable, type Column } from '../ui/DataTable';
+import { Drawer, useUi } from '../ui/Overlay';
+import { Badge, Card, Empty, ErrorNote, PageHead, Segmented, Skeleton, Tabs } from '../ui/primitives';
+import { dayKeyList } from '../lib/days';
+import { GrantsTable, roleTone, UserDrawer } from './Users';
+
+type Ws = { id: string; name: string; ownerId: string | null; ownerEmail: string | null; createdAt: number | null; suspendedAt: number | null; members: number; guests: number; projects: number; lastProjectUpdate: number | null; grants: number; aiEnabled: boolean };
+type Policy = { enabled: boolean; allowGuests: boolean; allowDeleteScopes: boolean; allowPersonalTokens: boolean };
+type WsDetail = {
+    id: string; name: string; ownerId: string | null; createdAt: number | null; suspendedAt: number | null; suspendedReason: string | null; modules: string[] | null;
+    members: { uid: string; email: string; displayName: string; role: string; joinedAt: number | null; lastActiveAt: number | null }[];
+    projects: { id: string; title: string; status: string; updatedAt: number | null; createdAt: number | null }[];
+    aiPolicy: Policy; grants: any[]; machineWrites: { day: string; writes: number }[];
+    apiTokens: { id: string; name: string; createdAt: number | null; lastUsedAt: number | null; expiresAt: number | null; permissions: string[] }[];
+    activity: { id: string; type: string; actor: string; object: string; projectTitle: string | null; createdAt: number | null }[];
+};
+
+const POLICY_LABEL: Record<keyof Policy, string> = { enabled: 'KI-/MCP-Zugriff erlaubt', allowGuests: 'Gäste dürfen verbinden', allowDeleteScopes: 'Lösch-Scopes erlaubt', allowPersonalTokens: 'Persönliche Tokens erlaubt' };
+
+const WorkspaceDrawer: React.FC<{ id: string; onClose: () => void; onOpenUser: (uid: string) => void }> = ({ id, onClose, onOpenUser }) => {
+    const { confirm, toast } = useUi();
+    const { data, loading, error, reload } = useAdminQuery<WsDetail>('workspaces.get', { id });
+    const [tab, setTab] = useState('members');
+    const days = dayKeyList(30);
+
+    const setPolicy = async (key: keyof Policy, value: boolean) => {
+        if (!(await confirm({ title: `${POLICY_LABEL[key]}: ${value ? 'an' : 'aus'}?`, message: 'Ändert die KI-Policy dieses Workspaces (wirkt nach spätestens 60 s auf MCP/API-Zugriffe). Wird protokolliert.', danger: !value && key === 'enabled', confirmLabel: 'Ändern' }))) return;
+        try { await adminApi('workspaces.setAiPolicy', { id, policy: { [key]: value } }); toast('Policy geändert'); reload(); } catch (err: any) { toast(err.message, 'error'); }
+    };
+    const revoke = async (g: any) => {
+        if (!(await confirm({ title: `„${g.clientName || 'Token'}“ trennen?`, message: 'Widerruft die Verbindung und löscht ihre Tokens.', danger: true, confirmLabel: 'Trennen' }))) return;
+        try { await adminApi('users.revokeGrant', { grantId: g.id }); toast('Verbindung getrennt'); reload(); } catch (err: any) { toast(err.message, 'error'); }
+    };
+
+    return (
+        <Drawer wide title={data?.name || 'Workspace'} subtitle={<span className="mono">{id}</span>} onClose={onClose}>
+            {loading && !data ? <Skeleton rows={10} /> : !data ? <ErrorNote error={error} onRetry={reload} /> : (
+                <>
+                    <dl className="ac-kv">
+                        <dt>Erstellt</dt><dd>{dateTime(data.createdAt)}</dd>
+                        <dt>Owner</dt><dd>{data.members.find((m) => m.uid === data.ownerId)?.email || data.ownerId}</dd>
+                        <dt>Status</dt><dd>{data.suspendedAt ? <Badge tone="red">gesperrt seit {dateTime(data.suspendedAt)}</Badge> : <Badge tone="green">aktiv</Badge>}</dd>
+                        {data.modules && <><dt>Module</dt><dd>{data.modules.join(', ')}</dd></>}
+                    </dl>
+                    <Tabs value={tab} onChange={setTab} tabs={[
+                        { value: 'members', label: `Mitglieder ${data.members.length}` },
+                        { value: 'projects', label: `Projekte ${data.projects.length}` },
+                        { value: 'ai', label: 'KI & API' },
+                        { value: 'activity', label: 'Aktivität' },
+                    ]} />
+                    {tab === 'members' && (
+                        <table className="ac-table"><thead><tr><th>Mitglied</th><th>Rolle</th><th>Beigetreten</th><th>Zuletzt aktiv</th></tr></thead>
+                            <tbody>{data.members.sort((a, b) => ['Owner', 'Admin', 'Member', 'Guest'].indexOf(a.role) - ['Owner', 'Admin', 'Member', 'Guest'].indexOf(b.role)).map((m) => (
+                                <tr key={m.uid} className="is-clickable" onClick={() => onOpenUser(m.uid)}><td><span className="ac-strong">{m.displayName || m.email}</span> {m.displayName && <span className="ac-muted">{m.email}</span>}</td><td><Badge tone={roleTone(m.role)}>{m.role}</Badge></td><td>{dateTime(m.joinedAt)}</td><td>{relative(m.lastActiveAt)}</td></tr>
+                            ))}</tbody></table>
+                    )}
+                    {tab === 'projects' && (data.projects.length ? (
+                        <table className="ac-table"><thead><tr><th>Projekt</th><th>Status</th><th>Geändert</th><th>Erstellt</th></tr></thead>
+                            <tbody>{data.projects.sort((a, b) => (b.updatedAt ?? 0) - (a.updatedAt ?? 0)).map((p) => <tr key={p.id}><td className="ac-strong">{p.title}</td><td><Badge plain>{p.status || '–'}</Badge></td><td>{relative(p.updatedAt)}</td><td>{dateTime(p.createdAt)}</td></tr>)}</tbody></table>
+                    ) : <Empty title="Keine Projekte" />)}
+                    {tab === 'ai' && (
+                        <div className="ac-stack">
+                            <Card title="KI-Policy (MCP/API)">
+                                <div className="ac-stack">{(Object.keys(POLICY_LABEL) as (keyof Policy)[]).map((key) => (
+                                    <label key={key} className="ac-check"><input type="checkbox" checked={data.aiPolicy[key] === true} onChange={(e) => setPolicy(key, e.target.checked)} />{POLICY_LABEL[key]}</label>
+                                ))}</div>
+                            </Card>
+                            <Card title="Maschinen-Schreibzugriffe pro Tag" subtitle="Abuse-Bremse 5.000/Tag">
+                                <AreaChart days={days} bars series={[{ label: 'Writes', values: days.map((d) => data.machineWrites.find((w) => w.day === d)?.writes || 0) }]} height={140} />
+                            </Card>
+                            <Card title="Verbindungen" flush><GrantsTable grants={data.grants} onRevoke={revoke} /></Card>
+                            <Card title="Workspace-API-Tokens" flush>
+                                {data.apiTokens.length ? <table className="ac-table"><thead><tr><th>Name</th><th>Rechte</th><th>Zuletzt</th><th>Läuft ab</th></tr></thead>
+                                    <tbody>{data.apiTokens.map((t) => <tr key={t.id}><td className="ac-strong">{t.name}</td><td className="ac-muted" title={t.permissions.join(', ')}>{t.permissions.length}</td><td>{relative(t.lastUsedAt)}</td><td>{dateTime(t.expiresAt)}</td></tr>)}</tbody></table> : <Empty title="Keine API-Tokens" />}
+                            </Card>
+                        </div>
+                    )}
+                    {tab === 'activity' && (data.activity.length ? (
+                        <table className="ac-table"><thead><tr><th>Zeit</th><th>Wer</th><th>Ereignis</th><th>Objekt</th></tr></thead>
+                            <tbody>{data.activity.map((e) => <tr key={e.id}><td>{relative(e.createdAt)}</td><td>{e.actor}</td><td><Badge plain>{e.type}</Badge></td><td>{e.object}{e.projectTitle ? <span className="ac-muted"> · {e.projectTitle}</span> : ''}</td></tr>)}</tbody></table>
+                    ) : <Empty title="Keine Aktivität" />)}
+                </>
+            )}
+        </Drawer>
+    );
+};
+
+export const WorkspacesScreen: React.FC = () => {
+    const [params, setParams] = useSearchParams();
+    const openId = params.get('id');
+    const [user, setUser] = useState<string | null>(null);
+    const [search, setSearch] = useState('');
+    const [filter, setFilter] = useState('all');
+    const { data, loading, error, reload } = useAdminQuery<{ workspaces: Ws[] }>('workspaces.list');
+    const q = search.trim().toLowerCase();
+    const rows = (data?.workspaces || []).filter((w) => (!q || `${w.name} ${w.ownerEmail} ${w.id}`.toLowerCase().includes(q))
+        && (filter === 'all' || (filter === 'team' && w.members > 1) || (filter === 'mcp' && w.grants > 0) || (filter === 'empty' && w.projects === 0)));
+    const setOpen = (id: string | null) => setParams((p) => { const n = new URLSearchParams(p); if (id) n.set('id', id); else n.delete('id'); return n; });
+
+    const columns: Column<Ws>[] = [
+        { key: 'name', label: 'Workspace', render: (w) => <span className="ac-strong">{w.name}</span> },
+        { key: 'ownerEmail', label: 'Owner', render: (w) => <span className="ac-muted">{w.ownerEmail || w.ownerId}</span> },
+        { key: 'members', label: 'Mitglieder', num: true, render: (w) => <>{num(w.members)}{w.guests ? <span className="ac-muted"> +{w.guests} Gäste</span> : ''}</> },
+        { key: 'projects', label: 'Projekte', num: true },
+        { key: 'grants', label: 'MCP', num: true },
+        { key: 'aiEnabled', label: 'KI', value: (w) => (w.aiEnabled ? 1 : 0), render: (w) => (w.aiEnabled ? <Badge tone="green" plain>an</Badge> : <Badge plain>aus</Badge>) },
+        { key: 'lastProjectUpdate', label: 'Zuletzt geändert', render: (w) => relative(w.lastProjectUpdate) },
+        { key: 'createdAt', label: 'Erstellt', render: (w) => <span title={dateTime(w.createdAt)}>{relative(w.createdAt)}</span> },
+        { key: 'id', label: 'ID', hidden: true, render: (w) => <span className="mono ac-muted">{w.id}</span> },
+    ];
+
+    return (
+        <div className="ac-page">
+            <PageHead title="Workspaces" subtitle="Alle Arbeitsbereiche mit Mitgliedern, Projekten und KI-Verbindungen." actions={<button className="ac-btn" onClick={reload}>Aktualisieren</button>} />
+            <ErrorNote error={error} onRetry={reload} />
+            <DataTable id="workspaces" rows={data ? rows : null} loading={loading} columns={columns} rowKey={(w) => w.id} onOpen={(w) => setOpen(w.id)} selectedKey={openId} defaultSort={{ key: 'createdAt', dir: 'desc' }}
+                toolbar={<>
+                    <div className="ac-search"><input className="ac-input" placeholder="Name, Owner, ID …" value={search} onChange={(e) => setSearch(e.target.value)} /></div>
+                    <Segmented value={filter} onChange={setFilter} options={[{ value: 'all', label: 'Alle' }, { value: 'team', label: 'Teams' }, { value: 'mcp', label: 'Mit MCP' }, { value: 'empty', label: 'Leer' }]} />
+                </>} />
+            {openId && <WorkspaceDrawer id={openId} onClose={() => setOpen(null)} onOpenUser={setUser} />}
+            {user && <UserDrawer uid={user} onClose={() => setUser(null)} />}
+        </div>
+    );
+};

@@ -136,7 +136,7 @@ kbd {
     background: var(--color-surface-bg);
     button {
         height: 24px; padding: 0 10px; border: 0; border-radius: 5px; background: transparent;
-        color: var(--color-text-muted); font-weight: 550; cursor: pointer;
+        color: var(--color-text-muted); font-weight: 550; cursor: pointer; white-space: nowrap;
         &.is-active { background: var(--color-surface-card); color: var(--color-text-main); box-shadow: var(--shadow-sm); }
     }
 }
