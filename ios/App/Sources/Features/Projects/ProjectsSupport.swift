@@ -323,7 +323,7 @@ struct ActionSheet: View {
                 }
             }
             .background(PFColor.raisedSoft, in: .rect(cornerRadius: PFRadius.card, style: .continuous))
-            .padding(.horizontal, PFSpace.m)
+            .padding(.horizontal, PFSpace.page)
         }
         .padding(.bottom, PFSpace.l)
     }

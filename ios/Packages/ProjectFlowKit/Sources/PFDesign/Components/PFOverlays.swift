@@ -153,7 +153,7 @@ struct PFSheetContent: View {
                 .overlay(alignment: .bottomTrailing) {
                     if sideRegion > 0, sheet.dismissable, footer == nil, isFitted {
                         // Lifted by the space the content leaves below its last row, so it lines up with it.
-                        closeButton.offset(x: closeOffset, y: -contentBottomInset)
+                        closeButton.offset(x: sideRegion - PFSpace.page, y: -contentBottomInset)
                     }
                 }
                 .padding(.top, 26)
@@ -169,6 +169,8 @@ struct PFSheetContent: View {
         }
         .scrollBounceBehavior(.basedOnSize)
         .scrollDismissesKeyboard(.interactively)
+        // Side region, fitted, no footer: the content's own bottom padding becomes the margin to the sheet edge.
+        .ignoresSafeArea(.container, edges: extendsIntoBottomSafeArea ? .bottom : [])
         // The primary actions sit outside the scroll view, so the keyboard can never cover them.
         .safeAreaInset(edge: .bottom, spacing: 0) {
             if let footer {
@@ -200,7 +202,10 @@ struct PFSheetContent: View {
         .onGeometryChange(for: CGFloat.self) { $0.safeAreaInsets.bottom } action: { if keyboardHeight == 0 { bottomSafe = $0 } }
         .overlay {
             if sideRegion > 0, sheet.dismissable, footer == nil, !isFitted {
-                PFSideColumn(side: sideRegion) { closeButton }
+                closeButton
+                    .padding([.trailing, .bottom], PFSpace.page)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
+                    .ignoresSafeArea(.container)
             }
         }
         .onPreferenceChange(PFSheetBottomInsetKey.self) { contentBottomInset = $0 ?? PFSpace.l }
@@ -237,14 +242,20 @@ struct PFSheetContent: View {
     }
 
     /// Moves a trailing-aligned close button from the content edge into the side region, on the rail line.
-    private var closeOffset: CGFloat { sideRegion - PFLayout.sideGap(sideRegion) - (PFDock.railWidth - 44) / 2 }
+    /// iPhone Duo outer display: every sheet keeps `PFSpace.page` between its last row (and the close button)
+    /// and the sheet's bottom edge, the same as to its sides — so fitted sheets reach into the bottom safe area.
+    private var extendsIntoBottomSafeArea: Bool {
+        sideRegion > 0 && footer == nil && isFitted && keyboardHeight == 0
+    }
 
     private var closeButton: some View {
         PFIconButton("xmark", label: presenter.closeLabel, style: .glass) { dismiss() }
     }
 
     /// A fitted sheet grows by the keyboard height while typing, so its content stays above the keyboard.
-    private var fitHeight: CGFloat { contentHeight + footerHeight + keyboardHeight }
+    private var fitHeight: CGFloat {
+        contentHeight + footerHeight + keyboardHeight - (extendsIntoBottomSafeArea ? bottomSafe + 8 : 0)
+    }
 
     private func detent(_ value: PFDetent) -> PresentationDetent {
         switch value {

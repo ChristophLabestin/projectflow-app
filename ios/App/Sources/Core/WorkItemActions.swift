@@ -227,7 +227,7 @@ struct OptionSheet: View {
                 }
             }
             .background(PFColor.sheetGroup, in: .rect(cornerRadius: PFRadius.card, style: .continuous))
-            .padding(.horizontal, PFSpace.m)
+            .padding(.horizontal, PFSpace.page)
         }
         .padding(.bottom, PFSpace.l)
     }

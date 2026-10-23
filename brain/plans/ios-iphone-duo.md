@@ -125,8 +125,10 @@ Sheets weiterhin `PFPresenter`.
   wird gemerkt), weniger Leerraum unter „Save“ (`pfSheetBottomInset`).
 - Root-Tabs außen: Header-Aktionen (`PFRootActions`: Heute + und Avatar, Arbeit +, Projekte +, Eingang
   Alle gelesen/Leeren) wandern über die Tab-Leiste; nur der sichtbare Tab liefert sie (`pfHidesSideControls`).
-- Sheets mit Footer außen: Footer reicht in die untere Safe Area, damit Aktion und X je 20 pt zu linkem,
-  rechtem und unterem Sheet-Rand haben; Höhenwechsel (Tagesleiste ↔ Monat) animiert, Footer bleibt stehen.
+- Alle Sheets außen: 20 pt (`PFSpace.page`) zwischen Inhalt/Aktion bzw. X und linkem, rechtem und unterem
+  Sheet-Rand. Footer-Sheets: Footer reicht in die untere Safe Area; `.fit`-Sheets ohne Footer: Inhalt reicht
+  hinein (Detent um die Safe Area verkleinert), X auf der letzten Zeile; andere: X unten rechts. Option- und
+  Aktionssheets haben dafür überall 20 statt 16 pt Seitenrand; Höhenwechsel (Tagesleiste ↔ Monat) animiert, Footer bleibt stehen.
 - Nebenbei behoben: „Als erledigt markieren“ im Aufgaben-Detail lag auf allen iPhones hinter der Fokusleiste
   (gepushte Seiten sehen das `safeAreaInset` der Shell nicht) → `pfBottomChromeHeight`.
 - Nebenbei behoben: `PFBoard` rechnete Drag-Treffer mit 85 % statt der gezeichneten 82 % Bahnbreite.
