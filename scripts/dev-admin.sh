@@ -19,8 +19,8 @@ AUTH_PORT="${AUTH_PORT:-9841}"
 FIRESTORE_PORT="${FIRESTORE_PORT:-8841}"
 STORAGE_PORT="${STORAGE_PORT:-9842}"
 FUNCTIONS_PORT="${FUNCTIONS_PORT:-5841}"
-CONFIG="$ROOT/.firebase.admin-e2e.json"
-LOG="$ROOT/.firebase-admin-e2e.log"
+CONFIG="${ADMIN_EMULATOR_CONFIG:-$ROOT/.firebase.admin-e2e.json}"
+LOG="${ADMIN_EMULATOR_LOG:-$ROOT/.firebase-admin-e2e.log}"
 
 node -e '
 const [src, dest, auth, firestore, storage, functions] = process.argv.slice(1);
