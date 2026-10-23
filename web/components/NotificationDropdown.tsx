@@ -49,8 +49,10 @@ export const NotificationDropdown = ({ position = 'topbar' }: NotificationDropdo
         const width = Math.min(PANEL_WIDTH, window.innerWidth - EDGE * 2);
         const maxHeight = Math.min(560, window.innerHeight - EDGE * 2);
         if (position === 'sidebar' && rect.right + GAP + width <= window.innerWidth - EDGE) {
-            // Beside the sidebar, bottom-aligned with the bell.
-            setPanelStyle({ left: rect.right + GAP, bottom: Math.max(EDGE, window.innerHeight - rect.bottom), width, maxHeight });
+            // Beside the sidebar, flush with the bottom edge of the sidebar card.
+            const anchorBottom = (trigger.closest('.snav-card') ?? trigger).getBoundingClientRect().bottom;
+            const bottom = Math.max(EDGE, window.innerHeight - anchorBottom);
+            setPanelStyle({ left: rect.right + GAP, bottom, width, maxHeight: Math.min(maxHeight, window.innerHeight - bottom - EDGE) });
             return;
         }
         const left = Math.min(Math.max(EDGE, rect.right - width), window.innerWidth - width - EDGE);
