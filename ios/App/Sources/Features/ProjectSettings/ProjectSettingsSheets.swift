@@ -409,7 +409,7 @@ struct LabelsSheet: View {
     }
 
     @ViewBuilder
-    private func row(_ label: ProjectLabel) -> some View {
+    private func row(_ label: ProjectSettingsLabel) -> some View {
         let isEditing = editing == label.id
         HStack(spacing: PFSpace.s) {
             PFDot(PFColor.hex(label.color) ?? PFColor.textSubtle, size: 12)
@@ -467,14 +467,14 @@ struct LabelsSheet: View {
         }
     }
 
-    private func saveEdit(_ label: ProjectLabel) {
+    private func saveEdit(_ label: ProjectSettingsLabel) {
         guard let actions = model.projectActions else { return }
         let name = editName, projectId = store.projectId
         editing = nil
         Task { _ = await model.perform { try await actions.updateLabel(projectId, id: label.id, name: name, color: label.color ?? ProjectSettingsCatalog.labelColors[3]) } }
     }
 
-    private func delete(_ label: ProjectLabel) {
+    private func delete(_ label: ProjectSettingsLabel) {
         guard let actions = model.projectActions else { return }
         let projectId = store.projectId
         Task { _ = await model.perform { try await actions.deleteLabel(projectId, id: label.id) } }

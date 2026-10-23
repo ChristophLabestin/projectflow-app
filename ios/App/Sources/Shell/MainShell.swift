@@ -124,6 +124,7 @@ struct RouteDestination: View {
         case .securitySettings: SecuritySettingsScreen()
         case .appearanceSettings: AppearanceSettingsScreen()
         case .team: TeamScreen()
+        case .accountPage(let page): AccountPageView(page: page)
         case .designCatalog: DesignCatalogScreen()
         }
     }

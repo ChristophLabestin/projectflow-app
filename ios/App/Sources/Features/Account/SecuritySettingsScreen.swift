@@ -22,21 +22,42 @@ struct SecuritySettingsScreen: View {
 
     private var providers: [String] { model.auth.providerIDs }
     private var hasApple: Bool { providers.contains("apple.com") }
+
+    @State private var factorRefresh = 0
+
     private var hasTOTP: Bool {
-        (Auth.auth().currentUser?.multiFactor.enrolledFactors ?? []).contains { $0.factorID == TOTPMultiFactorID }
+        _ = factorRefresh
+        return AccountSecurity.hasTOTP
     }
 
     var body: some View {
         SettingsScaffold(title: L10n.t("account.security")) {
+            PFSectionHeader(L10n.t("security.password.section"))
+            SettingsCard(footer: model.auth.providerIDs.contains("password") ? nil : L10n.t("security.password.setFooter")) {
+                SettingsRow(systemImage: "lock.rotation", title: model.auth.providerIDs.contains("password") ? L10n.t("security.password.change") : L10n.t("security.password.set")) {
+                    presenter.present(detents: [.large]) { PasswordSheet { refreshProviders() } }
+                }
+            }
+
             PFSectionHeader(L10n.t("security.methods"))
-            SettingsCard(footer: hasApple ? nil : L10n.t("security.apple.footer")) {
+            SettingsCard(footer: L10n.t("security.methods.footer")) {
                 ForEach(providers, id: \.self) { provider in
                     SettingsRow(systemImage: Self.icon(provider), title: Self.name(provider), subtitle: provider == "password" ? model.auth.email : nil, showsChevron: false) {
-                        SettingsStateLabel(text: L10n.t("security.linked"), tone: .good)
+                        if providers.count > 1 {
+                            PFButton(L10n.t("security.unlink"), kind: .ghost, size: .small) { confirmUnlink(provider) }
+                        } else {
+                            SettingsStateLabel(text: L10n.t("security.linked"), tone: .good)
+                        }
                     }
                 }
                 if !hasApple {
                     SettingsRow(systemImage: "apple.logo", title: L10n.t("security.apple.link"), showsChevron: true, action: linkApple)
+                }
+                if !providers.contains("github.com") {
+                    SettingsRow(systemImage: "chevron.left.forwardslash.chevron.right", title: L10n.t("security.github.link"), action: linkGitHub)
+                }
+                if !providers.contains("google.com") {
+                    SettingsRow(systemImage: "globe", title: L10n.t("security.google.link"), subtitle: L10n.t("security.web.subtitle")) { openWeb() }
                 }
             }
 
@@ -47,7 +68,7 @@ struct SecuritySettingsScreen: View {
                 }
                 ForEach(passkeys) { passkey in
                     SettingsRow(systemImage: "person.badge.key", title: passkey.label, subtitle: passkey.createdAt.map { L10n.t("settings.security.passkeys.addedDate", ["date": $0.formatted(.dateTime.day().month(.abbreviated).year().locale(L10n.locale))]) },
-                                showsChevron: false) {
+                                showsChevron: false, action: { rename(passkey) }) {
                         PFIconButton("trash", label: L10n.t("settings.security.passkeys.delete.title"), style: .raised, size: 34) { confirmDelete(passkey) }
                     }
                 }
@@ -59,12 +80,93 @@ struct SecuritySettingsScreen: View {
                 SettingsRow(systemImage: "lock.shield", title: L10n.t("settings.security.twoFactor.title"), showsChevron: false) {
                     SettingsStateLabel(text: hasTOTP ? L10n.t("settings.security.twoFactor.enabled") : L10n.t("security.twoFactor.off"), tone: hasTOTP ? .good : .warning)
                 }
-                SettingsRow(systemImage: "safari", title: L10n.t("security.twoFactor.web")) {
-                    if let url = URL(string: "https://\(SharedConstants.webHost)/profile") { openURL(url) }
+                if hasTOTP {
+                    SettingsRow(systemImage: "lock.open", title: L10n.t("security.totp.disable"), role: .danger, showsChevron: false) { confirmDisable() }
+                } else {
+                    SettingsRow(systemImage: "qrcode", title: L10n.t("security.totp.setup")) {
+                        presenter.present(detents: [.large]) { TotpEnrollSheet { factorRefresh += 1 } }
+                    }
                 }
             }
         }
         .task { await loadPasskeys() }
+    }
+
+    private func openWeb() {
+        if let url = URL(string: "https://\(SharedConstants.webHost)/profile") { openURL(url) }
+    }
+
+    private func refreshProviders() {
+        model.auth.refreshProviders()
+        factorRefresh += 1
+    }
+
+    private func linkGitHub() {
+        Task {
+            do {
+                try await AccountSecurity.linkGitHub()
+                model.auth.refreshProviders()
+                PFHaptics.success()
+                model.toasts.show(PFToast(L10n.t("security.github.linked"), style: .success))
+            } catch {
+                if (error as NSError).code != ASWebAuthenticationSessionError.canceledLogin.rawValue {
+                    model.toasts.show(PFToast(AuthErrorText.message(for: error), style: .error))
+                }
+            }
+        }
+    }
+
+    private func confirmUnlink(_ provider: String) {
+        presenter.present(detents: [.fit]) {
+            ConfirmSheet(title: L10n.t("security.unlink.title", ["provider": Self.name(provider)]), message: L10n.t("security.unlink.message", ["provider": Self.name(provider)]),
+                         confirmTitle: L10n.t("security.unlink")) {
+                Task {
+                    do {
+                        try await AccountSecurity.unlink(provider: provider)
+                        refreshProviders()
+                        PFHaptics.success()
+                    } catch {
+                        if Reauth.isRecentLoginError(error) {
+                            try? await Task.sleep(for: .milliseconds(380))
+                            presenter.present(detents: [.fit]) { ReauthSheet { confirmUnlink(provider) } }
+                        } else {
+                            model.toasts.show(PFToast(AuthErrorText.message(for: error), style: .error))
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private func confirmDisable() {
+        presenter.present(detents: [.fit]) {
+            ConfirmSheet(title: L10n.t("security.totp.disable"), message: L10n.t("security.totp.disableMessage"), confirmTitle: L10n.t("security.totp.disableConfirm")) {
+                Task {
+                    do {
+                        try await AccountSecurity.disableTOTP()
+                        factorRefresh += 1
+                        PFHaptics.success()
+                    } catch {
+                        if Reauth.isRecentLoginError(error) {
+                            try? await Task.sleep(for: .milliseconds(380))
+                            presenter.present(detents: [.fit]) { ReauthSheet { confirmDisable() } }
+                        } else {
+                            model.toasts.show(PFToast(AuthErrorText.message(for: error), style: .error))
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private func rename(_ passkey: PasskeyEntry) {
+        presenter.present(detents: [.fit]) {
+            PasskeyRenameSheet(passkeyId: passkey.id, label: passkey.label) { newLabel in
+                if let index = passkeys.firstIndex(where: { $0.id == passkey.id }) {
+                    passkeys[index] = PasskeyEntry(id: passkey.id, label: newLabel, createdAt: passkey.createdAt)
+                }
+            }
+        }
     }
 
     // MARK: Providers
@@ -85,6 +187,8 @@ struct SecuritySettingsScreen: View {
         case "password": "envelope"
         case "apple.com": "apple.logo"
         case "phone": "phone"
+        case "github.com": "chevron.left.forwardslash.chevron.right"
+        case "google.com": "globe"
         default: "person.crop.circle"
         }
     }

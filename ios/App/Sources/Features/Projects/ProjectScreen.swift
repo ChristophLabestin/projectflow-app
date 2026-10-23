@@ -78,7 +78,7 @@ struct ProjectScreen: View {
     // MARK: Chrome
 
     private var topBar: some View {
-        PFTopBar(title: isPinned && tab != .board ? project?.title : nil, backLabel: L10n.t("common.back"), onBack: { model.router.pop() }) {
+        PFTopBar(title: isPinned || tab == .board ? project?.title : nil, backLabel: L10n.t("common.back"), onBack: { model.router.pop() }) {
             if project != nil {
                 PFIconButton("gearshape", label: L10n.t("projects.settings.open"), style: .glass) {
                     model.router.push(.projectSettings(tenantId: tenantId, projectId: projectId))
@@ -155,20 +155,10 @@ struct ProjectScreen: View {
         .animation(PFMotion.respecting(PFMotion.fast), value: isPinned)
     }
 
-    /// Board uses the whole screen: compact header, tab bar, lanes that scroll on their own.
+    /// Board uses the whole screen: the title lives in the top bar, then the tab bar and the lanes.
     private func boardLayout(_ project: Project) -> some View {
         VStack(alignment: .leading, spacing: 0) {
-            Color.clear.frame(height: topInset + 56)
-            HStack(alignment: .center, spacing: PFSpace.s) {
-                PFProjectGlyph(title: project.title, imageURL: project.squareIcon, size: 40)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(project.title).pfText(.title).foregroundStyle(PFColor.textMain).lineLimit(1).minimumScaleFactor(0.7)
-                    pulse.summary.text.pfText(.meta).lineLimit(1)
-                }
-                Spacer(minLength: 0)
-            }
-            .padding(.horizontal, PFSpace.page)
-            .padding(.bottom, PFSpace.xs)
+            Color.clear.frame(height: barHeight)
             tabBar(underline)
             tabContent(project)
                 .padding(.top, PFSpace.s)
@@ -211,7 +201,7 @@ struct ProjectScreen: View {
         case .board:
             ProjectBoardView(tasks: store.tasks, canMove: access.canEditTasks, emptyText: L10n.t("projects.board.empty"))
         case .plan:
-            ProjectPlanView(store: store, canEdit: access.canManage).padding(.top, PFSpace.m)
+            ProjectPlanView(store: store, canEdit: access.canManage, onOpenBoard: { selectTab(.board) }).padding(.top, PFSpace.m)
         case .team:
             ProjectTeamView(store: store, canEdit: access.canManage).padding(.top, PFSpace.m)
         }

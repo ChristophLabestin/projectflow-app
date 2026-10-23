@@ -360,6 +360,10 @@ public struct Initiative: Identifiable, Hashable, Sendable, Codable {
     public var assigneeIds: [String]
     public var color: String?
     public var successMetric: String?
+    public var startDate: FlexDate?
+    /// Public feedback form (`feedbackForm.enabled` + `feedbackForm.token`), set up on the web.
+    public var feedbackEnabled: Bool
+    public var feedbackToken: String?
 
     public init(id: String, projectId: String, tenantId: String, fields f: Fields) {
         self.id = id
@@ -374,6 +378,9 @@ public struct Initiative: Identifiable, Hashable, Sendable, Codable {
         assigneeIds = f.strings("assigneeIds")
         color = f.string("color")
         successMetric = f.string("successMetric")
+        startDate = f.date("startDate")
+        feedbackEnabled = f.map("feedbackForm")?.bool("enabled") ?? false
+        feedbackToken = f.map("feedbackForm")?.string("token")
     }
 
     public var tone: StatusTone { statusRaw == "Planning" ? .planning : TaskStatus(raw: statusRaw).tone }
@@ -387,9 +394,13 @@ public struct Milestone: Identifiable, Hashable, Sendable, Codable {
     public var statusRaw: String
     public var linkedTaskIds: [String]
     public var riskRating: String?
+    public var summary: String?
+    public var linkedInitiativeId: String?
 
     public init(id: String, fields f: Fields) {
         self.id = id
+        summary = f.string("description")
+        linkedInitiativeId = f.string("linkedInitiativeId")
         title = f.string("title") ?? "—"
         dueDate = f.date("dueDate")
         statusRaw = f.string("status") ?? "Pending"
@@ -405,9 +416,11 @@ public struct Sprint: Identifiable, Hashable, Sendable, Codable {
     public var startDate: FlexDate?
     public var endDate: FlexDate?
     public var statusRaw: String
+    public var createdAt: FlexDate?
 
     public init(id: String, fields f: Fields) {
         self.id = id
+        createdAt = f.date("createdAt")
         name = f.string("name") ?? "Sprint"
         goal = f.string("goal")
         startDate = f.date("startDate")

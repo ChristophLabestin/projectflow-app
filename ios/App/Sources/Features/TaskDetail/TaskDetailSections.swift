@@ -285,6 +285,16 @@ extension TaskDetailScreen {
             HStack {
                 Text(L10n.t("taskDetail.description.label")).pfText(.section).foregroundStyle(PFColor.textMain)
                 Spacer()
+                if canEdit, !isEditingDescription, document.isEditable {
+                    Button { draftDescription(task) } label: {
+                        Image(systemName: "sparkles").font(.system(size: 14, weight: .semibold)).foregroundStyle(PFColor.textMuted)
+                            .symbolEffect(.pulse, isActive: isDraftingDescription)
+                            .frame(width: 34, height: 34).background(PFColor.raised, in: .circle)
+                    }
+                    .buttonStyle(.pfPressable)
+                    .disabled(isDraftingDescription)
+                    .accessibilityLabel(L10n.t("taskDetail.ai.draft"))
+                }
                 if canEdit, !isEditingDescription, !document.isEmpty, document.isEditable {
                     Button {
                         startEditingDescription(task, document)
@@ -419,8 +429,6 @@ struct DescriptionToolbar: View {
 extension TaskDetailScreen {
     func detailsCard(_ task: WorkTask) -> some View {
         let people = task.effectiveAssignees.compactMap { model.workspace?.person($0) }
-        let milestone = project.milestones.first { $0.linkedTaskIds.contains(task.id) }
-        let sprint = task.sprintId.flatMap { id in project.sprints.first { $0.id == id } }
         return VStack(alignment: .leading, spacing: PFSpace.s) {
             Text(L10n.t("taskDetail.details.title")).pfText(.section).foregroundStyle(PFColor.textMain).padding(.horizontal, PFSpace.xxs)
             PFCardList {
@@ -437,26 +445,7 @@ extension TaskDetailScreen {
                 dateRow(L10n.t("taskDetail.timeline.startDate"), task.startDate, .start, task)
                 dateRow(L10n.t("taskDetail.timeline.dueDate"), task.dueDate, .due, task)
                 dateRow(L10n.t("taskDetail.timeline.scheduled"), task.scheduledDate, .scheduled, task)
-                if !task.categories.isEmpty {
-                    PFDetailRow(L10n.t("taskDetail.labels.title")) {
-                        FlowLayout(spacing: 6) {
-                            ForEach(task.categories, id: \.self) { PFPill($0, tone: .neutral, compact: true) }
-                        }
-                    }
-                }
-                if let milestone {
-                    PFDetailRow(L10n.t("taskDetail.details.milestone")) {
-                        Text(milestone.title).lineLimit(1)
-                    }
-                }
-                if let sprint {
-                    PFDetailRow(L10n.t("taskDetail.details.sprint")) { Text(sprint.name).lineLimit(1) }
-                }
-                if let initiative {
-                    PFDetailRow(L10n.t("taskDetail.details.initiative"), showsChevron: true, action: {
-                        model.router.push(.initiative(tenantId: ref.tenantId, projectId: ref.projectId, initiativeId: initiative.id))
-                    }) { Text(initiative.title).lineLimit(1) }
-                }
+                planningRows(task)
                 if let created = task.createdAt?.instant {
                     PFDetailRow(L10n.t("taskDetail.details.created")) {
                         let by = model.workspace?.person(task.createdBy ?? task.ownerId)?.displayName

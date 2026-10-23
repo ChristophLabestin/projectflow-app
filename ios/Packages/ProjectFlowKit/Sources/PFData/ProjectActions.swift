@@ -126,7 +126,7 @@ public struct ProjectSettingsData: Sendable {
     }
 }
 
-public struct ProjectLabel: Identifiable, Hashable, Sendable {
+public struct ProjectSettingsLabel: Identifiable, Hashable, Sendable {
     public let id: String
     public var name: String
     public var color: String?
@@ -149,7 +149,7 @@ public final class ProjectSettingsStore {
     public let projectId: String
     public let uid: String
     public private(set) var data: ProjectSettingsData?
-    public private(set) var labels: [ProjectLabel] = []
+    public private(set) var labels: [ProjectSettingsLabel] = []
     public private(set) var navPrefs = ProjectNavPrefs()
     private let listeners = ListenerBag()
 
@@ -172,7 +172,7 @@ public final class ProjectSettingsStore {
             MainActor.assumeIsolated {
                 guard let self, let snapshot else { return }
                 self.labels = snapshot.documents.compactMap { doc in
-                    doc.fields.map { ProjectLabel(id: doc.documentID, name: $0.string("name") ?? "", color: $0.string("color")) }
+                    doc.fields.map { ProjectSettingsLabel(id: doc.documentID, name: $0.string("name") ?? "", color: $0.string("color")) }
                 }
                 .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
             }

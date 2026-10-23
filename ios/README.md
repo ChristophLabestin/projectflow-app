@@ -24,7 +24,7 @@ xcodebuild -project ios/ProjectFlow.xcodeproj -scheme ProjectFlow \
 | `Packages/ProjectFlowKit/Sources/PFModel` | Entities mirroring `web/types.ts`, tolerant `FlexDate`, `Fields` reader |
 | `.../PFDomain` | Pure logic ported from `web/utils` (day plan, due buckets, attention, search grammar, capture parser); XCTests run `shared/fixtures` |
 | `.../PFDesign` | Tokens (`PFColor`, `pfText`, `PFSpace`, `PFRadius`, `PFMotion`, `PFHaptics`) and the custom component library |
-| `.../PFData` | Firebase bootstrap, `AuthService`, `SessionStore`, `WorkspaceStore`, `ProjectStore`, `TaskDetailStore`, `WorkActions`/`FocusActions`/`ProfileActions` |
+| `.../PFData` | Firebase bootstrap, `AuthService`, `SessionStore`, `WorkspaceStore`, `ProjectStore`, `TaskDetailStore`, `WorkActions`/`FocusActions`/`ProfileActions`/`PlanningActions` (labels, milestones, sprints, initiatives, personal-task move, scheduling) |
 | `.../PFSnapshot` | App-Group snapshot for widgets / Live Activity / share extension |
 | `App/Sources/Core` | `AppModel`, `AppRouter`/`AppRoute`, `L10n`, `Formatting`, shared `WorkItem` + `WorkItemRow` + `WorkItemActions` (swipe/peek grammar) |
 | `App/Sources/Shell` | Root switch, main shell (navigators, dock, focus bar, focus room) |
