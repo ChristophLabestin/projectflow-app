@@ -23,6 +23,10 @@ final class AppModel {
     private(set) var workspaceGeneration = 0
 
     init() {
+        #if DEBUG
+        // QA: `-pfSignedOut` starts on the sign-in screen (screenshots of the auth flow).
+        if ProcessInfo.processInfo.arguments.contains("-pfSignedOut") { auth.signOut() }
+        #endif
         auth.start()
         network.start()
     }

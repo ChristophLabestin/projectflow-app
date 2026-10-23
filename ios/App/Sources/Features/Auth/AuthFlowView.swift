@@ -14,6 +14,8 @@ struct AuthFlowView: View {
     @State private var error: String?
     @State private var apple = AppleSignInCoordinator()
     @State private var passkey = PasskeyCoordinator()
+    @State private var markCenter: CGPoint?
+    @State private var appeared = false
 
     enum Mode: Hashable { case signIn, register }
 
@@ -30,101 +32,134 @@ struct AuthFlowView: View {
         .animation(PFMotion.respecting(PFMotion.snappy), value: model.auth.phase)
     }
 
+    /// Hero (rippling canvas, floating mark, rotating headline) above a raised card with the form.
     private var form: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: PFSpace.l) {
-                Image("Glyph")
-                    .resizable()
-                    .renderingMode(.template)
-                    .foregroundStyle(PFColor.textMain)
-                    .frame(width: 44, height: 44)
-                    .padding(.top, PFSpace.xxl)
-                    .accessibilityHidden(true)
-
-                VStack(alignment: .leading, spacing: PFSpace.xs) {
-                    PFEyebrow("ProjectFlow")
-                    Text(mode == .signIn ? L10n.t("auth.headline.signIn") : L10n.t("auth.headline.register"))
-                        .pfText(.display)
-                        .foregroundStyle(PFColor.textMain)
-                        .fixedSize(horizontal: false, vertical: true)
-                    Text(L10n.t("auth.lead")).pfText(.body).foregroundStyle(PFColor.textMuted)
+        ZStack {
+            PFFlowField(center: markCenter, period: 4.2)
+            ScrollView {
+                VStack(spacing: PFSpace.xl) {
+                    hero
+                    card
+                        .offset(y: appeared ? 0 : 40)
+                        .opacity(appeared ? 1 : 0)
+                    alternatives
+                        .opacity(appeared ? 1 : 0)
                 }
-
-                PFSegmented([(Mode.signIn, L10n.t("auth.signIn")), (Mode.register, L10n.t("auth.register"))], selection: $mode)
-
-                VStack(spacing: PFSpace.s) {
-                    if mode == .register {
-                        PFTextField(L10n.t("auth.name"), text: $name, systemImage: "person")
-                            .textContentType(.name)
-                            .transition(.move(edge: .top).combined(with: .opacity))
-                    }
-                    PFTextField(L10n.t("auth.email"), text: $email, systemImage: "envelope", submitLabel: .next)
-                        .textContentType(.username)
-                        .keyboardType(.emailAddress)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
-                    PFSecureField(L10n.t("auth.password"), text: $password, isNew: mode == .register) { submit() }
-                }
-
-                if let error {
-                    Text(error).pfText(.metaStrong).foregroundStyle(PFColor.dangerText)
-                        .transition(.opacity)
-                        .accessibilityAddTraits(.updatesFrequently)
-                }
-
-                PFButton(mode == .signIn ? L10n.t("auth.signIn") : L10n.t("auth.createAccount"), size: .large, fullWidth: true) { submit() }
-                    .disabled(isBusy || email.isEmpty || password.count < 6 || (mode == .register && name.isEmpty))
-                    .overlay(alignment: .trailing) { if isBusy { ProgressSpinner().padding(.trailing, 20) } }
-
-                if mode == .signIn {
-                    Button(L10n.t("auth.forgot")) { forgotPassword() }
-                        .buttonStyle(.plain)
-                        .pfText(.metaStrong)
-                        .foregroundStyle(PFColor.textMuted)
-                        .frame(maxWidth: .infinity)
-                }
-
-                HStack(spacing: PFSpace.s) {
-                    Rectangle().fill(PFColor.hairline).frame(height: 1)
-                    Text(L10n.t("auth.or")).pfText(.eyebrow).foregroundStyle(PFColor.textMuted)
-                    Rectangle().fill(PFColor.hairline).frame(height: 1)
-                }
-
-                VStack(spacing: PFSpace.s) {
-                    PFButton(L10n.t("auth.apple"), systemImage: "apple.logo", kind: .primary, size: .large, fullWidth: true) {
-                        Task { await run { try await apple.signIn(auth: model.auth) } }
-                    }
-                    PFButton(L10n.t("auth.passkey"), systemImage: "person.badge.key", kind: .secondary, size: .large, fullWidth: true) {
-                        Task { await run { try await passkey.signIn(auth: model.auth, email: email.isEmpty ? nil : email) } }
-                    }
-                    #if EMULATOR
-                    PFButton(L10n.t("auth.demo"), systemImage: "wand.and.stars", kind: .ghost, size: .medium, fullWidth: true) {
-                        email = "demo@projectflow.test"
-                        password = "projectflow-demo"
-                        mode = .signIn
-                        submit()
-                    }
-                    #endif
-                }
-
-                Text(L10n.t("auth.legal")).pfText(.caption).foregroundStyle(PFColor.textMuted)
-                    .frame(maxWidth: .infinity)
-                    .multilineTextAlignment(.center)
-                    .padding(.bottom, PFSpace.xxl)
+                .padding(.horizontal, PFSpace.page)
+                .frame(maxWidth: 520)
+                .frame(maxWidth: .infinity)
+                .animation(PFMotion.respecting(PFMotion.snappy), value: mode)
+                .animation(PFMotion.respecting(PFMotion.normal), value: error)
             }
-            .padding(.horizontal, PFSpace.page)
-            .frame(maxWidth: 520)
-            .frame(maxWidth: .infinity)
-            .animation(PFMotion.respecting(PFMotion.snappy), value: mode)
-            .animation(PFMotion.respecting(PFMotion.normal), value: error)
+            .scrollDismissesKeyboard(.interactively)
+            .scrollIndicators(.hidden)
         }
-        .scrollDismissesKeyboard(.interactively)
+        .onAppear { withAnimation(.spring(response: 0.8, dampingFraction: 0.8).delay(0.15)) { appeared = true } }
         .task {
             if ProcessInfo.processInfo.arguments.contains("-pfAutoLogin") {
                 email = "demo@projectflow.test"
                 password = "projectflow-demo"
                 submit()
             }
+        }
+    }
+
+    private var hero: some View {
+        VStack(spacing: PFSpace.m) {
+            PFBrandMark(glyph: Image("Glyph"), size: 36)
+                .onGeometryChange(for: CGPoint.self) { proxy in
+                    let frame = proxy.frame(in: .global)
+                    return CGPoint(x: frame.midX, y: frame.midY)
+                } action: { markCenter = $0 }
+            VStack(spacing: 2) {
+                Text(L10n.t("auth.hero.lead"))
+                    .pfText(.display)
+                    .foregroundStyle(PFColor.textMain)
+                PFRotatingWord(L10n.t("auth.hero.words").components(separatedBy: "|"), style: .display)
+            }
+            .multilineTextAlignment(.center)
+            .accessibilityElement(children: .combine)
+            .accessibilityAddTraits(.isHeader)
+            Text(mode == .signIn ? L10n.t("auth.headline.signIn") : L10n.t("auth.headline.register"))
+                .pfText(.body)
+                .foregroundStyle(PFColor.textMuted)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+                .contentTransition(.opacity)
+        }
+        .padding(.top, PFSpace.xl)
+    }
+
+    private var card: some View {
+        VStack(alignment: .leading, spacing: PFSpace.m) {
+            PFSegmented([(Mode.signIn, L10n.t("auth.signIn")), (Mode.register, L10n.t("auth.register"))], selection: $mode)
+
+            VStack(spacing: PFSpace.s) {
+                if mode == .register {
+                    PFTextField(L10n.t("auth.name"), text: $name, systemImage: "person")
+                        .textContentType(.name)
+                        .transition(.move(edge: .top).combined(with: .opacity))
+                }
+                PFTextField(L10n.t("auth.email"), text: $email, systemImage: "envelope", submitLabel: .next)
+                    .textContentType(.username)
+                    .keyboardType(.emailAddress)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                PFSecureField(L10n.t("auth.password"), text: $password, isNew: mode == .register) { submit() }
+            }
+
+            if let error {
+                Label(error, systemImage: "exclamationmark.circle")
+                    .pfText(.metaStrong)
+                    .foregroundStyle(PFColor.dangerText)
+                    .transition(.opacity)
+                    .accessibilityAddTraits(.updatesFrequently)
+            }
+
+            PFButton(mode == .signIn ? L10n.t("auth.signIn") : L10n.t("auth.createAccount"),
+                     systemImage: "arrow.right", size: .large, fullWidth: true) { submit() }
+                .disabled(isBusy || email.isEmpty || password.count < 6 || (mode == .register && name.isEmpty))
+                .overlay(alignment: .trailing) { if isBusy { ProgressSpinner().padding(.trailing, 20) } }
+
+            if mode == .signIn {
+                Button(L10n.t("auth.forgot")) { forgotPassword() }
+                    .buttonStyle(.plain)
+                    .pfText(.metaStrong)
+                    .foregroundStyle(PFColor.textMuted)
+                    .frame(maxWidth: .infinity)
+            }
+        }
+        .padding(PFSpace.l)
+        .pfCard(radius: PFRadius.surface + 4)
+    }
+
+    private var alternatives: some View {
+        VStack(spacing: PFSpace.m) {
+            HStack(spacing: PFSpace.s) {
+                Rectangle().fill(PFColor.hairline).frame(height: 1)
+                Text(L10n.t("auth.or")).pfText(.eyebrow).foregroundStyle(PFColor.textMuted)
+                Rectangle().fill(PFColor.hairline).frame(height: 1)
+            }
+            VStack(spacing: PFSpace.s) {
+                PFButton(L10n.t("auth.apple"), systemImage: "apple.logo", kind: .secondary, size: .large, fullWidth: true) {
+                    Task { await run { try await apple.signIn(auth: model.auth) } }
+                }
+                PFButton(L10n.t("auth.passkey"), systemImage: "person.badge.key", kind: .secondary, size: .large, fullWidth: true) {
+                    Task { await run { try await passkey.signIn(auth: model.auth, email: email.isEmpty ? nil : email) } }
+                }
+            }
+            #if EMULATOR
+            PFButton(L10n.t("auth.demo"), systemImage: "wand.and.stars", kind: .ghost, size: .medium, fullWidth: true) {
+                email = "demo@projectflow.test"
+                password = "projectflow-demo"
+                mode = .signIn
+                submit()
+            }
+            #endif
+            Text(L10n.t("auth.legal")).pfText(.caption).foregroundStyle(PFColor.textMuted)
+                .frame(maxWidth: .infinity)
+                .multilineTextAlignment(.center)
+                .padding(.bottom, PFSpace.xxl)
         }
     }
 

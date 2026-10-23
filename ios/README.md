@@ -14,7 +14,8 @@ xcodebuild -project ios/ProjectFlow.xcodeproj -scheme ProjectFlow \
 - Scheme `ProjectFlow` runs the **Emulator** configuration: Firebase project `demo-projectflow` on
   `127.0.0.1` (auth 9631, firestore 8631, functions 5631). Start the emulators + seed with
   `PORT=3030 bash scripts/dev-e2e.sh`. Login: `demo@projectflow.test` / `projectflow-demo`
-  (button "Demo-Login" on the sign-in screen, or launch argument `-pfAutoLogin`).
+  (button "Demo-Login" on the sign-in screen, or launch argument `-pfAutoLogin`). QA: `-pfSignedOut` starts on the
+  sign-in screen, `-pfHoldLaunch` keeps the cold-start scene on screen.
 - `Debug`/`Release` use `App/Resources/Firebase/GoogleService-Info.plist` (project `projectflow-labestin`).
 
 ## Layout

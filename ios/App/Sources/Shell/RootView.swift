@@ -6,24 +6,39 @@ import PFDesign
 /// Top-level switch: launch → sign-in → workspace bootstrap → main shell.
 struct RootView: View {
     @Environment(AppModel.self) private var model
+    /// The cold-start brand moment plays at least once in full, even when the session is ready sooner.
+    @State private var introPlayed = false
+
+    private var isPreparing: Bool {
+        guard case .signedIn = model.auth.phase else { return false }
+        if case .failed? = model.session?.state { return false }
+        return !(model.session?.state == .ready && model.workspace != nil)
+    }
+
+    private var showsLaunch: Bool {
+        !introPlayed || model.auth.phase == .launching || isPreparing
+    }
 
     var body: some View {
         ZStack {
-            switch model.auth.phase {
-            case .launching:
-                LaunchView()
-            case .signedOut, .needsSecondFactor:
-                AuthFlowView()
+            if showsLaunch {
+                LaunchView(showsProgress: introPlayed || isPreparing)
                     .transition(.opacity)
-            case .signedIn:
-                if let session = model.session, session.state == .ready, model.workspace != nil {
-                    // Strings re-render through the observable LanguageStore; no rebuild, so navigation is kept.
-                    MainShell()
-                        .transition(.opacity.combined(with: .scale(scale: 0.98)))
-                } else if case .failed(let message)? = model.session?.state {
-                    SessionErrorView(message: message)
-                } else {
-                    LaunchView(showsProgress: true)
+            } else {
+                switch model.auth.phase {
+                case .launching:
+                    EmptyView()
+                case .signedOut, .needsSecondFactor:
+                    AuthFlowView()
+                        .transition(.opacity)
+                case .signedIn:
+                    if case .failed(let message)? = model.session?.state {
+                        SessionErrorView(message: message)
+                    } else {
+                        // Strings re-render through the observable LanguageStore; no rebuild, so navigation is kept.
+                        MainShell()
+                            .transition(.opacity.combined(with: .scale(scale: 1.02)))
+                    }
                 }
             }
             // Just above the dock on the tab roots, near the home indicator on pushed screens.
@@ -33,6 +48,15 @@ struct RootView: View {
         .environment(model.presenter)
         .environment(model.swipes)
         .animation(PFMotion.respecting(PFMotion.normal), value: model.auth.phase)
+        .animation(.easeInOut(duration: 0.5), value: showsLaunch)
+        .task {
+            #if DEBUG
+            // QA: `-pfHoldLaunch` keeps the launch scene on screen (screenshots).
+            if ProcessInfo.processInfo.arguments.contains("-pfHoldLaunch") { return }
+            #endif
+            try? await Task.sleep(for: .seconds(UIAccessibility.isReduceMotionEnabled ? 0.4 : 1.5))
+            introPlayed = true
+        }
         .task(id: model.auth.phase) { await model.syncSession() }
         .task(id: model.session?.activeWorkspaceId) { model.bindWorkspace() }
         .onChange(of: model.profile?.language) { _, language in
@@ -46,26 +70,40 @@ struct RootView: View {
     }
 }
 
+/// Cold start: the dotted canvas ripples out from the brand mark in the status colours, the wordmark
+/// rises in letter by letter, and a gliding track shows that the workspace is being prepared.
 struct LaunchView: View {
     var showsProgress = false
-    @State private var pulse = false
+    @State private var markCenter: CGPoint?
+    @State private var appeared = false
 
     var body: some View {
         ZStack {
-            PFCanvas(dotted: true)
-            VStack(spacing: PFSpace.l) {
-                Image("Glyph")
-                    .resizable()
-                    .renderingMode(.template)
+            PFFlowField(center: markCenter)
+            VStack(spacing: PFSpace.xl) {
+                PFBrandMark(glyph: Image("Glyph"), size: 46)
+                    .scaleEffect(appeared ? 1 : 0.6)
+                    .opacity(appeared ? 1 : 0)
+                    .onGeometryChange(for: CGPoint.self) { proxy in
+                        let frame = proxy.frame(in: .global)
+                        return CGPoint(x: frame.midX, y: frame.midY)
+                    } action: { markCenter = $0 }
+                PFStaggeredText("ProjectFlow", style: .displayLarge, delay: 0.25)
                     .foregroundStyle(PFColor.textMain)
-                    .frame(width: 56, height: 56)
-                    .scaleEffect(pulse ? 1.04 : 0.98)
-                if showsProgress {
-                    PFEyebrow(L10n.t("shell.preparing")).transition(.opacity)
+            }
+            .offset(y: -40)
+            if showsProgress {
+                VStack(spacing: PFSpace.s) {
+                    PFLoadingTrack()
+                    PFEyebrow(L10n.t("shell.preparing"))
                 }
+                .frame(maxHeight: .infinity, alignment: .bottom)
+                .padding(.bottom, 72)
+                .opacity(appeared ? 1 : 0)
+                .transition(.opacity)
             }
         }
-        .onAppear { withAnimation(PFMotion.pulse) { pulse = true } }
+        .onAppear { withAnimation(.spring(response: 0.7, dampingFraction: 0.72)) { appeared = true } }
         .accessibilityElement(children: .combine)
         .accessibilityLabel("ProjectFlow")
     }
