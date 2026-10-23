@@ -7,10 +7,12 @@ import PFModel
 enum L10n {
     enum Language: String, Sendable { case de, en }
 
-    nonisolated(unsafe) static var language: Language = {
-        let preferred = Locale.preferredLanguages.first ?? "de"
-        return preferred.hasPrefix("de") ? .de : .en
-    }()
+    /// Observable, so every view that looked up a string re-renders on a language change — no shell
+    /// rebuild, the navigation state stays exactly where it is.
+    static var language: Language {
+        get { LanguageStore.shared.language }
+        set { LanguageStore.shared.language = newValue }
+    }
 
     nonisolated(unsafe) private static var tables: [Language: [String: String]] = [.de: [:], .en: [:]]
     nonisolated(unsafe) private static var registered = false
@@ -41,6 +43,7 @@ enum L10n {
     /// Looks up `key`, replacing `{name}` placeholders with `values`. Falls back to English, then the key.
     static func t(_ key: String, _ values: [String: CustomStringConvertible] = [:]) -> String {
         ensureRegistered()
+        let language = self.language // registers an observation dependency in the calling view
         var text = tables[language]?[key] ?? tables[.en]?[key] ?? key
         for (name, value) in values {
             text = text.replacingOccurrences(of: "{\(name)}", with: value.description)
@@ -54,6 +57,12 @@ enum L10n {
         all["count"] = count
         return t(count == 1 ? "\(key).one" : "\(key).other", all)
     }
+}
+
+@Observable
+nonisolated final class LanguageStore: @unchecked Sendable {
+    static let shared = LanguageStore()
+    var language: L10n.Language = (Locale.preferredLanguages.first ?? "de").hasPrefix("de") ? .de : .en
 }
 
 /// Central list of string tables. Each feature adds one line here and keeps its table in its own file.

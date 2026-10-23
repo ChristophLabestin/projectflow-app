@@ -17,9 +17,8 @@ struct RootView: View {
                     .transition(.opacity)
             case .signedIn:
                 if let session = model.session, session.state == .ready, model.workspace != nil {
-                    // The id rebuilds the shell when the profile language changes (strings are looked up at render time).
+                    // Strings re-render through the observable LanguageStore; no rebuild, so navigation is kept.
                     MainShell()
-                        .id(model.profile?.language ?? "")
                         .transition(.opacity.combined(with: .scale(scale: 0.98)))
                 } else if case .failed(let message)? = model.session?.state {
                     SessionErrorView(message: message)
