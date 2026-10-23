@@ -3,7 +3,7 @@ import PFData
 import PFDesign
 import PFModel
 
-/// Full-screen first-sign-in onboarding: name → about you → team (+ workspace for owners) → how you got here → notifications.
+/// Full-screen first-sign-in onboarding: name (+ optional photo) → about you → team (+ workspace for owners) → how you got here → notifications.
 /// Shown while `users/{uid}/private/onboarding.welcomePending` is true (web shows the same flow);
 /// finishing it on any platform clears the flag everywhere.
 struct WelcomeOnboardingView: View {
@@ -15,6 +15,8 @@ struct WelcomeOnboardingView: View {
     @State private var step: Step = .name
     @State private var markCenter: CGPoint?
     @State private var name = ""
+    @State private var photoURL = ""
+    @State private var isUploadingPhoto = false
     @State private var workspaceName = ""
     @State private var role: String?
     @State private var useCases: Set<String> = []
@@ -68,6 +70,7 @@ struct WelcomeOnboardingView: View {
             loaded = true
             name = model.auth.displayName ?? ""
             workspaceName = model.session?.activeWorkspace?.name ?? L10n.t("onboarding.defaultWorkspace")
+            if let uid = model.uid { photoURL = await ProfileDraft(uid: uid).photoURL }
         }
     }
 
@@ -162,6 +165,36 @@ struct WelcomeOnboardingView: View {
                 if canContinue { primaryAction() }
             }
             .textContentType(.name)
+            photoRow
+        }
+    }
+
+    /// Optional profile photo; uploaded and saved right away (same path as the profile editor).
+    private var photoRow: some View {
+        HStack(spacing: PFSpace.m) {
+            Button { changePhoto() } label: {
+                PFAvatar(name: name, seed: model.uid, imageURL: photoURL.isEmpty ? nil : photoURL, size: 64)
+                    .overlay { if isUploadingPhoto { ProgressView() } }
+                    .overlay(alignment: .bottomTrailing) {
+                        Image(systemName: "camera.fill")
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundStyle(PFColor.onPrimary)
+                            .frame(width: 24, height: 24)
+                            .background(PFColor.textMain, in: .circle)
+                            .overlay(Circle().stroke(PFColor.canvas, lineWidth: 2))
+                            .offset(x: 2, y: 2)
+                    }
+            }
+            .buttonStyle(.pfPressable)
+            .disabled(isUploadingPhoto || isBusy)
+            .accessibilityLabel(L10n.t(photoURL.isEmpty ? "welcome.photo.add" : "profile.photo.change"))
+            VStack(alignment: .leading, spacing: PFSpace.xs) {
+                PFButton(L10n.t(photoURL.isEmpty ? "welcome.photo.add" : "profile.photo.change"), systemImage: "camera",
+                         kind: .secondary, size: .small) { changePhoto() }
+                    .disabled(isUploadingPhoto || isBusy)
+                Text(L10n.t("welcome.photo.hint")).pfText(.meta).foregroundStyle(PFColor.textMuted)
+            }
+            .accessibilityElement(children: .contain)
         }
     }
 
@@ -256,7 +289,7 @@ struct WelcomeOnboardingView: View {
 
     private var canContinue: Bool {
         switch step {
-        case .name: !name.trimmingCharacters(in: .whitespaces).isEmpty
+        case .name: !name.trimmingCharacters(in: .whitespaces).isEmpty && !isUploadingPhoto
         case .team: !isOwner || !workspaceName.trimmingCharacters(in: .whitespaces).isEmpty
         case .about, .how, .notifications: true
         }
@@ -300,6 +333,21 @@ struct WelcomeOnboardingView: View {
                 draft.displayName = trimmed
                 try await model.profileActions?.saveProfile(draft, tenantIds: model.session?.workspaces.map(\.id) ?? [])
                 go(back: false)
+            } catch {
+                self.error = L10n.t("welcome.error")
+            }
+        }
+    }
+
+    private func changePhoto() {
+        isUploadingPhoto = true
+        Task {
+            defer { isUploadingPhoto = false }
+            guard let file = await MediaUpload.pickAndUpload(model: model, purpose: .profilePhoto) else { return }
+            do {
+                try await model.profileActions?.setPhoto(url: file.url, tenantIds: model.session?.workspaces.map(\.id) ?? [])
+                photoURL = file.url
+                PFHaptics.success()
             } catch {
                 self.error = L10n.t("welcome.error")
             }
