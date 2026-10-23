@@ -20,8 +20,8 @@ struct ProjectScreen: View {
     @State private var grouping: TaskGrouping
     @State private var newTaskTitle = ""
     @State private var topInset: CGFloat = 0
-    @State private var tabBarY: CGFloat = 10_000
-    @State private var tabBarY0: CGFloat?
+    @State private var scrolledY: CGFloat = 0
+    @State private var headerHeight: CGFloat = 400
     @Namespace private var underline
 
     init(tenantId: String, projectId: String) {
@@ -37,7 +37,8 @@ struct ProjectScreen: View {
     private var health: HealthSnapshot? { model.workspace?.healthSnapshots[projectId] }
     private var pulse: ProjectPulse { ProjectPulse(tasks: store.tasks, milestones: store.milestones) }
     private var barHeight: CGFloat { topInset + 54 }
-    private var isPinned: Bool { tabBarY < barHeight }
+    /// The tab bar is pinned once the header has scrolled away (native pinned section header).
+    private var isPinned: Bool { scrolledY > headerHeight - 2 }
 
     private var tabOptions: [CockpitTabBar<ProjectTab>.Option] {
         [
@@ -62,7 +63,7 @@ struct ProjectScreen: View {
             } else {
                 loading
             }
-            topBar
+            if project == nil || tab == .board { topBar }
         }
         .onGeometryChange(for: CGFloat.self) { $0.safeAreaInsets.top } action: { topInset = $0 }
         .task { store.start() }
@@ -105,54 +106,53 @@ struct ProjectScreen: View {
 
     // MARK: Layouts
 
+    /// The top bar is a safe-area inset, so the native pinned section header (the tab bar) docks right
+    /// under it while the header scrolls away; switching tabs while pinned keeps the bar in place.
     private func scrollLayout(_ project: Project) -> some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 0) {
-                header(project)
-                    .padding(.bottom, PFSpace.l)
-                tabBar(underline)
-                    .opacity(isPinned ? 0 : 1)
-                    .onGeometryChange(for: CGFloat.self) { $0.frame(in: .named("cockpit")).minY } action: {
-                        tabBarY = $0
-                        if tabBarY0 == nil, $0 < 9_000 { tabBarY0 = $0 }
+        ScrollViewReader { reader in
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: 0, pinnedViews: [.sectionHeaders]) {
+                    header(project)
+                        .padding(.bottom, PFSpace.l)
+                        .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { headerHeight = $0 }
+                    Section {
+                        tabContent(project)
+                            .padding(.bottom, 120)
+                            .id(tab)
+                    } header: {
+                        tabBar(underline)
+                            .background(PFColor.canvas)
+                            .id("cockpit-tabs")
                     }
-                tabContent(project)
-                    .padding(.bottom, 120)
-                    .id(tab)
-                    .transition(.opacity)
+                }
+            }
+            .onScrollGeometryChange(for: CGFloat.self) { $0.contentOffset.y + $0.contentInsets.top } action: { _, value in
+                scrolledY = value
+            }
+            .scrollIndicators(.hidden)
+            .scrollDismissesKeyboard(.interactively)
+            .safeAreaInset(edge: .top, spacing: 0) {
+                topBar
+                    .padding(.bottom, 6)
+                    .background(alignment: .top) { topFade }
+            }
+            .onChange(of: tab) { _, _ in
+                if isPinned {
+                    var transaction = Transaction()
+                    transaction.disablesAnimations = true
+                    withTransaction(transaction) { reader.scrollTo("cockpit-tabs", anchor: .top) }
+                }
             }
         }
-        .coordinateSpace(name: "cockpit")
-        .scrollIndicators(.hidden)
-        .scrollDismissesKeyboard(.interactively)
-        .ignoresSafeArea(.container, edges: [.top, .bottom])
-        .overlay(alignment: .top) { topFade }
-        .overlay(alignment: .top) { pinnedBar }
-        .animation(PFMotion.respecting(PFMotion.fast), value: tab)
     }
 
-    /// Soft canvas fade under the top bar as soon as the header starts to scroll away.
+    /// Canvas band behind the top bar once anything has scrolled under it.
     private var topFade: some View {
-        LinearGradient(colors: [PFColor.canvas, PFColor.canvas.opacity(0.94), PFColor.canvas.opacity(0)], startPoint: .top, endPoint: .bottom)
-            .frame(height: barHeight + 18)
+        PFColor.canvas
             .ignoresSafeArea(.container, edges: .top)
-            .opacity(tabBarY0.map { tabBarY < $0 - 6 } ?? false ? 1 : 0)
+            .opacity(scrolledY > 4 ? 1 : 0)
+            .animation(PFMotion.respecting(PFMotion.fast), value: scrolledY > 4)
             .allowsHitTesting(false)
-            .animation(PFMotion.respecting(PFMotion.fast), value: tabBarY < (tabBarY0 ?? 0) - 6)
-    }
-
-    /// Canvas band + tab bar that takes over once the in-flow tab bar scrolled under the top bar.
-    private var pinnedBar: some View {
-        VStack(spacing: 0) {
-            Color.clear.frame(height: barHeight)
-            CockpitTabBar(tabOptions, selection: $tab, namespace: underline)
-                .background(PFColor.canvas)
-        }
-        .background(PFColor.canvas.opacity(0.96))
-        .ignoresSafeArea(.container, edges: .top)
-        .opacity(isPinned ? 1 : 0)
-        .allowsHitTesting(isPinned)
-        .animation(PFMotion.respecting(PFMotion.fast), value: isPinned)
     }
 
     /// Board uses the whole screen: the title lives in the top bar, then the tab bar and the lanes.
@@ -175,7 +175,8 @@ struct ProjectScreen: View {
             coverURL: project.coverImage,
             eyebrow: eyebrow(project),
             situation: ProjectSituation.text(pulse: p, status: project.status),
-            topInset: topInset
+            // The top bar is a safe-area inset above the scroll content; only keep a small gap.
+            topInset: -48
         )
     }
 
