@@ -121,6 +121,7 @@ export const DesktopBridge = () => {
     const { isModalOpen, toggleModal, pinnedItems, focusItem, focusState, snoozeFocusItem, startFocusItem, completeFocusItem } = usePinnedTasks();
     const { showSuccess, showError, showInfo } = useToast();
     const [settingsOpen, setSettingsOpen] = useState(false);
+    const [unreadCount, setUnreadCount] = useState(0);
 
     const handlers = {
         navigate, openTaskCreateModal, openProjectCreateModal, openHelpCenter, isModalOpen, toggleModal,
@@ -236,11 +237,13 @@ export const DesktopBridge = () => {
             focus: focusItem ? {
                 id: focusItem.id,
                 title: focusItem.title,
-                status: isSnoozed ? 'snoozed' : focusState?.status === 'blocked' ? 'blocked' : 'active'
+                status: isSnoozed ? 'snoozed' : focusState?.status === 'blocked' ? 'blocked' : 'active',
+                startedAt: focusState?.startedAt ?? null
             } : null,
-            pinned: pinnedItems.map((item) => ({ id: item.id, title: item.title, path: pinnedItemPath(item) }))
+            pinned: pinnedItems.map((item) => ({ id: item.id, title: item.title, path: pinnedItemPath(item) })),
+            unread: unreadCount
         });
-    }, [bridge, focusItem, focusState, pinnedItems]);
+    }, [bridge, focusItem, focusState, pinnedItems, unreadCount]);
 
     // Badge + native notifications for the active workspace.
     useEffect(() => {
@@ -252,6 +255,7 @@ export const DesktopBridge = () => {
         const notified = readNotifiedIds();
         const unsubscribe = subscribeToNotifications(user.uid, (notifications) => {
             const unread = notifications.filter((notification) => !notification.read);
+            setUnreadCount(unread.length);
             if (hasDesktopCapability('badge')) {
                 bridge.setBadge(unread.length, bridge.platform === 'win32' && unread.length > 0 ? drawBadgeOverlay(unread.length) : null);
             }

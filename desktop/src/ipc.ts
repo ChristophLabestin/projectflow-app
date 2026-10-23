@@ -1,10 +1,12 @@
 import { BrowserWindow, app, ipcMain, nativeImage } from 'electron';
 import { sanitizeAppPath } from './config';
-import { IPC, type DesktopNotificationPayload, type OpenWindowRequest, type QuickAccessAction, type TitleBarTheme, type WindowAction } from './contract';
+import { IPC, type AppAction, type DesktopNotificationPayload, type OpenWindowRequest, type QuickAccessAction, type TitleBarTheme, type WindowAction } from './contract';
 import { showAppNotification } from './features/notifications';
 import { getPreferences, setPreferences } from './features/preferences';
 import { refreshTouchBar } from './features/focus';
 import { hideCapture, openDayWindow, showCapture } from './windows/auxWindows';
+import { hideTrayPanel } from './windows/trayPanel';
+import { upcomingEvents } from './features/calendar';
 import { setLanguage } from './labels';
 import { addRecent, installMenus } from './menu';
 import { isTrustedSender } from './security';
@@ -105,7 +107,10 @@ export const registerIpc = () => {
 
     on(IPC.openInMain, (_event, path: unknown) => {
         const safe = sanitizeAppPath(path);
-        if (safe) openPathInMain(safe);
+        if (safe) {
+            hideTrayPanel();
+            openPathInMain(safe);
+        }
     });
 
     on(IPC.rendererReady, (event) => {
@@ -130,6 +135,20 @@ export const registerIpc = () => {
         }
     });
 
+    handle(IPC.upcomingEvents, () => upcomingEvents());
+
+    on(IPC.appAction, (_event, action: AppAction) => {
+        hideTrayPanel();
+        switch (action) {
+            case 'show-main': showMainWindow(); break;
+            case 'quick-access': toggleQuickAccess(); break;
+            case 'capture': showCapture(); break;
+            case 'settings': showMainWindow(); sendCommand({ command: 'open-settings' }); break;
+            case 'day-close': openDayWindow('close'); break;
+            case 'quit': app.quit(); break;
+        }
+    });
+
     handle(IPC.getPreferences, () => getPreferences());
     handle(IPC.setPreferences, (_event, patch: unknown) => setPreferences(patch));
 
@@ -147,7 +166,9 @@ export const registerIpc = () => {
     on(IPC.closeSelf, (event) => {
         const win = senderWindow(event);
         if (!win || win === getMainWindow()) return;
-        if (win.webContents.getURL().includes('/desktop/capture')) hideCapture();
+        const url = win.webContents.getURL();
+        if (url.includes('/desktop/capture')) hideCapture();
+        else if (url.includes('/desktop/tray')) hideTrayPanel();
         else win.close();
     });
 

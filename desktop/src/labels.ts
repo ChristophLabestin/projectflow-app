@@ -81,7 +81,10 @@ const EN = {
     meetingCapture: 'Capture',
     dayCloseTitle: 'Time to close the day?',
     dayCloseBody: 'Review what is still open and set up tomorrow.',
-    dayCloseAction: 'Close day'
+    dayCloseAction: 'Close day',
+    minutesShort: 'min',
+    hoursShort: 'h',
+    unreadCount: '{count} unread'
 };
 
 export type NativeLabels = typeof EN;
@@ -162,7 +165,10 @@ const DE: NativeLabels = {
     meetingCapture: 'Erfassen',
     dayCloseTitle: 'Feierabend?',
     dayCloseBody: 'Schau, was noch offen ist, und plane morgen.',
-    dayCloseAction: 'Tag abschließen'
+    dayCloseAction: 'Tag abschließen',
+    minutesShort: 'Min.',
+    hoursShort: 'Std.',
+    unreadCount: '{count} ungelesen'
 };
 
 let current: NativeLabels | null = null;

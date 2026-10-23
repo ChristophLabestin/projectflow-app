@@ -27,6 +27,7 @@ import { DesktopTitleBar } from './components/desktop/DesktopTitleBar';
 import { QuickAccessWindow } from './screens/QuickAccessWindow';
 import { QuickCaptureWindow } from './screens/QuickCaptureWindow';
 import { DesktopDayWindow } from './screens/DesktopDayWindow';
+import { DesktopTrayPanel } from './screens/DesktopTrayPanel';
 import { DESKTOP_QUICK_ACCESS_PATH, desktopWindowKind, isDesktop } from './services/desktop';
 import { ErrorPage } from './screens/ErrorPage';
 import { HelpCenterDrawer } from './components/help/HelpCenterDrawer';
@@ -146,7 +147,7 @@ const RootLayout = () => {
     // Desktop utility windows (Quick Access pop-out, Quick Capture, day window): only their own content,
     // none of the global overlays (no second Quick Access modal, help, banners, bridge).
     const windowKind = desktopWindowKind();
-    const isUtilityWindow = windowKind === 'quick-access' || windowKind === 'capture' || windowKind === 'day';
+    const isUtilityWindow = windowKind === 'quick-access' || windowKind === 'capture' || windowKind === 'day' || windowKind === 'tray';
     if (isUtilityWindow && location.pathname.startsWith('/desktop/')) {
         return (
             <>
@@ -219,6 +220,7 @@ export const AppRouter = () => {
                     <Route path={DESKTOP_QUICK_ACCESS_PATH} element={<QuickAccessWindow />} />
                     <Route path="/desktop/capture" element={<QuickCaptureWindow />} />
                     <Route path="/desktop/day" element={<DesktopDayWindow />} />
+                    <Route path="/desktop/tray" element={<DesktopTrayPanel />} />
                     {/* Public project intake was removed; old share links land on the app start. */}
                     <Route path="/feedback/project/:token" element={<Navigate to="/" replace />} />
 

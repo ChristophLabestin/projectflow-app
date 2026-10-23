@@ -6,6 +6,7 @@ import { initPreferences } from './features/preferences';
 import { stopCalendar } from './features/calendar';
 import { setAppWindowOpener } from './security';
 import { createCaptureWindow, showCapture } from './windows/auxWindows';
+import { createTrayPanel } from './windows/trayPanel';
 import path from 'node:path';
 import { APP_ID, IS_DEV, PROTOCOL, sanitizeAppPath } from './config';
 import { registerIpc } from './ipc';
@@ -94,7 +95,13 @@ if (!app.requestSingleInstanceLock()) {
 
         const coldStart = coldStartPath;
         coldStartPath = null;
-        createMainWindow(coldStart?.startsWith('/desktop/command/') ? '/' : coldStart ?? '/');
+        const mainWindow = createMainWindow(coldStart?.startsWith('/desktop/command/') ? '/' : coldStart ?? '/');
+        // Preload the hidden helper windows (instant Quick Capture / menu bar panel) only after the main window
+        // has loaded, so they do not compete with it for sign-in and workspace resolution at startup.
+        mainWindow.webContents.once('did-finish-load', () => setTimeout(() => {
+            createCaptureWindow();
+            createTrayPanel();
+        }, 3000));
         if (coldStart?.startsWith('/desktop/command/')) handleDeepLinkPath(coldStart);
 
         setQuickAccessStateListener(() => {
@@ -107,7 +114,6 @@ if (!app.requestSingleInstanceLock()) {
         initPreferences();
         setAppWindowOpener((target) => createSecondaryWindow(target));
         restoreSecondaryWindows();
-        createCaptureWindow();
         refreshTouchBar();
         startDayFlow();
         const argvFiles = filesFromArgv(process.argv);

@@ -1,4 +1,3 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Navigate, useSearchParams } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
 import { useAuth } from '../context/AuthContext';
@@ -6,21 +5,8 @@ import { useLanguage } from '../context/LanguageContext';
 import { usePinnedTasks, type PinnedItem } from '../context/PinnedTasksContext';
 import { useToast } from '../context/UIContext';
 import { getDesktopBridge, desktopWindowKind } from '../services/desktop';
-import { completeItem } from '../services/desktopActions';
-import { ensureActiveTenantId } from '../services/domain/authService';
-import { getPersonalTasks, updatePersonalTask } from '../services/domain/personalTasksService';
-import { getSharedProjects, getUserProjects } from '../services/domain/projectsService';
-import { updateTaskFields } from '../services/domain/tasksService';
-import { getWorkspaceTasks } from '../services/domain/workspaceTasksService';
-import { isProjectActiveForGlobalSignals } from '../services/healthService';
-import type { PersonalTask, Project, Task } from '../types';
-import { buildDayPlan, type DayPlanMessage, type DayPlanStop } from '../utils/dayPlan';
-import { addDaysFromToday, toIsoDate } from '../utils/taskDates';
-import { browserTimeZone } from '../utils/zonedDate';
-
-const fill = (template: string, params: Record<string, string | number>) => (
-    Object.entries(params).reduce((text, [key, value]) => text.split(`{${key}}`).join(String(value)), template)
-);
+import { type DayPlanStop } from '../utils/dayPlan';
+import { dayPlanStopPath, useDesktopDayPlan } from '../hooks/useDesktopDayPlan';
 
 /**
  * Desktop app only: day start (morning plan) and day close window, opened by the shell on the first unlock of
@@ -31,101 +17,24 @@ export const DesktopDayWindow = () => {
     const mode = searchParams.get('mode') === 'close' ? 'close' : 'start';
     const bridge = getDesktopBridge();
     const { user } = useAuth();
-    const { t, loadDashboardTranslations } = useLanguage();
+    const { t } = useLanguage();
     const { showError } = useToast();
-    const { focusItem, focusState, startFocusItem, clearFocusItem } = usePinnedTasks();
-    const [projects, setProjects] = useState<Project[]>([]);
-    const [tasks, setTasks] = useState<Task[]>([]);
-    const [otherTasks, setOtherTasks] = useState<Task[]>([]);
-    const [personalTasks, setPersonalTasks] = useState<PersonalTask[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [handled, setHandled] = useState<Record<string, 'done' | 'moved'>>({});
-    const timeZone = useMemo(() => browserTimeZone(), []);
-
-    const load = useCallback(async () => {
-        if (!user) return;
-        setLoading(true);
-        try {
-            const tenantId = await ensureActiveTenantId();
-            const [owned, shared] = await Promise.all([
-                getUserProjects(undefined, { hydrateAssets: false }).catch(() => []),
-                getSharedProjects({ hydrateAssets: false }).catch(() => [])
-            ]);
-            const unique = new Map<string, Project>();
-            [...owned, ...shared].forEach((project) => unique.set(`${project.tenantId || 'none'}:${project.id}`, project));
-            const allProjects = [...unique.values()];
-            const [workspaceTasks, personal] = await Promise.all([
-                getWorkspaceTasks(allProjects).catch(() => ({ mine: [] as Task[], others: [] as Task[] })),
-                getPersonalTasks(tenantId).catch(() => [] as PersonalTask[])
-            ]);
-            setProjects(allProjects);
-            setTasks(workspaceTasks.mine);
-            setOtherTasks(workspaceTasks.others);
-            setPersonalTasks(personal);
-        } finally {
-            setLoading(false);
-        }
-    }, [user]);
-
-    useEffect(() => { void load(); }, [load]);
-    // Plan reasons come from the Dashboard's lazy translation bundle.
-    useEffect(() => { void loadDashboardTranslations(); }, [loadDashboardTranslations]);
-
-    const plan = useMemo(() => buildDayPlan({
-        now: Date.now(),
-        timeZone,
-        projects: projects.filter(isProjectActiveForGlobalSignals).map((project) => ({ id: project.id, title: project.title, dueDate: project.dueDate })),
-        tasks,
-        personalTasks,
-        otherTasks,
-        focus: focusItem ? {
-            id: focusItem.id,
-            type: focusItem.type,
-            title: focusItem.title,
-            projectId: focusItem.projectId,
-            tenantId: focusItem.tenantId,
-            isCompleted: focusItem.isCompleted,
-            status: focusState?.status,
-            snoozedUntil: focusState?.snoozedUntil
-        } : null
-    }), [focusItem, focusState?.snoozedUntil, focusState?.status, otherTasks, personalTasks, projects, tasks, timeZone]);
+    const { focusItem, startFocusItem, clearFocusItem } = usePinnedTasks();
+    const { plan, loading, handled, complete, moveToTomorrow, message } = useDesktopDayPlan();
 
     if (!bridge || desktopWindowKind() !== 'day') return <Navigate to="/" replace />;
 
-    const message = (value: DayPlanMessage) => (value.key ? fill(t(value.key), value.params) : value.text || '');
     const close = () => bridge.closeSelf?.();
     const openInMain = (path: string) => bridge.openInMain(path);
-    const itemPath = (stop: DayPlanStop) => (stop.isPersonal
-        ? `/personal-tasks/${stop.taskId}`
-        : stop.projectId ? `/project/${stop.projectId}/${stop.itemType === 'initiative' ? 'initiatives' : 'tasks'}/${stop.taskId}` : '/tasks');
 
     const stops = plan.stops.filter((stop) => !stop.proposed || mode === 'start');
 
     const handleComplete = async (stop: DayPlanStop) => {
-        setHandled((current) => ({ ...current, [stop.id]: 'done' }));
-        try {
-            await completeItem({
-                id: stop.taskId,
-                type: stop.isPersonal ? 'personal-task' : stop.itemType === 'initiative' ? 'initiative' : 'task',
-                projectId: stop.projectId || undefined,
-                tenantId: stop.tenantId || undefined
-            });
-        } catch {
-            setHandled(({ [stop.id]: _removed, ...rest }) => rest);
-            showError(t('desktop.toast.actionFailed'));
-        }
+        if (!(await complete(stop))) showError(t('desktop.toast.actionFailed'));
     };
 
     const handleTomorrow = async (stop: DayPlanStop) => {
-        const dueDate = toIsoDate(addDaysFromToday(1));
-        setHandled((current) => ({ ...current, [stop.id]: 'moved' }));
-        try {
-            if (stop.isPersonal) await updatePersonalTask(stop.taskId, { dueDate }, stop.tenantId || undefined);
-            else await updateTaskFields(stop.taskId, { dueDate }, stop.projectId || undefined, stop.tenantId || undefined);
-        } catch {
-            setHandled(({ [stop.id]: _removed, ...rest }) => rest);
-            showError(t('desktop.toast.actionFailed'));
-        }
+        if (!(await moveToTomorrow(stop))) showError(t('desktop.toast.actionFailed'));
     };
 
     const handleFocus = (stop: DayPlanStop) => {
@@ -193,7 +102,7 @@ export const DesktopDayWindow = () => {
                         >
                             <span className="material-symbols-outlined">{handled[stop.id] === 'done' ? 'check_circle' : 'check'}</span>
                         </button>
-                        <button type="button" className="desktop-day-window__copy" onClick={() => openInMain(itemPath(stop))}>
+                        <button type="button" className="desktop-day-window__copy" onClick={() => openInMain(dayPlanStopPath(stop))}>
                             <span className="desktop-day-window__title">{stop.title}</span>
                             <span className="desktop-day-window__reason">
                                 {handled[stop.id] === 'moved' ? t('desktop.day.close.moved') : message(stop.reason)}

@@ -7,11 +7,12 @@ export const BRIDGE_VERSION = 1;
 /** Feature flags the web app checks before calling into the bridge (old shells meet new web code). */
 export const CAPABILITIES = [
     'titlebar', 'app-menu', 'popout', 'badge', 'tray', 'notifications', 'language',
-    'preferences', 'quick-capture', 'notification-actions', 'day-flow', 'file-drop', 'calendar', 'recents', 'windows'
+    'preferences', 'quick-capture', 'notification-actions', 'day-flow', 'file-drop', 'calendar', 'recents', 'windows',
+    'tray-panel'
 ] as const;
 export type DesktopCapability = typeof CAPABILITIES[number];
 
-export type WindowKind = 'main' | 'quick-access' | 'capture' | 'day' | 'secondary';
+export type WindowKind = 'main' | 'quick-access' | 'capture' | 'day' | 'secondary' | 'tray';
 
 /** Commands from menus, tray, dock, jump list and shortcuts; routed by the web app's DesktopBridge. */
 export type DesktopCommand =
@@ -101,7 +102,9 @@ export interface DesktopNotificationPayload {
 }
 
 export interface TraySnapshot {
-    focus: { id: string; title: string; status: 'active' | 'snoozed' | 'blocked' } | null;
+    focus: { id: string; title: string; status: 'active' | 'snoozed' | 'blocked'; startedAt?: string | null } | null;
+    /** Unread notifications (badge on the menu bar panel's inbox). */
+    unread?: number;
     pinned: { id: string; title: string; path: string | null }[];
 }
 
@@ -125,8 +128,20 @@ export const IPC = {
     openWindow: 'pf:open-window',
     closeSelf: 'pf:close-self',
     addRecent: 'pf:add-recent',
-    windowPayload: 'pf:window-payload'
+    windowPayload: 'pf:window-payload',
+    upcomingEvents: 'pf:upcoming-events',
+    appAction: 'pf:app-action'
 } as const;
+
+/** Shell actions offered by the menu bar panel. */
+export type AppAction = 'show-main' | 'quick-access' | 'capture' | 'settings' | 'day-close' | 'quit';
+
+export interface UpcomingEvent {
+    id: string;
+    title: string;
+    start: string;
+    end: string;
+}
 
 /** Windows the web app may ask the shell to open. */
 export type OpenWindowRequest =

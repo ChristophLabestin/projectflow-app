@@ -25,6 +25,7 @@ These routes must remain accessible without being logged in.
 - [x] `/desktop/quick-access` — Desktop app only (Electron shell, `desktop/`): content of the Quick Access pop-out window (`QuickAccessWindow` → `PinnedTasksModal variant="window"`). Rendered inside `RootLayout` without `AppLayout` and without global overlays; in a normal browser it redirects to `/`.
 - [x] `/desktop/capture` — Desktop only: Quick Capture panel (`QuickCaptureWindow`), opened by the global shortcut.
 - [x] `/desktop/day?mode=start|close` — Desktop only: day start / day close window (`DesktopDayWindow`, plan logic from `utils/dayPlan`).
+- [x] `/desktop/tray` — Desktop only: menu bar panel (`DesktopTrayPanel`): focus timer + controls, inline capture, Today / Pinned / Inbox, next meeting, quick actions.
 
 ---
 

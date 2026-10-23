@@ -5,10 +5,11 @@
  */
 
 export type DesktopPlatform = 'darwin' | 'win32' | 'linux';
-export type DesktopWindowKind = 'main' | 'quick-access' | 'capture' | 'day' | 'secondary';
+export type DesktopWindowKind = 'main' | 'quick-access' | 'capture' | 'day' | 'secondary' | 'tray';
 export type DesktopCapability =
     | 'titlebar' | 'app-menu' | 'popout' | 'badge' | 'tray' | 'notifications' | 'language'
-    | 'preferences' | 'quick-capture' | 'notification-actions' | 'day-flow' | 'file-drop' | 'calendar' | 'recents' | 'windows';
+    | 'preferences' | 'quick-capture' | 'notification-actions' | 'day-flow' | 'file-drop' | 'calendar' | 'recents' | 'windows'
+    | 'tray-panel';
 
 export type DesktopCommand =
     | 'new-task'
@@ -75,7 +76,8 @@ export interface DesktopQuickAccessState {
 }
 
 export interface DesktopTraySnapshot {
-    focus: { id: string; title: string; status: 'active' | 'snoozed' | 'blocked' } | null;
+    focus: { id: string; title: string; status: 'active' | 'snoozed' | 'blocked'; startedAt?: string | null } | null;
+    unread?: number;
     pinned: { id: string; title: string; path: string | null }[];
 }
 
@@ -111,6 +113,9 @@ export interface DesktopBridge {
     closeSelf?(): void;
     addRecent?(recent: { path: string; title: string }): void;
     onWindowPayload?(callback: (payload: Record<string, unknown>) => void): () => void;
+    // Since capability 'tray-panel':
+    getUpcomingEvents?(): Promise<{ id: string; title: string; start: string; end: string }[]>;
+    appAction?(action: 'show-main' | 'quick-access' | 'capture' | 'settings' | 'day-close' | 'quit'): void;
 }
 
 declare global {

@@ -94,6 +94,13 @@ const tick = () => {
     }
 };
 
+/** Meetings that have not ended yet (menu bar panel), at most `limit`. */
+export const upcomingEvents = (limit = 3) => {
+    if (!getSettings().calendarEnabled || status !== 'granted') return [];
+    const now = Date.now();
+    return events.filter((event) => Date.parse(event.end) > now).slice(0, limit);
+};
+
 export const stopCalendar = () => {
     if (pollTimer) clearInterval(pollTimer);
     if (tickTimer) clearInterval(tickTimer);

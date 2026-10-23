@@ -12,6 +12,8 @@ import {
     type DesktopPreferences,
     type DesktopPreferencesInfo,
     type OpenWindowRequest,
+    type AppAction,
+    type UpcomingEvent,
     type DesktopWindowState,
     type QuickAccessAction,
     type QuickAccessState,
@@ -81,6 +83,8 @@ if (location.origin === appOrigin) {
         openWindow: (request: OpenWindowRequest) => ipcRenderer.send(IPC.openWindow, request),
         closeSelf: () => ipcRenderer.send(IPC.closeSelf),
         addRecent: (recent: { path: string; title: string }) => ipcRenderer.send(IPC.addRecent, recent),
-        onWindowPayload: (callback: (payload: Record<string, unknown>) => void) => subscribe(IPC.windowPayload, callback)
+        onWindowPayload: (callback: (payload: Record<string, unknown>) => void) => subscribe(IPC.windowPayload, callback),
+        getUpcomingEvents: (): Promise<UpcomingEvent[]> => ipcRenderer.invoke(IPC.upcomingEvents),
+        appAction: (action: AppAction) => ipcRenderer.send(IPC.appAction, action)
     });
 }

@@ -384,3 +384,18 @@ Not possible / open:
   is verified up to the upload call only.
 - The calendar helper is built for the host architecture; a universal macOS build needs a `lipo`-merged helper.
 - Notification actions need the user to allow notifications for the (dev) bundle once.
+
+## 16. Menu bar panel (2026-10-23)
+
+The tray item became a full menu bar app: left click opens a popover panel (`desktop/src/windows/trayPanel.ts`,
+route `/desktop/tray`, `web/screens/DesktopTrayPanel.tsx`), right click keeps the compact native menu.
+- Panel: focus card with running timer (from `focusState.startedAt`), pause 30 min / resume / complete, or a
+  focus suggestion from today's plan; next meeting (calendar); inline capture (same parser as Quick Capture, the new
+  task is pinned); tabs Today (plan with complete / start focus), Pinned (open / start focus), Inbox (unread
+  notifications, mark read); footer: close day, settings, quit. Follows theme and language live.
+- Menu bar title shows focus title + running time (refreshed every 30 s); icon gets a dot while a focus is active
+  (`trayActiveTemplate.png`, Windows `trayActive.png`); tooltip includes the unread count.
+- Shared web logic: `hooks/useDesktopDayPlan.ts` (day window + panel), `createCapturedTask` in `services/desktopActions.ts`.
+- Helper windows (Quick Capture, panel) are created hidden only after the main window loaded — creating them at
+  startup raced the main window for sign-in / workspace resolution; they also retry a failed workspace load when shown.
+- Windows: the panel opens above the tray (taskbar at the bottom), clamped to the work area; not verified on hardware.

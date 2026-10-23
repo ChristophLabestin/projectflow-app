@@ -5,10 +5,12 @@
 import { addComment } from './dataService';
 import { uploadTenantFile } from './fileStorageService';
 import { updateInitiative } from './domain/initiativesService';
-import { togglePersonalTaskStatus } from './domain/personalTasksService';
-import { updateTaskFields } from './domain/tasksService';
+import { addPersonalTask, togglePersonalTaskStatus } from './domain/personalTasksService';
+import { addTask, updateTaskFields } from './domain/tasksService';
 import { getCachedTenantId } from './internal/workspaceDataCore';
-import type { FocusItemType } from '../types';
+import type { FocusItemType, Project } from '../types';
+import type { ParsedCapture } from '../utils/quickCapture';
+import { addDaysFromToday, toIsoDate } from '../utils/taskDates';
 
 export interface DesktopActionItem {
     id: string;
@@ -64,4 +66,22 @@ export const filesFromPayload = (value: unknown): File[] => {
         if (typeof file.name !== 'string' || !(file.bytes instanceof Uint8Array)) return [];
         return [new File([file.bytes as Uint8Array<ArrayBuffer>], file.name, { type: typeof file.type === 'string' ? file.type : '' })];
     });
+};
+
+/** Creates the task described by a parsed capture line: in `project` when given, else as personal task. */
+export const createCapturedTask = async (parsed: ParsedCapture, project: Project | null) => {
+    const dueDate = parsed.dueInDays === null ? undefined : toIsoDate(addDaysFromToday(parsed.dueInDays));
+    const priority = parsed.priority ?? 'Medium';
+    if (project) {
+        const id = await addTask(project.id, parsed.title, dueDate, undefined, priority, { source: 'desktop-capture' }, project.tenantId);
+        return {
+            path: `/project/${project.id}/tasks/${id}`,
+            pinned: { id, type: 'task' as const, title: parsed.title, projectId: project.id, tenantId: project.tenantId, priority }
+        };
+    }
+    const id = await addPersonalTask(parsed.title, dueDate, priority);
+    return {
+        path: `/personal-tasks/${id}`,
+        pinned: { id, type: 'personal-task' as const, title: parsed.title, projectId: '', priority }
+    };
 };

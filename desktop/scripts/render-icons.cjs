@@ -12,13 +12,23 @@ const glyphPath = glyph.match(/ d="([^"]+)"/)[1];
 
 const toPng = (dataUrl) => Buffer.from(dataUrl.split(',')[1], 'base64');
 
-const renderGlyph = (win, size, color) => win.webContents.executeJavaScript(`new Promise((resolve, reject) => {
+// `dot`: small status dot bottom-right (active focus) with a transparent ring around it.
+const renderGlyph = (win, size, color, dot = null) => win.webContents.executeJavaScript(`new Promise((resolve, reject) => {
     const svg = ${JSON.stringify(glyph)}.replace(/fill="#000000"/g, 'fill="${color}"');
     const img = new Image();
     img.onload = () => {
         const canvas = document.createElement('canvas');
         canvas.width = ${size}; canvas.height = ${size};
-        canvas.getContext('2d').drawImage(img, 0, 0, ${size}, ${size});
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, ${size}, ${size});
+        if (${JSON.stringify(dot)}) {
+            const r = ${size} * 0.2, cx = ${size} - r - ${size} * 0.02, cy = ${size} - r - ${size} * 0.02;
+            ctx.globalCompositeOperation = 'destination-out';
+            ctx.beginPath(); ctx.arc(cx, cy, r * 1.45, 0, Math.PI * 2); ctx.fill();
+            ctx.globalCompositeOperation = 'source-over';
+            ctx.fillStyle = ${JSON.stringify(dot)};
+            ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill();
+        }
         resolve(canvas.toDataURL('image/png'));
     };
     img.onerror = reject;
@@ -63,6 +73,9 @@ app.whenReady().then(async () => {
     fs.writeFileSync(path.join(assets, 'trayTemplate.png'), toPng(await renderGlyph(win, 16, '#000000')));
     fs.writeFileSync(path.join(assets, 'trayTemplate@2x.png'), toPng(await renderGlyph(win, 32, '#000000')));
     fs.writeFileSync(path.join(assets, 'tray.png'), toPng(await renderGlyph(win, 32, '#111318')));
+    fs.writeFileSync(path.join(assets, 'trayActiveTemplate.png'), toPng(await renderGlyph(win, 16, '#000000', '#000000')));
+    fs.writeFileSync(path.join(assets, 'trayActiveTemplate@2x.png'), toPng(await renderGlyph(win, 32, '#000000', '#000000')));
+    fs.writeFileSync(path.join(assets, 'trayActive.png'), toPng(await renderGlyph(win, 32, '#111318', '#16a34a')));
     console.log('icons written');
     app.quit();
 });

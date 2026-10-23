@@ -3,10 +3,10 @@ import { Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { usePinnedTasks } from '../context/PinnedTasksContext';
+import { useWorkspace } from '../context/WorkspaceContext';
 import { desktopWindowKind, getDesktopBridge } from '../services/desktop';
-import { addPersonalTask } from '../services/domain/personalTasksService';
+import { createCapturedTask } from '../services/desktopActions';
 import { getSharedProjects, getUserProjects } from '../services/domain/projectsService';
-import { addTask } from '../services/domain/tasksService';
 import { isProjectActiveForGlobalSignals } from '../services/healthService';
 import type { Project } from '../types';
 import { addDaysFromToday, toIsoDate } from '../utils/taskDates';
@@ -30,6 +30,7 @@ export const QuickCaptureWindow = () => {
     const { user } = useAuth();
     const { t } = useLanguage();
     const { pinItem } = usePinnedTasks();
+    const { status: workspaceStatus, refresh: refreshWorkspace } = useWorkspace();
     const inputRef = useRef<HTMLInputElement>(null);
     const [value, setValue] = useState('');
     const [clipboardText, setClipboardText] = useState('');
@@ -60,13 +61,14 @@ export const QuickCaptureWindow = () => {
             }
             setValue(typeof payload.text === 'string' ? payload.text : '');
             setClipboardText(typeof payload.clipboard === 'string' ? payload.clipboard : '');
+            if (workspaceStatus === 'error') void refreshWorkspace();
             setChosenProject(null);
             setPin(false);
             setState({ kind: 'idle' });
             void loadProjects();
             requestAnimationFrame(() => inputRef.current?.focus());
         });
-    }, [bridge, loadProjects]);
+    }, [bridge, loadProjects, workspaceStatus, refreshWorkspace]);
 
     useEffect(() => { void loadProjects(); }, [loadProjects]);
 
@@ -95,19 +97,10 @@ export const QuickCaptureWindow = () => {
     const submit = async (openAfter: boolean) => {
         if (!parsed.title || state.kind === 'saving') return;
         setState({ kind: 'saving' });
-        const dueDate = parsed.dueInDays === null ? undefined : toIsoDate(addDaysFromToday(parsed.dueInDays));
-        const priority = parsed.priority ?? 'Medium';
         try {
-            let path: string;
-            if (targetProject) {
-                const id = await addTask(targetProject.id, parsed.title, dueDate, undefined, priority, { source: 'desktop-capture' }, targetProject.tenantId);
-                path = `/project/${targetProject.id}/tasks/${id}`;
-                if (pin) pinItem({ id, type: 'task', title: parsed.title, projectId: targetProject.id, tenantId: targetProject.tenantId, priority });
-            } else {
-                const id = await addPersonalTask(parsed.title, dueDate, priority);
-                path = `/personal-tasks/${id}`;
-                if (pin) pinItem({ id, type: 'personal-task', title: parsed.title, projectId: '', priority });
-            }
+            const created = await createCapturedTask(parsed, targetProject);
+            const path = created.path;
+            if (pin) pinItem(created.pinned);
             setState({
                 kind: 'saved',
                 message: targetProject
