@@ -110,7 +110,6 @@ struct WorkWeekView<Header: View>: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text("\(DayString.shortDate(days[0])) – \(DayString.shortDate(days[6]))")
                     .pfText(.section).foregroundStyle(PFColor.textMain)
-                Text(L10n.t("work.week.hint")).pfText(.meta).foregroundStyle(PFColor.textMuted).fixedSize(horizontal: false, vertical: true)
             }
             Spacer(minLength: PFSpace.s)
             PFIconButton("chevron.left", label: L10n.t("work.week.previous"), style: .raised, size: 40) {

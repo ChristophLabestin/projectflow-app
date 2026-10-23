@@ -54,7 +54,7 @@ struct WorkScreen: View {
         }
         .overlay(alignment: .top) {
             // Compact bar only appears once the large title has scrolled away.
-            WorkTopBar(collapse: collapse)
+            WorkTopBar(collapse: collapse, filters: filters)
                 .background(alignment: .top) { topFade }
                 .opacity(Double(collapse))
                 .allowsHitTesting(collapse > 0.5)
@@ -163,7 +163,7 @@ struct WorkScreen: View {
 
 // MARK: - Header
 
-/// Large title, summary, mode switch and filter chips — shared by list and week.
+/// Large title with mode switch, filter and capture, then the summary — shared by list, week and month.
 struct WorkHeader: View {
     struct SummaryPart: Identifiable {
         let id: String
@@ -186,9 +186,13 @@ struct WorkHeader: View {
                     Text(L10n.t("work.title"))
                         .pfText(.displayLarge)
                         .foregroundStyle(PFColor.textMain)
+                        .lineLimit(1)
+                        .fixedSize()
                         .accessibilityAddTraits(.isHeader)
                     Spacer(minLength: 0)
+                    if showsFilters { WorkModeSwitch(mode: $nav.mode) }
                     PFRootActions {
+                        if showsFilters { WorkFilterButton(filters: filters) }
                         PFIconButton("plus", label: L10n.t("today.capture")) { CaptureLauncher.present(model: model) }
                     }
                 }
@@ -206,14 +210,6 @@ struct WorkHeader: View {
             }
             .padding(.horizontal, PFSpace.page)
             .padding(.top, PFSpace.s)
-            if showsFilters {
-                PFSegmented([(value: WorkNavigator.Mode.list, label: L10n.t("work.mode.list")),
-                             (value: WorkNavigator.Mode.week, label: L10n.t("work.mode.week")),
-                             (value: WorkNavigator.Mode.month, label: L10n.t("work.mode.month"))], selection: $nav.mode)
-                    .padding(.horizontal, PFSpace.page)
-                    .padding(.top, PFSpace.m)
-                chips.padding(.top, PFSpace.xs)
-            }
         }
     }
 
@@ -225,83 +221,12 @@ struct WorkHeader: View {
         }
     }
 
-    private var chips: some View {
-        PFChipRow {
-            PFChip(projectLabel, systemImage: "square.stack.3d.up", isSet: !filters.projectIds.isEmpty, showsChevron: true) { presentProjects() }
-            PFChip(priorityLabel, systemImage: "chart.bar", isSet: !filters.priorities.isEmpty, showsChevron: true) { presentPriorities() }
-            PFChip(L10n.t("work.filter.personal"), systemImage: "lock", isSet: filters.includePersonal) {
-                withAnimation(PFMotion.snappy) { filters.includePersonal.toggle() }
-            }
-            PFChip(L10n.t("work.filter.completed"), systemImage: "checkmark.circle", isSet: filters.showCompleted) {
-                withAnimation(PFMotion.snappy) { filters.showCompleted.toggle() }
-            }
-            PFChip(L10n.t("work.smart.chip"), systemImage: "wand.and.stars") { SmartSchedule.present(model: model) }
-            if filters.isActive {
-                PFChip(L10n.t("work.filter.reset"), systemImage: "xmark") { withAnimation(PFMotion.snappy) { filters.reset() } }
-            }
-        }
-    }
-
-    private var projectLabel: String {
-        switch filters.projectIds.count {
-        case 0: L10n.t("work.filter.project")
-        case 1: model.workspace?.project(filters.projectIds.first)?.title ?? L10n.t("work.filter.project")
-        default: L10n.t("work.filter.projects", ["count": filters.projectIds.count])
-        }
-    }
-
-    private var priorityLabel: String {
-        switch filters.priorities.count {
-        case 0: L10n.t("work.filter.priority")
-        case 1: filters.priorities.first?.label ?? L10n.t("work.filter.priority")
-        default: L10n.t("work.filter.priorities", ["count": filters.priorities.count])
-        }
-    }
-
-    private func presentProjects() {
-        let filters = filters
-        let projects = (model.workspace?.projects ?? []).filter { $0.status.lifecycle != .closed }
-        model.presenter.present(detents: [.fit]) {
-            WorkMultiSelectSheet(
-                title: L10n.t("work.filter.project"), emptyText: L10n.t("work.filter.noProjects"),
-                options: projects.map { project in
-                    WorkMultiSelectSheet.Option(id: project.id, label: project.title) {
-                        Text(project.monogram).pfText(.buttonSmall).foregroundStyle(PFColor.onPrimary)
-                            .frame(width: 26, height: 26)
-                            .background(PFColor.primary, in: .rect(cornerRadius: 8, style: .continuous))
-                    }
-                },
-                isSelected: { filters.projectIds.contains($0) },
-                toggle: { id in
-                    if filters.projectIds.contains(id) { filters.projectIds.remove(id) } else { filters.projectIds.insert(id) }
-                },
-                clear: { filters.projectIds = [] }
-            )
-        }
-    }
-
-    private func presentPriorities() {
-        let filters = filters
-        model.presenter.present(detents: [.fit]) {
-            WorkMultiSelectSheet(
-                title: L10n.t("common.priority"), emptyText: "",
-                options: [TaskPriority.urgent, .high, .medium, .low].map { priority in
-                    WorkMultiSelectSheet.Option(id: priority.rawValue, label: priority.label) { PFPrioritySignal(priority) }
-                },
-                isSelected: { id in TaskPriority(rawValue: id).map { filters.priorities.contains($0) } ?? false },
-                toggle: { id in
-                    guard let priority = TaskPriority(rawValue: id) else { return }
-                    if filters.priorities.contains(priority) { filters.priorities.remove(priority) } else { filters.priorities.insert(priority) }
-                },
-                clear: { filters.priorities = [] }
-            )
-        }
-    }
 }
 
 /// Compact chrome row: the title fades in once the large one has scrolled away; capture on the right.
 private struct WorkTopBar: View {
     let collapse: CGFloat
+    let filters: WorkFilters
     @Environment(AppModel.self) private var model
 
     var body: some View {
@@ -315,6 +240,7 @@ private struct WorkTopBar: View {
                 .opacity(Double(collapse))
             Spacer()
             PFRootActions {
+                WorkFilterButton(filters: filters)
                 PFIconButton("plus", label: L10n.t("today.capture")) { CaptureLauncher.present(model: model) }
             }
         }

@@ -124,6 +124,9 @@ Sheets weiterhin `PFPresenter`.
 - Willkommens-Onboarding außen: Weiter (rund, primär) und Zurück stehen wie auf Unterseiten unten rechts in der
   Seitenregion (`PFSideColumn`, jetzt public, da das Onboarding außerhalb eines `PFNavigator` liegt); Überspringen/„Später“
   sitzen (auf allen iPhones) als Pill oben rechts in der Zeile der Schrittanzeige; unten bleibt außen nur ein evtl. Fehler.
+- Root-Aktionen außen (Stapel in der Seitenleiste): Heute = Avatar oben, + darunter (iPhone: + links vom Avatar);
+  Arbeit = Filter über + (iPhone: Filter links vom +). Arbeit hat statt Segment-Schalter und Chip-Zeile einen
+  Icon-Schalter Liste/Woche/Monat in der Titelzeile und ein Filter-Sheet (`WorkFiltersSheet`).
 - Fälligkeits-Sheet: Umschalter oben rechts zwischen Tagesleiste und Monatsansicht (`PFDateStrip(showsMonth:)`,
   wird gemerkt), weniger Leerraum unter „Save“ (`pfSheetBottomInset`).
 - Root-Tabs außen: Header-Aktionen (`PFRootActions`: Heute + und Avatar, Arbeit +, Projekte +, Eingang

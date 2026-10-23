@@ -135,7 +135,6 @@ struct WorkMonthView<Header: View>: View {
         HStack(spacing: PFSpace.xs) {
             VStack(alignment: .leading, spacing: 2) {
                 Text(monthTitle).pfText(.section).foregroundStyle(PFColor.textMain)
-                Text(L10n.t("work.week.hint")).pfText(.meta).foregroundStyle(PFColor.textMuted).fixedSize(horizontal: false, vertical: true)
             }
             Spacer(minLength: PFSpace.s)
             if monthOffset != 0 {
