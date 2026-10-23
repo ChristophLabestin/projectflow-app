@@ -31,6 +31,7 @@ type DraftForm = {
     changeType: LegalChangeType;
     effectiveAt: string; // datetime-local value, '' = immediately
     notifyByEmail: boolean;
+    machineGraceDays: number;
     baseVersion: number | null;
 };
 
@@ -88,6 +89,7 @@ export const LegalAdmin: React.FC = () => {
                 changeType: nextDraft.changeType,
                 effectiveAt: toLocalInput(nextDraft.effectiveAtMs),
                 notifyByEmail: nextDraft.notifyByEmail,
+                machineGraceDays: nextDraft.machineGraceDays,
                 baseVersion: nextDraft.baseVersion,
             } : null);
         } catch (error) {
@@ -113,6 +115,7 @@ export const LegalAdmin: React.FC = () => {
             changeType: defaultChangeType(type),
             effectiveAt: '',
             notifyByEmail: false,
+            machineGraceDays: 14,
             baseVersion: current?.version ?? null,
         });
         setDirty(true);
@@ -140,6 +143,7 @@ export const LegalAdmin: React.FC = () => {
                 changeType: type === 'imprint' ? 'notifyOnly' : draft.changeType,
                 effectiveAt: draft.effectiveAt ? new Date(draft.effectiveAt).toISOString() : null,
                 notifyByEmail: draft.notifyByEmail,
+                machineGraceDays: draft.machineGraceDays,
             });
             setDirty(false);
             showSuccess(t('legalAdmin.saved'));
@@ -313,6 +317,19 @@ export const LegalAdmin: React.FC = () => {
                                 <Checkbox label={t('legalAdmin.field.notifyByEmail')} checked={draft.notifyByEmail} onChange={(event) => update({ notifyByEmail: event.target.checked })} />
                             )}
                             {effectiveChangeType === 'requiresAcceptance' && <small className="legal-admin__muted">{t('legalAdmin.mailAlways')}</small>}
+                            {effectiveChangeType === 'requiresAcceptance' && (
+                                <>
+                                    <Input
+                                        type="number"
+                                        min={0}
+                                        max={365}
+                                        label={t('legalAdmin.field.machineGraceDays')}
+                                        value={String(draft.machineGraceDays)}
+                                        onChange={(event) => update({ machineGraceDays: Math.max(0, Math.min(365, Math.round(Number(event.target.value) || 0))) })}
+                                    />
+                                    <small className="legal-admin__muted">{t('legalAdmin.field.machineGraceDaysHint')}</small>
+                                </>
+                            )}
                         </div>
                     </div>
 

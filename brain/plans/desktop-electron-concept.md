@@ -460,3 +460,9 @@ route `/desktop/tray`, `web/screens/DesktopTrayPanel.tsx`), right click keeps th
   session only for the same uid (custom-token uid check) and fires `projectflow:desktop-reauth`. Needs a shell with
   `external-auth` (next release); v0.1.0 keeps the email/password hint. Local check: the emulator redirect result is lost
   (cross-site `127.0.0.1` auth handler under storage partitioning) — production uses the same-origin authDomain.
+- **Update indicator** (2026-10-23, shell ≥ 0.1.2, capability `updates`): the updater checks hourly (was 6 h) and
+  broadcasts `UpdateState` (`ready` = downloaded → click restarts via `quitAndInstall`; `available` = unsigned macOS
+  build → click opens the download page). Web: `hooks/useDesktopUpdate.ts`, green pill in `DesktopTitleBar` (trailing,
+  main window) and a row above the menu bar panel footer. Dev: `PF_DESKTOP_FAKE_UPDATE=ready:0.1.2` shows it.
+- **v0.1.1 released** (2026-10-23): macOS signed + notarized, DMG notarized + stapled; Windows unsigned; `--verify-tag`
+  prepare step verified.

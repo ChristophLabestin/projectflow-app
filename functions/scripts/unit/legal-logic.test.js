@@ -89,3 +89,21 @@ test('shouldMailUser skips missing addresses, deleted users and users who alread
     assert.equal(legal.resolveLang('de-DE'), 'de');
     assert.equal(legal.resolveLang(undefined), 'en');
 });
+
+test('machineAccessBlock: blocks only after the grace period of the triggering version', () => {
+    const accepted = { privacy: { version: 1 }, terms: { version: 1 } };
+    const terms = [v(1, 'requiresAcceptance'), { ...v(2, 'requiresAcceptance', -3), machineGraceDays: 14 }];
+    assert.equal(legal.machineAccessBlock(docs(terms), accepted, NOW), null, 'still in grace');
+    const later = legal.machineAccessBlock(docs(terms), accepted, NOW + 12 * DAY);
+    assert.deepEqual([later.type, later.version], ['terms', 2]);
+    assert.equal(later.blockedSinceMs, NOW + 11 * DAY);
+    const custom = [v(1, 'requiresAcceptance'), { ...v(2, 'requiresAcceptance', -3), machineGraceDays: 0 }];
+    assert.equal(legal.machineAccessBlock(docs(custom), accepted, NOW).version, 2);
+    // notifyOnly changes never block machine access
+    assert.equal(legal.machineAccessBlock(docs([v(1, 'requiresAcceptance'), v(2, 'notifyOnly', -30)]), accepted, NOW), null);
+    // never accepted: grace counts from the oldest version (default 14 days)
+    assert.equal(legal.machineAccessBlock(docs([v(1, 'requiresAcceptance', -10)], [v(1, 'requiresAcceptance', -10)]), {}, NOW), null);
+    assert.equal(legal.machineAccessBlock(docs([v(1, 'requiresAcceptance', -15)], [v(1, 'requiresAcceptance', -15)]), {}, NOW).type, 'privacy');
+    assert.equal(legal.normalizeDraft({ type: 'terms', changeType: 'notifyOnly', title: { de: 'T', en: 'T' }, content: { de: 'x', en: 'x' }, summary: {} }).machineGraceDays, 14);
+    assert.throws(() => legal.normalizeDraft({ type: 'terms', changeType: 'notifyOnly', title: { de: 'T', en: 'T' }, content: { de: 'x', en: 'x' }, machineGraceDays: -1 }), /machineGraceDays/);
+});

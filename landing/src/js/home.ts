@@ -54,7 +54,7 @@ function heroScene() {
     const win = $('[data-hero-window]');
     if (!stage || !tilt || !win) return;
 
-    gsap.fromTo(tilt, { rotateX: 22, scale: 0.94, y: 0 }, {
+    gsap.fromTo(tilt, { rotateX: 14, scale: 0.96, y: 0 }, {
         rotateX: 0, scale: 1, y: -40, ease: 'none',
         scrollTrigger: { trigger: stage, start: 'top bottom', end: 'top 20%', scrub: 0.4 },
     });
@@ -109,6 +109,8 @@ function journeyScene() {
     const progress = $('[data-journey-progress]', pin)!;
 
     const slot = 74; // card height + gap
+    // Focus: centred in the free space above the progress block.
+    const focusY = () => (body.clientHeight - progress.offsetHeight - 12 - card.offsetHeight) / 2 - 64;
     const doneY = () => body.clientHeight - progress.offsetHeight - card.offsetHeight - 16 - 64;
 
     gsap.set(steps, { autoAlpha: 0, y: 24 });
@@ -123,11 +125,14 @@ function journeyScene() {
     gsap.set('[data-journey-strike]', { scaleX: 0 });
     gsap.set('[data-journey-focus]', { autoAlpha: 0 });
     gsap.set('[data-journey-bar]', { scaleX: 0.58 });
-    gsap.set('[data-journey-rail]', { scaleY: 0 });
     gsap.set(ghosts, { y: slot });
 
     const tabs = $$('[data-journey-tab]', pin);
-    const setTab = (i: number) => tabs.forEach((t, n) => t.classList.toggle('is-active', n === i));
+    const dots = $$('[data-journey-dot]', pin);
+    const setTab = (i: number) => {
+        tabs.forEach((t, n) => t.classList.toggle('is-active', n === i));
+        dots.forEach((d, n) => d.classList.toggle('is-active', n === i));
+    };
     setTab(0);
 
     const stepTo = (tl: gsap.core.Timeline, from: number, to: number, at: number) => {
@@ -157,8 +162,7 @@ function journeyScene() {
 
     // 0 — capture: text is typed, the card drops into the inbox
     tl.to('[data-journey-typed]', { clipPath: 'inset(0 0% 0 0)', duration: 0.5 }, 0.05)
-        .to(card, { autoAlpha: 1, y: 0, scale: 1, duration: 0.3, ease: motion.ease }, 0.55)
-        .to('[data-journey-rail]', { scaleY: 1, duration: 4 }, 0);
+        .to(card, { autoAlpha: 1, y: 0, scale: 1, duration: 0.3, ease: motion.ease }, 0.55);
 
     // 1 — plan: input clears, card moves to the top of Today
     stepTo(tl, 0, 1, 1);
@@ -168,8 +172,8 @@ function journeyScene() {
 
     // 2 — focus: everything else steps back, the clock runs
     stepTo(tl, 1, 2, 2);
-    tl.to(ghosts, { autoAlpha: 0.25, duration: 0.3 }, 2)
-        .to(card, { y: () => slot - 10, scale: 1.05, duration: 0.5, ease: motion.easeInOut }, 2.05)
+    tl.to(ghosts, { autoAlpha: 0, y: 24, duration: 0.3 }, 2)
+        .to(card, { y: focusY, scale: 1.04, duration: 0.5, ease: motion.easeInOut }, 2.05)
         .to('[data-journey-focus]', { autoAlpha: 1, duration: 0.3 }, 2.1)
         .to({ s: 0 }, {
             s: 25 * 60 - 1, duration: 0.75,
@@ -187,7 +191,7 @@ function journeyScene() {
         .fromTo(check, { scale: 0.8 }, { scale: 1, duration: 0.25, ease: motion.easeSpring, immediateRender: false }, 3.1)
         .to('[data-journey-strike]', { scaleX: 1, duration: 0.3 }, 3.2)
         .to(card, { y: doneY, scale: 1, duration: 0.5, ease: motion.easeInOut }, 3.35)
-        .to(ghosts, { autoAlpha: 1, duration: 0.3 }, 3.35)
+        .fromTo(ghosts, { y: -40 }, { autoAlpha: 1, y: -64, duration: 0.4, immediateRender: false }, 3.35)
         .to('[data-journey-bar]', { scaleX: 0.64, duration: 0.4 }, 3.5)
         .to({ p: 58 }, {
             p: 64, duration: 0.4,
@@ -297,8 +301,8 @@ function platformsScene() {
     if (!devices) return;
     $$('[data-depth]', devices).forEach((el) => {
         const depth = Number(el.dataset.depth ?? 0);
-        gsap.fromTo(el, { y: depth * 80 }, {
-            y: -depth * 80, ease: 'none',
+        gsap.fromTo(el, { y: depth * 40 }, {
+            y: -depth * 20, ease: 'none',
             scrollTrigger: { trigger: devices, start: 'top bottom', end: 'bottom top', scrub: true },
         });
     });
@@ -325,6 +329,20 @@ function parallax() {
         gsap.fromTo(el, { y: -dist / 2 }, {
             y: dist / 2, ease: 'none',
             scrollTrigger: { trigger: el.parentElement ?? el, start: 'top bottom', end: 'bottom top', scrub: true },
+        });
+    });
+}
+
+/** Header switches to the dark tokens while it sits over a dark section. */
+function headerTheme() {
+    const header = $('[data-header]');
+    if (!header) return;
+    $$('main section.theme-dark').forEach((section) => {
+        ScrollTrigger.create({
+            trigger: section,
+            start: 'top 32px',
+            end: 'bottom 32px',
+            toggleClass: { targets: header, className: 'is-dark' },
         });
     });
 }
@@ -368,6 +386,7 @@ if (prefersMotion()) {
     passkeyScene();
     platformsScene();
     parallax();
+    headerTheme();
     counters();
     reveals();
     document.fonts?.ready.then(() => ScrollTrigger.refresh());

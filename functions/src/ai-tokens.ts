@@ -13,6 +13,7 @@ import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 import { type PrincipalKind, shouldTouchLastUsed } from './ai-access';
 import { db } from './init';
 import { ACCESS_TOKEN_TTL_S, randomToken, REFRESH_TOKEN_TTL_S, sha256Hex } from './oauth-core';
+import { checkMachineLegalConsent } from './legal-machine-access';
 
 export const AI_TOKEN_PREFIXES = ['pfo_', 'pfp_'] as const;
 export const isAiToken = (token: string) => AI_TOKEN_PREFIXES.some((prefix) => token.startsWith(prefix));
@@ -40,7 +41,7 @@ export type ResolvedAiToken = {
 };
 
 /** Resolves a `pfo_` / `pfp_` bearer token; null when unknown, expired, revoked or the user left the workspace. */
-export const resolveAiToken = async (token: string): Promise<ResolvedAiToken | { error: string } | null> => {
+export const resolveAiToken = async (token: string): Promise<ResolvedAiToken | { error: string; status?: 403 } | null> => {
     const tokenSnap = await aiTokenRef(sha256Hex(token)).get();
     if (!tokenSnap.exists) return null;
     const data = tokenSnap.data() || {};
@@ -54,6 +55,9 @@ export const resolveAiToken = async (token: string): Promise<ResolvedAiToken | {
 
     const member = await db.doc(`tenants/${grant.tenantId}/members/${grant.uid}`).get();
     if (!member.exists) return { error: 'You are no longer a member of this workspace.' };
+
+    const consent = await checkMachineLegalConsent(String(grant.uid));
+    if (!consent.ok) return { error: consent.error, status: 403 };
 
     if (shouldTouchLastUsed(grant.lastUsedAt, new Date())) {
         await grantSnap.ref.update({ lastUsedAt: FieldValue.serverTimestamp() }).catch(() => undefined);

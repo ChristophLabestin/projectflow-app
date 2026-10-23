@@ -149,6 +149,31 @@ html.is-desktop[data-desktop-titlebar='inline'] {
     }
 }
 
+// Update indicator (Discord-style): green pill, click restarts into the downloaded update.
+.desktop-titlebar__update {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    height: 24px;
+    padding: 0 10px 0 7px;
+    border: 0;
+    border-radius: 999px;
+    background: rgba(var(--color-success-rgb), 0.16);
+    color: var(--color-success);
+    font: inherit;
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: default;
+
+    .material-symbols-outlined {
+        font-size: 16px;
+    }
+
+    &:hover {
+        background: rgba(var(--color-success-rgb), 0.26);
+    }
+}
+
 // Fixed elements in the top right corner must not sit under the Windows caption buttons.
 html.is-desktop.desktop-win[data-desktop-titlebar='overlay'] .public-route-language-switcher {
     top: calc(var(--desktop-titlebar-height) + 8px);
@@ -1289,6 +1314,31 @@ html.is-desktop.desktop-window-tray {
     background: var(--color-surface-bg);
 }
 
+.tray-panel__update {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    width: 100%;
+    padding: 8px 12px;
+    border: 0;
+    border-top: 1px solid var(--color-border);
+    background: rgba(var(--color-success-rgb), 0.12);
+    color: var(--color-success);
+    font: inherit;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-align: left;
+    cursor: default;
+
+    .material-symbols-outlined {
+        font-size: 16px;
+    }
+
+    &:hover {
+        background: rgba(var(--color-success-rgb), 0.2);
+    }
+}
+
 .tray-panel__footer-action {
     flex: 1;
     display: inline-flex;
@@ -1348,12 +1398,18 @@ html.is-desktop.desktop-window-tray {
     pointer-events: none;
 }
 
+// z-index: the positioned head/body/actions come later in the DOM and would cover the button.
 .desktop-promo__close {
     position: absolute;
-    top: 6px;
-    right: 6px;
+    top: 4px;
+    right: 4px;
+    z-index: 2;
     display: inline-flex;
-    padding: 3px;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    padding: 0;
     border: 0;
     border-radius: var(--radius-md);
     background: transparent;
@@ -1376,7 +1432,7 @@ html.is-desktop.desktop-window-tray {
     display: flex;
     align-items: center;
     gap: 10px;
-    padding-right: 18px;
+    padding-right: 22px;
 }
 
 .desktop-promo__icon {

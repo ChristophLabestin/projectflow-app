@@ -1,7 +1,9 @@
-import { app } from 'electron';
+import { BrowserWindow, app } from 'electron';
 import fs from 'node:fs';
 import path from 'node:path';
 import { autoUpdater } from 'electron-updater';
+import { IPC, type UpdateState } from '../contract';
+import { IS_DEV } from '../config';
 import { labels } from '../labels';
 import { openExternalSafe } from '../security';
 import { showNativeNotification } from './notifications';
@@ -14,11 +16,29 @@ import { showNativeNotification } from './notifications';
  */
 
 export const RELEASES_URL = 'https://github.com/ChristophLabestin/projectflow-app/releases/latest';
-const CHECK_INTERVAL_MS = 6 * 60 * 60 * 1000;
+// Hourly, so a running app picks up a release the same day (one small latest*.yml request).
+const CHECK_INTERVAL_MS = 60 * 60 * 1000;
 
 let timer: NodeJS.Timeout | null = null;
 let manualCheck = false;
 let downloadedVersion: string | null = null;
+let updateState: UpdateState = { status: 'none' };
+
+/** Current state for the title bar / menu bar panel indicator. */
+export const getUpdateState = () => updateState;
+
+const setUpdateState = (next: UpdateState) => {
+    updateState = next;
+    BrowserWindow.getAllWindows().forEach((win) => {
+        if (!win.isDestroyed()) win.webContents.send(IPC.updateStateChanged, next);
+    });
+};
+
+/** Indicator click: restart into a downloaded update, or open the download page (unsigned macOS builds). */
+export const applyUpdate = () => {
+    if (updateState.status === 'ready') installDownloadedUpdate();
+    else if (updateState.status === 'available') openExternalSafe(RELEASES_URL);
+};
 
 const isSignedBuild = () => {
     try {
@@ -47,6 +67,9 @@ export const installDownloadedUpdate = () => {
 };
 
 export const startUpdater = () => {
+    // Dev only: PF_DESKTOP_FAKE_UPDATE=ready:9.9.9 (or available:9.9.9) shows the indicator without a release.
+    const fake = IS_DEV ? process.env.PF_DESKTOP_FAKE_UPDATE?.match(/^(ready|available):(.+)$/) : null;
+    if (fake) setTimeout(() => setUpdateState({ status: fake[1] as UpdateState['status'], version: fake[2] }), 5000);
     if (!app.isPackaged) return;
     autoUpdater.autoDownload = canInstallUpdates();
     autoUpdater.autoInstallOnAppQuit = canInstallUpdates();
@@ -54,6 +77,7 @@ export const startUpdater = () => {
 
     autoUpdater.on('update-available', (info) => {
         if (canInstallUpdates()) return; // downloads silently; announced when ready
+        setUpdateState({ status: 'available', version: info.version });
         const l = labels();
         showNativeNotification({
             key: 'update-available',
@@ -72,6 +96,7 @@ export const startUpdater = () => {
 
     autoUpdater.on('update-downloaded', (info) => {
         downloadedVersion = info.version;
+        setUpdateState({ status: 'ready', version: info.version });
         const l = labels();
         showNativeNotification({
             key: 'update-ready',

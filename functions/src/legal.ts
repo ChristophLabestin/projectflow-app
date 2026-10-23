@@ -52,9 +52,10 @@ export const versionMetaFromDoc = (raw: any): VersionMeta => ({
     effectiveAtMs: toMs(raw?.effectiveAt),
     publishedAtMs: toMs(raw?.publishedAt),
     summary: { de: raw?.summary?.de || '', en: raw?.summary?.en || '' },
+    ...(Number.isInteger(raw?.machineGraceDays) ? { machineGraceDays: raw.machineGraceDays } : {}),
 });
 
-const loadIndex = async (firestore: Firestore) => {
+export const loadIndex = async (firestore: Firestore) => {
     const snaps = await firestore.getAll(...LEGAL_TYPES.map((type) => docRef(firestore, type)));
     return snaps.map((snap, index) => ({
         type: LEGAL_TYPES[index],
@@ -83,6 +84,7 @@ export const saveLegalDraft = functions.region(REGION).https.onCall(async (data,
         changeType: draft.changeType,
         effectiveAt: draft.effectiveAtMs == null ? null : Timestamp.fromMillis(draft.effectiveAtMs),
         notifyByEmail: draft.notifyByEmail,
+        machineGraceDays: draft.machineGraceDays,
         baseVersion: index.data()?.currentVersion ?? null,
         updatedAt: FieldValue.serverTimestamp(),
         updatedBy: uid,
@@ -122,6 +124,7 @@ export const publishLegalDraftCore = async (firestore: Firestore, type: LegalTyp
         const effectiveAt = Timestamp.fromMillis(effectiveAtMs);
         const changeType: LegalChangeType = type === 'imprint' ? 'notifyOnly' : draft.changeType;
         const notifyByEmail = type !== 'imprint' && (changeType === 'requiresAcceptance' || draft.notifyByEmail === true);
+        const machineGraceDays = Number.isInteger(draft.machineGraceDays) ? draft.machineGraceDays : 14;
 
         tx.set(docRef(firestore, type).collection('versions').doc(String(version)), {
             type,
@@ -132,6 +135,7 @@ export const publishLegalDraftCore = async (firestore: Firestore, type: LegalTyp
             summary: draft.summary,
             changeType,
             notifyByEmail,
+            machineGraceDays,
             effectiveAt,
             publishedAt,
             publishedBy: uid,
@@ -141,7 +145,7 @@ export const publishLegalDraftCore = async (firestore: Firestore, type: LegalTyp
             acceptanceRequired: requiresAcceptanceTracking(type),
             currentVersion: version,
             title: draft.title,
-            versions: FieldValue.arrayUnion({ version, changeType, effectiveAt, publishedAt, summary: draft.summary }),
+            versions: FieldValue.arrayUnion({ version, changeType, effectiveAt, publishedAt, summary: draft.summary, machineGraceDays }),
             updatedAt: publishedAt,
         }, { merge: true });
         tx.delete(draftRef(firestore, type));

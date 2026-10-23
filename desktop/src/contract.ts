@@ -8,7 +8,7 @@ export const BRIDGE_VERSION = 1;
 export const CAPABILITIES = [
     'titlebar', 'app-menu', 'popout', 'badge', 'tray', 'notifications', 'language',
     'preferences', 'quick-capture', 'notification-actions', 'day-flow', 'file-drop', 'calendar', 'recents', 'windows',
-    'tray-panel', 'external-auth', 'spotlight', 'open-in-browser'
+    'tray-panel', 'external-auth', 'spotlight', 'open-in-browser', 'updates'
 ] as const;
 export type DesktopCapability = typeof CAPABILITIES[number];
 
@@ -137,7 +137,10 @@ export const IPC = {
     appAction: 'pf:app-action',
     signInExternally: 'pf:sign-in-externally',
     indexSpotlight: 'pf:index-spotlight',
-    openInBrowser: 'pf:open-in-browser'
+    openInBrowser: 'pf:open-in-browser',
+    updateState: 'pf:update-state',
+    updateStateChanged: 'pf:update-state-changed',
+    updateAction: 'pf:update-action'
 } as const;
 
 /** Shell actions offered by the menu bar panel. */
@@ -159,3 +162,9 @@ export type OpenWindowRequest =
 export type WindowAction = 'minimize' | 'toggle-maximize' | 'close' | 'back' | 'forward';
 /** `dock` closes the pop-out and reopens the Quick Access modal in the main window. */
 export type QuickAccessAction = 'open' | 'close' | 'toggle' | 'dock' | 'state' | 'set-always-on-top';
+
+/** Update status for the in-app indicator: `ready` = downloaded (restart installs), `available` = manual download only. */
+export interface UpdateState {
+    status: 'none' | 'available' | 'ready';
+    version?: string;
+}

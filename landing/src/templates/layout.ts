@@ -5,6 +5,9 @@ import { APP_URL, SITE_URL, legalUrl, urlFor, type Lang, type PageDef } from './
 export const esc = (value: string): string =>
     value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
+/** Display headings: Plus Jakarta's period has a wide left side bearing – pull it in. */
+export const headline = (value: string): string => esc(value).replace(/([.!?])(?=\s|$)/g, '<span class="kern">$1</span>');
+
 export const links = {
     register: `${APP_URL}/register`,
     login: `${APP_URL}/login`,

@@ -618,14 +618,14 @@ const jsonRpcError = (res: any, status: number, message: string, headers: Record
 type McpCaller = { tenantId: string; tokenData: any; role: string; kind: PrincipalKind; credentialId: string; resource: string | null };
 
 /** Workspace API tokens (`pfat_`) and user-bound AI tokens (`pfo_` OAuth, `pfp_` personal). */
-const resolveMcpCaller = async (token: string): Promise<McpCaller | { error: string }> => {
+const resolveMcpCaller = async (token: string): Promise<McpCaller | { error: string; status?: 403 }> => {
     if (isAiToken(token)) {
         const resolved = await resolveAiToken(token).catch((error) => {
             console.error('MCP AI token lookup failed', error);
             return null;
         });
         if (!resolved) return { error: 'Invalid or expired access token.' };
-        if ('error' in resolved) return { error: resolved.error };
+        if ('error' in resolved) return { error: resolved.error, status: resolved.status };
         return {
             tenantId: resolved.tenantId,
             tokenData: resolved.tokenData,
@@ -641,7 +641,7 @@ const resolveMcpCaller = async (token: string): Promise<McpCaller | { error: str
     });
     if (!found) return { error: 'Invalid API token.' };
     const usable = await checkApiTokenUsable(found.tokenData, found.tenantId);
-    if (!usable.ok) return { error: usable.error };
+    if (!usable.ok) return { error: usable.error, status: usable.status };
     return { tenantId: found.tenantId, tokenData: found.tokenData, role: usable.role, kind: 'workspace-token', credentialId: found.tokenRef.id, resource: null };
 };
 
@@ -692,6 +692,7 @@ const handleMcpRequest = async (req: any, res: any) => {
 
     const caller = await resolveMcpCaller(token);
     if ('error' in caller) {
+        if (caller.status === 403) { jsonRpcError(res, 403, caller.error); return; } // legal consent missing
         jsonRpcError(res, 401, caller.error, { 'WWW-Authenticate': `${challenge}, error="invalid_token"` });
         return;
     }
