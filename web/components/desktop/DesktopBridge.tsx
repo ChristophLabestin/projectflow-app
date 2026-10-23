@@ -9,6 +9,7 @@ import { useToast, useUIState } from '../../context/UIContext';
 import { SettingsModal } from '../SettingsModal';
 import { addComment } from '../../services/dataService';
 import { redeemDesktopAuthCode } from '../../services/desktopAuth';
+import { buildSpotlightEntries } from '../../services/desktopSpotlight';
 import { auth } from '../../services/firebase';
 import { attachFilesToItem, canAttachToItem, completeItem, filesFromPayload } from '../../services/desktopActions';
 import { useWorkspace } from '../../context/WorkspaceContext';
@@ -272,6 +273,30 @@ export const DesktopBridge = () => {
             unread: unreadCount
         });
     }, [bridge, focusItem, focusState, pinnedItems, unreadCount, snoozeTick]);
+
+    // Spotlight (macOS): projects and my open tasks of the active workspace; cleared on sign-out.
+    useEffect(() => {
+        if (!bridge?.indexSpotlight || !hasDesktopCapability('spotlight')) return undefined;
+        if (!user || !activeWorkspaceId) {
+            if (isAuthReady && !user) bridge.indexSpotlight([]);
+            return undefined;
+        }
+        let cancelled = false;
+        const refresh = () => {
+            const { t: translate } = handlersRef.current;
+            buildSpotlightEntries(activeWorkspaceId, { project: translate('desktop.spotlight.project'), personalTask: translate('desktop.spotlight.personalTask') })
+                .then((entries) => { if (!cancelled) bridge.indexSpotlight?.(entries); })
+                .catch((error) => console.warn('Spotlight index failed', error));
+        };
+        // Not at startup: sign-in and workspace resolution come first.
+        const first = window.setTimeout(refresh, 20_000);
+        const interval = window.setInterval(refresh, 30 * 60 * 1000);
+        return () => {
+            cancelled = true;
+            window.clearTimeout(first);
+            window.clearInterval(interval);
+        };
+    }, [bridge, user, activeWorkspaceId, isAuthReady, language]);
 
     // Push channel toggles (Settings → Notifications) also gate native desktop notifications.
     const pushPrefsRef = useRef<ResolvedNotificationPrefs>(resolveNotificationPrefs(undefined));

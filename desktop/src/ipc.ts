@@ -8,6 +8,7 @@ import { hideCapture, isCaptureWindow, markCaptureReady, openDayWindow, showCapt
 import { hideTrayPanel } from './windows/trayPanel';
 import { upcomingEvents } from './features/calendar';
 import { startExternalSignIn } from './features/externalAuth';
+import { indexSpotlight } from './features/spotlight';
 import { setLanguage } from './labels';
 import { addRecent, installMenus } from './menu';
 import { isTrustedSender } from './security';
@@ -126,6 +127,9 @@ export const registerIpc = () => {
     });
     on(IPC.notify, (event, payload: DesktopNotificationPayload) => {
         if (senderWindow(event) === getMainWindow()) showAppNotification(payload);
+    });
+    on(IPC.indexSpotlight, (event, items: unknown) => {
+        if (senderWindow(event) === getMainWindow()) indexSpotlight(items);
     });
     on(IPC.updateTray, (event, snapshot: unknown) => {
         if (senderWindow(event) === getMainWindow()) updateTray(snapshot);

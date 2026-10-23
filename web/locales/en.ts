@@ -3063,6 +3063,8 @@ const en = {
     'desktop.toast.focusCompleted': '"{title}" completed',
     'desktop.toast.taskCompleted': 'Task completed',
     'desktop.toast.replied': 'Comment added',
+    'desktop.spotlight.project': 'ProjectFlow project',
+    'desktop.spotlight.personalTask': 'Personal task',
     'desktop.toast.actionFailed': 'That did not work. Please try again.',
     'desktop.toast.attaching': 'Attaching {count} file(s)…',
     'desktop.toast.attached': '{count} file(s) attached to "{title}"',

@@ -8,7 +8,7 @@ export const BRIDGE_VERSION = 1;
 export const CAPABILITIES = [
     'titlebar', 'app-menu', 'popout', 'badge', 'tray', 'notifications', 'language',
     'preferences', 'quick-capture', 'notification-actions', 'day-flow', 'file-drop', 'calendar', 'recents', 'windows',
-    'tray-panel', 'external-auth'
+    'tray-panel', 'external-auth', 'spotlight'
 ] as const;
 export type DesktopCapability = typeof CAPABILITIES[number];
 
@@ -54,11 +54,12 @@ export interface DesktopPreferences {
     focusShortcutOn: string;
     focusShortcutOff: string;
     mediaKeysEnabled: boolean;
+    spotlightEnabled: boolean;
 }
 
 export interface DesktopPreferencesInfo extends DesktopPreferences {
     /** Platform support, so the settings UI can hide what does not exist there. */
-    supports: { calendar: boolean; focusShortcuts: boolean; touchBar: boolean; notificationActions: boolean };
+    supports: { calendar: boolean; focusShortcuts: boolean; touchBar: boolean; notificationActions: boolean; spotlight: boolean };
     /** Result of the last calendar access attempt. */
     calendarStatus: 'unknown' | 'granted' | 'denied' | 'unavailable';
     /** Set when a requested global shortcut was taken by another app (the previous one stays active). */
@@ -134,7 +135,8 @@ export const IPC = {
     windowPayload: 'pf:window-payload',
     upcomingEvents: 'pf:upcoming-events',
     appAction: 'pf:app-action',
-    signInExternally: 'pf:sign-in-externally'
+    signInExternally: 'pf:sign-in-externally',
+    indexSpotlight: 'pf:index-spotlight'
 } as const;
 
 /** Shell actions offered by the menu bar panel. */

@@ -3062,6 +3062,8 @@ const de = {
     'desktop.toast.focusCompleted': '„{title}“ erledigt',
     'desktop.toast.taskCompleted': 'Aufgabe erledigt',
     'desktop.toast.replied': 'Kommentar hinzugefügt',
+    'desktop.spotlight.project': 'ProjectFlow-Projekt',
+    'desktop.spotlight.personalTask': 'Persönliche Aufgabe',
     'desktop.toast.actionFailed': 'Das hat nicht geklappt. Bitte versuche es erneut.',
     'desktop.toast.attaching': '{count} Datei(en) werden angehängt …',
     'desktop.toast.attached': '{count} Datei(en) an „{title}“ angehängt',

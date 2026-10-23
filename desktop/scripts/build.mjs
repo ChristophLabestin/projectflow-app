@@ -21,24 +21,29 @@ await Promise.all([
 ]);
 if (!watch) console.log('desktop: built dist/main.js + dist/preload.js');
 
-// macOS calendar helper (EventKit), built universal (arm64 + x86_64) so the universal app bundle can ship one
-// binary. Optional: without swiftc the meeting features stay off.
+// macOS helpers, built universal (arm64 + x86_64) so the universal app bundle can ship one binary each.
+// Optional: without swiftc the meeting / Spotlight features stay off.
+// pf-calendar: EventKit meetings (Contents/Resources/native). pf-spotlight: CoreSpotlight index (Contents/MacOS).
+const NATIVE_HELPERS = [
+    { source: 'native/calendar-events.swift', name: 'pf-calendar', feature: 'meeting awareness' },
+    { source: 'native/spotlight-index.swift', name: 'pf-spotlight', feature: 'Spotlight search' }
+];
 if (process.platform === 'darwin') {
-    const source = 'native/calendar-events.swift';
-    const target = 'dist/native/pf-calendar';
-    const stale = !fs.existsSync(target) || fs.statSync(target).mtimeMs < fs.statSync(source).mtimeMs;
-    if (stale) {
+    for (const { source, name, feature } of NATIVE_HELPERS) {
+        const target = `dist/native/${name}`;
+        const stale = !fs.existsSync(target) || fs.statSync(target).mtimeMs < fs.statSync(source).mtimeMs;
+        if (!stale) continue;
         try {
             fs.mkdirSync('dist/native', { recursive: true });
             const slices = ['arm64', 'x86_64'].map((arch) => {
-                const out = `dist/native/pf-calendar-${arch}`;
+                const out = `${target}-${arch}`;
                 execFileSync('xcrun', ['swiftc', '-O', '-target', `${arch}-apple-macos13.0`, source, '-o', out], { stdio: 'inherit' });
                 return out;
             });
             execFileSync('lipo', ['-create', ...slices, '-output', target]);
             slices.forEach((slice) => fs.rmSync(slice));
         } catch (error) {
-            console.warn('desktop: calendar helper not built (swiftc missing?) — meeting awareness disabled', error.message);
+            console.warn(`desktop: ${name} not built (swiftc missing?) — ${feature} disabled`, error.message);
         }
     }
 }

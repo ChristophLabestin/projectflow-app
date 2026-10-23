@@ -34,6 +34,8 @@ const deSettings = {
     'settings.desktop.focusOff.title': 'Kurzbefehl bei Fokusende',
     'settings.desktop.focusOff.hint': 'Name eines macOS-Kurzbefehls, der läuft, wenn der Fokus pausiert, blockiert oder erledigt ist.',
     'settings.desktop.focusOff.placeholder': 'z. B. ProjectFlow Fokus aus',
+    'settings.desktop.spotlight.title': 'Spotlight-Suche',
+    'settings.desktop.spotlight.hint': 'Projekte und deine offenen Aufgaben des aktuellen Arbeitsbereichs in Spotlight (⌘ Leertaste) finden. Nur auf diesem Mac gespeichert.',
     'settings.desktop.mediaKeys.title': 'Play/Pause-Taste steuert den Fokus',
     'settings.desktop.mediaKeys.hint': 'Solange es eine Fokus-Aufgabe gibt, pausiert und setzt die Medientaste sie fort (Musik-Apps bekommen die Taste dann nicht).',
     'settings.desktop.touchBar.note': 'Auf Macs mit Touch Bar erscheinen dort automatisch Fokus-Aufgabe, Pause/Erledigt, Schnell erfassen und Schnellzugriff.',
