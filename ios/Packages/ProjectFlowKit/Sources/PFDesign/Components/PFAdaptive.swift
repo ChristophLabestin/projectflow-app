@@ -73,7 +73,8 @@ struct PFSideColumn<Content: View>: View {
             // lowest one keeps equal distance to the bottom and the right screen edge.
             .padding(.bottom, gap + (PFDock.railWidth - 44) / 2)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
-            .ignoresSafeArea()
+            // Container only: with the keyboard up the column rides above it.
+            .ignoresSafeArea(.container)
     }
 }
 

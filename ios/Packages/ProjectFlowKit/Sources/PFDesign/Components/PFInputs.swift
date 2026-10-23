@@ -213,9 +213,17 @@ public struct PFDateStrip: View {
     let days: Int
     let calendar: Calendar
     let locale: Locale
+    let showsMonth: Bool
+    let monthLabels: (previous: String, next: String)
     @Binding var selection: Date?
+    @State private var month: Date?
 
-    public init(quick: [Quick], days: Int = 21, calendar: Calendar = .current, locale: Locale = .current, selection: Binding<Date?>) {
+    /// `showsMonth` swaps the day strip for a full month grid (with month paging).
+    public init(quick: [Quick], days: Int = 21, calendar: Calendar = .current, locale: Locale = .current,
+                showsMonth: Bool = false, monthLabels: (previous: String, next: String) = ("Previous month", "Next month"),
+                selection: Binding<Date?>) {
+        self.showsMonth = showsMonth
+        self.monthLabels = monthLabels
         self.quick = quick
         self.days = days
         self.calendar = calendar
@@ -230,17 +238,91 @@ public struct PFDateStrip: View {
                     PFChip(item.label, isSet: isSelected(item.date)) { select(item.date) }
                 }
             }
-            ScrollView(.horizontal) {
-                HStack(spacing: 6) {
-                    ForEach(0..<days, id: \.self) { offset in
-                        let day = calendar.date(byAdding: .day, value: offset, to: calendar.startOfDay(for: .now))!
-                        dayCell(day)
+            if showsMonth {
+                monthGrid.transition(.opacity)
+            } else {
+                ScrollView(.horizontal) {
+                    HStack(spacing: 6) {
+                        ForEach(0..<days, id: \.self) { offset in
+                            let day = calendar.date(byAdding: .day, value: offset, to: calendar.startOfDay(for: .now))!
+                            dayCell(day)
+                        }
+                    }
+                    .padding(.horizontal, PFSpace.page)
+                }
+                .scrollIndicators(.hidden)
+                .transition(.opacity)
+            }
+        }
+    }
+
+    // MARK: Month
+
+    private var shownMonth: Date {
+        let anchor = month ?? selection ?? .now
+        return calendar.date(from: calendar.dateComponents([.year, .month], from: anchor)) ?? anchor
+    }
+
+    private var monthGrid: some View {
+        let first = shownMonth
+        let count = calendar.range(of: .day, in: .month, for: first)?.count ?? 30
+        let lead = (calendar.component(.weekday, from: first) - calendar.firstWeekday + 7) % 7
+        let symbols = calendar.veryShortStandaloneWeekdaySymbols
+        let ordered = Array(symbols[(calendar.firstWeekday - 1)...] + symbols[..<(calendar.firstWeekday - 1)])
+        let columns = Array(repeating: GridItem(.flexible(), spacing: 4), count: 7)
+        return VStack(spacing: PFSpace.xs) {
+            HStack {
+                Text(first.formatted(.dateTime.month(.wide).year().locale(locale)))
+                    .pfText(.section).foregroundStyle(PFColor.textMain)
+                Spacer()
+                PFIconButton("chevron.left", label: monthLabels.previous, style: .raised, size: 34) { shiftMonth(-1) }
+                PFIconButton("chevron.right", label: monthLabels.next, style: .raised, size: 34) { shiftMonth(1) }
+            }
+            // One id space for headers, blanks and days (shared ids would drop cells from the grid).
+            LazyVGrid(columns: columns, spacing: 4) {
+                ForEach(ordered.indices.map { "h\($0)" }, id: \.self) { key in
+                    Text(ordered[Int(key.dropFirst())!]).font(.system(size: 11, weight: .semibold)).foregroundStyle(PFColor.textMuted)
+                        .frame(maxWidth: .infinity)
+                        .accessibilityHidden(true)
+                }
+                ForEach((0..<(lead + count)).map { "d\($0)" }, id: \.self) { key in
+                    let slot = Int(key.dropFirst())!
+                    if slot < lead {
+                        Color.clear.frame(height: 38)
+                    } else {
+                        monthCell(calendar.date(byAdding: .day, value: slot - lead, to: first)!)
                     }
                 }
-                .padding(.horizontal, PFSpace.page)
             }
-            .scrollIndicators(.hidden)
         }
+        .padding(.horizontal, PFSpace.page)
+    }
+
+    private func monthCell(_ day: Date) -> some View {
+        let selected = isSelected(day)
+        let today = calendar.isDateInToday(day)
+        return Button { select(day) } label: {
+            Text(day.formatted(.dateTime.day().locale(locale)))
+                .font(.system(size: 15, weight: selected || today ? .bold : .medium)).monospacedDigit()
+                .foregroundStyle(selected ? PFColor.onPrimary : (calendar.isDateInWeekend(day) ? PFColor.textMuted : PFColor.textMain))
+                .frame(maxWidth: .infinity, minHeight: 38)
+                .background {
+                    if selected {
+                        Circle().fill(PFColor.primary).frame(width: 38, height: 38)
+                    } else if today {
+                        Circle().strokeBorder(PFColor.hairlineStrong, lineWidth: 1.5).frame(width: 38, height: 38)
+                    }
+                }
+                .contentShape(.rect)
+        }
+        .buttonStyle(.pfPressable)
+        .accessibilityLabel(day.formatted(.dateTime.weekday(.wide).day().month(.wide).locale(locale)))
+        .accessibilityAddTraits(selected ? [.isButton, .isSelected] : .isButton)
+    }
+
+    private func shiftMonth(_ delta: Int) {
+        PFHaptics.selection()
+        withAnimation(PFMotion.snappy) { month = calendar.date(byAdding: .month, value: delta, to: shownMonth) }
     }
 
     private func dayCell(_ day: Date) -> some View {

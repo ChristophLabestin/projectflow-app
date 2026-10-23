@@ -133,6 +133,7 @@ struct PFSheetContent: View {
     @State private var keyboardHeight: CGFloat = 0
     @State private var footer: PFSheetFooterBox?
     @State private var trailingInset: CGFloat = 0
+    @State private var contentBottomInset: CGFloat = PFSpace.l
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(\.dismiss) private var dismiss
     @Environment(PFPresenter.self) private var presenter
@@ -151,8 +152,8 @@ struct PFSheetContent: View {
                 // Fitted sheets without a footer end on their own action row: close sits beside it.
                 .overlay(alignment: .bottomTrailing) {
                     if sideRegion > 0, sheet.dismissable, footer == nil, isFitted {
-                        // Sheet content ends with PFSpace.l below its last row (convention), so this lines up.
-                        closeButton.offset(x: closeOffset, y: -PFSpace.l)
+                        // Lifted by the space the content leaves below its last row, so it lines up with it.
+                        closeButton.offset(x: closeOffset, y: -contentBottomInset)
                     }
                 }
                 .padding(.top, 26)
@@ -192,6 +193,7 @@ struct PFSheetContent: View {
                 PFSideColumn(side: sideRegion) { closeButton }
             }
         }
+        .onPreferenceChange(PFSheetBottomInsetKey.self) { contentBottomInset = $0 ?? PFSpace.l }
         .onPreferenceChange(PFSheetFooterKey.self) { value in
             footer = value
             if value == nil { footerHeight = 0 }
@@ -240,6 +242,19 @@ struct PFSheetFooterBox: Equatable, @unchecked Sendable {
     let token: AnyHashable
     let view: AnyView
     static func == (lhs: Self, rhs: Self) -> Bool { lhs.token == rhs.token }
+}
+
+/// Space a sheet's content leaves below its last row (default `PFSpace.l`, the sheet convention).
+struct PFSheetBottomInsetKey: PreferenceKey {
+    static let defaultValue: CGFloat? = nil
+    static func reduce(value: inout CGFloat?, nextValue: () -> CGFloat?) { value = value ?? nextValue() }
+}
+
+public extension View {
+    /// Declares a non-standard bottom padding of sheet content, so side controls still line up with the last row.
+    func pfSheetBottomInset(_ inset: CGFloat) -> some View {
+        preference(key: PFSheetBottomInsetKey.self, value: inset)
+    }
 }
 
 struct PFSheetFooterKey: PreferenceKey {

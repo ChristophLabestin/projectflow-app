@@ -14,20 +14,33 @@ struct DateSheet: View {
     let onSave: (FlexDate?) -> Void
     @Environment(PFPresenter.self) private var presenter
     @State private var selection: Date?
+    /// Day strip or whole month; remembered between sheets.
+    @AppStorage("pf.dateSheet.month") private var showsMonth = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: PFSpace.m) {
             PFSheetHeader(eyebrow, title: title)
+                .padding(.trailing, 44)
+                .overlay(alignment: .topTrailing) {
+                    PFIconButton(showsMonth ? "calendar.day.timeline.left" : "calendar",
+                                 label: L10n.t(showsMonth ? "taskDetail.date.strip" : "taskDetail.date.month"), style: .raised, size: 36) {
+                        PFHaptics.selection()
+                        withAnimation(PFMotion.respecting(PFMotion.snappy)) { showsMonth.toggle() }
+                    }
+                    .padding(.trailing, PFSpace.page)
+                }
             PFDateStrip(quick: [PFDateStrip.Quick(id: "none", label: L10n.t("common.noDate"), date: nil)] + Formatting.quickDates.compactMap { quick in
                 Formatting.date(quick.value).map { PFDateStrip.Quick(id: quick.id, label: quick.label, date: $0) }
-            }, days: 45, calendar: Formatting.calendar, locale: L10n.locale, selection: $selection)
+            }, days: 45, calendar: Formatting.calendar, locale: L10n.locale, showsMonth: showsMonth,
+               monthLabels: (L10n.t("taskDetail.date.previousMonth"), L10n.t("taskDetail.date.nextMonth")), selection: $selection)
             PFButton(L10n.t("common.save"), fullWidth: true) {
                 onSave(selection.map { FlexDate.day(of: $0, in: Formatting.timeZone) })
                 presenter.dismiss()
             }
             .padding(.horizontal, PFSpace.page)
         }
-        .padding(.bottom, PFSpace.l)
+        .padding(.bottom, PFSpace.xxs)
+        .pfSheetBottomInset(PFSpace.xxs)
         .onAppear { selection = initial.flatMap { Formatting.date($0) } }
     }
 }

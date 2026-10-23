@@ -18,6 +18,7 @@ struct PersonalTaskScreen: View {
     @State private var topInset: CGFloat = 0
     @State private var editor = RichEditorController()
     @State private var isEditingDescription = false
+    @State private var showsFormatBar = false
     @State private var keyboardVisible = false
     @State private var isDeleting = false
 
@@ -41,10 +42,12 @@ struct PersonalTaskScreen: View {
             }
             topBar
         }
-        .pfBottomFloat(isActive: sideRegion == 0 || isEditingDescription) {
+        .pfBottomFloat(isActive: sideRegion == 0 || (isEditingDescription && showsFormatBar)) {
             if task != nil { floating }
         }
         .pfSideAction(sideAction)
+        .descriptionAutosave(editor, isEditing: $isEditingDescription) { html, _ in saveDescription(html) }
+        .onChange(of: isEditingDescription) { _, editing in if !editing { showsFormatBar = false } }
         .onGeometryChange(for: CGFloat.self) { $0.safeAreaInsets.top } action: { topInset = $0 }
         .onChange(of: task?.title, initial: true) { _, title in if let title { titleDraft = title } }
         .onChange(of: task == nil) { _, missing in
@@ -271,7 +274,11 @@ struct PersonalTaskScreen: View {
 
     /// iPhone Duo outer display: complete/reopen moves into the side column above back.
     private var sideAction: AnyView? {
-        guard sideRegion > 0, !isEditingDescription, let task else { return nil }
+        guard sideRegion > 0 else { return nil }
+        if isEditingDescription {
+            return editor.isFocused ? AnyView(DescriptionToolbar.sideToggle(isOn: $showsFormatBar)) : nil
+        }
+        guard let task else { return nil }
         return AnyView(PFIconButton(task.isCompleted ? "arrow.uturn.backward" : "checkmark",
                                     label: L10n.t(task.isCompleted ? "common.reopen" : "taskDetail.actions.markDone"),
                                     style: task.isCompleted ? .glass : .primary) {
@@ -282,10 +289,7 @@ struct PersonalTaskScreen: View {
     @ViewBuilder
     private var floating: some View {
         if isEditingDescription {
-            DescriptionToolbar(controller: editor, onLink: presentLink, onCancel: {
-                editor.resign()
-                withAnimation(PFMotion.respecting(PFMotion.fast)) { isEditingDescription = false }
-            }, onDone: saveDescription)
+            DescriptionToolbar(controller: editor, onLink: presentLink)
         } else if !keyboardVisible, sideRegion == 0, let task {
             if task.isCompleted {
                 PFButton(L10n.t("common.reopen"), systemImage: "arrow.uturn.backward", kind: .secondary, size: .large, fullWidth: true) {
@@ -302,13 +306,14 @@ struct PersonalTaskScreen: View {
 
     private func presentLink() {
         let current = editor.currentLink
-        presenter.present(detents: [.fit]) { LinkSheet(initial: current) { url in editor.applyLink(url) } }
+        editor.isHoldingForSheet = true
+        presenter.present(detents: [.fit], onDismiss: {
+            editor.isHoldingForSheet = false
+            editor.refocus()
+        }) { LinkSheet(initial: current) { url in editor.applyLink(url) } }
     }
 
-    private func saveDescription() {
-        let html = editor.html()
-        editor.resign()
-        withAnimation(PFMotion.respecting(PFMotion.fast)) { isEditingDescription = false }
+    private func saveDescription(_ html: String) {
         run { try await $0.updatePersonalTask(taskId, ["description": html]) }
     }
 

@@ -354,17 +354,13 @@ extension TaskDetailScreen {
         withAnimation(PFMotion.respecting(PFMotion.fast)) { isEditingDescription = true }
     }
 
-    func cancelDescription() {
-        editor.resign()
-        withAnimation(PFMotion.respecting(PFMotion.fast)) { isEditingDescription = false }
-    }
-
-    func saveDescription() {
+    /// Autosave (`descriptionAutosave`). The description is one field: if it changed elsewhere meanwhile,
+    /// typing pauses don't overwrite it; leaving the editor asks first.
+    func autosaveDescription(_ html: String, final: Bool) {
         guard let task else { return }
-        let html = editor.html()
-        editor.resign()
-        // The description is one field: ask before overwriting a change made elsewhere meanwhile.
-        if (task.summary ?? "") != (descriptionBase ?? "") {
+        let remote = task.summary ?? ""
+        if remote != (descriptionBase ?? ""), remote != html {
+            guard final else { return }
             presenter.present(detents: [.fit]) {
                 ProjectConfirmSheet(title: L10n.t("taskDetail.description.conflict.title"), message: L10n.t("taskDetail.description.conflict.message"),
                              confirmTitle: L10n.t("taskDetail.description.conflict.confirm")) { commitDescription(html) }
@@ -375,44 +371,51 @@ extension TaskDetailScreen {
     }
 
     private func commitDescription(_ html: String) {
-        withAnimation(PFMotion.respecting(PFMotion.fast)) { isEditingDescription = false }
+        descriptionBase = html
         run { try await $0.setDescription(ref, html: html) }
     }
 
     func presentLinkSheet() {
         let current = editor.currentLink
-        presenter.present(detents: [.fit]) {
+        editor.isHoldingForSheet = true
+        presenter.present(detents: [.fit], onDismiss: {
+            editor.isHoldingForSheet = false
+            editor.refocus()
+        }) {
             LinkSheet(initial: current) { url in editor.applyLink(url) }
         }
     }
 }
 
-/// Formatting bar shown above the keyboard while the description is edited.
+/// Formatting bar shown above the keyboard while the description is edited (it saves itself, so there is
+/// no cancel/save — the last button just closes the keyboard, which ends editing).
 struct DescriptionToolbar: View {
     let controller: RichEditorController
     let onLink: () -> Void
-    let onCancel: () -> Void
-    let onDone: () -> Void
 
     var body: some View {
-        VStack(spacing: PFSpace.xs) {
-            HStack(spacing: 6) {
-                formatButton("bold", label: L10n.t("taskDetail.format.bold"), active: controller.isBold) { controller.toggleBold() }
-                formatButton("italic", label: L10n.t("taskDetail.format.italic"), active: controller.isItalic) { controller.toggleItalic() }
-                formatButton("textformat.size", label: L10n.t("taskDetail.format.heading"), active: controller.block.isHeading) { controller.setBlock(.h2) }
-                formatButton("list.bullet", label: L10n.t("taskDetail.format.bullets"), active: controller.block == .ul) { controller.toggleList(ordered: false) }
-                formatButton("list.number", label: L10n.t("taskDetail.format.numbers"), active: controller.block == .ol) { controller.toggleList(ordered: true) }
-                formatButton("link", label: L10n.t("taskDetail.format.link"), active: controller.currentLink != nil) { onLink() }
-                Spacer(minLength: 0)
-            }
-            HStack(spacing: PFSpace.xs) {
-                PFButton(L10n.t("common.cancel"), kind: .ghost, fullWidth: true, action: onCancel)
-                PFButton(L10n.t("common.save"), fullWidth: true, action: onDone)
-            }
+        HStack(spacing: 6) {
+            formatButton("bold", label: L10n.t("taskDetail.format.bold"), active: controller.isBold) { controller.toggleBold() }
+            formatButton("italic", label: L10n.t("taskDetail.format.italic"), active: controller.isItalic) { controller.toggleItalic() }
+            formatButton("textformat.size", label: L10n.t("taskDetail.format.heading"), active: controller.block.isHeading) { controller.setBlock(.h2) }
+            formatButton("list.bullet", label: L10n.t("taskDetail.format.bullets"), active: controller.block == .ul) { controller.toggleList(ordered: false) }
+            formatButton("list.number", label: L10n.t("taskDetail.format.numbers"), active: controller.block == .ol) { controller.toggleList(ordered: true) }
+            formatButton("link", label: L10n.t("taskDetail.format.link"), active: controller.currentLink != nil) { onLink() }
+            Spacer(minLength: 0)
+            formatButton("keyboard.chevron.compact.down", label: L10n.t("taskDetail.format.done"), active: false) { controller.resign() }
         }
         .padding(PFSpace.xs)
         .background(PFColor.card, in: .rect(cornerRadius: 26, style: .continuous))
         .pfElevation(.lifted, radius: 26)
+    }
+
+    /// iPhone Duo outer display: the bar hides behind this side-column button while typing.
+    static func sideToggle(isOn: Binding<Bool>) -> some View {
+        PFIconButton("textformat", label: L10n.t("taskDetail.format.show"), style: isOn.wrappedValue ? .primary : .glass) {
+            PFHaptics.selection()
+            withAnimation(PFMotion.respecting(PFMotion.fast)) { isOn.wrappedValue.toggle() }
+        }
+        .accessibilityAddTraits(isOn.wrappedValue ? [.isButton, .isSelected] : .isButton)
     }
 
     private func formatButton(_ symbol: String, label: String, active: Bool, action: @escaping () -> Void) -> some View {
@@ -423,7 +426,8 @@ struct DescriptionToolbar: View {
             Image(systemName: symbol)
                 .font(.system(size: 15, weight: .semibold))
                 .foregroundStyle(active ? PFColor.onPrimary : PFColor.textMain)
-                .frame(width: 42, height: 38)
+                // Flexible so all seven fit the narrow iPhone Duo outer display.
+                .frame(minWidth: 34, maxWidth: 42, minHeight: 38)
                 .background(active ? PFColor.primary : PFColor.raised, in: .rect(cornerRadius: PFRadius.control, style: .continuous))
         }
         .buttonStyle(.pfPressable)

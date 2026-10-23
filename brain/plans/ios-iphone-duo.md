@@ -118,6 +118,11 @@ Sheets weiterhin `PFPresenter`.
   auf der Zeile der letzten Aktion (Footer bzw. letzte Inhaltszeile bei `.fit`-Sheets, sonst unten);
   horizontale Reihen (Datum, Chips) enden an der Seitenregion. Pill-Zeile im Aufgaben-Detail: erst ohne
   Chevrons, dann Umbruch (`ViewThatFits`). Der Platzhalter für den schwebenden Button entfällt dort.
+- Beschreibung (alle iPhones): speichert sich selbst (1,2 s nach der letzten Eingabe und beim Verlassen),
+  kein Abbrechen/Speichern mehr; die Formatleiste hat stattdessen „Tastatur schließen“. Duo außen: Formatleiste
+  versteckt, ein „Aa“-Button in der Seitenspalte (nur bei offener Tastatur) blendet sie über der Tastatur ein.
+- Fälligkeits-Sheet: Umschalter oben rechts zwischen Tagesleiste und Monatsansicht (`PFDateStrip(showsMonth:)`,
+  wird gemerkt), weniger Leerraum unter „Save“ (`pfSheetBottomInset`).
 - Nebenbei behoben: „Als erledigt markieren“ im Aufgaben-Detail lag auf allen iPhones hinter der Fokusleiste
   (gepushte Seiten sehen das `safeAreaInset` der Shell nicht) → `pfBottomChromeHeight`.
 - Nebenbei behoben: `PFBoard` rechnete Drag-Treffer mit 85 % statt der gezeichneten 82 % Bahnbreite.

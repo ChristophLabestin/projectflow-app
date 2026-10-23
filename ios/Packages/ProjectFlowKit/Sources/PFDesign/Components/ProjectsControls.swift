@@ -337,6 +337,7 @@ public struct PFEditableText: View {
     let autofocus: Bool
     let onCommit: (String) -> Void
     @FocusState private var focused: Bool
+    @State private var isEditing = false
 
     public init(_ placeholder: String, text: Binding<String>, style: PFTextStyle = .body, color: Color = PFColor.textMain,
                 isEditable: Bool = true, lineLimit: ClosedRange<Int> = 1...12, autofocus: Bool = false,
@@ -368,9 +369,17 @@ public struct PFEditableText: View {
                         }
                     }
                     .onChange(of: focused) { _, isFocused in
+                        isEditing = isFocused
                         if !isFocused { onCommit(text) }
                     }
                     .onAppear { if autofocus { focused = true } }
+                    // Leaving the screen (back) while typing never moves focus first: commit here too.
+                    .onDisappear {
+                        if isEditing {
+                            isEditing = false
+                            onCommit(text)
+                        }
+                    }
             } else {
                 Text(text.isEmpty ? placeholder : text)
                     .pfText(style)
