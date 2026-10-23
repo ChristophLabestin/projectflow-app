@@ -11,74 +11,33 @@ import {
     type DesktopOS
 } from '../services/desktopDownloads';
 import appIconUrl from '../assets/desktop-app-icon.png';
-import panelDarkUrl from '../assets/download/menu-bar-panel-dark.jpg';
-import panelLightUrl from '../assets/download/menu-bar-panel-light.jpg';
-import captureUrl from '../assets/download/quick-capture.png';
-import { useTheme } from '../context/ThemeContext';
+import '../components/common/Button/button.scss';
 import './download-page.scss';
 
-const PLATFORM_LABEL: Record<DesktopOS, string> = { mac: 'macOS', windows: 'Windows' };
-const OTHER_OS: Record<DesktopOS, DesktopOS> = { mac: 'windows', windows: 'mac' };
+const PLATFORMS: { os: DesktopOS; label: string; icon: string }[] = [
+    { os: 'mac', label: 'macOS', icon: 'laptop_mac' },
+    { os: 'windows', label: 'Windows', icon: 'laptop_windows' }
+];
 
-const FEATURES = [
-    { icon: 'bolt', key: 'capture', tone: 'warning' },
-    { icon: 'timer', key: 'menuBar', tone: 'success' },
-    { icon: 'picture_in_picture_alt', key: 'quickAccess', tone: 'primary' },
-    { icon: 'notifications_active', key: 'notifications', tone: 'error' },
-    { icon: 'wb_twilight', key: 'day', tone: 'warning' },
-    { icon: 'update', key: 'updates', tone: 'success' }
-] as const;
-
-const TRUST = [
-    { icon: 'verified_user', key: 'signed' },
-    { icon: 'autorenew', key: 'updates' },
-    { icon: 'person', key: 'account' }
-] as const;
+const labelFor = (os: DesktopOS) => PLATFORMS.find((platform) => platform.os === os)!.label;
 
 /**
- * Public download page for the desktop app (/download). Detects macOS / Windows and offers the matching
- * installer straight from the latest release (no detour via GitHub), with install steps after the click.
+ * Public download page for the desktop app (/download), kept plain like other SaaS download pages: the installer
+ * for the detected OS first, then every platform. Files come straight from the latest release (no GitHub page).
  */
 export const DownloadPage = () => {
     const { t, language } = useLanguage();
     const { user } = useAuth();
-    const { loading, release, os: detectedOs } = useDesktopRelease();
-    const [chosenOs, setChosenOs] = useState<DesktopOS | null>(null);
+    const { loading, release, os } = useDesktopRelease();
     const [startedOs, setStartedOs] = useState<DesktopOS | null>(null);
     const inDesktopApp = isDesktop();
-    const { theme } = useTheme();
-    const isDark = theme === 'dark' || (theme === 'system' && typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches);
 
-    const os = chosenOs ?? detectedOs;
     const dateLabel = useMemo(() => (release?.publishedAt
         ? new Intl.DateTimeFormat(language, { day: 'numeric', month: 'long', year: 'numeric' }).format(new Date(release.publishedAt))
         : ''), [language, release?.publishedAt]);
 
     const available = (target: DesktopOS) => Boolean(release?.assets.includes(DESKTOP_ASSETS[target]));
-    const meta = (target: DesktopOS) => [
-        release ? t('download.meta.version').replace('{version}', release.version) : null,
-        formatDownloadSize(release?.sizes[DESKTOP_ASSETS[target]], language),
-        t(`download.meta.arch.${target}`)
-    ].filter(Boolean).join(' · ');
-
-    const downloadButton = (target: DesktopOS, primary: boolean) => (
-        <a
-            key={target}
-            className={`download-page__button ${primary ? 'download-page__button--primary' : ''}`.trim()}
-            href={desktopDownloadUrl(target)}
-            onClick={() => setStartedOs(target)}
-            aria-disabled={!available(target)}
-        >
-            <span className="material-symbols-outlined">{target === 'mac' ? 'laptop_mac' : 'laptop_windows'}</span>
-            <span className="download-page__button-copy">
-                <strong>{t('download.cta').replace('{platform}', PLATFORM_LABEL[target])}</strong>
-                <span>{meta(target)}</span>
-            </span>
-            <span className="material-symbols-outlined download-page__button-arrow">download</span>
-        </a>
-    );
-
-    const installSteps = (target: DesktopOS) => [1, 2, 3].map((step) => t(`download.install.${target}.${step}`));
+    const size = (target: DesktopOS) => formatDownloadSize(release?.sizes[DESKTOP_ASSETS[target]], language);
 
     return (
         <div className="download-page">
@@ -94,101 +53,47 @@ export const DownloadPage = () => {
 
             <main className="download-page__main">
                 <section className="download-page__hero">
-                    <div className="download-page__hero-copy">
-                        <p className="download-page__badge">
-                            <img src={appIconUrl} alt="" aria-hidden="true" />
-                            {t('download.eyebrow')}
-                            {release && <span>{t('download.meta.version').replace('{version}', release.version)}</span>}
+                    <img className="download-page__icon" src={appIconUrl} alt={t('download.iconAlt')} />
+                    <h1>{os ? t('download.title').replace('{platform}', labelFor(os)) : t('download.titleGeneric')}</h1>
+                    <p className="download-page__lead">{t('download.lead')}</p>
+
+                    {inDesktopApp && (
+                        <p className="download-page__notice">
+                            <span className="material-symbols-outlined">check_circle</span>
+                            {t('download.alreadyInstalled')}
                         </p>
-                        <h1>
-                            {os ? (
-                                <>
-                                    {t('download.titleLead')}{' '}
-                                    <span className="download-page__accent">{PLATFORM_LABEL[os]}</span>
-                                </>
-                            ) : t('download.titleGeneric')}
-                        </h1>
-                        <p className="download-page__lead">{t('download.lead')}</p>
+                    )}
 
-                        {inDesktopApp && (
-                            <div className="download-page__notice">
-                                <span className="material-symbols-outlined">check_circle</span>
-                                {t('download.alreadyInstalled')}
-                            </div>
-                        )}
-
-                        {loading ? (
-                            <div className="download-page__skeleton" aria-busy="true" />
-                        ) : !release ? (
-                            <div className="download-page__notice">
-                                <span className="material-symbols-outlined">schedule</span>
-                                {t('download.unavailable')}
-                            </div>
-                        ) : os ? (
-                            <div className="download-page__actions">
-                                {downloadButton(os, true)}
-                                {available(OTHER_OS[os]) && (
-                                    <button type="button" className="download-page__switch" onClick={() => { setChosenOs(OTHER_OS[os]); setStartedOs(null); }}>
-                                        {t('download.otherPlatform').replace('{platform}', PLATFORM_LABEL[OTHER_OS[os]])}
-                                    </button>
-                                )}
-                            </div>
-                        ) : (
-                            <>
-                                <p className="download-page__hint">{t('download.noDesktopDetected')}</p>
-                                <div className="download-page__actions download-page__actions--both">
-                                    {available('mac') && downloadButton('mac', false)}
-                                    {available('windows') && downloadButton('windows', false)}
-                                </div>
-                            </>
-                        )}
-
-                        {release && dateLabel && (
-                            <p className="download-page__released">{t('download.released').replace('{date}', dateLabel)}</p>
-                        )}
-                    </div>
-
-                    <div className="download-page__stage" aria-hidden="true">
-                        <div className="download-page__menubar">
-                            <span className="download-page__menubar-apple" />
-                            <strong>ProjectFlow</strong>
-                            <span>{t('download.stage.menu.file')}</span>
-                            <span>{t('download.stage.menu.view')}</span>
-                            <span>{t('download.stage.menu.window')}</span>
-                            <span className="download-page__menubar-focus">
-                                <span className="download-page__pulse" />
-                                {t('download.stage.focus')}
-                            </span>
-                        </div>
-                        <img className="download-page__shot download-page__shot--panel" src={isDark ? panelDarkUrl : panelLightUrl} alt="" />
-                        <img className="download-page__shot download-page__shot--capture" src={captureUrl} alt="" />
-                    </div>
+                    {loading && <div className="download-page__skeleton" aria-busy="true" />}
+                    {!loading && !release && (
+                        <p className="download-page__notice">
+                            <span className="material-symbols-outlined">schedule</span>
+                            {t('download.unavailable')}
+                        </p>
+                    )}
+                    {!loading && release && os && available(os) && (
+                        <>
+                            <a className="btn btn--primary btn--lg download-page__primary" href={desktopDownloadUrl(os)} onClick={() => setStartedOs(os)}>
+                                <span className="material-symbols-outlined">download</span>
+                                {t('download.cta').replace('{platform}', labelFor(os))}
+                            </a>
+                            <p className="download-page__meta">
+                                {[t('download.meta.version').replace('{version}', release.version), size(os), t(`download.requirements.${os}`)]
+                                    .filter(Boolean).join(' · ')}
+                            </p>
+                        </>
+                    )}
+                    {!loading && release && !os && <p className="download-page__meta">{t('download.noDesktopDetected')}</p>}
                 </section>
-
-                <ul className="download-page__trust">
-                    {TRUST.map((item) => {
-                        // Only the macOS build is signed and notarized so far.
-                        const key = item.key === 'signed' && os === 'windows' ? 'direct' : item.key;
-                        return (
-                        <li key={item.key}>
-                            <span className="material-symbols-outlined">{key === 'direct' ? 'download_done' : item.icon}</span>
-                            <span>
-                                <strong>{t(`download.trust.${key}.title`)}</strong>
-                                {t(`download.trust.${key}.body`)}
-                            </span>
-                        </li>
-                        );
-                    })}
-                </ul>
 
                 {startedOs && (
                     <section className="download-page__install" aria-live="polite">
                         <h2>{t('download.install.title')}</h2>
                         <ol>
-                            {installSteps(startedOs).map((step, index) => (
+                            {[1, 2, 3].map((step) => (
                                 <li key={step}>
-                                    <span className="download-page__step">{index + 1}</span>
-                                    <span>{step}</span>
+                                    <span className="download-page__step">{step}</span>
+                                    {t(`download.install.${startedOs}.${step}`)}
                                 </li>
                             ))}
                         </ol>
@@ -199,61 +104,41 @@ export const DownloadPage = () => {
                     </section>
                 )}
 
-                <section className="download-page__features" aria-label={t('download.features.title')}>
-                    <h2>{t('download.features.title')}</h2>
-                    <div className="download-page__grid">
-                        {FEATURES.map((feature) => (
-                            <article key={feature.key} className={`download-page__feature download-page__feature--${feature.tone}`}>
-                                <span className="material-symbols-outlined">{feature.icon}</span>
-                                <h3>{t(`download.features.${feature.key}.title`)}</h3>
-                                <p>{t(`download.features.${feature.key}.body`)}</p>
-                            </article>
-                        ))}
-                    </div>
-                </section>
-
-                <section className="download-page__showcase">
-                    <div className="download-page__showcase-copy">
-                        <p className="download-page__eyebrow">{t('download.showcase.eyebrow')}</p>
-                        <h2>{t('download.showcase.title')}</h2>
-                        <p>{t('download.showcase.body')}</p>
-                        <ul>
-                            <li><code>#</code>{t('download.showcase.project')}</li>
-                            <li><code>!</code>{t('download.showcase.priority')}</li>
-                            <li><code>{t('download.showcase.dateToken')}</code>{t('download.showcase.date')}</li>
-                        </ul>
-                    </div>
-                    <div className="download-page__showcase-visual" aria-hidden="true">
-                        <img src={captureUrl} alt="" />
-                    </div>
-                </section>
-
-                <section className="download-page__details">
-                    <div>
-                        <h2>{t('download.requirements.title')}</h2>
-                        <ul>
-                            <li><strong>macOS</strong> {t('download.requirements.mac')}</li>
-                            <li><strong>Windows</strong> {t('download.requirements.windows')}</li>
-                        </ul>
-                    </div>
-                    <div>
-                        <h2>{t('download.faq.title')}</h2>
-                        <dl>
-                            {(['account', 'updates', 'browser'] as const).map((key) => (
-                                <div key={key}>
-                                    <dt>{t(`download.faq.${key}.q`)}</dt>
-                                    <dd>{t(`download.faq.${key}.a`)}</dd>
+                {release && (
+                    <section className="download-page__platforms" aria-labelledby="download-platforms">
+                        <h2 id="download-platforms">{t('download.platforms.title')}</h2>
+                        <div className="download-page__list">
+                            {PLATFORMS.map((platform) => (
+                                <div key={platform.os} className="download-page__row">
+                                    <span className="material-symbols-outlined download-page__row-icon">{platform.icon}</span>
+                                    <div className="download-page__row-copy">
+                                        <strong>
+                                            {platform.label}
+                                            {platform.os === os && <span className="download-page__tag">{t('download.platforms.yourSystem')}</span>}
+                                        </strong>
+                                        <span>{[t(`download.requirements.${platform.os}`), size(platform.os)].filter(Boolean).join(' · ')}</span>
+                                    </div>
+                                    {available(platform.os) ? (
+                                        <a className="btn btn--secondary btn--sm" href={desktopDownloadUrl(platform.os)} onClick={() => setStartedOs(platform.os)}>
+                                            {t('download.platforms.download')}
+                                        </a>
+                                    ) : (
+                                        <span className="download-page__row-muted">{t('download.platforms.soon')}</span>
+                                    )}
                                 </div>
                             ))}
-                        </dl>
-                    </div>
-                </section>
-                {release && os && (
-                    <section className="download-page__final">
-                        <img src={appIconUrl} alt="" aria-hidden="true" />
-                        <h2>{t('download.final.title').replace('{platform}', PLATFORM_LABEL[os])}</h2>
-                        <p>{t('download.final.body')}</p>
-                        {downloadButton(os, true)}
+                            <div className="download-page__row">
+                                <span className="material-symbols-outlined download-page__row-icon">language</span>
+                                <div className="download-page__row-copy">
+                                    <strong>{t('download.platforms.web')}</strong>
+                                    <span>{t('download.platforms.webHint')}</span>
+                                </div>
+                                <Link className="btn btn--ghost btn--sm" to={user ? '/' : '/login'}>{t('download.platforms.open')}</Link>
+                            </div>
+                        </div>
+                        <p className="download-page__footnote">
+                            {[dateLabel && t('download.released').replace('{date}', dateLabel), t('download.autoUpdate')].filter(Boolean).join(' · ')}
+                        </p>
                     </section>
                 )}
             </main>
