@@ -346,6 +346,8 @@ export const AppLayout = () => {
 
                 {/* Main Scroll Area */}
                 <main className={`app-main-scroll dotted-bg ${(isFullWidthRoute || contentWide) ? 'app-main-scroll--full' : 'app-main-scroll--standard'}`}>
+                    {/* Browser on macOS / Windows: offer the desktop app once a release exists */}
+                    <DesktopAppPromo />
                     <div className={(isFullWidthRoute || contentWide) ? 'w-full h-full' : 'max-w-7xl mx-auto h-full'}>
                         <Outlet context={{ setTaskTitle, statusPreference, contentWide, setContentWide }} />
                     </div>
@@ -366,8 +368,6 @@ export const AppLayout = () => {
             {/* First sign-in: workspace name, solo/team, invites */}
             <WelcomeDialog />
 
-            {/* Browser on macOS / Windows: offer the desktop app once a release exists */}
-            <DesktopAppPromo />
 
             {/* Global Project Create Modal */}
             {isProjectCreateModalOpen && (

@@ -6,7 +6,7 @@ import { useLanguage } from '../context/LanguageContext';
 import { SettingsModal } from './SettingsModal';
 import { subscribeUserStatusPreference, updateUserStatusPreference } from '../services/domain/userStatusService';
 import { initialOf } from '../utils/initials';
-import { useDesktopDownload } from '../services/desktopDownloads';
+import { DESKTOP_DOWNLOAD_PATH, useDesktopDownload } from '../services/desktopDownloads';
 
 /**
  * User Profile Dropdown for the Topbar
@@ -256,14 +256,14 @@ export const UserProfileDropdown: React.FC = () => {
                             <span className="text-sm font-medium">{t('user.personalTasks')}</span>
                         </Link>
                         {desktopOffer && (
-                            <a
-                                href={desktopOffer.url}
+                            <Link
+                                to={DESKTOP_DOWNLOAD_PATH}
                                 onClick={() => setIsOpen(false)}
                                 className="flex items-center gap-3 px-4 py-2.5 hover:bg-surface-hover text-main transition-colors"
                             >
                                 <span className="material-symbols-outlined text-[20px] text-muted">{desktopOffer.os === 'mac' ? 'laptop_mac' : 'laptop_windows'}</span>
                                 <span className="text-sm font-medium">{t('desktop.promo.menuItem').replace('{platform}', desktopOffer.os === 'mac' ? 'Mac' : 'Windows')}</span>
-                            </a>
+                            </Link>
                         )}
                     </div>
 

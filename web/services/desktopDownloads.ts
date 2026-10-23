@@ -9,7 +9,7 @@ import { isDesktop } from './desktop';
 const REPO = 'ChristophLabestin/projectflow-app';
 const LATEST_API = `https://api.github.com/repos/${REPO}/releases/latest`;
 export const DESKTOP_RELEASES_PAGE = `https://github.com/${REPO}/releases/latest`;
-const CACHE_KEY = 'pf_desktop_release_cache';
+const CACHE_KEY = 'pf_desktop_release_cache_v2';
 const CACHE_MS = 6 * 60 * 60 * 1000;
 
 export type DesktopOS = 'mac' | 'windows';
@@ -21,7 +21,10 @@ export const DESKTOP_ASSETS: Record<DesktopOS, string> = {
 
 export interface DesktopRelease {
     version: string;
+    publishedAt: string | null;
     assets: string[];
+    /** Download size in bytes per asset name. */
+    sizes: Record<string, number>;
 }
 
 /** macOS or Windows desktop browsers only (iPad reports "Macintosh" but has touch). */
@@ -54,8 +57,14 @@ export const fetchLatestDesktopRelease = (): Promise<DesktopRelease | null> => {
     inflight = fetch(LATEST_API, { headers: { Accept: 'application/vnd.github+json' } })
         .then(async (response) => {
             if (!response.ok) return null;
-            const data = await response.json() as { tag_name?: string; assets?: { name: string }[] };
-            return { version: (data.tag_name || '').replace(/^v/, ''), assets: (data.assets || []).map((asset) => asset.name) };
+            const data = await response.json() as { tag_name?: string; published_at?: string; assets?: { name: string; size?: number }[] };
+            const assets = data.assets || [];
+            return {
+                version: (data.tag_name || '').replace(/^v/, ''),
+                publishedAt: data.published_at || null,
+                assets: assets.map((asset) => asset.name),
+                sizes: Object.fromEntries(assets.map((asset) => [asset.name, asset.size || 0]))
+            } satisfies DesktopRelease;
         })
         .catch(() => null)
         .then((release) => {
@@ -82,3 +91,21 @@ export const useDesktopDownload = () => {
     }, []);
     return offer;
 };
+
+/** Latest release + detected OS for the download page (also works in the desktop app and on mobile). */
+export const useDesktopRelease = () => {
+    const [state, setState] = useState<{ loading: boolean; release: DesktopRelease | null }>({ loading: true, release: null });
+    useEffect(() => {
+        let mounted = true;
+        void fetchLatestDesktopRelease().then((release) => { if (mounted) setState({ loading: false, release }); });
+        return () => { mounted = false; };
+    }, []);
+    return { ...state, os: typeof navigator === 'undefined' ? null : detectDesktopOS() };
+};
+
+export const formatDownloadSize = (bytes: number | undefined, locale: string) => (
+    bytes ? `${new Intl.NumberFormat(locale, { maximumFractionDigits: 0 }).format(bytes / (1024 * 1024))} MB` : ''
+);
+
+/** In-app route of the download page. */
+export const DESKTOP_DOWNLOAD_PATH = '/download';

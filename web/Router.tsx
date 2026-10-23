@@ -35,6 +35,7 @@ import { HelpCenterFloatingButton } from './components/help/HelpCenterFloatingBu
 import { LanguageSwitcher } from './components/LanguageSwitcher';
 import { useLanguage } from './context/LanguageContext';
 import LegalPage from './screens/LegalPage';
+import { DownloadPage } from './screens/DownloadPage';
 import { useModuleAccess } from './hooks/useModuleAccess';
 import { useAuth } from './context/AuthContext';
 import { useUIState } from './context/UIContext';
@@ -142,7 +143,7 @@ const CreateProjectModalRoute = () => {
 // Root Layout Component to host global modals dependent on Router
 const RootLayout = () => {
     const location = useLocation();
-    const isPublicRoute = /^(\/login|\/register|\/invite|\/auth\/action|\/legal|\/feedback)/.test(location.pathname);
+    const isPublicRoute = /^(\/login|\/register|\/invite|\/auth\/action|\/legal|\/feedback|\/download)/.test(location.pathname);
 
     // Desktop utility windows (Quick Access pop-out, Quick Capture, day window): only their own content,
     // none of the global overlays (no second Quick Access modal, help, banners, bridge).
@@ -215,6 +216,7 @@ export const AppRouter = () => {
                     <Route path="/register" element={<Login />} />
                     <Route path="/auth/action" element={<AuthAction />} />
                     <Route path="/legal/:type" element={<LegalPage />} />
+                    <Route path="/download" element={<DownloadPage />} />
                     <Route path="/invite/:tenantId/:inviteId" element={<AcceptInvite />} />
                     <Route path="/feedback/initiative/:token" element={withRouteSuspense(<PublicInitiativeFeedbackPage />)} />
                     <Route path={DESKTOP_QUICK_ACCESS_PATH} element={<QuickAccessWindow />} />
