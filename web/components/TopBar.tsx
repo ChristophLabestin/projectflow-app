@@ -1,5 +1,6 @@
 import React, { Suspense, lazy, useState, useEffect } from 'react';
 import { Breadcrumbs } from './ui/Breadcrumbs';
+import { PlanStatusPill } from './billing/PlanStatusPill';
 import { usePinnedTasks } from '../context/PinnedTasksContext';
 import { getSubTasks } from '../services/domain/tasksService';
 import { Project } from '../types';
@@ -116,6 +117,8 @@ export const TopBar: React.FC<TopBarProps> = ({ project, tenantId, breadcrumbs, 
             </div>
 
             <div className="topbar-right">
+                <PlanStatusPill />
+
                 <div className="topbar-search-pill">
                     <Suspense fallback={<div className="h-9 rounded-lg bg-surface/60" />}>
                         <GlobalSearch tenantId={tenantId || project?.tenantId} />

@@ -118,3 +118,8 @@ export const toPlanState = (ent: Entitlements): PlanState => ({
     can: (feature, projectId) => canUse(ent, feature, projectId),
     aiEnabledFor: (uid) => aiEnabledFor(ent, uid),
 });
+
+
+/** Locale key variant for plan copy: personal workspaces upgrade to "Personal", team workspaces to "Team". */
+export const planCopyKey = (ent: Pick<Entitlements, 'workspaceType'> | null | undefined, key: string) =>
+    ent?.workspaceType === 'personal' ? `${key}.personal` : key;

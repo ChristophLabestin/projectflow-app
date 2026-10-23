@@ -92,18 +92,18 @@
       "name": "web-e2e-web-session",
       "runtimeExecutable": "env",
       "runtimeArgs": [
-        "PORT=3061",
-        "AUTH_PORT=9761",
-        "FIRESTORE_PORT=8761",
-        "STORAGE_PORT=9762",
-        "FUNCTIONS_PORT=5761",
+        "PORT=3091",
+        "AUTH_PORT=9791",
+        "FIRESTORE_PORT=8791",
+        "STORAGE_PORT=9793",
+        "FUNCTIONS_PORT=5791",
         "npm",
         "run",
         "dev:e2e",
         "--prefix",
         "web"
       ],
-      "port": 3061
+      "port": 3091
     },
     {
       "name": "web-e2e-legal",
@@ -193,18 +193,18 @@
       "runtimeExecutable": "env",
       "runtimeArgs": [
         "E2E_LOGIN=none",
-        "PORT=3061",
-        "AUTH_PORT=9761",
-        "FIRESTORE_PORT=8761",
-        "STORAGE_PORT=9762",
-        "FUNCTIONS_PORT=5761",
+        "PORT=3091",
+        "AUTH_PORT=9791",
+        "FIRESTORE_PORT=8791",
+        "STORAGE_PORT=9793",
+        "FUNCTIONS_PORT=5791",
         "npm",
         "run",
         "dev:e2e",
         "--prefix",
         "web"
       ],
-      "port": 3061
+      "port": 3091
     },
     {
       "name": "web-e2e-help",
