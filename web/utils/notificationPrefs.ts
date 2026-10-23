@@ -81,3 +81,28 @@ export const toStoredNotificationPrefs = (prefs: ResolvedNotificationPrefs): Not
     morningBriefing: { ...prefs.morningBriefing },
     dayClose: { ...prefs.dayClose }
 });
+
+/** Mirror of functions/src/notification-prefs.ts CATEGORY_BY_TYPE (types without a category are transactional). */
+const CATEGORY_BY_TYPE: Record<string, NotificationCategory> = {
+    task_assigned: 'assignments',
+    subtask_assigned: 'assignments',
+    issue_assigned: 'assignments',
+    comment_mention: 'mentions',
+    comment_added: 'comments',
+    task_completed: 'comments',
+    task_updated: 'comments',
+    task_status_changed: 'comments',
+    task_due_changed: 'due',
+    task_overdue: 'due',
+    project_member_added: 'assignments',
+    project_member_joined: 'comments',
+    issue_updated: 'comments',
+    task_due_today: 'due',
+    reminder: 'reminders'
+};
+
+/** Whether a notification type may be delivered as a push / native desktop notification (same rule as the server). */
+export const allowsPushNotification = (type: string, prefs: ResolvedNotificationPrefs): boolean => {
+    const category = CATEGORY_BY_TYPE[type];
+    return category ? prefs.push[category] : true;
+};

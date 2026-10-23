@@ -10,7 +10,8 @@ import { SettingsModal } from '../SettingsModal';
 import { addComment } from '../../services/dataService';
 import { attachFilesToItem, canAttachToItem, completeItem, filesFromPayload } from '../../services/desktopActions';
 import { useWorkspace } from '../../context/WorkspaceContext';
-import { markNotificationAsRead, subscribeToNotifications } from '../../services/notificationService';
+import { markNotificationAsRead, subscribeToNotificationPrefs, subscribeToNotifications } from '../../services/notificationService';
+import { allowsPushNotification, resolveNotificationPrefs, type ResolvedNotificationPrefs } from '../../utils/notificationPrefs';
 import { DESKTOP_OPEN_SEARCH_EVENT, getDesktopBridge, hasDesktopCapability, pinnedItemPath, type DesktopCommandEvent } from '../../services/desktop';
 import type { Notification } from '../../types';
 
@@ -258,6 +259,13 @@ export const DesktopBridge = () => {
         });
     }, [bridge, focusItem, focusState, pinnedItems, unreadCount, snoozeTick]);
 
+    // Push channel toggles (Settings → Notifications) also gate native desktop notifications.
+    const pushPrefsRef = useRef<ResolvedNotificationPrefs>(resolveNotificationPrefs(undefined));
+    useEffect(() => {
+        if (!bridge || !user) return undefined;
+        return subscribeToNotificationPrefs(user.uid, (prefs) => { pushPrefsRef.current = prefs; });
+    }, [bridge, user]);
+
     // Badge + native notifications for the active workspace.
     useEffect(() => {
         if (!bridge || !user) {
@@ -282,7 +290,7 @@ export const DesktopBridge = () => {
                 return;
             }
             if (document.hasFocus()) return;
-            fresh.slice(0, 3).forEach((notification) => {
+            fresh.filter((notification) => allowsPushNotification(notification.type, pushPrefsRef.current)).slice(0, 3).forEach((notification) => {
                 bridge.notify({
                     id: notification.id,
                     title: notification.title,
