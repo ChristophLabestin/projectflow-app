@@ -14,6 +14,11 @@ import {
 } from '../../services/domain/workspacesService';
 import type { Project } from '../../types';
 import { planErrorMessage } from '../../services/billingService';
+import { collection, getCountFromServer, query, where } from 'firebase/firestore';
+import { db } from '../../services/firebase';
+import { useActivePlan } from '../../hooks/useEntitlements';
+import { PlanHint } from '../billing/PlanHint';
+import { planCopyKey } from '../../utils/billingPlans';
 
 interface InviteToWorkspaceModalProps {
     isOpen: boolean;
@@ -58,6 +63,19 @@ export const InviteToWorkspaceModal = ({
     }, [isOpen, initialRole, initialKey]);
 
     const isOwner = activeWorkspace?.role === 'Owner';
+
+    // Plan: Free has no invitations at all; Team caps full members (guests are free and never count).
+    const { plan } = useActivePlan();
+    const invitesBlocked = Boolean(plan && !plan.can('invite'));
+    const memberLimit = plan?.limits.members ?? null;
+    const [fullMembers, setFullMembers] = useState<number | null>(null);
+    useEffect(() => {
+        if (!isOpen || !activeWorkspace || memberLimit === null || invitesBlocked) return;
+        const members = query(collection(db, 'tenants', activeWorkspace.id, 'members'), where('role', 'in', ['Owner', 'Admin', 'Member']));
+        getCountFromServer(members).then((snap) => setFullMembers(snap.data().count)).catch(() => setFullMembers(null));
+    }, [isOpen, activeWorkspace, memberLimit, invitesBlocked]);
+    const memberLimitReached = memberLimit !== null && fullMembers !== null && fullMembers >= memberLimit && role !== 'Guest';
+
     const roles: { value: InvitableRole; label: string; hint: string }[] = useMemo(() => [
         { value: 'Member', label: t('workspace.role.Member'), hint: t('workspace.invite.roleHint.Member') },
         { value: 'Guest', label: t('workspace.role.Guest'), hint: t('workspace.invite.roleHint.Guest') },
@@ -71,7 +89,7 @@ export const InviteToWorkspaceModal = ({
 
     const emailValid = EMAIL_PATTERN.test(email.trim());
     const needsProject = role === 'Guest' && projectIds.length === 0;
-    const canSubmit = !isSaving && !needsProject && (kind === 'link' || emailValid);
+    const canSubmit = !isSaving && !needsProject && !invitesBlocked && !memberLimitReached && (kind === 'link' || emailValid);
 
     const toggleProject = (projectId: string) => {
         setProjectIds((current) => (
@@ -123,6 +141,8 @@ export const InviteToWorkspaceModal = ({
             title={t('workspace.invite.title').replace('{workspace}', activeWorkspace?.name || '')}
             footer={link ? (
                 <Button variant="primary" onClick={onClose}>{t('workspace.invite.done')}</Button>
+            ) : invitesBlocked ? (
+                <Button variant="ghost" onClick={onClose}>{t('common.close')}</Button>
             ) : (
                 <>
                     <Button variant="ghost" onClick={onClose}>{t('common.cancel')}</Button>
@@ -132,7 +152,16 @@ export const InviteToWorkspaceModal = ({
                 </>
             )}
         >
-            {link ? (
+            {invitesBlocked ? (
+                <PlanHint
+                    tone="warning"
+                    icon="group_add"
+                    // Personal workspaces never get invitations (no upgrade path) — teams live in a team workspace.
+                    cta={plan?.workspaceType !== 'personal'}
+                    title={t(planCopyKey(plan, 'billing.limit.invites.title'))}
+                    message={t(planCopyKey(plan, 'billing.limit.invites.body'))}
+                />
+            ) : link ? (
                 <div className="invite-modal__result">
                     <p className="invite-modal__hint">
                         {kind === 'email' ? t('workspace.invite.result.email') : t('workspace.invite.result.link')}
@@ -147,6 +176,14 @@ export const InviteToWorkspaceModal = ({
                 </div>
             ) : (
                 <form className="invite-modal" onSubmit={handleSubmit}>
+                    {memberLimitReached && (
+                        <PlanHint
+                            compact
+                            tone="warning"
+                            icon="group"
+                            message={t('billing.limit.members.inline').replace('{count}', String(fullMembers)).replace('{limit}', String(memberLimit))}
+                        />
+                    )}
                     <div className="invite-modal__segments" role="tablist">
                         {(['email', 'link'] as InvitationKind[]).map((option) => (
                             <button

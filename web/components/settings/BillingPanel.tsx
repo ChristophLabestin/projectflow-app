@@ -5,6 +5,7 @@ import { collection, getDocs } from 'firebase/firestore';
 import { useLanguage } from '../../context/LanguageContext';
 import { useToast } from '../../context/UIContext';
 import { useCheckoutAvailable, useEntitlements } from '../../hooks/useEntitlements';
+import { resetOwnAiKeyCheck } from '../../hooks/useAiAccess';
 import { auth, db } from '../../services/firebase';
 import {
     billingErrorKey, createBillingCheckout, createBillingPortal, personalAiKey, type PersonalAiKeyStatus, setAiAddonMembers,
@@ -97,6 +98,7 @@ export const BillingPanel: React.FC<BillingPanelProps> = ({ tenantId, role }) =>
         setBusy('key');
         try {
             setKeyStatus(await personalAiKey(action, action === 'set' ? keyInput : undefined));
+            resetOwnAiKeyCheck();
             setKeyInput('');
             showSuccess(t(action === 'set' ? 'billing.ownKey.saved' : 'billing.ownKey.removed'));
         } catch (error) {
@@ -221,11 +223,16 @@ export const BillingPanel: React.FC<BillingPanelProps> = ({ tenantId, role }) =>
                         {ent.status === 'trialing' ? t('billing.upgrade.trialNote') : t('billing.upgrade.note')}
                     </p>
                     <div className="billing-settings__actions">
-                        {isOwner
-                            ? checkoutAvailable
-                                ? <Button onClick={() => void redirect('checkout')} isLoading={busy === 'checkout'}>{t('billing.upgrade.cta')}</Button>
-                                : <Button disabled>{t('billing.upgrade.comingSoon')}</Button>
-                            : <p className="billing-settings__muted">{t('billing.ownerOnly')}</p>}
+                        {!isOwner ? (
+                            <p className="billing-settings__muted">{t('billing.ownerOnly')}</p>
+                        ) : checkoutAvailable ? (
+                            <Button onClick={() => void redirect('checkout')} isLoading={busy === 'checkout'}>{t('billing.upgrade.cta')}</Button>
+                        ) : (
+                            <>
+                                <Button disabled>{t('billing.upgrade.comingSoon')}</Button>
+                                <p className="billing-settings__muted">{t('billing.upgrade.comingSoonNote')}</p>
+                            </>
+                        )}
                     </div>
                 </section>
             )}
