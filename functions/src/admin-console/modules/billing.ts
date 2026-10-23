@@ -1,5 +1,6 @@
 import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 import { setBillingExempt } from '../../billing';
+import { getWorkspaceFileUsage } from '../../file-storage';
 import type { HandlerMap } from '../types';
 import { AdminInputError, toMs } from '../types';
 
@@ -8,23 +9,28 @@ export type BillingSummary = {
     plan: string; status: string; seats: number; aiAddonSeats: number; billingInterval: string | null;
     trialEndsAt: number | null; graceEndsAt: number | null; currentPeriodEnd: number | null; cancelAtPeriodEnd: boolean;
     paid: boolean; mrr: number; missing: boolean; exempt: boolean;
+    workspaceType: 'personal' | 'team'; storageQuotaBytes: number | null; flowsQuota: string | null;
 };
 
 /** Net MRR in EUR: seats × 12 (monthly) or 10 (yearly) + AI add-on seats × 10, only for active/past_due. */
-export const mrrOf = (d: { status?: string; seats?: number; aiAddonSeats?: number; billingInterval?: string | null }) => {
+export const mrrOf = (d: { plan?: string; status?: string; seats?: number; aiAddonSeats?: number; billingInterval?: string | null }) => {
     if (d.status !== 'active' && d.status !== 'past_due') return 0;
+    const addons = (Number(d.aiAddonSeats) || 0) * 10;
+    // Personal plan (contract §7): flat 5 € monthly / 4 € on yearly billing, one seat.
+    if (d.plan === 'personal') return (d.billingInterval === 'year' ? 4 : 5) + addons;
     const perSeat = d.billingInterval === 'year' ? 10 : 12;
-    return (Number(d.seats) || 0) * perSeat + (Number(d.aiAddonSeats) || 0) * 10;
+    return (Number(d.seats) || 0) * perSeat + addons;
 };
 
 export const billingOf = (data: FirebaseFirestore.DocumentData | undefined): BillingSummary => {
     // No document = existing workspace in beta grace (contract §1).
-    if (!data) return { plan: 'team', status: 'grace', seats: 0, aiAddonSeats: 0, billingInterval: null, trialEndsAt: null, graceEndsAt: null, currentPeriodEnd: null, cancelAtPeriodEnd: false, paid: false, mrr: 0, missing: true, exempt: false };
+    if (!data) return { plan: 'team', status: 'grace', seats: 0, aiAddonSeats: 0, billingInterval: null, trialEndsAt: null, graceEndsAt: null, currentPeriodEnd: null, cancelAtPeriodEnd: false, paid: false, mrr: 0, missing: true, exempt: false, workspaceType: 'team', storageQuotaBytes: null, flowsQuota: null };
     return {
         plan: data.plan || 'free', status: data.status || 'free', seats: Number(data.seats) || 0, aiAddonSeats: Number(data.aiAddonSeats) || 0,
         billingInterval: data.billingInterval ?? null, trialEndsAt: toMs(data.trialEndsAt), graceEndsAt: toMs(data.graceEndsAt),
         currentPeriodEnd: toMs(data.currentPeriodEnd), cancelAtPeriodEnd: data.cancelAtPeriodEnd === true,
         paid: Boolean(data.stripeSubscriptionId), mrr: mrrOf(data), missing: false, exempt: data.billingExempt === true,
+        workspaceType: data.workspaceType === 'personal' ? 'personal' : 'team', storageQuotaBytes: Number.isFinite(data.storageQuotaBytes) ? data.storageQuotaBytes : null, flowsQuota: data.flowsQuota ?? null,
     };
 };
 
@@ -58,6 +64,35 @@ export const billingHandlers: HandlerMap = {
             if (!(await db.collection('tenants').doc(id).get()).exists) throw new AdminInputError('Workspace nicht gefunden');
             await setBillingExempt(id, params.exempt, `platform-admin:${uid}`);
             return { ok: true, exempt: params.exempt };
+        },
+    },
+    /** Storage per workspace: usage vs. quota; override via entitlements/plan.storageQuotaOverrideBytes (files-logic resolveQuotaBytes). */
+    'billing.storage': {
+        audit: 'none',
+        run: async ({ db }, params) => {
+            const id = typeof params?.id === 'string' ? params.id.trim().slice(0, 128) : '';
+            if (!id) throw new AdminInputError('id fehlt');
+            const [usage, plan] = await Promise.all([getWorkspaceFileUsage(id), db.collection('tenants').doc(id).collection('entitlements').doc('plan').get()]);
+            return { ...usage, planQuotaBytes: plan.get('storageQuotaBytes') ?? null, overrideBytes: plan.get('storageQuotaOverrideBytes') ?? null };
+        },
+    },
+    'billing.setStorageOverride': {
+        audit: 'mutation',
+        target: (p) => `tenants/${String(p?.id || '').slice(0, 128)}/entitlements/plan.storageQuotaOverrideBytes`,
+        summary: (p) => `${p?.bytes == null ? 'entfernt' : `${Math.round(Number(p.bytes) / 1024 ** 3)} GB`}: ${String(p?.reason || '').slice(0, 200)}`,
+        run: async ({ db, uid }, params) => {
+            const id = typeof params?.id === 'string' ? params.id.trim().slice(0, 128) : '';
+            const reason = typeof params?.reason === 'string' ? params.reason.trim() : '';
+            const bytes = params?.bytes == null ? null : Number(params.bytes);
+            if (!id) throw new AdminInputError('id fehlt');
+            if (reason.length < 10) throw new AdminInputError('Begründung (mind. 10 Zeichen) ist Pflicht');
+            if (bytes !== null && !(Number.isInteger(bytes) && bytes >= 1024 ** 3 && bytes <= 10 * 1024 ** 4)) throw new AdminInputError('Override zwischen 1 GB und 10 TB');
+            if (!(await db.collection('tenants').doc(id).get()).exists) throw new AdminInputError('Workspace nicht gefunden');
+            await db.collection('tenants').doc(id).collection('entitlements').doc('plan').set({
+                storageQuotaOverrideBytes: bytes === null ? FieldValue.delete() : bytes,
+                storageQuotaOverrideBy: `platform-admin:${uid}`, storageQuotaOverrideReason: reason, storageQuotaOverrideAt: FieldValue.serverTimestamp(),
+            }, { merge: true });
+            return { ok: true };
         },
     },
     /** Grace cutover date (admin_config/billing.cutoverAt), read by the billing Functions. */

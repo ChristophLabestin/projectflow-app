@@ -54,26 +54,46 @@ export const WorkspaceMenuSection = () => {
 
     return (
         <div className="snav-ws-group workspace-menu">
-            <div className="snav-section">{t('workspace.menu.title')}</div>
-            {workspaces.map((workspace) => {
-                const active = workspace.id === activeWorkspaceId;
+            {/* Personal workspace on top (billing contract §7), clearly separate from team workspaces. */}
+            {(() => {
+                const personal = workspaces.filter((workspace) => workspace.isPersonal);
+                const teams = workspaces.filter((workspace) => !workspace.isPersonal);
+                const row = (workspace: typeof workspaces[number]) => {
+                    const active = workspace.id === activeWorkspaceId;
+                    return (
+                        <button
+                            key={workspace.id}
+                            type="button"
+                            className={`snav-ws-row ${active ? 'is-active' : ''}`}
+                            onClick={() => { if (!active) void switchWorkspace(workspace.id); }}
+                            aria-current={active ? 'true' : undefined}
+                        >
+                            {workspace.isPersonal ? (
+                                <span className="workspace-menu__avatar workspace-menu__avatar--personal" aria-hidden="true">
+                                    <span className="material-symbols-outlined">person</span>
+                                </span>
+                            ) : (
+                                <span className="workspace-menu__avatar" aria-hidden="true">{initials(workspace.name)}</span>
+                            )}
+                            <span className="snav-ws-row__copy">
+                                <span className="snav-ws-row__title">{workspace.name}</span>
+                                <span className="snav-ws-row__meta">
+                                    {workspace.isPersonal ? t('workspace.menu.personalMeta') : t(`workspace.role.${workspace.role}`)}
+                                </span>
+                            </span>
+                            {active && <span className="material-symbols-outlined snav-ws-row__check">check</span>}
+                        </button>
+                    );
+                };
                 return (
-                    <button
-                        key={workspace.id}
-                        type="button"
-                        className={`snav-ws-row ${active ? 'is-active' : ''}`}
-                        onClick={() => { if (!active) void switchWorkspace(workspace.id); }}
-                        aria-current={active ? 'true' : undefined}
-                    >
-                        <span className="workspace-menu__avatar" aria-hidden="true">{initials(workspace.name)}</span>
-                        <span className="snav-ws-row__copy">
-                            <span className="snav-ws-row__title">{workspace.name}</span>
-                            <span className="snav-ws-row__meta">{t(`workspace.role.${workspace.role}`)}</span>
-                        </span>
-                        {active && <span className="material-symbols-outlined snav-ws-row__check">check</span>}
-                    </button>
+                    <>
+                        {personal.length > 0 && <div className="snav-section">{t('workspace.menu.personal')}</div>}
+                        {personal.map(row)}
+                        <div className="snav-section">{t(personal.length > 0 ? 'workspace.menu.teams' : 'workspace.menu.title')}</div>
+                        {teams.map(row)}
+                    </>
                 );
-            })}
+            })()}
             {pendingInvitations.map((invite) => (
                 <div key={invite.id} className="snav-ws-row workspace-menu__invite">
                     <span className="workspace-menu__avatar workspace-menu__avatar--invite" aria-hidden="true">

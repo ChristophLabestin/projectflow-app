@@ -296,7 +296,7 @@ export const Team = () => {
                                     .replace('{projects}', String(stats.projects))}
                             </p>
                         </div>
-                        {isWorkspaceAdmin && (
+                        {isWorkspaceAdmin && !activeWorkspace?.isPersonal && (
                             <Button onClick={() => setShowInviteModal(true)} className="rounded-[12px] px-4 py-2 text-[13px] font-bold">
                                 <span className="material-symbols-outlined mr-1.5 text-[18px]">person_add</span>{t('team.v2.invite')}
                             </Button>

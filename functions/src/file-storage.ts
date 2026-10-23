@@ -18,7 +18,6 @@ import { emitFileEvent } from './files-events';
 import {
     FileAccessContext,
     FileParent,
-    MAX_FILE_BYTES,
     canManageFile,
     canPurgeFile,
     canReadScope,
@@ -27,6 +26,7 @@ import {
     legacyFileFields,
     normalizeParent,
     quotaAllows,
+    resolveMaxFileBytes,
     resolveQuotaBytes,
     sanitizeFileName,
     sanitizeFolder,
@@ -1308,7 +1308,7 @@ export const getWorkspaceFileUsage = async (tenantId: string) => {
         usedBytes: toNumber(data.current) + toNumber(data.older),
         fileCount: toNumber(data.count),
         quotaBytes: resolveQuotaBytes(planSnap.data()),
-        maxFileBytes: MAX_FILE_BYTES,
+        maxFileBytes: resolveMaxFileBytes(planSnap.data()),
     };
 };
 
@@ -1324,8 +1324,12 @@ const prepareManagedUpload = async (args: {
     if (isBlockedFileType(args.fileName, args.mimeType)) {
         throw new functions.https.HttpsError('invalid-argument', 'This file type is not allowed.', { reason: 'blocked-type' });
     }
-    if (args.sizeBytes > MAX_FILE_BYTES) {
-        throw new functions.https.HttpsError('invalid-argument', 'File is too large.', { reason: 'too-large', maxBytes: MAX_FILE_BYTES });
+    // Plan limits (billing contract §7): max file size and pooled storage; nothing existing is deleted.
+    const usage = await getWorkspaceFileUsage(args.tenantId);
+    if (args.sizeBytes > usage.maxFileBytes) {
+        throw new functions.https.HttpsError('invalid-argument', 'File is too large.', {
+            reason: 'too-large', code: 'plan-file-too-large', maxBytes: usage.maxFileBytes,
+        });
     }
 
     const replaceFileId = normalizeString(args.payload.replaceFileId) || null;
@@ -1349,10 +1353,9 @@ const prepareManagedUpload = async (args: {
         await requireFileScopeRead(args.tenantId, actorId, parent.projectId);
     }
 
-    const usage = await getWorkspaceFileUsage(args.tenantId);
     if (!quotaAllows(usage.usedBytes, usage.quotaBytes, args.sizeBytes)) {
         throw new functions.https.HttpsError('resource-exhausted', 'Workspace storage is full.', {
-            reason: 'quota', usedBytes: usage.usedBytes, quotaBytes: usage.quotaBytes,
+            reason: 'quota', code: 'plan-storage-limit', usedBytes: usage.usedBytes, quotaBytes: usage.quotaBytes,
         });
     }
 
@@ -1384,7 +1387,8 @@ const finalizeManagedUpload = async (args: {
     } as TenantFileRecord;
 
     // The real object metadata decides, not what the client announced.
-    if (isBlockedFileType(fileName, verification.mimeType) || verification.sizeBytes > MAX_FILE_BYTES) {
+    const maxFileBytes = resolveMaxFileBytes((await db.doc(`tenants/${tenantId}/entitlements/plan`).get()).data());
+    if (isBlockedFileType(fileName, verification.mimeType) || verification.sizeBytes > maxFileBytes) {
         await deleteProviderObject({ tenantId, secret: args.secret, record: draftRecord }).catch(() => undefined);
         throw new functions.https.HttpsError('invalid-argument', 'This file is not allowed.', { reason: 'blocked-type' });
     }

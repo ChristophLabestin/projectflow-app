@@ -1,4 +1,5 @@
 // Run log of one flow: status, trigger, steps with errors, "erneut versuchen" for failed runs.
+import { planErrorMessage, billingErrorKey } from '../../services/billingService';
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { format } from 'date-fns';
@@ -33,6 +34,12 @@ const STATUS_ICON: Record<string, string> = {
     skipped_limit: 'block',
     skipped_suspended: 'block',
     cancelled: 'cancel',
+};
+
+/** Billing codes (`ai-not-enabled`, `plan-flow-…`) are translated; other errors are shown as sent. */
+export const flowRunErrorText = (error: string, t: (key: string) => string) => {
+    const key = billingErrorKey({ message: error });
+    return key ? t(key) : error;
 };
 
 const pct = (value: number | undefined) => `${Math.round((value || 0) * 100)} %`;
@@ -76,7 +83,7 @@ export const FlowRunLog: React.FC<FlowRunLogProps> = ({ t, tenantId, flow, names
         try {
             await retryFlowRun(tenantId, runId);
         } catch (err) {
-            showError(flowErrorMessage(err) || t('flows.log.retryFailed'));
+            showError(planErrorMessage(err, t) || flowErrorMessage(err) || t('flows.log.retryFailed'));
         } finally {
             setRetrying(null);
         }
@@ -125,7 +132,7 @@ export const FlowRunLog: React.FC<FlowRunLogProps> = ({ t, tenantId, flow, names
                                             <p className="flow-hint">{t('flows.log.waitingUntil').replace('{time}', format(run.resumeAtMs, 'Pp', { locale: dateLocale }))}</p>
                                         )}
                                         <AiDecisionList t={t} decisions={run.decisions} />
-                                        {run.error && run.steps.length === 0 && <p className="flow-panel__error">{run.error}</p>}
+                                        {run.error && run.steps.length === 0 && <p className="flow-panel__error">{flowRunErrorText(run.error, t)}</p>}
                                         <ol className="flow-dry-run">
                                             {run.steps.map((step, index) => {
                                                 const action = flow.actions.find((a) => a.id === step.actionId);
@@ -137,7 +144,7 @@ export const FlowRunLog: React.FC<FlowRunLogProps> = ({ t, tenantId, flow, names
                                                         <span>
                                                             {action ? actionSentence(action, t, names) : t(`flows.action.${step.type}`)}
                                                             <em>
-                                                                {t(`flows.log.step.${step.status}`)}{step.error ? ` – ${step.error}` : ''}
+                                                                {t(`flows.log.step.${step.status}`)}{step.error ? ` – ${flowRunErrorText(step.error, t)}` : ''}
                                                                 {step.decision ? ` · ${t('flows.aiCondition.choiceResult').replace('{choice}', step.decision.choice).replace('{confidence}', pct(step.decision.confidence))}` : ''}
                                                             </em>
                                                         </span>

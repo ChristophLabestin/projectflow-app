@@ -489,7 +489,8 @@ export const SidebarNavigator: React.FC<SidebarNavigatorProps> = ({ isDrawer = f
         ...(isWorkspaceAreaEnabled('flows') && activeWorkspace?.role !== 'Guest' ? [{ key: 'flows', to: '/flows', icon: 'account_tree', label: t('nav.flows') }] : []),
         { key: 'activity', to: '/activity', icon: 'history', label: t('nav.activity') },
         ...(activeWorkspace?.role !== 'Guest' ? [{ key: 'insights', to: '/insights', icon: 'insights', label: t('nav.insights'), exact: true }] : []),
-        ...(activeWorkspace?.role !== 'Guest' ? [{ key: 'team', to: '/team', icon: 'group', label: t('nav.team') }] : []),
+        // Personal workspace: only you — no Team page in the nav (billing contract §7).
+        ...(activeWorkspace?.role !== 'Guest' && !activeWorkspace?.isPersonal ? [{ key: 'team', to: '/team', icon: 'group', label: t('nav.team') }] : []),
         ...(activeWorkspace?.role === 'Owner' || activeWorkspace?.role === 'Admin'
             ? [{ key: 'workspaceSettings', to: '', icon: 'settings', label: t('workspaceSettings.title'), onSelect: () => { closeOnNavigate?.(); setWorkspaceSettingsOpen(true); } }]
             : []),

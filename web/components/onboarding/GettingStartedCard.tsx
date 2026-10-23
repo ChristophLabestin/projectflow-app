@@ -71,7 +71,7 @@ export const GettingStartedCard: React.FC<GettingStartedCardProps> = ({ projects
         { id: 'verify', done: !unverified, show: user.providerData.some((provider) => provider.providerId === 'password') },
         { id: 'project', done: projects.length > 0, show: true },
         { id: 'tasks', done: taskCount >= 3, show: true },
-        { id: 'invite', done: members.length > 1 || pendingInvites > 0, show: isAdmin },
+        { id: 'invite', done: members.length > 1 || pendingInvites > 0, show: isAdmin && !workspace.activeWorkspace?.isPersonal },
         { id: 'secure', done: secured, show: true }
     ];
     const visible = steps.filter((step) => step.show);

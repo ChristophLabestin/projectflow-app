@@ -31,7 +31,8 @@ export const TopBarTeamMenu: React.FC<TopBarTeamMenuProps> = ({ tenantId }) => {
     const [open, setOpen] = useState(false);
     const [inviteOpen, setInviteOpen] = useState(false);
     const { activeWorkspace } = useWorkspace();
-    const canInvite = activeWorkspace?.role === 'Owner' || activeWorkspace?.role === 'Admin';
+    // Personal workspaces never have members (billing contract §7).
+    const canInvite = !activeWorkspace?.isPersonal && (activeWorkspace?.role === 'Owner' || activeWorkspace?.role === 'Admin');
     const [members, setMembers] = useState<TeamMenuMember[]>([]);
     const containerRef = useRef<HTMLDivElement>(null);
     const resolvedTenant = tenantId || getActiveTenantId() || '';

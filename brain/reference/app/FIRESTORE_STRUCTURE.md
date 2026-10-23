@@ -256,7 +256,7 @@ User prefs: `/tenants/{tenantId}/users/{uid}/prefs/wiki` — `{ favorites: docId
 #### ↳ 📂 **`automation_runs`** *(server only; TTL `expireAt` 30 days)*
 `{automationId}_{eventId|slot|manual_…}` (deterministic → idempotent): `automationId, automationName, projectId, taskId, trigger, eventId, depth, status ('running'|'waiting'|'succeeded'|'failed'|'skipped_limit'|'skipped_suspended'|'cancelled'), skipReason, steps[{ actionId, type, status, output?, error?, at }], nextStep, failedStep, resumeAt, attempt, context, error, startedAt, finishedAt`.
 
-#### ↳ 📂 **`automation_usage/{yyyy-mm}`** `{ runs, aiSteps, skipped }` · **`automation_throttle`** (per-minute / per-entity-hour counters, server only, TTL)
+#### ↳ 📂 **`automation_usage/{yyyy-mm}`** `{ runs, aiSteps, skipped, runsLimit, aiStepsLimit, activeLimit, quotaTier }` · **`automation_throttle`** (per-minute / per-entity-hour counters, server only, TTL)
 Limits: `AUTOMATION_LIMITS` in `functions/src/automation-logic.ts`; per-workspace override `tenants/{t}.limits.automations { runsPerMonth, aiStepsPerMonth, activeFlowsPerWorkspace }`. Member policy: `tenants/{t}.automationPolicy.allowMemberFlows` (default true).
 
 #### ↳ 📂 **`files`** *(Canonical tenant file metadata; writes via Functions only)*

@@ -16,7 +16,7 @@ import { readLastTenantId, writeLastTenantId, writeOnboarding } from './userPriv
 import { httpsCallable } from 'firebase/functions';
 
 import { auth, db, functions } from '../firebase';
-import { assertPlanAllows } from '../billingService';
+import { assertPlanAllows, ensurePersonalWorkspace } from '../billingService';
 import {
     clearCachedTenantId,
     ensureTenantAndUser,
@@ -49,6 +49,8 @@ export interface WorkspaceSummary {
     /** Suspended by a platform admin (admin console): data access is closed, the app shows a notice. */
     suspended?: boolean;
     suspendedReason?: string | null;
+    /** The user's own personal workspace (`personal_{uid}`, billing contract §7): only them, never invitations. */
+    isPersonal?: boolean;
 }
 
 export interface WorkspaceInvitation {
@@ -101,15 +103,17 @@ export const listMyWorkspaces = async (): Promise<WorkspaceSummary[]> => {
                 ownerId: data.ownerId,
                 role: (memberDoc.data().role || 'Member') as WorkspaceRole,
                 suspended: data.suspendedAt != null,
-                suspendedReason: typeof data.suspendedReason === 'string' ? data.suspendedReason : null
+                suspendedReason: typeof data.suspendedReason === 'string' ? data.suspendedReason : null,
+                isPersonal: data.workspaceType === 'personal' || tenantDoc.id === `personal_${user.uid}`
             } as WorkspaceSummary;
         } catch {
             return null;
         }
     }));
+    // Personal workspace first, then teams by name.
     return results
         .filter((workspace): workspace is WorkspaceSummary => workspace !== null)
-        .sort((a, b) => a.name.localeCompare(b.name));
+        .sort((a, b) => Number(Boolean(b.isPersonal)) - Number(Boolean(a.isPersonal)) || a.name.localeCompare(b.name));
 };
 
 export const createWorkspace = async (name: string): Promise<string> => {
@@ -151,17 +155,19 @@ const rememberWorkspace = async (tenantId: string) => {
 /**
  * Resolves the workspace to open after sign-in: the last used one if the user
  * is still a member, otherwise their own workspace. Every account owns at
- * least one workspace; it is created on first sign-in.
+ * least one workspace: new accounts (including invited ones) get their personal
+ * workspace from the server (`ensurePersonalWorkspace`, billing contract §7).
+ * Existing accounts that already own a workspace get theirs via the backfill.
  */
-export const resolveWorkspaceForCurrentUser = async (defaultWorkspaceName: string) => {
+export const resolveWorkspaceForCurrentUser = async (language: string) => {
     const user = requireUser();
     await ensureTenantAndUser();
 
     let workspaces = await listMyWorkspaces();
     if (!workspaces.some((workspace) => workspace.role === 'Owner')) {
-        await createWorkspace(defaultWorkspaceName);
-        // First sign-in: show the welcome step and the getting-started checklist.
-        await writeOnboarding(user.uid, { welcomePending: true, checklistDismissed: false }).catch(() => undefined);
+        const { created } = await ensurePersonalWorkspace(language);
+        // First sign-in: show the welcome step ("alone or team?") and the getting-started checklist.
+        if (created) await writeOnboarding(user.uid, { welcomePending: true, checklistDismissed: false }).catch(() => undefined);
         workspaces = await listMyWorkspaces();
     }
 

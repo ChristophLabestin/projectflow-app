@@ -254,3 +254,15 @@ test('AI condition defaults when the model sends null', () => {
     const def = normalizeAutomation({ ...flow(), conditions: { op: 'and', groups: [{ op: 'and', rules: [{ field: 'ai', ai: { kind: 'predicate', question: 'Blocker?', threshold: null } }] }] } });
     assert.equal(def.conditions.groups[0].rules[0].ai.threshold, 0.8);
 });
+
+test('flow quota per plan (billing entitlements)', () => {
+    const { flowQuotaFor } = require('../../lib/automation-logic');
+    assert.deepEqual(flowQuotaFor(null, null), { runsPerMonth: 2000, aiStepsPerMonth: 200, activeFlowsPerWorkspace: 50, tier: 'legacy' });
+    assert.deepEqual(flowQuotaFor({ plan: 'free', flowsQuota: 'free' }, {}), { runsPerMonth: 200, aiStepsPerMonth: 0, activeFlowsPerWorkspace: 3, tier: 'free' });
+    assert.equal(flowQuotaFor({ plan: 'free' }, {}).tier, 'free', 'plan free without flowsQuota');
+    assert.deepEqual(flowQuotaFor({ plan: 'personal', flowsQuota: 'seat', seats: 1 }, {}), { runsPerMonth: 2000, aiStepsPerMonth: 200, activeFlowsPerWorkspace: 50, tier: 'seat' });
+    assert.deepEqual(flowQuotaFor({ plan: 'team', flowsQuota: 'seat', seats: 4 }, {}), { runsPerMonth: 8000, aiStepsPerMonth: 800, activeFlowsPerWorkspace: 80, tier: 'seat' });
+    assert.equal(flowQuotaFor({ plan: 'team', flowsQuota: 'seat', seats: 40 }, {}).activeFlowsPerWorkspace, 200);
+    assert.equal(flowQuotaFor({ plan: 'team', status: 'exempt', flowsQuota: 'seat', seats: 0 }, {}).runsPerMonth, 2000, 'exempt without seats = one seat');
+    assert.equal(flowQuotaFor({ plan: 'free', flowsQuota: 'free' }, { limits: { automations: { runsPerMonth: 999 } } }).runsPerMonth, 999, 'admin override wins');
+});

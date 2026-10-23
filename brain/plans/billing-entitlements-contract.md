@@ -58,6 +58,15 @@ Locale-Schlüssel `billing.errors.<code>`. Upgrade-Link: `?openSettings=billing`
 | `ai-addon-unavailable`, `ai-addon-needs-subscription`, `ai-addon-invalid-member` | `setAiAddonMembers` | |
 | `billing-not-configured`, `billing-already-subscribed`, `billing-price-missing`, `billing-no-customer` | Checkout/Portal | |
 | `invalid-openai-key`, `ai-key-storage-unavailable` | `personalAiKey` | |
+| `plan-flow-limit` | `saveAutomation`, `setAutomationEnabled` | Limit aktiver Flows des Plans erreicht (nichts wird abgeschaltet) |
+| `plan-flow-runs-limit` | `runAutomation`; automatische Läufe enden als `skipped_limit` (Protokoll: „Kontingent erreicht“) | Flow-Läufe des Monats aufgebraucht |
+| `plan-flow-ai-limit` | Flow-KI-Schritte (Lauf `failed`) | KI-Schritte des Monats aufgebraucht |
+
+**Flow-Kontingent (`flowsQuota`, umgesetzt von Flows, `flowQuotaFor` in `functions/src/automation-logic.ts`):** `free` = 3 aktive Flows,
+200 Läufe/Monat, KI-Schritte nur mit eigenem OpenAI-Schlüssel des Flow-Verantwortlichen; `seat` = je bezahltem Platz 2.000 Läufe und
+200 KI-Schritte pro Monat, 50 aktive Flows + 10 je weiterem Platz (max. 200); Server-KI nur, wenn `aiEnabledFor(doc, flowOwner)`,
+sonst eigener Schlüssel, sonst `ai-not-enabled`. Ohne Entitlements-Dokument (Grace) = Ein-Platz-Kontingent. Override pro Workspace:
+`tenants/{t}.limits.automations`. Zählerstand und aktuelles Limit stehen in `tenants/{t}/automation_usage/{yyyy-mm}`.
 
 Callable-Fehler kommen als `HttpsError('failed-precondition' | 'invalid-argument', <code>)` — der Code steht in `message`.
 
@@ -87,7 +96,8 @@ Jeder Nutzer hat genau **einen persönlichen Workspace**, auch wer nur in ein Te
 - **Id** `personal_{uid}`, Tenant-Feld `workspaceType: 'personal'` (Team-Workspaces: `'team'` oder fehlt). Das autoritative
   Feld steht in `entitlements/plan.workspaceType`; Clients dürfen `workspaceType` am Tenant weder setzen noch ändern.
 - **Anlage** ausschließlich serverseitig: Callable `ensurePersonalWorkspace({language})` → `{tenantId, created}` (idempotent;
-  der Client ruft es nach jeder Anmeldung auf, statt selbst einen ersten Workspace anzulegen). Name „Mein Workspace“ / „My workspace“
+  der Web-Client ruft es bei der Anmeldung auf, wenn der Nutzer noch keinen eigenen Workspace besitzt, statt selbst einen
+  ersten Workspace anzulegen; Bestandskonten wurden am 2026-10-23 per Backfill versorgt). Name „Mein Workspace“ / „My workspace“
   (umbenennbar). Bestandsnutzer per Backfill-Skript (`functions/scripts/personal-workspaces.mjs`, erst Emulator, Prod-Lauf nur nach Freigabe).
 - **Regeln**: genau 1 Mitglied (Owner), keine Einladungen/Gäste (`invitesAllowed: false`, `memberLimit: 1` in jedem Plan),
   nicht übertragbar (`transferWorkspaceOwnership` lehnt ab: `personal-not-transferable`), nicht löschbar, solange das Konto besteht.
@@ -95,14 +105,20 @@ Jeder Nutzer hat genau **einen persönlichen Workspace**, auch wer nur in ein Te
 
 | Plan | `plan` | Preis netto | Projekte | Mitglieder | Flows | Dateispeicher | KI |
 |---|---|---|---|---|---|---|---|
-| Free (persönlich) | `free` | 0 € | 3 | 1 | Free-Kontingent | 5 GB | eigener OpenAI-Schlüssel |
-| Personal | `personal` | **5 €**/Monat · **4 €**/Monat jährlich | unbegrenzt | 1 | wie 1 Team-Platz | **10 GB** | KI-Paket zubuchbar (10 €, Menge 1) oder eigener Schlüssel |
+| Free (persönlich) | `free` | 0 € | 3 | 1 | Free-Kontingent | 1 GB | eigener OpenAI-Schlüssel |
+| Personal | `personal` | **5 €**/Monat · **4 €**/Monat jährlich | unbegrenzt | 1 | wie 1 Team-Platz | **25 GB** | KI-Paket zubuchbar (10 €, Menge 1) oder eigener Schlüssel |
 
 - `personal` ist nur für `workspaceType: 'personal'` buchbar; `team`/`organization` nur für Team-Workspaces. Ein persönlicher
   Workspace wechselt nie auf Team, wer ein Team will, legt einen neuen Workspace an. Fehlercode `plan-workspace-type-mismatch`.
 - Eigene **Stripe-Subscription** je Workspace (persönlich und Team sind getrennte Abos, auch beim selben Nutzer). Lookup-Keys
   `personal_monthly` (500), `personal_yearly` (4800); KI-Paket wie Team (`ai_addon_*`, Menge 1, nur der Owner).
-- `entitlements/plan` zusätzlich: `workspaceType`, `storageQuotaBytes` (10 GB auf Personal), `flowsQuota: 'seat' | 'free'`.
+- `entitlements/plan` zusätzlich: `workspaceType`, `storageQuotaBytes`, `maxFileBytes`, `flowsQuota: 'seat' | 'free'`.
+- **Dateispeicher (Entscheidung 2026-10-23, vor Live änderbar):** Free 1 GB · Personal 25 GB · Team 10 GB pro Vollmitglied,
+  gepoolt, mindestens 25 GB · Organization 50 GB pro Vollmitglied · `exempt` wie der bezahlte Plan des Typs. Max. pro Datei
+  50 MB (Free/Personal), 250 MB (Team/Organization). Berechnet in `storageFor` und bei jedem Planwechsel/Mitgliederwechsel neu
+  geschrieben; `storageQuotaOverrideBytes` (Plattform-Admin) hat Vorrang. Über dem Limit wird nichts gelöscht, nur neue
+  Uploads abgelehnt: `HttpsError` mit `details.code` = `plan-storage-limit` bzw. `plan-file-too-large` (`details.reason`
+  bleibt `quota`/`too-large`).
 - `can('invite')` ist auf persönlichen Workspaces immer `false`; `can('upgradeToTeam')` gibt es nicht. UI: Workspace-Umschalter zeigt
   den persönlichen Workspace als „Persönlich“, Upgrade-Weg im Billing-Tab („Personal buchen“).
 - Admin-MRR: `personal` = 5 € (Monat) bzw. 4 € (Jahr) + `aiAddonSeats × 10`.

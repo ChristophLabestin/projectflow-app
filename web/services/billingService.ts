@@ -33,10 +33,12 @@ export const personalAiKey = async (action: 'get' | 'set' | 'clear', key?: strin
 /** Contract error codes (brain/plans/billing-entitlements-contract.md §3); each has `billing.errors.<code>`. */
 export const BILLING_ERROR_CODES = [
     'plan-project-limit', 'plan-project-locked', 'plan-invites-disabled', 'plan-member-limit', 'plan-workspace-type-mismatch',
+    'plan-storage-limit', 'plan-file-too-large',
     'ai-not-enabled', 'ai-addon-required', 'ai-plan-required',
     'ai-addon-unavailable', 'ai-addon-needs-subscription', 'ai-addon-invalid-member',
     'billing-not-configured', 'billing-already-subscribed', 'billing-price-missing', 'billing-no-customer',
     'invalid-openai-key', 'ai-key-storage-unavailable',
+    'plan-flow-limit', 'plan-flow-runs-limit', 'plan-flow-ai-limit',
 ] as const;
 
 /** Assigns the AI add-on to full members (owner only); Stripe quantity follows. */
@@ -49,7 +51,8 @@ export const setAiAddonMembers = async (tenantId: string, memberIds: string[]) =
 export const billingErrorKey = (error: unknown): string | null => {
     const message = String((error as { message?: string })?.message || '');
     const code = BILLING_ERROR_CODES.find((entry) => message.includes(entry))
-        || BILLING_ERROR_CODES.find((entry) => (error as { code?: string })?.code === entry);
+        || BILLING_ERROR_CODES.find((entry) => (error as { code?: string })?.code === entry)
+        || BILLING_ERROR_CODES.find((entry) => (error as { details?: { code?: string } })?.details?.code === entry);
     return code ? `billing.errors.${code}` : null;
 };
 

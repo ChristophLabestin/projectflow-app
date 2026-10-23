@@ -56,7 +56,9 @@ Nicht enthalten (Owner-Follow-ups): USt./OSS, Live-Schlüssel, AGB/Datenschutz, 
 1. `firebase functions:secrets:set STRIPE_SECRET_KEY` (nur `sk_test_…`).
 2. `STRIPE_SECRET_KEY=sk_test_… node functions/scripts/stripe-setup.mjs` legt Produkt, Preise, Portal-Konfiguration und
    den Webhook-Endpunkt an und gibt das Webhook-Secret aus → `firebase functions:secrets:set STRIPE_WEBHOOK_SECRET`.
-3. Functions deployen (`billing*`, `stripeWebhook`, `sendInvitation`, `acceptWorkspaceInvite`, KI-Callables), Regeln deployen.
+3. `adminApi`: in `functions/src/admin-console/index.ts` `secrets: ['STRIPE_SECRET_KEY']` ergänzen und neu deployen (sonst fällt
+   das Entfernen von `billingExempt` bei bestehendem Abo auf Free statt auf den Stripe-Stand zurück).
+4. Functions deployen (`billing*`, `stripeWebhook`, `sendInvitation`, `acceptWorkspaceInvite`, KI-Callables), Regeln deployen.
 
 ## Owner-Follow-ups
 USt./OSS-Klärung und Stripe Tax · Live-Schlüssel + Live-Webhook · AGB „Entgelte/Laufzeit“ und Datenschutz (Stripe) ·
@@ -66,7 +68,7 @@ Verhalten für Zusatzmitglieder nach Downgrade (derzeit: bleiben, ohne KI).
 ## Persönliche Workspaces + Plan „Personal“ (2026-10-23, Vertrag §7)
 - `personal_{uid}` per Callable `ensurePersonalWorkspace` (Transaktion: Tenant + Owner + Free-Entitlement, kein Test).
 - `applyPlan` erzwingt den Plan je `workspaceType` (`planForType`): persönlich → `free|personal`, Team → `free|team|organization`.
-  Personal: 10 GB (`storageQuotaBytes`), `flowsQuota: 'seat'`, KI-Paket Menge 1. Eigene Subscription/Kunde je Workspace.
+  Personal: 25 GB (`storageQuotaBytes`, Speicher-Entscheidung siehe Vertrag §7), `flowsQuota: 'seat'`, KI-Paket Menge 1. Eigene Subscription/Kunde je Workspace.
 - Stripe: Produkt „ProjectFlow Personal“ (`personal_monthly` 500, `personal_yearly` 4800); Portal-Konfiguration je Typ
   (`metadata.plan`), damit im Portal nie zwischen Team- und Personal-Preis gewechselt werden kann.
 - Regeln: Client darf keine `personal_*`-Tenants anlegen und `workspaceType` weder setzen noch ändern; persönliche Workspaces

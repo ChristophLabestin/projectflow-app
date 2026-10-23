@@ -52,6 +52,10 @@ export const WelcomeDialog: React.FC = () => {
     const [name, setName] = useState('');
     const [answers, setAnswers] = useState<Answers>({ useCases: [] });
     const [emails, setEmails] = useState('');
+    // Personal workspace (billing contract §7): "just me" stays there, "with my team" creates a team workspace.
+    const [mode, setMode] = useState<'solo' | 'team' | null>(null);
+    const [teamName, setTeamName] = useState('');
+    const [createdTeamId, setCreatedTeamId] = useState<string | null>(null);
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
@@ -62,6 +66,11 @@ export const WelcomeDialog: React.FC = () => {
     useEffect(() => {
         if (user?.displayName) setDisplayName((current) => current || user.displayName || '');
     }, [user?.displayName]);
+
+    useEffect(() => {
+        const first = (displayName || user?.displayName || '').trim().split(/\s+/)[0];
+        setTeamName((current) => current || (first ? t('welcome.mode.teamNameDefault').replace('{name}', first) : ''));
+    }, [displayName, user?.displayName, t]);
 
     // Invitation links have their own screen; onboard the user afterwards.
     const onInviteRoute = location.pathname.startsWith('/invite/');
@@ -87,9 +96,29 @@ export const WelcomeDialog: React.FC = () => {
         }
     };
 
-    const withTeam = isOwner && Boolean(answers.teamSize) && answers.teamSize !== 'solo';
+    // New accounts start in their personal workspace, which never has members: ask "just me or with a team?".
+    const personalFlow = isOwner && Boolean(active.isPersonal);
+    const withTeam = personalFlow
+        ? mode === 'team'
+        : isOwner && Boolean(answers.teamSize) && answers.teamSize !== 'solo';
+
+    const saveTeamWorkspace = async (skip: boolean) => {
+        if (skip || mode !== 'team') return;
+        if (invalidEmails.length) {
+            throw new ValidationError(t('welcome.errors.invalidEmails').replace('{emails}', invalidEmails.join(', ')));
+        }
+        const trimmed = teamName.trim() || t('welcome.mode.teamNameFallback');
+        // Team workspaces start with the 14-day Team trial (server trigger); invitations go there.
+        const tenantId = createdTeamId || await workspace.createWorkspace(trimmed);
+        setCreatedTeamId(tenantId);
+        for (const email of parsedEmails) {
+            await createInvitation({ tenantId, tenantName: trimmed, kind: 'email', email, role: 'Member' });
+        }
+        setEmails('');
+    };
 
     const saveWorkspace = async (skipInvites = false) => {
+        if (personalFlow) return saveTeamWorkspace(skipInvites);
         if (!isOwner) return;
         const invite = withTeam && !skipInvites;
         if (invite && invalidEmails.length) {
@@ -146,6 +175,11 @@ export const WelcomeDialog: React.FC = () => {
             if (step === 'how') await finishSurvey(current);
             if (step === 'done') {
                 await update({ welcomePending: false });
+                // A team workspace was created in this dialog: continue there (switching reloads the app).
+                if (createdTeamId) {
+                    await workspace.switchWorkspace(createdTeamId, '/');
+                    return;
+                }
                 navigate('/');
                 return;
             }
@@ -246,7 +280,57 @@ export const WelcomeDialog: React.FC = () => {
 
                 {step === 'about' && <>{question('role')}{question('useCases')}</>}
 
-                {step === 'team' && (
+                {step === 'team' && personalFlow && (
+                    <>
+                        <div className="welcome-dialog__modes" role="radiogroup" aria-label={t('welcome.mode.label')}>
+                            {(['solo', 'team'] as const).map((option) => (
+                                <button
+                                    key={option}
+                                    type="button"
+                                    role="radio"
+                                    aria-checked={mode === option}
+                                    className={`welcome-dialog__mode${mode === option ? ' is-selected' : ''}`}
+                                    onClick={() => setMode(option)}
+                                    disabled={Boolean(createdTeamId)}
+                                >
+                                    <span className="material-symbols-outlined" aria-hidden="true">{option === 'solo' ? 'person' : 'groups'}</span>
+                                    <span className="welcome-dialog__mode-title">{t(`welcome.mode.${option}`)}</span>
+                                    <span className="welcome-dialog__mode-text">{t(`welcome.mode.${option}Hint`)}</span>
+                                </button>
+                            ))}
+                        </div>
+                        {mode === 'team' && (
+                            <label className="welcome-dialog__field">
+                                <span className="welcome-dialog__label">{t('welcome.mode.teamNameLabel')}</span>
+                                <input
+                                    className="welcome-dialog__input"
+                                    value={teamName}
+                                    onChange={(event) => setTeamName(event.target.value)}
+                                    maxLength={80}
+                                    disabled={Boolean(createdTeamId)}
+                                />
+                                <small className="welcome-dialog__hint">{t('welcome.mode.teamNameHint')}</small>
+                            </label>
+                        )}
+                        {mode === 'team' && !createdTeamId && (
+                            <label className="welcome-dialog__field">
+                                <span className="welcome-dialog__label">{t('welcome.inviteLabel')}</span>
+                                <textarea
+                                    className="welcome-dialog__input welcome-dialog__input--area"
+                                    value={emails}
+                                    onChange={(event) => setEmails(event.target.value)}
+                                    placeholder={t('welcome.invitePlaceholder')}
+                                    rows={3}
+                                />
+                                <small className="welcome-dialog__hint">{t('welcome.inviteHint')}</small>
+                            </label>
+                        )}
+                        {question('teamSize')}
+                        {question('industry')}
+                    </>
+                )}
+
+                {step === 'team' && !personalFlow && (
                     <>
                         {isOwner && (
                             <label className="welcome-dialog__field">
@@ -299,7 +383,7 @@ export const WelcomeDialog: React.FC = () => {
                     <Button
                         variant="primary"
                         isLoading={busy}
-                        disabled={step === 'name' && !displayName.trim() && !user?.displayName}
+                        disabled={(step === 'name' && !displayName.trim() && !user?.displayName) || (step === 'team' && personalFlow && !mode)}
                         onClick={() => void next()}
                     >
                         {nextLabel}

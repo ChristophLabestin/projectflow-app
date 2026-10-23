@@ -309,6 +309,48 @@ export const dryRunFlow = (tenantId: string, automation: FlowDefinition, taskId:
 /** Message of a callable error (validation messages from the server are user-facing). */
 export const flowErrorMessage = (error: unknown): string => (error as { message?: string })?.message || '';
 
+export interface FlowQuota {
+    runsPerMonth: number;
+    aiStepsPerMonth: number;
+    activeFlowsPerWorkspace: number;
+    tier: 'free' | 'seat' | 'legacy';
+}
+
+/**
+ * Mirrors `flowQuotaFor` in functions/src/automation-logic.ts (server enforces): Free 3 active / 200 runs /
+ * no server AI; per seat 2,000 runs + 200 AI steps, 50 active (+10 per extra seat, max 200); no
+ * entitlement doc = legacy one-seat quota; platform-admin override on the tenant wins.
+ */
+export const flowQuotaFor = (entitlement: Record<string, any> | null, tenant: Record<string, any> | null): FlowQuota => {
+    let base: FlowQuota;
+    if (!entitlement) base = { runsPerMonth: 2000, aiStepsPerMonth: 200, activeFlowsPerWorkspace: 50, tier: 'legacy' };
+    else if ((entitlement.flowsQuota ?? (entitlement.plan === 'free' ? 'free' : 'seat')) === 'free') {
+        base = { runsPerMonth: 200, aiStepsPerMonth: 0, activeFlowsPerWorkspace: 3, tier: 'free' };
+    } else {
+        const seats = Math.max(1, Math.floor(Number(entitlement.seats) || 1));
+        base = { runsPerMonth: 2000 * seats, aiStepsPerMonth: 200 * seats, activeFlowsPerWorkspace: Math.min(200, 50 + 10 * (seats - 1)), tier: 'seat' };
+    }
+    const raw = tenant?.limits?.automations || {};
+    const pick = (key: 'runsPerMonth' | 'aiStepsPerMonth' | 'activeFlowsPerWorkspace') =>
+        (Number.isFinite(raw[key]) && raw[key] >= 0 ? Number(raw[key]) : base[key]);
+    return { runsPerMonth: pick('runsPerMonth'), aiStepsPerMonth: pick('aiStepsPerMonth'), activeFlowsPerWorkspace: pick('activeFlowsPerWorkspace'), tier: base.tier };
+};
+
+export const subscribeFlowQuota = (tenantId: string, callback: (quota: FlowQuota) => void) => {
+    let entitlement: Record<string, any> | null | undefined;
+    let tenant: Record<string, any> | null | undefined;
+    const emit = () => {
+        if (entitlement !== undefined && tenant !== undefined) callback(flowQuotaFor(entitlement, tenant));
+    };
+    const offEnt = onSnapshot(doc(db, 'tenants', tenantId, 'entitlements', 'plan'),
+        (snap) => { entitlement = snap.exists() ? snap.data() : null; emit(); },
+        () => { entitlement = null; emit(); });
+    const offTenant = onSnapshot(doc(db, 'tenants', tenantId),
+        (snap) => { tenant = snap.exists() ? snap.data() : null; emit(); },
+        () => { tenant = null; emit(); });
+    return () => { offEnt(); offTenant(); };
+};
+
 export interface FlowDraftResult {
     draft: FlowDefinition;
     warnings: ('unknown_person' | 'unknown_project' | 'dropped_condition' | 'dropped_action')[];

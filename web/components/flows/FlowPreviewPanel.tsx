@@ -1,4 +1,5 @@
 // Editor side panel: live match preview ("würde auf diese 3 Aufgaben zutreffen") + dry run on one task.
+import { planErrorMessage } from '../../services/billingService';
 import React, { useCallback, useState } from 'react';
 import { Link } from 'react-router-dom';
 
@@ -12,7 +13,7 @@ import {
     type FlowPreviewResult,
 } from '../../services/domain/automationsService';
 import { TASKLESS_TRIGGERS, actionSentence, type FlowNameLookup } from './flowText';
-import { AiDecisionList } from './FlowRunLog';
+import { AiDecisionList, flowRunErrorText } from './FlowRunLog';
 
 interface FlowPreviewPanelProps {
     t: (key: string) => string;
@@ -44,7 +45,7 @@ export const FlowPreviewPanel: React.FC<FlowPreviewPanelProps> = ({ t, tenantId,
         try {
             setPreview(await previewFlow(tenantId, draft));
         } catch (err) {
-            setError(flowErrorMessage(err) || t('flows.preview.error'));
+            setError(planErrorMessage(err, t) || flowErrorMessage(err) || t('flows.preview.error'));
         } finally {
             setBusy(null);
         }
@@ -56,7 +57,7 @@ export const FlowPreviewPanel: React.FC<FlowPreviewPanelProps> = ({ t, tenantId,
         try {
             setDryRun({ taskId, result: await dryRunFlow(tenantId, draft, taskId, projectId) });
         } catch (err) {
-            setError(flowErrorMessage(err) || t('flows.preview.error'));
+            setError(planErrorMessage(err, t) || flowErrorMessage(err) || t('flows.preview.error'));
         } finally {
             setBusy(null);
         }
@@ -106,7 +107,7 @@ export const FlowPreviewPanel: React.FC<FlowPreviewPanelProps> = ({ t, tenantId,
                                 {dryRun?.taskId === task.id && Boolean(dryRun.result.decisions?.length || dryRun.result.aiError) && (
                                     <div className="flow-preview__decisions">
                                         <AiDecisionList t={t} decisions={dryRun.result.decisions || []} />
-                                        {dryRun.result.aiError && <p className="flow-panel__error">{dryRun.result.aiError}</p>}
+                                        {dryRun.result.aiError && <p className="flow-panel__error">{flowRunErrorText(dryRun.result.aiError, t)}</p>}
                                         {!dryRun.result.matches && <p className="flow-hint">{t('flows.preview.wouldNotRun')}</p>}
                                     </div>
                                 )}
@@ -121,7 +122,7 @@ export const FlowPreviewPanel: React.FC<FlowPreviewPanelProps> = ({ t, tenantId,
                                                     </span>
                                                     <span>
                                                         {action ? actionSentence(action, t, names) : step.type}
-                                                        <em>{t(`flows.preview.step.${step.status}`)}{step.error ? ` – ${step.error}` : ''}</em>
+                                                        <em>{t(`flows.preview.step.${step.status}`)}{step.error ? ` – ${flowRunErrorText(step.error, t)}` : ''}</em>
                                                     </span>
                                                 </li>
                                             );
