@@ -176,3 +176,7 @@ ios/ProjectFlow.xcodeproj/project.xcworkspace/xcuserdata/
 ios/Packages/ProjectFlowKit/.build/
 ios/Packages/ProjectFlowKit/.swiftpm/
 ios/Packages/ProjectFlowKit/Package.resolved
+
+# iOS archive/export output
+/build/
+.xcodebuild-archive/
