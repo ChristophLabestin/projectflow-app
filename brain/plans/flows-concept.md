@@ -20,7 +20,7 @@ Einstieg (alle), „Flows lösen standardmäßig keine Flows aus“ (Asana/Jira)
 ## 2. Bausteine
 **Auslöser (genau einer pro Flow)** — Phase 1: Aufgabe erstellt · Status geändert (von/nach) ·
 zugewiesen (an Person/beliebig) · Fälligkeit erreicht (am Tag, 08:00 Workspace-Zeit) · überfällig
-(1 Tag danach) · Kommentar erstellt · Datei hochgeladen (sobald „Dateien“ Events liefert) ·
+(1 Tag danach) · Kommentar erstellt · Datei hochgeladen (`file.uploaded`, sobald „Dateien“ es emittiert) ·
 Projekt-Mitglied hinzugefügt · Zeitplan (täglich / wöchentlich, Uhrzeit, Zeitzone) · manuell
 („Flow ausführen“, optional auf eine ausgewählte Aufgabe). Phase 2: eingehender Webhook.
 
@@ -44,15 +44,17 @@ bis 30 Tage). Phase 2: Webhook aufrufen.
 Warnung im Run.
 
 ## 3. Ausführung (serverseitig)
-**Quelle:** der Ereignisstrom aus `brain/plans/activity-events-contract.md` (Session „Aktivität
-& Insights“). Flows braucht dort pro Event mindestens: `id`, `type` (z. B. `task.created`,
-`task.status_changed`, `task.assigned`, `comment.created`, `file.uploaded`,
-`project.member_added`), `tenantId`, `projectId`, `entity {kind,id,parentId}`,
-`actor {kind: user|automation|system, id}`, `changes {field: {from,to}}`, `occurredAt` und
-**`cause {automationId, runId, depth}`** (nur bei Flow-Writes). Bis der Vertrag auf main ist,
-wird der Entwurf über den Orchestrator abgestimmt; Flows liest Events nur, schreibt sie nie.
+**Quelle:** der Ereignisstrom `tenants/{t}/activity/{eventId}` laut
+`brain/plans/activity-events-contract.md` (v1, auf main seit 729bac1d). Genutzt werden `type`,
+`actor {kind, automationId}`, `object {type,id,parentType,parentId}`, `projectId`, `changes`,
+`meta`; Doc-IDs sind deterministisch. Trigger-Mapping: „Status geändert“ = `task.status_changed`
++ `task.completed`/`task.reopened`; „zugewiesen“ = `task.assigned` (`meta.assigneeIds`);
+außerdem `task.created`, `comment.created`, `subtask.completed`, `project.member_added`,
+`file.uploaded` (Files). Flows schreibt nur `automation.ran`/`automation.failed`.
+**Offene Vertragslücke:** `writeVia` trägt bisher nur `id`/`name` → angefragt bei „Aktivität &
+Insights“: optional `runId` + `depth`, durchgereicht als `actor.automationRunId/automationDepth`.
 
-**Ablauf:** `onAutomationEvent` (onCreate auf dem Event-Dokument) → lädt aktive Flows des
+**Ablauf:** `onAutomationEvent` (onCreate auf `activity/{eventId}`) → lädt aktive Flows des
 Tenants mit passendem `trigger.type` (Query `enabled == true && trigger.type == X`, Projekt-Flows
 gefiltert per `projectId`) → je Flow Run-Dokument mit **deterministischer ID**
 `{automationId}_{eventId}` per `create()` (existiert es schon → Duplikat, Abbruch = Idempotenz
@@ -66,8 +68,9 @@ sind ungeordnet) — deshalb Bedingungen gegen den frischen Dokumentstand; eine 
 ändern würde (Wert schon gesetzt), ist ein No-op und erzeugt kein Folge-Event.
 
 **Schleifenschutz (vierfach):**
-1. Jede Flow-Schreibaktion stempelt `automationCause {automationId, runId, depth}` ins Dokument;
-   der Event-Writer übernimmt es in `cause`. Ein Event mit `cause.automationId == X` löst X nie aus.
+1. Jede Flow-Schreibaktion setzt `writeVia {kind:'automation', id, name, runId, depth, at}` im
+   selben Write; der Trigger macht daraus `actor.kind = automation`. Ein Event mit
+   `actor.automationId == X` löst X nie aus.
 2. Andere Flows reagieren auf Flow-Events nur, wenn sie „durch Flows auslösbar“ aktiviert haben
    (Standard **aus**, wie Jira); dann gilt `depth ≤ 3`, darüber wird verworfen und protokolliert.
 3. Drossel je Flow und Entität: höchstens 5 Runs pro Stunde pro Aufgabe.
@@ -163,6 +166,5 @@ Flow-Versionierung; Tarif-gebundene Kontingente; Initiativen/Meilensteine als En
 5. **Verzögerungen in 15-min-Raster** (Scheduler statt Cloud Tasks) — genügt für PM-Fälle.
 6. **Flow-Ketten standardmäßig aus**, pro Flow aktivierbar, Tiefe max. 3.
 7. **Route `/flows`** neu belegen (alte Ideen-Route ist entfernt).
-8. **Abhängigkeit:** Event-Felder `cause`, `changes` und `subtask.completed` müssen in den
-   Activity-Vertrag; bis dahin Paket 1 gegen einen Adapter auf `onTaskWritten` bauen? Empfehlung:
-   nein — auf den Vertrag warten, Engine und UI vorher gegen Fake-Events testen.
+8. **Abhängigkeit:** nur noch `runId`/`depth` in `writeVia` (siehe §3); bis zur Antwort baut
+   Paket 1 es selbst additiv in `activity-logic.ts` ein, falls „Aktivität & Insights“ zustimmt.
