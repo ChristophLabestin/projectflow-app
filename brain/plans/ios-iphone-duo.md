@@ -112,8 +112,9 @@ Sheets weiterhin `PFPresenter`.
 - Unterseiten außen: `PFTopBar` gibt Zurück + Toolbar-Buttons per Preference an den `PFNavigator`, der sie
   als Stapel unten rechts in die Seitenregion legt (Zurück ganz unten, Abstand unten =
   rechts); oben bleibt nur ein evtl. Titel, die reservierte Kopfleistenhöhe entfällt
-  (`PFLayout.topBarClearance`). Die Tab-Leiste blendet sich auf Unterseiten aus (wie das Dock auf dem iPhone),
-  die Fokusleiste erscheint dort wieder unten. Sheets bekommen außen einen Schließen-Button unten rechts in
+  (`PFLayout.topBarClearance`). Die Tab-Leiste und die Fokusleiste blenden sich auf Unterseiten aus (wie das Dock
+  auf dem iPhone). Die Hauptaktion der Seite („Erledigt“/„Wieder öffnen“) steht per `pfSideAction` direkt über
+  Zurück; der schwebende Button samt Verlauf entfällt dann (`pfBottomFloat(isActive:)`). Sheets bekommen außen einen Schließen-Button unten rechts in
   ihrer Seitenregion; breite Footer-Aktionen bleiben im Sheet.
 - Nebenbei behoben: „Als erledigt markieren“ im Aufgaben-Detail lag auf allen iPhones hinter der Fokusleiste
   (gepushte Seiten sehen das `safeAreaInset` der Shell nicht) → `pfBottomChromeHeight`.

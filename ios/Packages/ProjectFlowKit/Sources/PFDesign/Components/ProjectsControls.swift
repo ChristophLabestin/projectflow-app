@@ -203,8 +203,9 @@ public extension View {
     }
 
     /// Floats `content` above the bottom edge on a canvas fade, so lists scroll underneath it.
-    func pfBottomFloat<Float: View>(@ViewBuilder _ content: () -> Float) -> some View {
-        modifier(PFBottomFloatModifier(floating: content()))
+    /// `isActive: false` drops the float and its fade (e.g. when the action moved to the side region).
+    func pfBottomFloat<Float: View>(isActive: Bool = true, @ViewBuilder _ content: () -> Float) -> some View {
+        modifier(PFBottomFloatModifier(floating: content(), isActive: isActive))
     }
 }
 
@@ -227,21 +228,26 @@ struct PFEdgeCardModifier: ViewModifier {
 
 struct PFBottomFloatModifier<Floating: View>: ViewModifier {
     let floating: Floating
+    let isActive: Bool
     @Environment(\.pfBottomChromeHeight) private var chromeHeight
 
     func body(content: Content) -> some View {
         content.overlay(alignment: .bottom) {
-            floating
-                .padding(.horizontal, PFSpace.page)
-                // Above the focus bar when one is showing, otherwise just above the home indicator.
-                .padding(.bottom, chromeHeight > 0 ? chromeHeight + 10 : 14)
-                .padding(.top, 36)
-                .frame(maxWidth: .infinity)
-                .background {
-                    LinearGradient(stops: [.init(color: PFColor.canvas.opacity(0), location: 0), .init(color: PFColor.canvas.opacity(0.94), location: 0.42), .init(color: PFColor.canvas, location: 1)], startPoint: .top, endPoint: .bottom)
-                        .allowsHitTesting(false)
-                }
+            if isActive { float }
         }
+    }
+
+    private var float: some View {
+        floating
+            .padding(.horizontal, PFSpace.page)
+            // Above the focus bar when one is showing, otherwise just above the home indicator.
+            .padding(.bottom, chromeHeight > 0 ? chromeHeight + 10 : 14)
+            .padding(.top, 36)
+            .frame(maxWidth: .infinity)
+            .background {
+                LinearGradient(stops: [.init(color: PFColor.canvas.opacity(0), location: 0), .init(color: PFColor.canvas.opacity(0.94), location: 0.42), .init(color: PFColor.canvas, location: 1)], startPoint: .top, endPoint: .bottom)
+                    .allowsHitTesting(false)
+            }
     }
 }
 

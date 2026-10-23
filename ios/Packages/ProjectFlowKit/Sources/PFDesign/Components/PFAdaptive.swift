@@ -41,16 +41,22 @@ public enum PFLayout {
 
 // MARK: - Side control column (iPhone Duo outer display)
 
-/// Controls a page hands to the side region: toolbar buttons stacked, back/close always lowest.
+/// Controls a page hands to the side region, stacked top to bottom: toolbar buttons, the page's primary
+/// action, back/close (always lowest). `PFTopBar` contributes toolbar + back, `pfSideAction` the action.
 struct PFSideControlsKey: PreferenceKey {
-    static let defaultValue: PFSideControls? = nil
-    static func reduce(value: inout PFSideControls?, nextValue: () -> PFSideControls?) {
-        value = value ?? nextValue()
+    static let defaultValue = PFSideControls()
+    static func reduce(value: inout PFSideControls, nextValue: () -> PFSideControls) {
+        let next = nextValue()
+        value.toolbar = value.toolbar ?? next.toolbar
+        value.action = value.action ?? next.action
+        value.back = value.back ?? next.back
     }
 }
 
 struct PFSideControls {
-    let view: AnyView
+    var toolbar: AnyView?
+    var action: AnyView?
+    var back: AnyView?
 }
 
 /// The stacked column, placed bottom-trailing in the side region.
@@ -75,10 +81,23 @@ extension View {
     /// Shows the side controls a page's `PFTopBar` handed over (pushed pages only).
     func pfSideControlsHost(side: CGFloat) -> some View {
         overlayPreferenceValue(PFSideControlsKey.self) { controls in
-            if side > 0, let controls {
-                PFSideColumn(side: side) { controls.view }
+            if side > 0, controls.back != nil || controls.action != nil {
+                PFSideColumn(side: side) {
+                    controls.toolbar
+                    controls.action
+                    controls.back
+                }
             }
         }
+    }
+}
+
+public extension View {
+    /// The page's primary action as a round button in the side control column (iPhone Duo outer display),
+    /// right above back. Pass nil when there is none or the page shows it in place (e.g. on iPhone).
+    func pfSideAction(_ action: AnyView?) -> some View {
+        // Merge, don't replace: the page's PFTopBar below already set toolbar and back.
+        transformPreference(PFSideControlsKey.self) { $0.action = action }
     }
 }
 

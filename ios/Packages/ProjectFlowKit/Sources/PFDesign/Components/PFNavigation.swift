@@ -94,12 +94,10 @@ public struct PFTopBar<Trailing: View>: View {
             .frame(minHeight: 44)
             .padding(.horizontal, PFSpace.page)
             .padding(.top, 4)
-            .preference(key: PFSideControlsKey.self, value: PFSideControls(view: AnyView(
-                VStack(spacing: 10) {
-                    trailing
-                    PFIconButton("chevron.left", label: backLabel, action: onBack)
-                }
-            )))
+            .preference(key: PFSideControlsKey.self, value: PFSideControls(
+                toolbar: AnyView(VStack(spacing: 10) { trailing }),
+                back: AnyView(PFIconButton("chevron.left", label: backLabel, action: onBack))
+            ))
         } else {
             bar
         }

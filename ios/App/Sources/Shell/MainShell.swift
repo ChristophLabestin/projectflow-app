@@ -95,7 +95,7 @@ struct MainShell: View {
     private var bottomChrome: some View {
         @Bindable var router = model.router
         VStack(spacing: 10) {
-            if let focus = model.profile?.focus, !router.isFocusRoomOpen, sideRegionWidth == nil || router.isDeep {
+            if let focus = model.profile?.focus, !router.isFocusRoomOpen, sideRegionWidth == nil {
                 focusBar(focus)
                     .frame(maxWidth: isWide ? 560 : nil)
                 .transition(.move(edge: .bottom).combined(with: .opacity))

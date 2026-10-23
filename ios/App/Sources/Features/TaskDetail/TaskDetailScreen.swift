@@ -76,9 +76,10 @@ struct TaskDetailScreen: View {
             }
             topBar
         }
-        .pfBottomFloat {
+        .pfBottomFloat(isActive: sideRegion == 0 || isEditingDescription) {
             if task != nil { floating }
         }
+        .pfSideAction(sideAction)
         .onGeometryChange(for: CGFloat.self) { $0.safeAreaInsets.top } action: { topInset = $0 }
         .task {
             store.start()
@@ -203,11 +204,21 @@ struct TaskDetailScreen: View {
 
     // MARK: Floating action
 
+    /// iPhone Duo outer display: complete/reopen moves into the side column above back.
+    private var sideAction: AnyView? {
+        guard sideRegion > 0, canEdit, !isEditingDescription, let task else { return nil }
+        return AnyView(PFIconButton(task.isCompleted ? "arrow.uturn.backward" : "checkmark",
+                                    label: L10n.t(task.isCompleted ? "common.reopen" : "taskDetail.actions.markDone"),
+                                    style: task.isCompleted ? .glass : .primary) {
+            Task { await WorkItemActions(model: model).toggleComplete(.task(task)) }
+        })
+    }
+
     @ViewBuilder
     private var floating: some View {
         if isEditingDescription {
             DescriptionToolbar(controller: editor, onLink: presentLinkSheet, onCancel: cancelDescription, onDone: saveDescription)
-        } else if canEdit, !keyboardVisible, let task {
+        } else if canEdit, !keyboardVisible, sideRegion == 0, let task {
             if task.isCompleted {
                 PFButton(L10n.t("common.reopen"), systemImage: "arrow.uturn.backward", kind: .secondary, size: .large, fullWidth: true) {
                     Task { await WorkItemActions(model: model).toggleComplete(.task(task)) }
