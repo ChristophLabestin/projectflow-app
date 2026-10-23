@@ -1,0 +1,43 @@
+{
+  "images": true,
+  "deny_read": [
+    "web/node_modules/**",
+    "functions/node_modules/**",
+    "web/dist/**",
+    "functions/lib/**",
+    "swift/build/**",
+    ".xcodebuild/**",
+    ".firebase/**",
+    "package-lock.json"
+  ],
+  "full_read_max_lines": 500,
+  "bash": [
+    {
+      "match": "\\A(cd\\s+\\S+\\s*&&\\s*)?(rg|grep)\\s[^|;&<>\\n]+\\Z",
+      "unless": "\\s-[a-zA-Z]*[lcqLm]\\b|--count|--files|--max-count|--quiet",
+      "action": "rewrite",
+      "append": " | awk 'NR<=120; NR==121{print \"[token-guard: nach 120 Zeilen gekappt - Muster/Pfad eingrenzen oder -l nutzen]\"; exit}'",
+      "sample": "rg -n useTasks web"
+    },
+    {
+      "match": "\\A(cd\\s+\\S+\\s*&&\\s*)?cat\\s+[^|;&<>\\n]+\\Z",
+      "action": "rewrite",
+      "append": " | awk 'NR<=250; NR==251{print \"[token-guard: nach 250 Zeilen gekappt - rg -n, dann sed -n A,Bp]\"; exit}'",
+      "sample": "cat web/App.tsx"
+    }
+  ],
+  "mcp": [
+    {
+      "tool": "^mcp__Claude_Browser__computer$",
+      "when": {
+        "action": "screenshot"
+      },
+      "require": "scale",
+      "max": 0.5,
+      "action": "rewrite",
+      "set": {
+        "scale": 0.5
+      }
+    }
+  ]
+}
