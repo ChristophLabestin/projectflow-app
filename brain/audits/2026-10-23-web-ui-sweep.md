@@ -33,7 +33,7 @@ Severity: **S** small (cosmetic), **M** medium (visibly broken/unusable in a sta
 | 17 | `ui/Badge`, personal tasks list/detail, accounting placeholder, profile dropdown | Tailwind palette colors (`indigo/emerald/rose/amber/slate`) instead of tokens | S | fixed |
 | 18 | Effort / Invoices | Icons passed via `Button icon` render at 24 px (taller than the label); other buttons use 18 px | S | fixed 2026-10-23 (`.btn .btn__icon .material-symbols-outlined` sm 16 / md 18 / lg 20; overrides in AccountDataSection, projects-list and the invoices empty state removed/scoped) |
 | 19 | Calendar week (desktop 1024 px) | Event chips in narrow columns cut titles without ellipsis | S | fixed 2026-10-23 (title uses full chip width — unschedule action overlays on hover —, 2-line clamp with ellipsis, `hyphens`/`overflow-wrap`; full title stays in the hover card) |
-| 20 | Team | "By department" groups by base role when no custom roles exist (ADMIN/MEMBER/OWNER), which reads odd | S | open (product decision: label or fallback) |
+| 20 | Team | "By department" groups by base role when no custom roles exist (ADMIN/MEMBER/OWNER), which reads odd | S | fixed 2026-10-23 (departments = custom roles only; without any the tab is hidden, "All" shows an admin hint with "Set up roles" → workspace settings Roles; members without a custom role → "No department"; stats drop "0 departments") |
 
 ## Not reachable with the demo account / seed
 
