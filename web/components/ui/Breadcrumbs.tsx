@@ -9,20 +9,13 @@ interface BreadcrumbsProps {
 /**
  * Top bar breadcrumb trail: a back arrow to the direct parent, then the path
  * segments (muted) and the current page. Pages do not render their own
- * breadcrumbs anymore — this is the single trail.
+ * breadcrumbs — this is the single trail, built by utils/breadcrumbs.ts.
  */
 export const Breadcrumbs = ({ items = [] }: BreadcrumbsProps) => {
     const { t } = useLanguage();
 
-    if (!items.length) {
-        return (
-            <nav className="crumbs" aria-label={t('breadcrumbs.label')}>
-                <Link to="/" className="crumbs__home" aria-label={t('nav.dashboard')} title={t('nav.dashboard')}>
-                    <span className="material-symbols-outlined" aria-hidden="true">home</span>
-                </Link>
-            </nav>
-        );
-    }
+    // Top-level pages have no trail (see utils/breadcrumbs.ts): render nothing rather than a lone home icon.
+    if (items.length < 2) return null;
 
     const parents = items.slice(0, -1);
     const current = items[items.length - 1];

@@ -286,6 +286,13 @@ Treat these as v1 defaults before creating one-off versions in feature screens; 
 
 ---
 
+## 5.9) Breadcrumbs (2026-10-23)
+
+- Hierarchy, not history. Only pages with a parent get a trail: project pages (`Projects › Project › Section › Item`, client projects under their company project), personal task detail, finance sections (`Finance › Section`), admin crash issue.
+- Top-level destinations (Dashboard, My Tasks, Calendar, Team, Projects, Notifications, Media, Profile, Personal tasks list, Finance cockpit, admin areas) show no trail — the sidebar marks the location and the page has its own heading. No lone home icon.
+- The back arrow goes one level up; every crumb except the current page is a link. Labels are localized (project sections reuse the sidebar `nav.*` labels).
+- New routes: add them to `web/utils/breadcrumbs.ts` and its test, never in a page.
+
 ## 6) Interaction Guidelines (UX Patterns)
 
 - **No Native Browser Dialogs:** never use `window.alert()`, `confirm()`, or `prompt()`.
