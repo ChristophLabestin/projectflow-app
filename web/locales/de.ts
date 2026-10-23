@@ -3034,6 +3034,7 @@ const de = {
     'billing.upgrade.note': "Nettopreise, ggf. zzgl. USt. Die Plätze folgen automatisch der Zahl der Mitglieder.",
     'billing.upgrade.trialNote': "Jetzt buchen und den Test behalten: Die Abrechnung beginnt mit dem Testende. Die Plätze folgen automatisch der Zahl der Mitglieder.",
     'billing.upgrade.cta': "Weiter zur Zahlung",
+    'billing.upgrade.comingSoon': 'Bald verfügbar',
     'billing.checkout.success': "Danke! Dein Team-Plan wird aktiviert – das kann ein paar Sekunden dauern.",
     'billing.checkout.cancel': "Zahlung abgebrochen. Es wurde nichts berechnet.",
     'billing.pastDueBanner': "Zahlung fehlgeschlagen. Aktualisiere die Zahlungsmethode unter „Abrechnung verwalten“, um Team zu behalten.",

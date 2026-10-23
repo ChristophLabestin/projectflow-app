@@ -3034,6 +3034,7 @@ const en = {
     'billing.upgrade.note': "Net prices plus VAT where applicable. Seats follow the number of members automatically.",
     'billing.upgrade.trialNote': "Book now and keep your trial: billing starts when the trial ends. Seats follow the number of members automatically.",
     'billing.upgrade.cta': "Continue to checkout",
+    'billing.upgrade.comingSoon': 'Coming soon',
     'billing.checkout.success': "Thanks! Your Team plan is being activated — this can take a few seconds.",
     'billing.checkout.cancel': "Checkout cancelled. Nothing was charged.",
     'billing.pastDueBanner': "Payment failed. Update your payment method under “Manage billing” to keep Team.",

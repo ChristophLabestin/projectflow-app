@@ -4,7 +4,7 @@ import { collection, getDocs } from 'firebase/firestore';
 
 import { useLanguage } from '../../context/LanguageContext';
 import { useToast } from '../../context/UIContext';
-import { useEntitlements } from '../../hooks/useEntitlements';
+import { useCheckoutAvailable, useEntitlements } from '../../hooks/useEntitlements';
 import { auth, db } from '../../services/firebase';
 import {
     billingErrorKey, createBillingCheckout, createBillingPortal, personalAiKey, type PersonalAiKeyStatus, setAiAddonMembers,
@@ -26,6 +26,7 @@ export const BillingPanel: React.FC<BillingPanelProps> = ({ tenantId, role }) =>
     const { t, language } = useLanguage();
     const { showError, showSuccess } = useToast();
     const ent = useEntitlements(tenantId);
+    const checkoutAvailable = useCheckoutAvailable();
     const [searchParams] = useSearchParams();
     const [interval, setBillingInterval] = useState<BillingInterval>('year');
     const [busy, setBusy] = useState<'checkout' | 'portal' | 'key' | 'ai' | null>(null);
@@ -214,7 +215,9 @@ export const BillingPanel: React.FC<BillingPanelProps> = ({ tenantId, role }) =>
                     </p>
                     <div className="billing-settings__actions">
                         {isOwner
-                            ? <Button onClick={() => void redirect('checkout')} isLoading={busy === 'checkout'}>{t('billing.upgrade.cta')}</Button>
+                            ? checkoutAvailable
+                                ? <Button onClick={() => void redirect('checkout')} isLoading={busy === 'checkout'}>{t('billing.upgrade.cta')}</Button>
+                                : <Button disabled>{t('billing.upgrade.comingSoon')}</Button>
                             : <p className="billing-settings__muted">{t('billing.ownerOnly')}</p>}
                     </div>
                 </section>

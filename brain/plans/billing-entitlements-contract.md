@@ -38,6 +38,9 @@ plan.plan; plan.status; plan.limits; plan.usage;   // usage = { projects, seats,
 plan.can('createProject' | 'invite' | 'editProject' | 'aiAddon', projectId?)  // bool
 plan.aiEnabledFor(uid)                            // bool (Server-KI für diesen Nutzer)
 ```
+Checkout-Verfügbarkeit: `useCheckoutAvailable()` liest `billing_public/config.checkoutAvailable` (alle angemeldeten
+Nutzer lesen, nur Server schreibt; fehlt das Dokument = `false`). Solange `false`: Upgrade/KI-Paket-Buttons deaktiviert
+(„Bald verfügbar“). Gesetzt wird es mit `node functions/scripts/billing-config.mjs --checkout on`, sobald die Stripe-Functions laufen.
 Fehler übersetzen: `planErrorMessage(error, t)` aus `web/services/billingService.ts` (kennt alle Codes unten);
 Locale-Schlüssel `billing.errors.<code>`. Upgrade-Link: `?openSettings=billing`.
 

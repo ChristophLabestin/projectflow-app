@@ -452,6 +452,8 @@ const run = async () => {
             owner.doc(`${TF}/invitations/i1`).set({ status: 'pending', invitedBy: 'ownerA', role: 'Member', kind: 'link' }));
         await check('owner cannot write entitlements', 'deny', () => owner.doc(`${TF}/entitlements/plan`).set({ plan: 'team' }, { merge: true }));
         await check('member reads entitlements', 'allow', () => member.doc(`${T}/entitlements/plan`).get());
+        await check('member reads billing availability', 'allow', () => member.doc('billing_public/config').get());
+        await check('owner cannot switch checkout on', 'deny', () => owner.doc('billing_public/config').set({ checkoutAvailable: true }));
         for (const path of ['billing_customers/tenantF', 'ai_user_keys/ownerA', 'billing_events/evt_1']) {
             await check(`owner cannot read ${path}`, 'deny', () => owner.doc(path).get());
         }
