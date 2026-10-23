@@ -691,6 +691,7 @@ const de = {
     'help.drawer.aiError': 'CORA-Suche fehlgeschlagen',
     'help.drawer.resultPage': 'Seite',
     'help.drawer.resultSection': 'Abschnitt',
+    'help.drawer.loading': 'Anleitungen werden geladen …',
     'help.category.basics': 'Grundlagen',
     'help.category.workflows': 'Workflows',
     'help.category.aiStudio': 'CORA Studio',

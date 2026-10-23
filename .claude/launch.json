@@ -205,6 +205,23 @@
         "web"
       ],
       "port": 3061
+    },
+    {
+      "name": "web-e2e-help",
+      "runtimeExecutable": "env",
+      "runtimeArgs": [
+        "PORT=3081",
+        "AUTH_PORT=9781",
+        "FIRESTORE_PORT=8781",
+        "STORAGE_PORT=9782",
+        "FUNCTIONS_PORT=5781",
+        "npm",
+        "run",
+        "dev:e2e",
+        "--prefix",
+        "web"
+      ],
+      "port": 3081
     }
   ]
 }
