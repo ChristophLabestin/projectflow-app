@@ -4,7 +4,9 @@ import PFDesign
 @main
 struct ProjectFlowApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) private var delegate
-    @State private var model = AppModel()
+    // The model is created by the app delegate (after Firebase is configured) so App Intents that start the app
+    // in the background, without a scene, can already reach it.
+    @State private var model = AppIntentBridge.bootstrap()
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some Scene {

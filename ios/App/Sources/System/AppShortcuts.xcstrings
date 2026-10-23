@@ -1,0 +1,160 @@
+{
+  "sourceLanguage": "de",
+  "strings": {
+    "Erfasse eine Aufgabe in ${applicationName}": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Capture a task in ${applicationName}"
+          }
+        }
+      }
+    },
+    "Fokus auf ${task} in ${applicationName}": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Focus on ${task} in ${applicationName}"
+          }
+        }
+      }
+    },
+    "Fokus in ${applicationName} abschließen": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Finish focus in ${applicationName}"
+          }
+        }
+      }
+    },
+    "Fokus in ${applicationName} erledigen": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Complete focus in ${applicationName}"
+          }
+        }
+      }
+    },
+    "Fokus in ${applicationName} pausieren": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pause focus in ${applicationName}"
+          }
+        }
+      }
+    },
+    "Merke mir etwas in ${applicationName}": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remember something in ${applicationName}"
+          }
+        }
+      }
+    },
+    "Neue Aufgabe in ${applicationName}": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "New task in ${applicationName}"
+          }
+        }
+      }
+    },
+    "Pause in ${applicationName}": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Break in ${applicationName}"
+          }
+        }
+      }
+    },
+    "Starte den Fokus auf ${task} in ${applicationName}": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Start focus on ${task} in ${applicationName}"
+          }
+        }
+      }
+    },
+    "Was ist heute in ${applicationName} dran?": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "What's due today in ${applicationName}?"
+          }
+        }
+      }
+    },
+    "Was kommt als Nächstes in ${applicationName}?": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "What's next in ${applicationName}?"
+          }
+        }
+      }
+    },
+    "Was steht heute in ${applicationName} an?": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "What's on today in ${applicationName}?"
+          }
+        }
+      }
+    },
+    "Öffne ${target} in ${applicationName}": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open ${target} in ${applicationName}"
+          }
+        }
+      }
+    },
+    "Öffne den Composer in ${applicationName}": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open the composer in ${applicationName}"
+          }
+        }
+      }
+    }
+  },
+  "version": "1.0"
+}

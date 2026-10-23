@@ -43,6 +43,11 @@ targets:
     sources:
       - path: App
       - path: Shared
+      # Widget views and the share composer are also compiled into the app so the design catalog can render them
+      # (QA, snapshot tests). The extension entry points stay in their own targets.
+      - path: Widgets/Views
+      - path: Share
+        includes: [ShareModel.swift, ShareComposerView.swift, FirestoreWriter.swift]
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: de.christophlabestin.projectflow
@@ -97,6 +102,8 @@ targets:
     platform: iOS
     sources:
       - path: Share
+      - path: Shared
+        includes: [SharedConstants.swift, SharedSessionStore.swift, ExtensionStrings.swift, DeepLinks.swift]
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: de.christophlabestin.projectflow.share
@@ -116,12 +123,19 @@ targets:
     platform: iOS
     sources:
       - path: NotificationService
+      - path: Shared
+        includes: [SharedConstants.swift, ExtensionStrings.swift]
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: de.christophlabestin.projectflow.notificationservice
         INFOPLIST_FILE: NotificationService/Info.plist
         CODE_SIGN_ENTITLEMENTS: NotificationService/NotificationService.entitlements
         GENERATE_INFOPLIST_FILE: NO
+    dependencies:
+      - package: ProjectFlowKit
+        product: PFModel
+      - package: ProjectFlowKit
+        product: PFSnapshot
 schemes:
   ProjectFlow:
     build:

@@ -37,7 +37,7 @@ final class AppModel {
             session = nil
             workspace = nil
             router.reset()
-            SnapshotPublisher.clear()
+            SystemSync.signedOut()
             return
         }
         guard session?.uid != uid else { return }
@@ -58,6 +58,7 @@ final class AppModel {
         store.start()
         workspace = store
         workspaceGeneration += 1
+        SystemSync.workspaceBound(model: self)
         if let pending = router.pendingURL {
             router.pendingURL = nil
             router.handle(url: pending, activeTenant: tenantId)

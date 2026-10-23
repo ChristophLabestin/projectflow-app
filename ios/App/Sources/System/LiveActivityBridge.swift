@@ -1,5 +1,6 @@
 import ActivityKit
 import Foundation
+import OSLog
 import UIKit
 import UserNotifications
 import PFData
@@ -26,8 +27,22 @@ final class LiveActivityBridge {
         }
     }
 
+    /// Ends every focus activity (sign-out: nothing of the account may stay on the lock screen).
+    func endAll() {
+        tokenTasks.values.forEach { $0.cancel() }
+        tokenTasks.removeAll()
+        Task {
+            for activity in Activity<FocusActivityAttributes>.activities {
+                await activity.end(nil, dismissalPolicy: .immediate)
+            }
+        }
+    }
+
     func sync(focus: FocusState?, model: AppModel) {
-        guard ActivityAuthorizationInfo().areActivitiesEnabled else { return }
+        guard ActivityAuthorizationInfo().areActivitiesEnabled else {
+            Logger(subsystem: "de.christophlabestin.projectflow", category: "liveactivity").info("activities are disabled for this app/device")
+            return
+        }
         let state = focus.map { contentState(for: $0, model: model) }
         let tenantId = focus?.tenantId ?? model.workspace?.tenantId ?? ""
         Task {
@@ -51,8 +66,15 @@ final class LiveActivityBridge {
             guard !kept else { return }
             let attributes = FocusActivityAttributes(itemId: focus.itemId, itemType: focus.itemType.rawValue,
                                                      tenantId: tenantId, projectId: focus.projectId)
-            if let activity = try? Activity.request(attributes: attributes, content: ActivityContent(state: state, staleDate: nil), pushType: .token) {
+            do {
+                let activity = try Activity.request(attributes: attributes, content: ActivityContent(state: state, staleDate: nil), pushType: .token)
                 self.observeToken(activity, focus: focus, model: model)
+            } catch {
+                // Without push (simulator, missing entitlement) the activity still works locally.
+                Logger(subsystem: "de.christophlabestin.projectflow", category: "liveactivity").error("request with push failed: \(error.localizedDescription)")
+                if let activity = try? Activity.request(attributes: attributes, content: ActivityContent(state: state, staleDate: nil), pushType: nil) {
+                    Logger(subsystem: "de.christophlabestin.projectflow", category: "liveactivity").info("started without push token: \(activity.id)")
+                }
             }
         }
     }
