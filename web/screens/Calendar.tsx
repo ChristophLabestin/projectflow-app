@@ -570,7 +570,6 @@ export const Calendar = () => {
                                                         <span className={`calendar-priority-dot calendar-priority-dot--${getPriorityTone((item as Task).priority)}`} />
                                                         <span className="calendar-agenda__item-main">
                                                             <span className="calendar-agenda__item-title">{item.title}</span>
-                                                            {(item as Task).projectTitle && <span className="calendar-agenda__item-meta">{(item as Task).projectTitle}</span>}
                                                         </span>
                                                         {hasTimeComponent(due) && (
                                                             <span className="calendar-agenda__item-time">{format(parseDateValue(due!), 'HH:mm', { locale: dateLocale })}</span>

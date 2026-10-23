@@ -3,7 +3,7 @@
 // Rules (brain/reference/app/STYLING.md "Breadcrumbs"):
 // 1. Crumbs show the hierarchy, not the browsing history.
 // 2. Only pages with a parent get a trail. Top-level destinations (Dashboard, My Tasks, Calendar,
-//    Team, Projects, Notifications, Media, Profile, Finance cockpit, admin areas, …) return [] —
+//    Team, Projects, Notifications, Media, Profile, admin areas, …) return [] —
 //    the sidebar marks where you are and the page has its own heading.
 // 3. Every crumb except the last links to its page; the back arrow goes one level up.
 // 4. Labels are localized; entity titles (task, initiative, post) come from the page via
@@ -77,15 +77,6 @@ const rawTrail = (parts: string[], ctx: BreadcrumbContext): Crumb[] => {
             return first
                 ? [{ label: t('breadcrumbs.personalTasks'), to: '/personal-tasks' }, { label: entityTitle || t('breadcrumbs.taskDetails') }]
                 : [];
-        case 'finance': {
-            // Finance sections are siblings in the finance sidebar; the cockpit is the area's home.
-            if (!first || first === 'cockpit') return [];
-            const key = `finance.v2.nav.${first}`;
-            const label = t(key);
-            return label && label !== key
-                ? [{ label: t('nav.finance'), to: '/finance/cockpit' }, { label }]
-                : [];
-        }
         case 'admin':
             return first === 'crashes' && parts[2]
                 ? [{ label: t('crashAdmin.title'), to: '/admin/crashes' }, { label: entityTitle || t('breadcrumbs.crashIssue') }]

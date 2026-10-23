@@ -153,13 +153,6 @@ export default defineConfig(({ mode }) => {
               }
 
               if (
-                id.includes('/web/locales/finance-en.ts') ||
-                id.includes('/web/locales/finance-de.ts')
-              ) {
-                return 'finance-i18n';
-              }
-
-              if (
                 id.includes('/web/locales/profile-en.ts') ||
                 id.includes('/web/locales/profile-de.ts')
               ) {

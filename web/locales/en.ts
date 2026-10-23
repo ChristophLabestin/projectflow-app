@@ -36,7 +36,6 @@ const en = {
     'nav.projects': 'Projects',
     'nav.myTasks': 'My Tasks',
     'nav.calendar': 'Calendar',
-    'nav.finance': 'Finance',
     'nav.aiStudio': 'CORA Studio',
     'nav.team': 'Team',
     'nav.advanced': 'More',
