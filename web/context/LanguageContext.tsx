@@ -24,8 +24,6 @@ interface LanguageProviderState {
     setDateFormat: (format: DateFormat) => void;
     t: (key: string, fallback?: string) => any;
     dateLocale: Locale;
-    legalTranslationsReady: boolean;
-    loadLegalTranslations: () => Promise<void>;
     settingsTranslationsReady: boolean;
     loadSettingsTranslations: () => Promise<void>;
     projectOverviewTranslationsReady: boolean;
@@ -57,8 +55,6 @@ const LanguageProviderContext = createContext<LanguageProviderState>({
     setDateFormat: () => null,
     t: (key: string, fallback?: string) => fallback || key,
     dateLocale: enUS,
-    legalTranslationsReady: true,
-    loadLegalTranslations: async () => undefined,
     settingsTranslationsReady: true,
     loadSettingsTranslations: async () => undefined,
     projectOverviewTranslationsReady: true,
@@ -88,7 +84,6 @@ export function LanguageProvider({
         en,
         de,
     }), []);
-    const [legalTranslations, setLegalTranslations] = useState<Partial<Record<Language, Record<string, any>>>>({});
     const [settingsTranslations, setSettingsTranslations] = useState<Partial<Record<Language, Record<string, any>>>>({});
     const [projectOverviewTranslations, setProjectOverviewTranslations] = useState<Partial<Record<Language, Record<string, any>>>>({});
     const [dashboardTranslations, setDashboardTranslations] = useState<Partial<Record<Language, Record<string, any>>>>({});
@@ -98,14 +93,6 @@ export function LanguageProvider({
     const [calendarTranslations, setCalendarTranslations] = useState<Partial<Record<Language, Record<string, any>>>>({});
     const [authActionTranslations, setAuthActionTranslations] = useState<Partial<Record<Language, Record<string, any>>>>({});
     const [authScreenTranslations, setAuthScreenTranslations] = useState<Partial<Record<Language, Record<string, any>>>>({});
-    const [legalTranslationsReady, setLegalTranslationsReady] = useState<boolean>(() => {
-        if (typeof window === 'undefined') {
-            return false;
-        }
-        return !window.location.pathname.startsWith('/legal');
-    });
-
-    const hasLegalTranslations = Boolean(legalTranslations.en && legalTranslations.de);
     const hasSettingsTranslations = Boolean(settingsTranslations.en && settingsTranslations.de);
     const hasProjectOverviewTranslations = Boolean(projectOverviewTranslations.en && projectOverviewTranslations.de);
     const hasDashboardTranslations = Boolean(dashboardTranslations.en && dashboardTranslations.de);
@@ -115,23 +102,6 @@ export function LanguageProvider({
     const hasCalendarTranslations = Boolean(calendarTranslations.en && calendarTranslations.de);
     const hasAuthActionTranslations = Boolean(authActionTranslations.en && authActionTranslations.de);
     const hasAuthScreenTranslations = Boolean(authScreenTranslations.en && authScreenTranslations.de);
-    const loadLegalTranslations = useCallback(async () => {
-        if (hasLegalTranslations) {
-            setLegalTranslationsReady(true);
-            return;
-        }
-
-        const [{ en: nextLegalEn }, { de: nextLegalDe }] = await Promise.all([
-            import('../locales/legal-en'),
-            import('../locales/legal-de')
-        ]);
-
-        setLegalTranslations({
-            en: nextLegalEn,
-            de: nextLegalDe
-        });
-        setLegalTranslationsReady(true);
-    }, [hasLegalTranslations]);
     const [settingsTranslationsReady, setSettingsTranslationsReady] = useState<boolean>(false);
     const [projectOverviewTranslationsReady, setProjectOverviewTranslationsReady] = useState<boolean>(false);
     const [dashboardTranslationsReady, setDashboardTranslationsReady] = useState<boolean>(false);
@@ -362,7 +332,6 @@ export function LanguageProvider({
             // Defensive access: ensure we have a valid translation object
             const targetLang = isValidLanguage(language) ? language : 'en';
             const currentTranslations = translations[targetLang] || translations.en;
-            const currentLegalTranslations = legalTranslations[targetLang];
             const currentSettingsTranslations = settingsTranslations[targetLang];
             const currentProjectOverviewTranslations = projectOverviewTranslations[targetLang];
             const currentDashboardTranslations = dashboardTranslations[targetLang];
@@ -376,9 +345,6 @@ export function LanguageProvider({
             // 1. Try direct lookup (fast path for flat keys)
             if (currentTranslations && currentTranslations[key] !== undefined) {
                 return currentTranslations[key];
-            }
-            if (currentLegalTranslations && currentLegalTranslations[key] !== undefined) {
-                return currentLegalTranslations[key];
             }
             if (currentSettingsTranslations && currentSettingsTranslations[key] !== undefined) {
                 return currentSettingsTranslations[key];
@@ -408,7 +374,7 @@ export function LanguageProvider({
                 return currentAuthScreenTranslations[key];
             }
 
-            // 2. Try nested lookup (for structured legal keys)
+            // 2. Try nested lookup (for structured keys)
             const parts = key.split('.');
             let value: any = currentTranslations;
 
@@ -423,19 +389,6 @@ export function LanguageProvider({
 
             if (value !== undefined) return value;
 
-            if (currentLegalTranslations) {
-                value = currentLegalTranslations;
-                for (const part of parts) {
-                    if (value && typeof value === 'object' && part in value) {
-                        value = value[part];
-                    } else {
-                        value = undefined;
-                        break;
-                    }
-                }
-
-                if (value !== undefined) return value;
-            }
 
             // 3. Fallback to English (Deep)
             // If we are already on English, no need to retry
@@ -444,7 +397,6 @@ export function LanguageProvider({
             }
 
             const englishTranslations = translations.en;
-            const englishLegalTranslations = legalTranslations.en;
             const englishSettingsTranslations = settingsTranslations.en;
             const englishProjectOverviewTranslations = projectOverviewTranslations.en;
             const englishDashboardTranslations = dashboardTranslations.en;
@@ -457,9 +409,6 @@ export function LanguageProvider({
             // 3a. Direct English lookup
             if (englishTranslations[key] !== undefined) {
                 return englishTranslations[key];
-            }
-            if (englishLegalTranslations && englishLegalTranslations[key] !== undefined) {
-                return englishLegalTranslations[key];
             }
             if (englishSettingsTranslations && englishSettingsTranslations[key] !== undefined) {
                 return englishSettingsTranslations[key];
@@ -502,21 +451,10 @@ export function LanguageProvider({
 
             if (value !== undefined) return value;
 
-            if (englishLegalTranslations) {
-                value = englishLegalTranslations;
-                for (const part of parts) {
-                    if (value && typeof value === 'object' && part in value) {
-                        value = value[part];
-                    } else {
-                        value = undefined;
-                        break;
-                    }
-                }
-            }
 
             return value !== undefined ? value : (fallback || key);
         };
-    }, [authActionTranslations, authScreenTranslations, calendarTranslations, dashboardTranslations, financeTranslations, language, legalTranslations, profileTranslations, projectOverviewTranslations, settingsTranslations, teamTranslations, translations]);
+    }, [authActionTranslations, authScreenTranslations, calendarTranslations, dashboardTranslations, financeTranslations, language, profileTranslations, projectOverviewTranslations, settingsTranslations, teamTranslations, translations]);
 
     const setLanguage = (nextLanguage: Language) => {
         localStorage.setItem(storageKey, nextLanguage);
@@ -549,8 +487,6 @@ export function LanguageProvider({
                 setDateFormat,
                 t,
                 dateLocale,
-                legalTranslationsReady,
-                loadLegalTranslations,
                 settingsTranslationsReady,
                 loadSettingsTranslations,
                 projectOverviewTranslationsReady,

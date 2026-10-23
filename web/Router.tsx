@@ -36,12 +36,14 @@ import { HelpCenterFloatingButton } from './components/help/HelpCenterFloatingBu
 import { LanguageSwitcher } from './components/LanguageSwitcher';
 import { useLanguage } from './context/LanguageContext';
 import LegalPage from './screens/LegalPage';
+import { LegalConsentGate } from './components/legal/LegalConsentGate';
 import { DownloadPage } from './screens/DownloadPage';
 import { useModuleAccess } from './hooks/useModuleAccess';
 import { useAuth } from './context/AuthContext';
 import { useUIState } from './context/UIContext';
 
 // Style guide is a dev-only tool; lazy-loaded so it never ships in the main bundle.
+const LegalAdmin = React.lazy(() => import('./screens/LegalAdmin').then((module) => ({ default: module.LegalAdmin })));
 const StyleGuidePage = React.lazy(() => import('./screens/StyleGuidePage').then((module) => ({ default: module.StyleGuidePage })));
 
 /** Old project sub-routes now live inside the overview (query params pick the view). */
@@ -156,7 +158,10 @@ const RootLayout = () => {
             <>
                 <GlobalToast />
                 <GlobalConfirmationModal />
-                <Outlet />
+                {/* Utility windows show workspace data too, so they must not bypass the consent gate. */}
+                <LegalConsentGate>
+                    <Outlet />
+                </LegalConsentGate>
             </>
         );
     }
@@ -194,7 +199,9 @@ const AuthenticatedLayout = () => {
 
     return (
         <RequireAuth>
-            <AppLayout />
+            <LegalConsentGate>
+                <AppLayout />
+            </LegalConsentGate>
         </RequireAuth>
     );
 };
@@ -248,6 +255,7 @@ export const AppRouter = () => {
                         <Route path="/" element={<Dashboard />} />
                         <Route path="/notifications" element={<Notifications />} />
                         <Route path="/insights/onboarding" element={withRouteSuspense(<OnboardingInsights />)} />
+                        <Route path="/admin/legal" element={withRouteSuspense(<LegalAdmin />)} />
                         <Route path="/projects" element={<ProjectsList />} />
                         <Route path="/tasks" element={<Tasks />} />
                         <Route path="/calendar" element={<Calendar />} />
