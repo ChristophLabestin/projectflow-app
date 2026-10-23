@@ -15,6 +15,8 @@ import { AdminContext, AdminInputError, HandlerMap, toMs } from './types';
  */
 
 const REGION = 'europe-west3';
+// No Stripe secret binding: STRIPE_SECRET_KEY does not exist yet (billing not live). Once it exists, add
+// `secrets: ['STRIPE_SECRET_KEY']` so billing.setExempt removal can re-sync a real subscription instead of falling back to Free.
 const isEmulator = process.env.FUNCTIONS_EMULATOR === 'true';
 
 const sessionRef = (uid: string) => db.collection('admin_sessions').doc(uid);

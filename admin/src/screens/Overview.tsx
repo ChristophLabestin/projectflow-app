@@ -78,7 +78,7 @@ export const Overview: React.FC = () => {
                         </Card>
                         <Card title="Pläne & Abo-Status" subtitle={data.billing.trialsEndingSoon ? `${data.billing.trialsEndingSoon} Tests enden in 7 Tagen` : undefined}>
                             <BarList items={entries(data.billing.plans)} />
-                            <div style={{ marginTop: 10 }}><BarList items={entries(data.billing.statuses)} /></div>
+                            <div style={{ marginTop: 10 }}><BarList items={entries(data.billing.statuses).map((e) => ({ ...e, label: e.label === 'exempt' ? 'Intern' : e.label }))} /></div>
                         </Card>
                         <Card title="MCP-Clients"><BarList items={entries(data.mcp.clients)} /></Card>
                         <Card title="Client-Versionen" subtitle="iOS: Geräte der letzten 60 Tage · Web/Desktop: letzte Zustimmung">

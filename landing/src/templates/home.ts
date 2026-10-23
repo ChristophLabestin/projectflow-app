@@ -211,7 +211,7 @@ const pricing = (t: SiteCopy) => {
                     : `<b data-price data-monthly="${plan.monthly}" data-yearly="${plan.yearly}">${price(plan, true)}&nbsp;${p.currency}</b>`;
                 const unit = plan.key === 'free' ? esc(p.forever)
                     : plan.key === 'org' ? `${esc(p.perSeat)}, ${esc(p.billedYearly)}`
-                    : `${esc(p.perSeat)}, <span data-billing-unit data-monthly="${esc(p.billedMonthly)}" data-yearly="${esc(p.billedYearly)}">${esc(p.billedYearly)}</span>`;
+                    : `${esc(plan.key === 'personal' ? p.perMonth : p.perSeat)}, <span data-billing-unit data-monthly="${esc(p.billedMonthly)}" data-yearly="${esc(p.billedYearly)}">${esc(p.billedYearly)}</span>`;
                 return `
             <li class="plan${featured ? ' plan--featured theme-dark' : ''}" data-reveal data-spot>
                 <div class="plan__top">
