@@ -47,11 +47,13 @@ struct TeamHost<Content: View>: View {
     private var tenantId: String? { model.workspace?.tenantId }
 
     var body: some View {
-        Group {
+        // A VStack (not Group): modifiers on an empty Group never run, so `.task` would not start the store.
+        VStack(spacing: 0) {
             if let store, let context = context(store) {
                 content(context)
             }
         }
+        .frame(maxWidth: .infinity)
         .task(id: tenantId) { rebuild() }
         .onDisappear { store?.stop() }
     }
