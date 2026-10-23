@@ -5,10 +5,10 @@ import { AnimatedNumber } from '../components/motion';
 import { FilesBrowser } from '../components/files/FilesBrowser';
 import { useLanguage } from '../context/LanguageContext';
 import { useWorkspace } from '../context/WorkspaceContext';
-import { getUserProjects } from '../services/dataService';
 import {
     formatBytes,
     getWorkspaceFileQuota,
+    listVisibleProjects,
     subscribeProjectFiles,
     subscribeWorkspaceFiles,
     type FileItem,
@@ -56,11 +56,11 @@ export const FilesPage = () => {
     useEffect(() => {
         if (!tenantId) return;
         let cancelled = false;
-        void getUserProjects(tenantId)
-            .then((list) => { if (!cancelled) setProjects(list.map((project) => ({ id: project.id, title: project.title, ownerId: project.ownerId }))); })
+        void listVisibleProjects(tenantId, isGuest)
+            .then((list) => { if (!cancelled) setProjects(list); })
             .catch(() => { if (!cancelled) setProjects([]); });
         return () => { cancelled = true; };
-    }, [tenantId]);
+    }, [tenantId, isGuest]);
 
     const projectIdsKey = (projects || []).map((project) => project.id).join(',');
     useEffect(() => {
@@ -77,9 +77,9 @@ export const FilesPage = () => {
     // Quota refreshes whenever the number or size of files changes.
     const usageKey = files ? `${files.length}:${files.reduce((sum, file) => sum + file.sizeBytes, 0)}` : '';
     useEffect(() => {
-        if (!tenantId || projectId || !usageKey) return;
+        if (!tenantId || projectId || isGuest || !usageKey) return;
         void getWorkspaceFileQuota(tenantId).then(setQuota).catch(() => setQuota(null));
-    }, [tenantId, projectId, usageKey]);
+    }, [tenantId, projectId, isGuest, usageKey]);
 
     const project = projectId ? projects?.find((entry) => entry.id === projectId) : undefined;
     const uploadParent = useMemo(() => {

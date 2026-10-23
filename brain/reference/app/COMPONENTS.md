@@ -314,6 +314,12 @@ Concept: `brain/plans/help-center-rework.md`.
 - `CrashReports.tsx` / `CrashIssueDetail.tsx` (+ `crashFormat.ts`, `admin.scss`): crash issue list and detail on `services/crashReportsService.ts`.
 - Web crash capture lives in `services/errorReporting.ts` (`reportError`, global handlers, `isCrashReportingEnabled`/`setCrashReportingEnabled`); the ErrorBoundary reports render crashes through it.
 
+## File manager (`web/components/files/`, 2026-10-23)
+- `FileAttachments` — attachment panel for one object (`parent: { type, id, projectId, title }`): drag & drop, paste, picker, list with preview/actions. Used in task detail; wiki docs use `type: 'doc'`.
+- `FilesBrowser` — list/grid with search, filters (type, project, object, uploader, time), sort, trash; used by `/files` and `/project/:id/files`.
+- `FileRow` (row/card), `FileThumb`, `useFileDrop`, `useThumbnailUrls` (`fileHooks.tsx`), `FilePreviewModal` (image/PDF/video/audio/text + versions), `useFileActions` (menu options + rename/move/version/trash/purge modals; purge uses the shared confirm dialog), `FileEmbed` (render a stored `fileId`).
+- Data: `web/services/filesService.ts` (subscriptions, `uploadFiles`, `getFileUrls`, commands). Styles: `src/styles/components/_files.scss`, `screens/files-page.scss`.
+
 ## Notes for future components
 - When adding a reusable component, update this file and ensure it uses tokens from `brain/reference/app/STYLING.md`.
 - Avoid “one-off” styles in feature pages; promote patterns into reusable components whenever repeated.

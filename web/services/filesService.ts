@@ -1,9 +1,9 @@
 // Workspace file manager (brain/plans/files-concept.md). Metadata is read straight from
 // tenants/{t}/files (rules enforce object access); every write goes through Callables.
-import { collection, onSnapshot, query, where, type DocumentData, type Query } from 'firebase/firestore';
+import { collection, getDocs, onSnapshot, query, where, type DocumentData, type Query } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 
-import { db, functions } from './firebase';
+import { auth, db, functions } from './firebase';
 import { uploadTenantFile } from './fileStorageService';
 import { toMillis } from '../utils/time';
 
@@ -197,6 +197,19 @@ const subscribeMerged = (queries: Query[], callback: (files: FileItem[]) => void
 };
 
 const filesRef = (tenantId: string) => collection(db, 'tenants', tenantId, FILES);
+
+/** Projects the viewer can see (guests: only projects listing them), as name/owner refs for filters. */
+export const listVisibleProjects = async (tenantId: string, isGuest: boolean) => {
+    const uid = auth.currentUser?.uid;
+    if (!uid) return [];
+    const ref = collection(db, 'tenants', tenantId, 'projects');
+    const snapshot = await getDocs(isGuest ? query(ref, where('memberIds', 'array-contains', uid)) : ref);
+    return snapshot.docs
+        .map((docSnap) => ({ id: docSnap.id, title: str(docSnap.data().title) || docSnap.id, ownerId: str(docSnap.data().ownerId), isPersonal: Boolean(docSnap.data().isPersonal) }))
+        .filter((project) => !project.isPersonal)
+        .map(({ id, title, ownerId }) => ({ id, title, ownerId }))
+        .sort((a, b) => a.title.localeCompare(b.title));
+};
 
 /**
  * Every file the user may see. Guests only query their projects (rules must be able to prove
