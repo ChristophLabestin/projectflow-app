@@ -94,10 +94,35 @@ struct TodayScreen: View {
 private struct TodayContent: View {
     let plan: DayPlan
     let now: Date
+    @Environment(\.pfIsWide) private var isWide
 
+    /// iPhone: one column. Opened iPhone Duo: the day (statement, band, plan) on the left, what surrounds it
+    /// (waiting, week, overnight) on the right; the wide gutter keeps the fold free of controls.
     var body: some View {
+        if isWide {
+            HStack(alignment: .top, spacing: PFSpace.page * 2) {
+                day.frame(maxWidth: .infinity, alignment: .leading)
+                VStack(alignment: .leading, spacing: 0) {
+                    TodayWaitingSection(plan: plan).pfAppear(5)
+                    TodayWeekSection(plan: plan).pfAppear(6)
+                    TodayNightSection(plan: plan).pfAppear(7)
+                }
+                .padding(.top, PFSpace.s)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        } else {
+            VStack(alignment: .leading, spacing: 0) {
+                day
+                TodayWaitingSection(plan: plan).pfAppear(5)
+                TodayWeekSection(plan: plan).pfAppear(6)
+                TodayNightSection(plan: plan).pfAppear(7)
+            }
+        }
+    }
+
+    private var day: some View {
         let statement = TodayText.statement(plan.statement)
-        VStack(alignment: .leading, spacing: 0) {
+        return VStack(alignment: .leading, spacing: 0) {
             PFEyebrow(Formatting.longToday(now)).padding(.top, PFSpace.s).pfAppear(0)
 
             PFEditorialHeadline(before: statement.before, value: statement.value, after: statement.after)
@@ -117,9 +142,6 @@ private struct TodayContent: View {
             TodayGettingStarted().padding(.top, PFSpace.xl).pfAppear(4)
 
             TodayPlanSection(plan: plan, now: now).pfAppear(4)
-            TodayWaitingSection(plan: plan).pfAppear(5)
-            TodayWeekSection(plan: plan).pfAppear(6)
-            TodayNightSection(plan: plan).pfAppear(7)
         }
     }
 }

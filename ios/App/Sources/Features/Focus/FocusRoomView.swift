@@ -38,10 +38,13 @@ struct FocusRoomView: View {
             switch phase {
             case .finished(let title, let next):
                 FocusFinishedView(title: title, next: next, onStart: startNext, onClose: close)
+                    .pfReadableWidth(640)
                     .transition(.opacity)
             default:
                 if let focus {
+                    // One thing at a time: on the opened iPhone Duo the room stays a single centred column.
                     running(focus)
+                        .pfReadableWidth(640)
                         .transition(.opacity)
                 }
             }

@@ -13,6 +13,8 @@ final class WorkNavigator {
     enum Mode: String, Hashable { case list, week, month }
 
     var mode: Mode = .list
+    /// Lives here (not in `WorkScreen` state) so opening/closing iPhone Duo, which rebuilds the list column, keeps the filters.
+    let filters = WorkFilters()
 
     init() {
         #if DEBUG

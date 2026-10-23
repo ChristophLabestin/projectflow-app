@@ -116,6 +116,8 @@ struct OnboardingIntroSheet: View {
             .scrollTargetBehavior(.paging)
             .scrollPosition(id: $page)
             .scrollIndicators(.hidden)
+            // iPhone Duo outer display: keep the next page out of the side region (status bar, camera).
+            .clipped()
 
             VStack(spacing: PFSpace.m) {
                 HStack(spacing: 6) {

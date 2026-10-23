@@ -124,10 +124,19 @@ public struct PFDock: View {
     @Namespace private var glider
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    private static let searchId = "__search"
+    let axis: Axis
+    let accessory: PFDockAccessory?
 
+    private static let searchId = "__search"
+    private static let accessoryId = "__accessory"
+
+    /// `axis: .vertical` turns the dock into a side rail (iPhone Duo opened); `accessory` adds one extra
+    /// toggle after search (the rail's list-column switch).
     public init(items: [PFDockItem], selection: Binding<String>, searchLabel: String, isSearchSelected: Bool,
+                axis: Axis = .horizontal, accessory: PFDockAccessory? = nil,
                 onSearch: @escaping () -> Void, onReselect: @escaping (String) -> Void) {
+        self.axis = axis
+        self.accessory = accessory
         self.items = items
         self._selection = selection
         self.searchLabel = searchLabel
@@ -139,7 +148,9 @@ public struct PFDock: View {
     private var activeId: String { isSearchSelected ? Self.searchId : selection }
 
     public var body: some View {
-        HStack(spacing: 2) {
+        let vertical = axis == .vertical
+        let layout = vertical ? AnyLayout(VStackLayout(spacing: 2)) : AnyLayout(HStackLayout(spacing: 2))
+        return layout {
             ForEach(items) { item in
                 itemButton(id: item.id, title: item.title, systemImage: item.systemImage, badge: item.badge) {
                     if item.id == selection && !isSearchSelected {
@@ -151,22 +162,29 @@ public struct PFDock: View {
             }
             Capsule()
                 .fill(PFColor.hairlineStrong)
-                .frame(width: 1, height: 28)
-                .padding(.horizontal, 3)
+                .frame(width: vertical ? 28 : 1, height: vertical ? 1 : 28)
+                .padding(vertical ? .vertical : .horizontal, 3)
                 .accessibilityHidden(true)
             itemButton(id: Self.searchId, title: searchLabel, systemImage: "magnifyingglass", badge: 0, compact: true) {
                 withAnimation(PFMotion.respecting(PFMotion.snappy)) { onSearch() }
             }
+            if let accessory {
+                itemButton(id: Self.accessoryId, title: accessory.title, systemImage: accessory.systemImage, badge: 0,
+                           compact: true, isOn: accessory.isOn) {
+                    withAnimation(PFMotion.respecting(PFMotion.snappy)) { accessory.action() }
+                }
+            }
         }
         .padding(6)
         .pfFrost(in: RoundedRectangle(cornerRadius: 26, style: .continuous))
-        .padding(.horizontal, PFSpace.m)
+        .padding(vertical ? .vertical : .horizontal, PFSpace.m)
         .animation(reduceMotion ? .easeInOut(duration: 0.15) : PFMotion.snappy, value: activeId)
     }
 
     private func itemButton(id: String, title: String, systemImage: String, badge: Int, compact: Bool = false,
-                            action: @escaping () -> Void) -> some View {
+                            isOn: Bool = false, action: @escaping () -> Void) -> some View {
         let selected = id == activeId
+        let vertical = axis == .vertical
         return Button {
             PFHaptics.selection()
             action()
@@ -193,8 +211,9 @@ public struct PFDock: View {
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
             }
-            .foregroundStyle(selected ? PFColor.textMain : PFColor.textMuted)
-            .frame(maxWidth: compact ? 64 : .infinity, minHeight: 54)
+            .foregroundStyle(selected || isOn ? PFColor.textMain : PFColor.textMuted)
+            .frame(width: vertical ? 64 : nil, height: vertical ? 58 : nil)
+            .frame(maxWidth: vertical ? nil : (compact ? 64 : .infinity), minHeight: vertical ? nil : 54)
             .background {
                 if selected {
                     RoundedRectangle(cornerRadius: 19, style: .continuous)
@@ -213,7 +232,22 @@ public struct PFDock: View {
         }
         .buttonStyle(PFDockPressStyle())
         .accessibilityLabel(badge > 0 ? "\(title), \(badge)" : title)
-        .accessibilityAddTraits(selected ? [.isButton, .isSelected] : .isButton)
+        .accessibilityAddTraits(selected || isOn ? [.isButton, .isSelected] : .isButton)
+    }
+}
+
+/// Extra toggle at the end of the dock (used by the side rail for the list column).
+public struct PFDockAccessory {
+    let title: String
+    let systemImage: String
+    let isOn: Bool
+    let action: () -> Void
+
+    public init(title: String, systemImage: String, isOn: Bool, action: @escaping () -> Void) {
+        self.title = title
+        self.systemImage = systemImage
+        self.isOn = isOn
+        self.action = action
     }
 }
 

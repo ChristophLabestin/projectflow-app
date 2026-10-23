@@ -10,7 +10,7 @@ struct WorkScreen: View {
     @Environment(AppModel.self) private var model
     private let nav = WorkNavigator.shared
 
-    @State private var filters = WorkFilters()
+    private var filters: WorkFilters { nav.filters }
     @State private var scrollOffset: CGFloat = 0
     @State private var now = Date()
     @State private var showCompletedGroup = false
