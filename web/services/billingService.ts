@@ -1,0 +1,57 @@
+import { doc, getDoc } from 'firebase/firestore';
+import { httpsCallable } from 'firebase/functions';
+import { db, functions } from './firebase';
+import { type BillingInterval, canCreateProject, parseEntitlements } from '../utils/billingPlans';
+
+/** Starts a Stripe Checkout session (owner only) and returns its URL. */
+export const createBillingCheckout = async (tenantId: string, interval: BillingInterval, language: string) => {
+    const call = httpsCallable<{ tenantId: string; interval: BillingInterval; origin: string; language: string }, { url: string }>(
+        functions, 'createBillingCheckout');
+    return (await call({ tenantId, interval, origin: window.location.origin, language })).data.url;
+};
+
+/** Opens the Stripe Customer Portal (owner only). */
+export const createBillingPortal = async (tenantId: string, language: string) => {
+    const call = httpsCallable<{ tenantId: string; origin: string; language: string }, { url: string }>(functions, 'createBillingPortal');
+    return (await call({ tenantId, origin: window.location.origin, language })).data.url;
+};
+
+export type PersonalAiKeyStatus = { hasKey: boolean; last4: string | null };
+
+/** Own OpenAI key for AI on the Free plan; the key itself never comes back. */
+export const personalAiKey = async (action: 'get' | 'set' | 'clear', key?: string) => {
+    const call = httpsCallable<{ action: string; key?: string }, PersonalAiKeyStatus>(functions, 'personalAiKey');
+    return (await call({ action, key })).data;
+};
+
+/** Maps billing/plan error codes from callables to locale keys. */
+export const billingErrorKey = (error: unknown): string | null => {
+    const message = String((error as { message?: string })?.message || '');
+    const code = ['plan-invites-disabled', 'plan-member-limit', 'ai-plan-required', 'billing-not-configured',
+        'billing-already-subscribed', 'billing-price-missing', 'billing-no-customer', 'invalid-openai-key']
+        .find((entry) => message.includes(entry));
+    return code ? `billing.errors.${code}` : null;
+};
+
+/** Thrown by service-level plan pre-checks; `key` is a locale key. Rules enforce the same limits. */
+export class PlanLimitError extends Error {
+    constructor(readonly key: string) {
+        super(key);
+        this.name = 'PlanLimitError';
+    }
+}
+
+/** Pre-check before writes the rules would reject on the current plan (project limit, invitations). */
+export const assertPlanAllows = async (tenantId: string, action: 'project' | 'invite') => {
+    const snap = await getDoc(doc(db, 'tenants', tenantId, 'entitlements', 'plan'));
+    const ent = parseEntitlements(snap.exists() ? snap.data() : undefined);
+    if (action === 'project' && !canCreateProject(ent)) throw new PlanLimitError('billing.projectLimit');
+    if (action === 'invite' && !ent.invitesAllowed) throw new PlanLimitError('billing.invitesLocked');
+};
+
+/** Localized message for plan/billing errors (service pre-checks and callables), else null. */
+export const planErrorMessage = (error: unknown, t: (key: string) => string): string | null => {
+    if (error instanceof PlanLimitError) return t(error.key);
+    const key = billingErrorKey(error);
+    return key ? t(key) : null;
+};

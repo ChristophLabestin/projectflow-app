@@ -5,6 +5,7 @@ import { FieldValue } from 'firebase-admin/firestore';
 import {
     buildAskCoraPrompt, buildCapabilityRequest, CapabilityInputError, normalizeImageInput, normalizeImagePrompt
 } from './ai-capabilities';
+import { resolveAiAccess } from './billing';
 
 // GPT-6 Luna: OpenAI's efficient model for focused, high-volume tasks. Low reasoning keeps inline AI fast.
 const TEXT_MODEL = 'gpt-6-luna';
@@ -36,6 +37,10 @@ const quotaRefs = (uid: string) => {
 };
 
 export const consumeAiQuota = async (uid: string, kind: AiQuotaKind) => {
+    // Plan gate (brain/plans/billing-implementation.md): Free = own OpenAI key only, not metered.
+    const access = await resolveAiAccess(uid);
+    if (access.mode === 'none') throw new functions.https.HttpsError('failed-precondition', 'ai-plan-required');
+    if (access.mode === 'own-key') return;
     const { day, month, daily, monthly } = quotaRefs(uid);
     const limit = AI_DAILY_LIMITS[kind];
 
@@ -94,7 +99,10 @@ export const trackUsage = async (uid: string, tokens: number) => {
     }
 };
 
-const getClient = () => {
+/** Free workspaces use the caller's own OpenAI key; included plans use the platform key. */
+const getClient = async (uid: string) => {
+    const access = await resolveAiAccess(uid);
+    if (access.mode === 'own-key') return new OpenAI({ apiKey: access.apiKey });
     const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) {
         throw new Error('OPENAI_API_KEY is not set in environment variables.');
@@ -220,7 +228,7 @@ const mimeTypeToExtension = (mimeType: string) => {
  */
 export const generateServerText = async (uid: string, instructions: string, input: string): Promise<string> => {
     await consumeAiQuota(uid, 'text');
-    const client = getClient();
+    const client = await getClient(uid);
     const response: any = await client.responses.create({ model: TEXT_MODEL, reasoning: TEXT_REASONING, instructions, input });
     await trackUsage(uid, extractTokensUsed(response));
     return extractTextFromResponse(response).trim();
@@ -239,7 +247,7 @@ export const askCora = functions.region('europe-west3').runWith({ secrets: ['OPE
     await consumeAiQuota(context.auth.uid, 'text');
 
     try {
-        const client = getClient();
+        const client = await getClient(context.auth.uid);
 
         const responseSchema = {
             type: 'object',
@@ -315,7 +323,7 @@ export const generateImage = functions.region('europe-west3').runWith({ secrets:
     await consumeAiQuota(context.auth.uid, 'image');
 
     try {
-        const client = getClient();
+        const client = await getClient(context.auth.uid);
 
         const response: any = await client.images.generate({
             model: IMAGE_MODEL,
@@ -359,7 +367,7 @@ export const editImage = functions.region('europe-west3').runWith({ secrets: ['O
     await consumeAiQuota(context.auth.uid, 'image');
 
     try {
-        const client = getClient();
+        const client = await getClient(context.auth.uid);
 
         const imageBuffer = Buffer.from(image, 'base64');
         const imageFile = await toFile(imageBuffer, `source.${mimeTypeToExtension(mimeType)}`, { type: mimeType });
@@ -422,7 +430,7 @@ export const runAiCapability = functions.region('europe-west3').runWith({ secret
             request.tools = [{ type: 'web_search_preview' }];
         }
 
-        const response: any = await getClient().responses.create(request);
+        const response: any = await (await getClient(context.auth.uid)).responses.create(request);
         const text = extractTextFromResponse(response);
         const tokensUsed = extractTokensUsed(response);
         await trackUsage(context.auth.uid, tokensUsed);

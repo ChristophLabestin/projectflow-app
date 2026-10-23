@@ -11,6 +11,7 @@ import { httpsCallable } from 'firebase/functions';
 import { auth, db, functions } from '../firebase';
 import { ensureTenantAndUser, logActivity, projectDocRef, resolveTenantId } from '../internal/workspaceDataCore';
 import { uploadTenantFile } from '../fileStorageService';
+import { assertPlanAllows } from '../billingService';
 import type { Activity, Project } from '../../types';
 
 const TENANTS = 'tenants';
@@ -64,6 +65,7 @@ export const createProject = async (
 
     const resolvedTenant = resolveTenantId(tenantId);
     await ensureTenantAndUser(resolvedTenant);
+    await assertPlanAllows(resolvedTenant, 'project');
 
     const memberIds = Array.from(new Set([user.uid, ...initialMemberIds]));
     const sanitizedProjectData = removeUndefinedFields(projectData) || {};

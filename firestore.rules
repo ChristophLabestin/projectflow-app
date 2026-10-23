@@ -40,6 +40,30 @@ service cloud.firestore {
       return isTenantMember(tenantId) && memberRole(tenantId) == 'Owner';
     }
 
+    // ---- Plan entitlements (brain/plans/billing-implementation.md) ----------
+    // tenants/{tenantId}/entitlements/plan is written by Cloud Functions only. A missing doc is a
+    // legacy workspace in grace and is not limited.
+    function planPath(tenantId) {
+      return /databases/$(database)/documents/tenants/$(tenantId)/entitlements/plan;
+    }
+
+    function withinProjectLimit(tenantId) {
+      return !exists(planPath(tenantId)) ||
+        get(planPath(tenantId)).data.get('projectLimit', null) == null ||
+        get(planPath(tenantId)).data.get('projectCount', 0) < get(planPath(tenantId)).data.projectLimit;
+    }
+
+    // Projects over the Free limit stay readable but are read-only (no data loss).
+    function projectLocked(tenantId, projectId) {
+      return exists(planPath(tenantId)) &&
+        projectId in get(planPath(tenantId)).data.get('lockedProjectIds', []);
+    }
+
+    function planAllowsInvites(tenantId) {
+      return !exists(planPath(tenantId)) ||
+        get(planPath(tenantId)).data.get('invitesAllowed', true) == true;
+    }
+
     // Kept for readability at call sites: full workspace access.
     function canAccessTenant(tenantId) {
       return isFullMember(tenantId);
@@ -272,7 +296,8 @@ service cloud.firestore {
       match /members/{userId} {
         allow read: if isTenantMember(tenantId);
         allow create: if isOwnerBootstrap(tenantId, userId) ||
-          (request.resource.data.uid == userId && canManageMemberRole(tenantId, 'Member', request.resource.data.role));
+          (request.resource.data.uid == userId && canManageMemberRole(tenantId, 'Member', request.resource.data.role) &&
+            planAllowsInvites(tenantId));
         allow update: if canSelfUpdateMembership(userId) ||
           (request.resource.data.uid == resource.data.uid && canManageMemberRole(tenantId, resource.data.role, request.resource.data.role));
         allow delete: if canManageMemberRole(tenantId, resource.data.role, 'Member') ||
@@ -286,7 +311,7 @@ service cloud.firestore {
       match /invitations/{inviteId} {
         allow get: if authed();
         allow list: if isTenantAdmin(tenantId);
-        allow create: if isTenantAdmin(tenantId) &&
+        allow create: if isTenantAdmin(tenantId) && planAllowsInvites(tenantId) &&
           request.resource.data.status == 'pending' &&
           request.resource.data.invitedBy == request.auth.uid &&
           request.resource.data.role in ['Admin', 'Member', 'Guest'] &&
@@ -410,10 +435,11 @@ service cloud.firestore {
         // by memberIds array-contains their uid.
         allow read: if isFullMember(tenantId) ||
           (isTenantMember(tenantId) && isProjectMember(resource.data));
-        allow create: if isFullMember(tenantId) && request.resource.data.tenantId == tenantId;
+        allow create: if isFullMember(tenantId) && request.resource.data.tenantId == tenantId &&
+          withinProjectLimit(tenantId);
         // Ownership moves only via the tenant admins or the current project
         // owner; guests can edit project content but not its membership.
-        allow update: if canAccessProjectById(tenantId, projectId) &&
+        allow update: if canAccessProjectById(tenantId, projectId) && !projectLocked(tenantId, projectId) &&
           !request.resource.data.diff(resource.data).affectedKeys().hasAny(['tenantId']) &&
           (
             !request.resource.data.diff(resource.data).affectedKeys().hasAny(['ownerId']) ||
@@ -435,7 +461,7 @@ service cloud.firestore {
           // No writes below a missing project: a still-open page must not
           // recreate orphaned subcollections after the project was deleted.
           allow write: if canAccessProjectById(tenantId, projectId) && projectExists(tenantId, projectId) &&
-            !isRetiredProjectCollection(subcollection);
+            !isRetiredProjectCollection(subcollection) && !projectLocked(tenantId, projectId);
         }
       }
 

@@ -16,6 +16,7 @@ import { ALLOWED_ORIGINS } from './corsConfig';
 import { normalizeRole } from './ai-access';
 import { aiPolicyRef, loadAiPolicy } from './ai-store';
 import { consumeAiQuota, trackUsage } from './ai-service';
+import { tenantIncludesAi } from './billing';
 import { refundCredits, reserveCredits, recordModelUsage, resolveMonthlyLimit, type CreditCapability } from './ai-credits';
 import { streamTurn, tierModel, ModelError, type ModelTier, type ModelUsage } from './ai-models';
 import {
@@ -186,6 +187,8 @@ export const aiAssist = onRequest({
         uid = auth.uid;
         const { role, monthlyLimit } = await authorizeWorkspace(tenantId, uid);
         if (body.capability === 'assist' && role === 'Guest') throw new HttpError(403, 'The assistant is not available for guests yet.', 'forbidden');
+        // Free workspaces have no included AI (brain/plans/billing-implementation.md).
+        if (!(await tenantIncludesAi(tenantId))) throw new HttpError(402, 'AI is included in the Team plan.', 'ai-plan-required');
 
         // Validate before spending anything.
         if (body.capability === 'write') buildWriteRequest(body.input, body.language);

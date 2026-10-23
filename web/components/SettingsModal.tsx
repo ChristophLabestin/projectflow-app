@@ -1,4 +1,5 @@
 import { AiIntegrationsPanel } from './settings/AiIntegrationsPanel';
+import { BillingPanel } from './settings/BillingPanel';
 import { McpConnectPanel } from './settings/McpConnectPanel';
 import { AccountDataSection } from './settings/AccountDataSection';
 import React, { useState, useEffect } from 'react';
@@ -63,7 +64,7 @@ import { clearGithubToken, getAIUsage, getGithubToken, getUserProfile, setGithub
 type SettingsTab = 'account' | 'preferences' | 'notifications' | 'desktop' | 'security' | 'general' | 'roles' | 'api' | 'ai' | 'billing' | 'email' | 'integrations' | 'prebeta'
     | WorkspaceSettingsSection;
 
-const WORKSPACE_TABS: SettingsTab[] = ['workspace', 'members', 'roles', 'general', 'ai', 'api', 'danger'];
+const WORKSPACE_TABS: SettingsTab[] = ['workspace', 'members', 'roles', 'general', 'ai', 'billing', 'api', 'danger'];
 
 interface SettingsModalProps {
     isOpen: boolean;
@@ -1218,6 +1219,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
                 { id: 'general' as SettingsTab, label: t('workspaceSettings.tabs.services'), icon: 'mail' },
             ] : []),
             { id: 'ai', label: t('workspaceSettings.tabs.ai'), icon: 'smart_toy' },
+            ...(workspaceRole !== 'Guest' ? [{ id: 'billing' as SettingsTab, label: t('workspaceSettings.tabs.billing'), icon: 'credit_card' }] : []),
             ...(workspaceRole === 'Owner' ? [{ id: 'api' as SettingsTab, label: t('workspaceSettings.tabs.api'), icon: 'key' }] : []),
             { id: 'danger', label: t('workspaceSettings.tabs.danger'), icon: 'warning' },
         ]
@@ -1971,6 +1973,16 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
                                 )}
                             </section>
                         </div>
+                    </div>
+                );
+            case 'billing':
+                return (
+                    <div className="space-y-6 animate-fade-in">
+                        <div className="mb-8">
+                            <h2 className="text-2xl font-display font-bold text-main">{t('billing.title')}</h2>
+                            <p className="text-muted text-sm mt-1">{t('billing.subtitle')}</p>
+                        </div>
+                        <BillingPanel tenantId={tenantId || getActiveTenantId() || ''} role={workspaceRole} />
                     </div>
                 );
             case 'ai':
