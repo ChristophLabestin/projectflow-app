@@ -266,6 +266,15 @@ Pure, React/Firebase-free modules that the web app and the iOS app (`PFDomain`) 
 - `notificationPrefs.ts`: defaults and (de)serialisation of `users/{uid}.notificationPrefs`.
 - `services/domain/workspaceTasksService.ts` (`getWorkspaceTasks`): loads all tasks of the given projects once and splits them into `mine` / `others` (the Dashboard needs the others for dependency counts and "Waiting on you").
 
+## Notification Center (`web/components/notifications/`, 2026-10-23)
+
+- `NotificationDropdown` (`components/NotificationDropdown.tsx`): sidebar bell with unread badge (active workspace + other workspaces) and a popover **portaled to `<body>`** (fixed, beside the sidebar or flipped below/above the trigger; Escape/outside click close). Header with mark-all-read, All/Unread filter, "Unread in other workspaces" (switches workspace → `/notifications`), grouped list, "View all" footer.
+- `NotificationList`: shared rows for popover (`compact`) and `/notifications` — groups Today / Yesterday / Earlier, icon per type (due/overdue in the review tone), localized title/message, project context line, per-row mark read/unread + delete, unread dot, keyboard (Enter/Space).
+- `NotificationCenterParts`: `NotificationFilterTabs` (All/Unread), `NotificationOtherWorkspaces`, `NotificationState` (loading / error / empty / empty-unread).
+- `hooks/useNotifications.ts`: live inbox for the active workspace (re-subscribes on sign-in/out and workspace switch, exposes `error`), unread counts of the other workspaces (one `userId + read == false` listener each), `setRead`, `markAllRead`, `remove`, `removeAll`.
+- `utils/notificationPresentation.ts`: icon/tone per type, `getNotificationPath` (task > initiative > project > relative `deepLink`), `getNotificationText` (renders `notifications.type.<type>.title|message` from the doc's `params`, falls back to the stored English text), `groupNotifications`.
+- `screens/Notifications.tsx` uses the same parts plus the collapsed delivery diagnostics.
+
 ## Reminders and settings controls
 
 - `components/reminders/ReminderControls.tsx`: `ReminderNotifyToggle` ("Also remind assignees", `notifyAssignees`) and `ReminderSentBadge` (`sentAt`). Used by the task workbench (`ProjectTaskDetail`) and the project reminders popover (`ProjectRemindersPanel`); new reminders also set `createdBy` and `recipientIds: [uid]` (contract C2).

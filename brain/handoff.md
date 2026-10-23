@@ -20,6 +20,7 @@ The repository has been migrated into `/brain`, the active Web/Swift removal pat
 
 ## What Changed Recently
 
+- 2026-10-23: Notification Center fixed (portaled bell popover; it was clipped by the sidebar) and extended (filters, groups, per-row actions, other-workspace unread, localized copy via `params`; triggers for status/due changes, overdue, project membership). Notifications are now server-created and recipient-only in the rules. Details: COMPONENTS.md "Notification Center", FIRESTORE_STRUCTURE.md `notifications`, GOTCHAS 2026-10-23.
 - Added project/task reminders for operational follow-ups. `ProjectReminder` now lives on `Project.reminders` and `Task.reminders`; task `reminderAt` is kept as the earliest open task reminder for legacy compatibility. Project Overview V2 shows a merged reminder strip with project reminders, task reminders, and legacy `reminderAt` values, with create/complete/delete actions and optional Task/Initiative links. Task detail now supports multiple reminders instead of a single reminder date. Build and theme lint pass; authenticated write/visual QA remains pending. ProjectFlow tracking could not be created because `PROJECTFLOW_API_TOKEN` is missing.
 - Created app-type Brain core files.
 - Moved former root product, route, styling, permission, Firestore, mobile, privacy, and agent docs into `brain/reference/app/`.

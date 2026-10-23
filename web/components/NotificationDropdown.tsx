@@ -1,351 +1,202 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
-import { auth } from '../services/firebase';
-import {
-    subscribeToNotifications,
-    markNotificationAsRead,
-    markAllNotificationsAsRead,
-} from '../services/notificationService';
-import { respondToJoinRequest } from '../services/dataService';
-import { Notification } from '../types';
 import { useToast } from '../context/UIContext';
 import { useLanguage } from '../context/LanguageContext';
-import { format } from 'date-fns';
+import { useWorkspace } from '../context/WorkspaceContext';
+import { useNotifications } from '../hooks/useNotifications';
+import type { Notification } from '../types';
+import { getNotificationPath, type NotificationFilter } from '../utils/notificationPresentation';
+import { NotificationList } from './notifications/NotificationList';
+import { NotificationFilterTabs, NotificationOtherWorkspaces, NotificationState } from './notifications/NotificationCenterParts';
+import './notifications/notification-dropdown.scss';
 
 interface NotificationDropdownProps {
     position?: 'topbar' | 'sidebar';
 }
 
+const PANEL_WIDTH = 380;
+const GAP = 12;
+const EDGE = 8;
+
+/**
+ * Bell with unread badge and the Notification Center popover. The panel is portaled to
+ * <body> with fixed positioning: the sidebar card clips overflow, so an inline panel was invisible.
+ */
 export const NotificationDropdown = ({ position = 'topbar' }: NotificationDropdownProps) => {
-    const [notifications, setNotifications] = useState<Notification[]>([]);
     const [isOpen, setIsOpen] = useState(false);
-    const [loading, setLoading] = useState(true);
-    const dropdownRef = useRef<HTMLDivElement>(null);
+    const [filter, setFilter] = useState<NotificationFilter>('all');
+    const [panelStyle, setPanelStyle] = useState<React.CSSProperties>({});
+    const triggerRef = useRef<HTMLButtonElement>(null);
+    const panelRef = useRef<HTMLDivElement>(null);
     const navigate = useNavigate();
     const { showToast } = useToast();
-    const { dateFormat, dateLocale, t } = useLanguage();
+    const { t } = useLanguage();
+    const { switchWorkspace } = useWorkspace();
+    const { notifications, unreadCount, loading, error, otherUnread, setRead, markAllRead, remove } = useNotifications();
 
-    const user = auth.currentUser;
-    const unreadCount = notifications.filter(n => !n.read).length;
+    const otherUnreadTotal = otherUnread.reduce((sum, item) => sum + item.count, 0);
+    const badgeCount = unreadCount + otherUnreadTotal;
+    const visible = filter === 'unread' ? notifications.filter((notification) => !notification.read) : notifications;
 
-    // Subscribe to notifications
-    useEffect(() => {
-        if (!user) {
-            console.warn('[Notifications] No user logged in');
-            setLoading(false);
+    const updatePosition = useCallback(() => {
+        const trigger = triggerRef.current;
+        if (!trigger) return;
+        const rect = trigger.getBoundingClientRect();
+        const width = Math.min(PANEL_WIDTH, window.innerWidth - EDGE * 2);
+        const maxHeight = Math.min(560, window.innerHeight - EDGE * 2);
+        if (position === 'sidebar' && rect.right + GAP + width <= window.innerWidth - EDGE) {
+            // Beside the sidebar, bottom-aligned with the bell.
+            setPanelStyle({ left: rect.right + GAP, bottom: Math.max(EDGE, window.innerHeight - rect.bottom), width, maxHeight });
             return;
         }
-
-        console.warn('[Notifications] Subscribing for User ID:', user.uid);
-
-        const unsubscribe = subscribeToNotifications(user.uid, (notifs) => {
-            setNotifications(notifs);
-            setLoading(false);
-        });
-
-        return () => unsubscribe();
-    }, [user]);
-
-    // Close dropdown when clicking outside
-    useEffect(() => {
-        const handleClickOutside = (event: MouseEvent) => {
-            if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-                setIsOpen(false);
-            }
-        };
-
-        if (isOpen) {
-            document.addEventListener('mousedown', handleClickOutside);
+        const left = Math.min(Math.max(EDGE, rect.right - width), window.innerWidth - width - EDGE);
+        const spaceBelow = window.innerHeight - rect.bottom;
+        if (spaceBelow >= Math.min(maxHeight, 360) || spaceBelow >= rect.top) {
+            setPanelStyle({ left, top: rect.bottom + EDGE, width, maxHeight: Math.min(maxHeight, spaceBelow - EDGE * 2) });
+        } else {
+            setPanelStyle({ left, bottom: window.innerHeight - rect.top + EDGE, width, maxHeight: Math.min(maxHeight, rect.top - EDGE * 2) });
         }
+    }, [position]);
 
+    useLayoutEffect(() => {
+        if (!isOpen) return;
+        updatePosition();
+        window.addEventListener('resize', updatePosition);
+        window.addEventListener('scroll', updatePosition, true);
         return () => {
-            document.removeEventListener('mousedown', handleClickOutside);
+            window.removeEventListener('resize', updatePosition);
+            window.removeEventListener('scroll', updatePosition, true);
+        };
+    }, [isOpen, updatePosition]);
+
+    useEffect(() => {
+        if (!isOpen) return;
+        const handlePointer = (event: MouseEvent) => {
+            const target = event.target as Node;
+            if (panelRef.current?.contains(target) || triggerRef.current?.contains(target)) return;
+            setIsOpen(false);
+        };
+        const handleKey = (event: KeyboardEvent) => {
+            if (event.key !== 'Escape') return;
+            setIsOpen(false);
+            triggerRef.current?.focus();
+        };
+        document.addEventListener('mousedown', handlePointer);
+        document.addEventListener('keydown', handleKey);
+        return () => {
+            document.removeEventListener('mousedown', handlePointer);
+            document.removeEventListener('keydown', handleKey);
         };
     }, [isOpen]);
 
-    const handleNotificationClick = async (notification: Notification) => {
-        // Mark as read
-        if (!notification.read) {
-            await markNotificationAsRead(notification.id, notification.tenantId);
-        }
-
-        // Navigate to the relevant item
-        let path = '';
-        if (notification.taskId && notification.projectId) {
-            path = `/project/${notification.projectId}/tasks/${notification.taskId}`;
-        } else if (notification.projectId) {
-            path = `/project/${notification.projectId}`;
-        } else if (notification.deepLink?.startsWith('/')) {
-            // Server nudges (briefing, due today, day close) carry their own route.
-            path = notification.deepLink;
-        }
-
-        if (path) {
-            navigate(path);
-            setIsOpen(false);
-        }
-    };
-
-    const handleMarkAllAsRead = async () => {
-        if (!user) return;
-        await markAllNotificationsAsRead(user.uid);
-    };
-
-    const formatTime = (timestamp: any) => {
-        if (!timestamp) return '';
-        const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
-        const now = new Date();
-        const diff = now.getTime() - date.getTime();
-        const minutes = Math.floor(diff / 60000);
-        const hours = Math.floor(diff / 3600000);
-        const days = Math.floor(diff / 86400000);
-
-        if (minutes < 1) return t('notifications.time.justNow');
-        if (minutes < 60) return t('notifications.time.minutesAgo').replace('{count}', String(minutes));
-        if (hours < 24) return t('notifications.time.hoursAgo').replace('{count}', String(hours));
-        if (days < 7) return t('notifications.time.daysAgo').replace('{count}', String(days));
-        return format(date, dateFormat, { locale: dateLocale });
-    };
-
-    const getNotificationIcon = (type: string) => {
-        switch (type) {
-            case 'task_assigned':
-            case 'subtask_assigned':
-                return 'task_alt';
-            case 'issue_assigned':
-                return 'bug_report';
-            case 'comment_added':
-            case 'comment_mention':
-                return 'comment';
-            case 'project_invite':
-            case 'project_shared':
-            case 'project_join_request':
-            case 'project_join_request_accepted':
-                return 'folder_shared';
-            case 'project_join_request_denied':
-                return 'block';
-            default:
-                return 'notifications';
-        }
-    };
-
-    const handleJoinResponse = async (e: React.MouseEvent, notification: Notification, accept: boolean) => {
-        e.stopPropagation();
-        if (!notification.projectId || !notification.actorId) return;
-
+    const run = async (action: () => Promise<unknown>, errorKey: string) => {
         try {
-            await respondToJoinRequest(
-                notification.id,
-                notification.projectId,
-                notification.actorId,
-                accept,
-                notification.tenantId
-            );
-        } catch (error) {
-            console.error(error);
-            const errorMessage = error instanceof Error ? error.message : t('notifications.error.unknown');
-            showToast(t('notifications.error.respond').replace('{error}', errorMessage), 'error');
+            await action();
+        } catch (actionError) {
+            console.error(actionError);
+            showToast(t(errorKey), 'error');
         }
     };
 
-    // Get notification accent color based on type
-    const getNotificationColor = (type: string) => {
-        switch (type) {
-            case 'task_assigned':
-            case 'subtask_assigned':
-                return 'from-blue-500 to-indigo-500';
-            case 'issue_assigned':
-                return 'from-rose-500 to-pink-500';
-            case 'comment_added':
-            case 'comment_mention':
-                return 'from-violet-500 to-purple-500';
-            case 'project_invite':
-            case 'project_shared':
-            case 'project_join_request':
-            case 'project_join_request_accepted':
-                return 'from-emerald-500 to-teal-500';
-            case 'project_join_request_denied':
-                return 'from-gray-500 to-slate-500';
-            default:
-                return 'from-gray-400 to-gray-500';
+    const handleOpen = async (notification: Notification) => {
+        if (!notification.read) void run(() => setRead(notification, true), 'notifications.toast.updateError');
+        const path = getNotificationPath(notification);
+        if (path) {
+            setIsOpen(false);
+            navigate(path);
         }
     };
+
+    const handleSwitchWorkspace = (tenantId: string) => {
+        setIsOpen(false);
+        void run(() => switchWorkspace(tenantId, '/notifications'), 'notifications.toast.switchError');
+    };
+
+    const badgeLabel = badgeCount > 9 ? '9+' : String(badgeCount);
 
     return (
-        <div className="relative" ref={dropdownRef}>
-            {/* Notification Bell Button - Enhanced */}
+        <>
             <button
-                onClick={() => setIsOpen(!isOpen)}
-                aria-label={t('notifications.title')}
+                ref={triggerRef}
+                type="button"
+                className={`notification-bell${isOpen ? ' is-open' : ''}`}
+                onClick={() => setIsOpen((open) => !open)}
+                aria-label={badgeCount > 0
+                    ? t('notifications.bell.labelUnread').replace('{count}', String(badgeCount))
+                    : t('notifications.title')}
                 title={t('notifications.title')}
                 aria-expanded={isOpen}
-                className={`
-                    size-9 rounded-xl flex items-center justify-center transition-all duration-300 relative
-                    ${isOpen
-                        ? 'bg-primary text-on-primary shadow-lg scale-95'
-                        : 'hover:bg-surface-hover text-muted hover:text-main'}
-                `}
+                aria-haspopup="dialog"
             >
-                <span className={`material-symbols-outlined text-[20px] transition-transform duration-300 ${isOpen ? 'rotate-12' : ''}`}>
-                    {unreadCount > 0 ? 'notifications_active' : 'notifications'}
+                <span className="material-symbols-outlined" aria-hidden="true">
+                    {badgeCount > 0 ? 'notifications_active' : 'notifications'}
                 </span>
-                {unreadCount > 0 && (
-                    <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] bg-gradient-to-br from-rose-500 to-pink-600 text-white text-[10px] font-black rounded-full flex items-center justify-center shadow-lg shadow-rose-500/30 animate-pulse">
-                        {unreadCount > 9 ? '9+' : unreadCount}
-                    </span>
-                )}
+                {badgeCount > 0 && <span className="notification-bell__badge" aria-hidden="true">{badgeLabel}</span>}
             </button>
 
-            {/* Dropdown Panel - Premium Redesign */}
-            {isOpen && (
-                <div className={`absolute ${position === 'sidebar'
-                    ? 'left-full bottom-0 ml-3'
-                    : 'right-0 mt-2'
-                    } w-[340px] pf-glass rounded-2xl overflow-hidden z-50 animate-fade-in`}
+            {isOpen && createPortal(
+                <div
+                    ref={panelRef}
+                    className="notification-panel"
+                    style={panelStyle}
+                    role="dialog"
+                    aria-label={t('notifications.title')}
                 >
-                    {/* Header - Gradient Design */}
-                    <div className="relative px-5 py-4 bg-gradient-to-r from-[var(--color-surface-card)] to-[var(--color-surface-bg)] border-b border-surface">
-                        <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                                <div className="size-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/20">
-                                    <span className="material-symbols-outlined text-white text-[22px]">notifications</span>
-                                </div>
-                                <div>
-                                    <h3 className="text-[15px] font-bold text-main">
-                                        {t('notifications.title')}
-                                    </h3>
-                                    <p className="text-[11px] text-muted">
-                                        {unreadCount > 0
-                                            ? t('notifications.subtitle.unread').replace('{count}', String(unreadCount))
-                                            : t('notifications.subtitle.allCaughtUp')}
-                                    </p>
-                                </div>
-                            </div>
-                            {unreadCount > 0 && (
-                                <button
-                                    onClick={handleMarkAllAsRead}
-                                    className="text-[11px] font-bold text-indigo-500 hover:text-indigo-600 dark:text-indigo-400 dark:hover:text-indigo-300 transition-colors px-3 py-1.5 rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-900/20"
-                                >
-                                    {t('notifications.actions.markAllRead')}
-                                </button>
-                            )}
+                    <div className="notification-panel__header">
+                        <div className="notification-panel__heading">
+                            <h2 className="notification-panel__title">{t('notifications.title')}</h2>
+                            <p className="notification-panel__subtitle">
+                                {unreadCount > 0
+                                    ? t('notifications.subtitle.unread').replace('{count}', String(unreadCount))
+                                    : t('notifications.subtitle.allCaughtUp')}
+                            </p>
                         </div>
-                    </div>
-
-                    {/* Notifications List - Enhanced */}
-                    <div className="max-h-[380px] overflow-y-auto custom-scrollbar">
-                        {loading ? (
-                            <div className="flex flex-col items-center justify-center py-12 gap-3">
-                                <div className="size-10 rounded-full border-2 border-indigo-500/30 border-t-indigo-500 animate-spin"></div>
-                                <p className="text-xs text-muted">{t('notifications.loading')}</p>
-                            </div>
-                        ) : notifications.length === 0 ? (
-                            <div className="flex flex-col items-center justify-center py-12 px-6 text-center">
-                                <div className="size-20 rounded-2xl bg-gradient-to-br from-[var(--color-surface-hover)] to-[var(--color-surface-bg)] flex items-center justify-center mb-4">
-                                    <span className="material-symbols-outlined text-[40px] text-subtle">
-                                        inbox
-                                    </span>
-                                </div>
-                                <h4 className="text-sm font-bold text-main mb-1">{t('notifications.empty.title')}</h4>
-                                <p className="text-xs text-muted leading-relaxed">
-                                    {t('notifications.empty.description')}
-                                </p>
-                            </div>
-                        ) : (
-                            <div className="py-2">
-                                {notifications.slice(0, 15).map((notification, index) => (
-                                    <div
-                                        key={notification.id}
-                                        role="button"
-                                        tabIndex={0}
-                                        onClick={() => handleNotificationClick(notification)}
-                                        className={`
-                                            group relative mx-2 mb-1 px-3 py-3 rounded-xl cursor-pointer transition-all duration-200
-                                            ${!notification.read
-                                                ? 'bg-gradient-to-r from-indigo-50/80 to-transparent dark:from-indigo-900/20 dark:to-transparent'
-                                                : 'hover:bg-surface-hover'}
-                                        `}
-                                        style={{ animationDelay: `${index * 30}ms` }}
-                                    >
-                                        {/* Colored accent bar for unread */}
-                                        {!notification.read && (
-                                            <div className={`absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 rounded-r-full bg-gradient-to-b ${getNotificationColor(notification.type)}`} />
-                                        )}
-
-                                        <div className="flex items-start gap-3">
-                                            {/* Icon with gradient background */}
-                                            <div className={`
-                                                flex-shrink-0 size-9 rounded-xl flex items-center justify-center transition-all duration-200
-                                                ${!notification.read
-                                                    ? `bg-gradient-to-br ${getNotificationColor(notification.type)} text-white shadow-md`
-                                                    : 'bg-surface-hover text-muted group-hover:bg-surface-border'}
-                                            `}>
-                                                <span className="material-symbols-outlined text-[18px]">
-                                                    {getNotificationIcon(notification.type)}
-                                                </span>
-                                            </div>
-
-                                            {/* Content */}
-                                            <div className="flex-1 min-w-0">
-                                                <div className="flex items-start justify-between gap-2">
-                                                    <p className={`text-[13px] leading-snug ${!notification.read
-                                                        ? 'font-semibold text-main'
-                                                        : 'text-main'
-                                                        }`}>
-                                                        {notification.title}
-                                                    </p>
-                                                    <span className="text-[10px] text-subtle shrink-0 mt-0.5">
-                                                        {formatTime(notification.createdAt)}
-                                                    </span>
-                                                </div>
-                                                <p className="text-[12px] text-muted mt-0.5 line-clamp-2 leading-relaxed">
-                                                    {notification.message}
-                                                </p>
-
-                                                {/* Join Request Actions */}
-                                                {notification.type === 'project_join_request' && !notification.read && (
-                                                    <div className="flex items-center gap-2 mt-3">
-                                                        <button
-                                                            onClick={(e) => handleJoinResponse(e, notification, true)}
-                                                            className="flex-1 flex items-center justify-center gap-1.5 h-8 bg-gradient-to-r from-emerald-500 to-teal-500 text-white text-xs font-bold rounded-lg hover:shadow-lg hover:shadow-emerald-500/25 transition-all duration-200 hover:scale-[1.02]"
-                                                        >
-                                                            <span className="material-symbols-outlined text-[14px]">check</span>
-                                                            {t('notifications.actions.accept')}
-                                                        </button>
-                                                        <button
-                                                            onClick={(e) => handleJoinResponse(e, notification, false)}
-                                                            className="flex-1 flex items-center justify-center gap-1.5 h-8 bg-surface-hover text-muted text-xs font-bold rounded-lg hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-900/20 dark:hover:text-rose-400 transition-all duration-200"
-                                                        >
-                                                            <span className="material-symbols-outlined text-[14px]">close</span>
-                                                            {t('notifications.actions.decline')}
-                                                        </button>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
+                        {unreadCount > 0 && (
+                            <button
+                                type="button"
+                                className="notification-panel__link"
+                                onClick={() => void run(markAllRead, 'notifications.toast.updateError')}
+                            >
+                                <span className="material-symbols-outlined" aria-hidden="true">done_all</span>
+                                {t('notifications.actions.markAllRead')}
+                            </button>
                         )}
                     </div>
-
-                    {/* Footer */}
-                    {notifications.length > 0 && (
-                        <div className="px-4 py-3 border-t border-surface bg-surface/50">
-                            <button
-                                onClick={() => {
-                                    setIsOpen(false);
-                                    navigate('/notifications');
-                                }}
-                                className="w-full flex items-center justify-center gap-2 text-xs font-bold text-muted hover:text-main transition-colors py-1.5 rounded-lg hover:bg-surface-hover"
-                            >
-                                {t('notifications.actions.viewAll')}
-                                <span className="material-symbols-outlined text-[14px]">arrow_forward</span>
-                            </button>
-                        </div>
-                    )}
-                </div>
+                    <div className="notification-panel__toolbar">
+                        <NotificationFilterTabs value={filter} unreadCount={unreadCount} onChange={setFilter} />
+                    </div>
+                    <NotificationOtherWorkspaces items={otherUnread} onSwitch={handleSwitchWorkspace} />
+                    <div className="notification-panel__body">
+                        {loading ? (
+                            <NotificationState kind="loading" compact />
+                        ) : error ? (
+                            <NotificationState kind="error" compact />
+                        ) : visible.length === 0 ? (
+                            <NotificationState kind={filter === 'unread' && notifications.length > 0 ? 'emptyUnread' : 'empty'} compact />
+                        ) : (
+                            <NotificationList
+                                compact
+                                notifications={visible}
+                                onOpen={handleOpen}
+                                onToggleRead={(notification) => void run(() => setRead(notification, !notification.read), 'notifications.toast.updateError')}
+                                onDelete={(notification) => void run(() => remove(notification), 'notifications.toast.deleteError')}
+                            />
+                        )}
+                    </div>
+                    <div className="notification-panel__footer">
+                        <button
+                            type="button"
+                            className="notification-panel__footer-link"
+                            onClick={() => { setIsOpen(false); navigate('/notifications'); }}
+                        >
+                            {t('notifications.actions.viewAll')}
+                            <span className="material-symbols-outlined" aria-hidden="true">arrow_forward</span>
+                        </button>
+                    </div>
+                </div>,
+                document.body
             )}
-        </div>
+        </>
     );
 };

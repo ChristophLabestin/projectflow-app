@@ -114,7 +114,8 @@ test('notifications: task_completed goes to the creator unless they completed it
     const before = { title: 'T', isCompleted: false, createdBy: 'boss', assigneeIds: ['a'] };
     const after = { ...before, isCompleted: true, status: 'Done' };
     assert.deepEqual(fx.planTaskNotifications(before, after, 'a', 'Anna').map((n) => [n.type, n.userId]), [['task_completed', 'boss']]);
-    assert.deepEqual(fx.planTaskNotifications(before, after, 'boss', 'Boss'), []);
+    // The creator completing it: no task_completed; the assignee still learns about the status change.
+    assert.deepEqual(fx.planTaskNotifications(before, after, 'boss', 'Boss').map((n) => [n.type, n.userId]), [['task_status_changed', 'a']]);
     assert.deepEqual(fx.planTaskNotifications(after, after, 'a', 'Anna'), []);
 });
 

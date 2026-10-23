@@ -1,6 +1,5 @@
 import {
     collection,
-    addDoc,
     query,
     where,
     onSnapshot,
@@ -13,9 +12,10 @@ import {
     setDoc,
     arrayUnion
 } from 'firebase/firestore';
+import type { DocumentReference, WriteBatch } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import { db, auth, app, firebaseConfig, functions as cloudFunctions } from './firebase';
-import type { Notification, NotificationType } from '../types';
+import type { Notification } from '../types';
 import { getCachedTenantId } from './internal/workspaceDataCore';
 
 export interface WebNotificationDiagnostics {
@@ -177,93 +177,62 @@ export const sendTestNotification = async (tenantId?: string): Promise<SendTestN
     return result.data;
 };
 
-/**
- * Create a new notification
- */
-export const createNotification = async (data: {
-    userId: string;
-    type: NotificationType;
-    title: string;
-    message: string;
-    projectId?: string;
-    taskId?: string;
-    initiativeId?: string;
-    issueId?: string;
-    commentId?: string;
-    inviteId?: string;
-    tenantId?: string;
-}): Promise<void> => {
-    const user = auth.currentUser;
-
-    // Don't send notification to yourself
-    if (user?.uid === data.userId) {
-        return;
-    }
-
-    try {
-        // Sanitize data to remove undefined values (Firestore rejects undefined)
-        const cleanData = Object.fromEntries(
-            Object.entries(data).filter(([_, v]) => v !== undefined)
-        );
-
-        const tenantId = resolveTenantId(data.tenantId);
-
-        await addDoc(getNotificationsCollection(tenantId), {
-            ...cleanData,
-            actorId: user?.uid,
-            actorName: user?.displayName || 'Someone',
-            actorPhotoURL: user?.photoURL || '',
-            read: false,
-            createdAt: serverTimestamp()
-        });
-    } catch (error) {
-        console.error('[Notification] ERROR:', error);
-    }
+const toSeconds = (value: any): number => {
+    if (!value) return 0;
+    if (typeof value.seconds === 'number') return value.seconds;
+    const ms = new Date(value).getTime();
+    return Number.isNaN(ms) ? 0 : ms / 1000;
 };
 
 /**
- * Subscribe to real-time notifications for the current user
- * @param userId - The user ID to listen for
- * @param callback - Function to call with updates
- * @param tenantId - Optional tenant ID. If not provided, uses active tenant.
+ * Subscribe to the signed-in user's notifications in one workspace (newest first).
+ * Notifications are created by Cloud Functions only; the client reads, marks read and deletes.
+ * Sorting happens client-side so new workspaces work without a composite index.
  */
 export const subscribeToNotifications = (
     userId: string,
     callback: (notifications: Notification[]) => void,
-    tenantId?: string
+    tenantId?: string,
+    onError?: (error: Error) => void
 ) => {
     try {
         const tid = resolveTenantId(tenantId);
-
-        // REMOVED orderBy to avoid requiring a composite index which breaks the app for new users
-        const q = query(
-            getNotificationsCollection(tid),
-            where('userId', '==', userId)
-        );
+        const q = query(getNotificationsCollection(tid), where('userId', '==', userId));
 
         return onSnapshot(q, (snapshot) => {
             const notifications = snapshot.docs.map(doc => ({
                 id: doc.id,
-                ...doc.data()
+                ...doc.data(),
+                tenantId: tid
             })) as Notification[];
-
-            // Client-side sort (descending by createdAt)
-            notifications.sort((a, b) => {
-                const timeA = a.createdAt?.seconds ? a.createdAt.seconds : (a.createdAt ? new Date(a.createdAt).getTime() / 1000 : 0);
-                const timeB = b.createdAt?.seconds ? b.createdAt.seconds : (b.createdAt ? new Date(b.createdAt).getTime() / 1000 : 0);
-                return timeB - timeA;
-            });
-
+            notifications.sort((a, b) => toSeconds(b.createdAt) - toSeconds(a.createdAt));
             callback(notifications);
         }, (error) => {
             console.error('Error subscribing to notifications:', error);
-            callback([]);
+            onError?.(error);
         });
     } catch (error) {
-        console.error("Failed to subscribe to notifications:", error);
-        // Return a dummy unsubscribe
+        console.error('Failed to subscribe to notifications:', error);
+        onError?.(error as Error);
         return () => { };
     }
+};
+
+/** Live unread count of the user's notifications in one workspace (used for other workspaces). */
+export const subscribeToUnreadNotificationCount = (
+    userId: string,
+    tenantId: string,
+    callback: (count: number) => void
+) => {
+    const q = query(
+        getNotificationsCollection(tenantId),
+        where('userId', '==', userId),
+        where('read', '==', false)
+    );
+    return onSnapshot(q, (snapshot) => callback(snapshot.size), (error) => {
+        console.warn('Failed to subscribe to unread notifications', tenantId, error);
+        callback(0);
+    });
 };
 
 export const subscribeToNotificationDeliveryLogs = (
@@ -301,101 +270,57 @@ export const subscribeToNotificationDeliveryLogs = (
 };
 
 /**
- * Mark a notification as read
+ * Mark a notification as read or unread
  */
+export const setNotificationRead = async (notificationId: string, read: boolean, tenantId?: string): Promise<void> => {
+    const tid = resolveTenantId(tenantId);
+    await updateDoc(doc(db, 'tenants', tid, 'notifications', notificationId), { read });
+};
+
 export const markNotificationAsRead = async (notificationId: string, tenantId?: string): Promise<void> => {
     try {
-        const tid = resolveTenantId(tenantId);
-        const notificationRef = doc(db, 'tenants', tid, 'notifications', notificationId);
-        await updateDoc(notificationRef, {
-            read: true
-        });
+        await setNotificationRead(notificationId, true, tenantId);
     } catch (error) {
         console.error('Failed to mark notification as read:', error);
     }
 };
 
+const BATCH_LIMIT = 450;
+
+const commitInChunks = async (refs: DocumentReference[], apply: (batch: WriteBatch, ref: DocumentReference) => void) => {
+    for (let index = 0; index < refs.length; index += BATCH_LIMIT) {
+        const batch = writeBatch(db);
+        refs.slice(index, index + BATCH_LIMIT).forEach((ref) => apply(batch, ref));
+        await batch.commit();
+    }
+};
+
 /**
- * Mark all notifications as read for a user
+ * Mark all of the user's notifications in one workspace as read
  */
 export const markAllNotificationsAsRead = async (userId: string, tenantId?: string): Promise<void> => {
-    try {
-        const tid = resolveTenantId(tenantId);
-        const q = query(
-            getNotificationsCollection(tid),
-            where('userId', '==', userId),
-            where('read', '==', false)
-        );
-
-        const snapshot = await getDocs(q);
-        const batch = writeBatch(db);
-
-        snapshot.docs.forEach(doc => {
-            batch.update(doc.ref, { read: true });
-        });
-
-        await batch.commit();
-    } catch (error) {
-        console.error('Failed to mark all notifications as read:', error);
-    }
+    const tid = resolveTenantId(tenantId);
+    const snapshot = await getDocs(query(
+        getNotificationsCollection(tid),
+        where('userId', '==', userId),
+        where('read', '==', false)
+    ));
+    await commitInChunks(snapshot.docs.map((d) => d.ref), (batch, ref) => batch.update(ref, { read: true }));
 };
 
 /**
  * Delete a single notification
  */
 export const deleteNotification = async (notificationId: string, tenantId?: string): Promise<void> => {
-    try {
-        const tid = resolveTenantId(tenantId);
-        await deleteDoc(doc(db, 'tenants', tid, 'notifications', notificationId));
-    } catch (error) {
-        console.error('Failed to delete notification:', error);
-        throw error;
-    }
+    const tid = resolveTenantId(tenantId);
+    await deleteDoc(doc(db, 'tenants', tid, 'notifications', notificationId));
 };
 
 /**
- * Delete all notifications for a user
+ * Delete all of the user's notifications in one workspace
  */
 export const deleteAllNotifications = async (userId: string, tenantId?: string): Promise<void> => {
-    try {
-        const tid = resolveTenantId(tenantId);
-        const q = query(
-            getNotificationsCollection(tid),
-            where('userId', '==', userId)
-        );
-
-        const snapshot = await getDocs(q);
-        const batch = writeBatch(db);
-
-        snapshot.docs.forEach(doc => {
-            batch.delete(doc.ref);
-        });
-
-        await batch.commit();
-    } catch (error) {
-        console.error('Failed to delete all notifications:', error);
-        throw error;
-    }
+    const tid = resolveTenantId(tenantId);
+    const snapshot = await getDocs(query(getNotificationsCollection(tid), where('userId', '==', userId)));
+    await commitInChunks(snapshot.docs.map((d) => d.ref), (batch, ref) => batch.delete(ref));
 };
-
-/**
- * Helper to send project invite notification
- */
-export const notifyProjectInvite = async (
-    userId: string,
-    projectTitle: string,
-    projectId: string,
-    tenantId?: string
-): Promise<void> => {
-    await createNotification({
-        userId,
-        type: 'project_invite',
-        title: 'Project Invitation',
-        message: `You've been invited to project "${projectTitle}"`,
-        projectId,
-        tenantId
-    });
-};
-
-// Task assignment, subtask assignment, comment and mention notifications are created server-side
-// (onTaskWritten, onSubtaskWritten, onCommentCreated). Project / workspace invites stay client-side.

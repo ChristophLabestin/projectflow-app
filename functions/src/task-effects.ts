@@ -36,6 +36,25 @@ export const sameInstant = (a: unknown, b: unknown): boolean => {
     return left === right;
 };
 
+/** Firestore-safe doc id fragment. */
+export const idPart = (value: string): string => value.replace(/[^A-Za-z0-9_-]/g, '_').slice(0, 120);
+
+/** Date value as stored on a task, as a string for notification params ('' when empty/unreadable). */
+export const dueString = (value: unknown): string => {
+    if (typeof value === 'string') return value.trim();
+    const millis = toMillis(value);
+    return millis === null ? '' : new Date(millis).toISOString();
+};
+
+/** Drop keys without a non-empty string value (notification `params` contract). */
+export const compactParams = (params: Record<string, unknown>): Record<string, string> => {
+    const out: Record<string, string> = {};
+    Object.entries(params).forEach(([key, value]) => {
+        if (typeof value === 'string' && value.trim()) out[key] = value;
+    });
+    return out;
+};
+
 const cleanId = (value: unknown): string => (typeof value === 'string' ? value.trim() : '');
 
 /** Union of `assigneeIds` and the legacy single `assigneeId` (order preserved, de-duplicated). */
@@ -308,13 +327,22 @@ export type EventNotificationType =
     | 'subtask_assigned'
     | 'comment_added'
     | 'comment_mention'
-    | 'task_completed';
+    | 'task_completed'
+    | 'task_status_changed'
+    | 'task_due_changed'
+    | 'task_overdue'
+    | 'project_member_added'
+    | 'project_member_joined';
 
 export interface PlannedNotification {
     type: EventNotificationType;
     userId: string;
     title: string;
     message: string;
+    /** Structured values for client-side localisation (stored as `params`). */
+    params: Record<string, string>;
+    /** Overrides the write's actor (project member events). '' = no actor. */
+    actorId?: string;
 }
 
 /** Same English copy the web client used for assignments. */
@@ -328,23 +356,65 @@ export const planTaskNotifications = (
     const out: PlannedNotification[] = [];
 
     const added = addedItems(effectiveAssignees(before), effectiveAssignees(after));
+    const notified = new Set<string>();
     added.forEach((userId) => {
         if (userId === actorId) return;
+        notified.add(userId);
         out.push({
             type: 'task_assigned',
             userId,
             title: 'New Task Assignment',
-            message: `You've been assigned to "${title}"`
+            message: `You've been assigned to "${title}"`,
+            params: compactParams({ taskTitle: title })
         });
     });
 
     const creator = cleanId(after.createdBy) || cleanId(after.ownerId);
-    if (before && !isDone(before) && isDone(after) && creator && creator !== actorId) {
+    const becameDone = !!before && !isDone(before) && isDone(after);
+    if (becameDone && creator && creator !== actorId) {
+        notified.add(creator);
         out.push({
             type: 'task_completed',
             userId: creator,
             title: 'Task Completed',
-            message: `${actorName} completed "${title}"`
+            message: `${actorName} completed "${title}"`,
+            params: compactParams({ taskTitle: title })
+        });
+    }
+    // The creator is told about completion by task_completed even when they are the actor (no message then).
+    if (becameDone && creator) notified.add(creator);
+
+    const status = cleanId(after.status);
+    if (before && status && cleanId(before.status) !== status) {
+        const recipients = new Set<string>([...effectiveAssignees(after), ...(creator ? [creator] : [])]);
+        recipients.forEach((userId) => {
+            if (userId === actorId || notified.has(userId)) return;
+            out.push({
+                type: 'task_status_changed',
+                userId,
+                title: 'Status Changed',
+                message: `${actorName} moved "${title}" to ${status}`,
+                params: compactParams({ taskTitle: title, status, previousStatus: cleanId(before.status) })
+            });
+        });
+    }
+
+    if (before && !isDone(after) && !sameInstant(before.dueDate, after.dueDate)) {
+        const dueDate = dueString(after.dueDate);
+        const previousDueDate = dueString(before.dueDate);
+        const addedSet = new Set(added);
+        effectiveAssignees(after).forEach((userId) => {
+            if (userId === actorId || addedSet.has(userId)) return;
+            out.push({
+                type: 'task_due_changed',
+                userId,
+                title: 'Due Date Changed',
+                message: dueDate
+                    ? `${actorName} changed the due date of "${title}" to ${dueDate.slice(0, 10)}`
+                    : `${actorName} removed the due date of "${title}"`,
+                // dueDate / previousDueDate stay even when '' (= removed / was unset).
+                params: { ...compactParams({ taskTitle: title }), dueDate, previousDueDate }
+            });
         });
     }
     return out;
@@ -362,8 +432,84 @@ export const planSubtaskNotifications = (
         type: 'subtask_assigned',
         userId: assignee,
         title: 'New Subtask Assignment',
-        message: `You've been assigned to subtask "${titleOf(after)}" in task "${parentTitle}"`
+        message: `You've been assigned to subtask "${titleOf(after)}" in task "${parentTitle}"`,
+        params: compactParams({ subtaskTitle: titleOf(after), taskTitle: parentTitle })
     }];
+};
+
+// ---------------------------------------------------------------------------
+// Project members
+// ---------------------------------------------------------------------------
+
+const memberIdList = (project: Json | null | undefined): string[] =>
+    Array.isArray(project?.memberIds) ? (project!.memberIds as unknown[]).map(cleanId).filter(Boolean) : [];
+
+export interface AddedProjectMember {
+    userId: string;
+    /** Who added them; equals `userId` for a self-join, '' when unknown. */
+    actorId: string;
+}
+
+/**
+ * Members added by this write (`memberIds` diff) and who added them.
+ * The web client does not stamp `updatedBy` on project writes, so: a refreshed `updatedBy` wins; otherwise the
+ * member entry in `members[]` decides. A self-join (joinProject) writes a bare entry without `displayName`
+ * and `invitedBy = ownerId`, so that shape means "the member added themselves"; an owner/admin add
+ * (addProjectMember) carries the profile snapshot and `invitedBy = <adder uid>`. Unknown -> ''.
+ */
+export const diffProjectMembers = (before: Json | null, after: Json): AddedProjectMember[] => {
+    if (!before) return [];
+    const added = addedItems(memberIdList(before), memberIdList(after));
+    if (added.length === 0) return [];
+    const updatedBy = cleanId(after.updatedBy);
+    const refreshed = before.updatedBy !== after.updatedBy || !sameInstant(before.updatedAt, after.updatedAt);
+    const entries: Json[] = Array.isArray(after.members) ? after.members.filter((m: unknown) => m && typeof m === 'object') : [];
+
+    return added.map((userId) => {
+        if (updatedBy && refreshed) return { userId, actorId: updatedBy };
+        const entry = entries.find((m) => cleanId(m.userId) === userId);
+        if (!entry) return { userId, actorId: '' };
+        const invitedBy = cleanId(entry.invitedBy);
+        const snapshot = cleanId(entry.displayName) || cleanId(entry.email);
+        if (!snapshot) return { userId, actorId: userId }; // bare entry = self-join
+        if (invitedBy && invitedBy.toLowerCase() !== 'system') return { userId, actorId: invitedBy };
+        return { userId, actorId: '' };
+    });
+};
+
+/** `project_member_added` for added members (not the actor) and `project_member_joined` for the owner on self-join. */
+export const planProjectMemberNotifications = (
+    before: Json | null,
+    after: Json,
+    nameOf: (uid: string) => string = (uid) => uid
+): PlannedNotification[] => {
+    const projectTitle = typeof after.title === 'string' && after.title.trim() ? after.title.trim() : 'Project';
+    const owner = cleanId(after.ownerId);
+    const out: PlannedNotification[] = [];
+    diffProjectMembers(before, after).forEach(({ userId, actorId }) => {
+        if (actorId && actorId === userId) {
+            if (owner && owner !== userId) {
+                out.push({
+                    type: 'project_member_joined',
+                    userId: owner,
+                    title: 'New Project Member',
+                    message: `${nameOf(userId)} joined "${projectTitle}"`,
+                    params: compactParams({ projectTitle }),
+                    actorId: userId
+                });
+            }
+            return;
+        }
+        out.push({
+            type: 'project_member_added',
+            userId,
+            title: 'Added to Project',
+            message: actorId ? `${nameOf(actorId)} added you to "${projectTitle}"` : `You were added to "${projectTitle}"`,
+            params: compactParams({ projectTitle }),
+            actorId
+        });
+    });
+    return out;
 };
 
 // ---------------------------------------------------------------------------

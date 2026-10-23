@@ -21,9 +21,11 @@ import {
     isSystemWrite,
     Json,
     MentionTarget,
+    compactParams,
     plainSnippet,
     planCommentRecipients,
     planCompletionConsistency,
+    planProjectMemberNotifications,
     planSubtaskActivities,
     planSubtaskNotifications,
     planTaskActivities,
@@ -40,6 +42,17 @@ const PROJECT_PATH = 'tenants/{tenantId}/projects/{projectId}';
 const FAILED_PRECONDITION = 9;
 const NOT_FOUND = 5;
 const MAX_MENTION_IDS = 25;
+
+/** Title of a project (one cheap read, cached per invocation by the caller). '' when missing. */
+const loadProjectTitle = async (tenantId: string, projectId: string): Promise<string> => {
+    try {
+        const data = toData(await db.doc(`tenants/${tenantId}/projects/${projectId}`).get());
+        return typeof data?.title === 'string' ? data.title.trim() : '';
+    } catch (error) {
+        console.warn('loadProjectTitle failed', projectId, error);
+        return '';
+    }
+};
 
 const toData = (snapshot: FirebaseFirestore.DocumentSnapshot): Json | null =>
     snapshot.exists ? ((snapshot.data() || {}) as Json) : null;
@@ -144,6 +157,7 @@ export const onTaskWritten = functions.region(REGION).firestore
         }
 
         const notifications = planTaskNotifications(before, final, actorId, actor.name);
+        const projectTitle = notifications.length > 0 ? await loadProjectTitle(tenantId, projectId) : '';
         for (const notification of notifications) {
             await createNotificationDoc({
                 userId: notification.userId,
@@ -152,7 +166,8 @@ export const onTaskWritten = functions.region(REGION).firestore
                 title: notification.title,
                 message: notification.message,
                 projectId,
-                taskId
+                taskId,
+                extra: { params: { ...notification.params, ...compactParams({ projectTitle }) } }
             }, actor, `${eventId}-${notification.type}-${idPart(notification.userId)}`);
         }
 
@@ -190,7 +205,9 @@ export const onSubtaskWritten = functions.region(REGION).firestore
             await createActivityDoc(tenantId, projectId, actor, activity, `${eventId}-a${index}`);
         }
 
-        for (const notification of planSubtaskNotifications(before, after, parentTitle, actorId)) {
+        const subtaskNotifications = planSubtaskNotifications(before, after, parentTitle, actorId);
+        const projectTitle = subtaskNotifications.length > 0 ? await loadProjectTitle(tenantId, projectId) : '';
+        for (const notification of subtaskNotifications) {
             await createNotificationDoc({
                 userId: notification.userId,
                 tenantId,
@@ -198,7 +215,8 @@ export const onSubtaskWritten = functions.region(REGION).firestore
                 title: notification.title,
                 message: notification.message,
                 projectId,
-                taskId
+                taskId,
+                extra: { params: { ...notification.params, ...compactParams({ projectTitle }) } }
             }, actor, `${eventId}-${notification.type}-${idPart(notification.userId)}`);
         }
     });
@@ -341,6 +359,12 @@ export const onCommentCreated = functions.region(REGION).firestore
             commentId
         };
 
+        const commentParams = compactParams({
+            taskTitle: typeof target.title === 'string' ? target.title.trim() : '',
+            commentSnippet: plainSnippet(content),
+            projectTitle: typeof project.title === 'string' ? project.title.trim() : ''
+        });
+
         for (const userId of recipients.mentions) {
             await createNotificationDoc({
                 userId,
@@ -348,7 +372,8 @@ export const onCommentCreated = functions.region(REGION).firestore
                 type: 'comment_mention',
                 title: 'New Mention',
                 message: `You were mentioned in a comment on ${targetType} "${targetTitle}"`,
-                ...refs
+                ...refs,
+                extra: { params: commentParams }
             }, author, `${eventId}-comment_mention-${idPart(userId)}`);
         }
         for (const userId of recipients.comments) {
@@ -358,31 +383,57 @@ export const onCommentCreated = functions.region(REGION).firestore
                 type: 'comment_added',
                 title: 'New Comment',
                 message: `New comment on ${targetType} "${targetTitle}"`,
-                ...refs
+                ...refs,
+                extra: { params: commentParams }
             }, author, `${eventId}-comment_added-${idPart(userId)}`);
         }
     });
 
 // ---------------------------------------------------------------------------
-// Projects: nextReminderAt only (progress is written by the task trigger)
+// Projects: nextReminderAt + member notifications (progress is written by the task trigger)
 // ---------------------------------------------------------------------------
 
 export const onProjectWritten = functions.region(REGION).firestore
     .document(PROJECT_PATH)
-    .onWrite(async (change) => {
+    .onWrite(async (change, context) => {
+        const { tenantId, projectId } = context.params as Record<string, string>;
+        const before = toData(change.before);
         const after = toData(change.after);
         if (!after) return;
 
         const next = computeNextReminderAt(after.reminders);
         const current = typeof after.nextReminderAt === 'string' ? after.nextReminderAt : undefined;
-        if (next === current) return; // loop guard: converges after one write
+        if (next !== current) { // loop guard: converges after one write
+            try {
+                await change.after.ref.update(
+                    { nextReminderAt: next === undefined ? FieldValue.delete() : next },
+                    { lastUpdateTime: change.after.updateTime }
+                );
+            } catch (error: any) {
+                if (error?.code !== FAILED_PRECONDITION && error?.code !== NOT_FOUND) throw error;
+            }
+        }
 
-        try {
-            await change.after.ref.update(
-                { nextReminderAt: next === undefined ? FieldValue.delete() : next },
-                { lastUpdateTime: change.after.updateTime }
-            );
-        } catch (error: any) {
-            if (error?.code !== FAILED_PRECONDITION && error?.code !== NOT_FOUND) throw error;
+        // Member notifications (skip creates and system writes; the patch write above has an identical memberIds list).
+        if (!before || isSystemWrite(before, after)) return;
+        const planned = planProjectMemberNotifications(before, after);
+        if (planned.length === 0) return;
+
+        const actors = new Map<string, Actor>();
+        const actorIds = Array.from(new Set(planned.map((n) => n.actorId || '').filter(Boolean)));
+        await Promise.all(actorIds.map((uid) => getActor(uid, actors)));
+        const finalPlan = planProjectMemberNotifications(before, after, (uid) => actors.get(uid)?.name || 'Someone');
+        const eventId = idPart(context.eventId || `${projectId}-${Date.now()}`);
+        for (const notification of finalPlan) {
+            const actor = notification.actorId ? actors.get(notification.actorId) || null : null;
+            await createNotificationDoc({
+                userId: notification.userId,
+                tenantId,
+                type: notification.type,
+                title: notification.title,
+                message: notification.message,
+                projectId,
+                extra: { params: notification.params }
+            }, actor, `${eventId}-${notification.type}-${idPart(notification.userId)}`);
         }
     });

@@ -63,6 +63,17 @@ const seedData = async (testEnv) => {
         await set('users/memberA/liveActivities/activityA', { deviceId: 'deviceA', pushToken: 'push', itemId: 'taskA' });
         await set('users/memberA/nudgeLog/2026-10-22', { sent: ['morning_briefing'] });
 
+        const notification = (userId, extra = {}) => ({
+            userId, tenantId: 'tenantA', type: 'task_assigned', title: 'New Task Assignment',
+            message: 'You have been assigned', read: false, actorId: 'ownerA', ...extra
+        });
+        await set(`${T}/notifications/nMember`, notification('memberA', { taskId: 'taskMine', projectId: 'projectA' }));
+        await set(`${T}/notifications/nOwner`, notification('ownerA', { actorId: 'memberA' }));
+        await set(`${T}/notifications/nGuest`, notification('guestA'));
+        await set(`${T}/notifications/nFormer`, notification('outsiderA'));
+        await set(`${T}/notificationDeliveryLogs/logMember`, { notificationId: 'nMember', userId: 'memberA', channel: 'fcm', status: 'sent' });
+        await set(`${T}/notificationDeliveryLogs/logOwner`, { notificationId: 'nOwner', userId: 'ownerA', channel: 'fcm', status: 'sent' });
+
         await set('tenants/tenantB', { tenantId: 'tenantB', name: 'Tenant B', ownerId: 'ownerB' });
         await set('tenants/tenantB/members/ownerB', { uid: 'ownerB', role: 'Owner' });
     });
@@ -192,6 +203,41 @@ const run = async () => {
         await check('owner cannot write nudgeLog (server only)', 'deny', () => as('memberA').doc('users/memberA/nudgeLog/2026-10-23').set({ sent: [] }));
         await check('owner writes notificationPrefs on the profile', 'allow', () =>
             as('memberA').doc('users/memberA').set({ notificationPrefs: { timezone: 'Europe/Berlin' } }, { merge: true }));
+
+        // Notification Center: recipient-only read / mark read / delete, server-only create
+        await fresh();
+        const N = `${T}/notifications`;
+        const inbox = (ctx, uid) => ctx.collection(N).where('userId', '==', uid).get();
+        await check('member reads own notification', 'allow', () => member.doc(`${N}/nMember`).get());
+        await check('member runs own inbox query', 'allow', () => inbox(member, 'memberA'));
+        await check('member runs own unread-count query', 'allow', () =>
+            member.collection(N).where('userId', '==', 'memberA').where('read', '==', false).get());
+        await check('guest runs own inbox query', 'allow', () => inbox(guest, 'guestA'));
+        await check('member cannot read another user\'s notification', 'deny', () => member.doc(`${N}/nOwner`).get());
+        await check('owner cannot read a member\'s notification', 'deny', () => owner.doc(`${N}/nMember`).get());
+        await check('member cannot query someone else\'s inbox', 'deny', () => inbox(member, 'ownerA'));
+        await check('member cannot list all tenant notifications', 'deny', () => member.collection(N).get());
+        await check('outsider cannot read notifications addressed to them in a foreign tenant', 'deny', () =>
+            outsider.doc(`${N}/nFormer`).get());
+        await check('member marks own notification read', 'allow', () => member.doc(`${N}/nMember`).update({ read: true }));
+        await check('guest marks own notification read', 'allow', () => guest.doc(`${N}/nGuest`).update({ read: true }));
+        await check('member marks own notification unread again', 'allow', () => member.doc(`${N}/nMember`).update({ read: false }));
+        await check('member cannot rewrite own notification content', 'deny', () =>
+            member.doc(`${N}/nMember`).update({ title: 'Forged', read: true }));
+        await check('member cannot re-address own notification', 'deny', () => member.doc(`${N}/nMember`).update({ userId: 'ownerA' }));
+        await check('member cannot mark someone else\'s notification read', 'deny', () => member.doc(`${N}/nOwner`).update({ read: true }));
+        await check('member cannot create a notification for someone else', 'deny', () =>
+            member.doc(`${N}/forged`).set({ userId: 'ownerA', tenantId: 'tenantA', type: 'task_assigned', title: 'x', message: 'x', read: false, actorId: 'adminA' }));
+        await check('member cannot create a notification for themself', 'deny', () =>
+            member.collection(N).add({ userId: 'memberA', tenantId: 'tenantA', type: 'task_assigned', title: 'x', message: 'x', read: false }));
+        await check('admin cannot delete a member\'s notification', 'deny', () => admin.doc(`${N}/nMember`).delete());
+        await check('member deletes own notification', 'allow', () => member.doc(`${N}/nMember`).delete());
+        await check('member reads own delivery log', 'allow', () =>
+            member.collection(`${T}/notificationDeliveryLogs`).where('userId', '==', 'memberA').get());
+        await check('member cannot read someone else\'s delivery log', 'deny', () =>
+            member.doc(`${T}/notificationDeliveryLogs/logOwner`).get());
+        await check('member cannot write delivery logs', 'deny', () =>
+            member.doc(`${T}/notificationDeliveryLogs/logMember`).update({ status: 'failed' }));
     } finally {
         await testEnv.cleanup();
     }

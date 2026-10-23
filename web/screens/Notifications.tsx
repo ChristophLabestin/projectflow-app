@@ -1,19 +1,18 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { auth } from '../services/firebase';
+import { useAuth } from '../context/AuthContext';
+import { useWorkspace } from '../context/WorkspaceContext';
+import { useNotifications } from '../hooks/useNotifications';
+import { getNotificationPath, type NotificationFilter } from '../utils/notificationPresentation';
+import { NotificationList } from '../components/notifications/NotificationList';
+import { NotificationFilterTabs, NotificationOtherWorkspaces, NotificationState } from '../components/notifications/NotificationCenterParts';
 import {
-    subscribeToNotifications,
-    markNotificationAsRead,
-    markAllNotificationsAsRead,
-    deleteNotification,
-    deleteAllNotifications,
     getWebNotificationDiagnostics,
     registerWebPushToken,
     sendTestNotification,
     subscribeToNotificationDeliveryLogs
 } from '../services/notificationService';
 import type { NotificationDeliveryLog, WebNotificationDiagnostics } from '../services/notificationService';
-import { respondToJoinRequest } from '../services/dataService';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { ConfirmModal } from '../components/common/Modal/ConfirmModal';
@@ -24,8 +23,7 @@ import { format } from 'date-fns';
 import './notifications.scss';
 
 export const Notifications = () => {
-    const [notifications, setNotifications] = useState<Notification[]>([]);
-    const [loading, setLoading] = useState(true);
+    const [filter, setFilter] = useState<NotificationFilter>('all');
     const [showClearConfirm, setShowClearConfirm] = useState(false);
     const [diagnostics, setDiagnostics] = useState<WebNotificationDiagnostics | null>(null);
     const [diagnosticsLoading, setDiagnosticsLoading] = useState(true);
@@ -35,24 +33,10 @@ export const Notifications = () => {
     const navigate = useNavigate();
     const { showToast } = useToast();
     const { t, dateFormat, dateLocale } = useLanguage();
-
-    const user = auth.currentUser;
-    const unreadCount = notifications.filter(n => !n.read).length;
-
-    // Subscribe to notifications
-    useEffect(() => {
-        if (!user) {
-            setLoading(false);
-            return;
-        }
-
-        const unsubscribe = subscribeToNotifications(user.uid, (notifs) => {
-            setNotifications(notifs);
-            setLoading(false);
-        });
-
-        return () => unsubscribe();
-    }, [user]);
+    const { user } = useAuth();
+    const { activeWorkspaceId, switchWorkspace } = useWorkspace();
+    const { notifications, unreadCount, loading, error, otherUnread, setRead, markAllRead, remove, removeAll } = useNotifications();
+    const visible = filter === 'unread' ? notifications.filter((notification) => !notification.read) : notifications;
 
     const loadDiagnostics = useCallback(async () => {
         setDiagnosticsLoading(true);
@@ -75,8 +59,8 @@ export const Notifications = () => {
             return;
         }
 
-        return subscribeToNotificationDeliveryLogs(user.uid, setDeliveryLogs);
-    }, [user]);
+        return subscribeToNotificationDeliveryLogs(user.uid, setDeliveryLogs, activeWorkspaceId || undefined);
+    }, [user, activeWorkspaceId]);
 
     const handleRegisterWebPush = async () => {
         setRegisteringPush(true);
@@ -110,72 +94,27 @@ export const Notifications = () => {
         }
     };
 
-    const handleNotificationClick = async (notification: Notification) => {
-        // Mark as read
-        if (!notification.read) {
-            await markNotificationAsRead(notification.id, notification.tenantId);
-        }
-
-        // Navigate to the relevant item
-        let path = '';
-        if (notification.taskId && notification.projectId) {
-            path = `/project/${notification.projectId}/tasks/${notification.taskId}`;
-        } else if (notification.initiativeId && notification.projectId) {
-            path = `/project/${notification.projectId}/initiatives/${notification.initiativeId}`;
-        } else if (notification.projectId) {
-            path = `/project/${notification.projectId}`;
-        } else if (notification.deepLink?.startsWith('/')) {
-            // Server nudges (briefing, due today, day close) carry their own route.
-            path = notification.deepLink;
-        }
-
-        if (path) {
-            navigate(path);
+    const run = async (action: () => Promise<unknown>, errorKey: string) => {
+        try {
+            await action();
+            return true;
+        } catch (actionError) {
+            console.error(actionError);
+            showToast(t(errorKey), 'error');
+            return false;
         }
     };
 
-    const handleMarkAllAsRead = async () => {
-        if (!user) return;
-        await markAllNotificationsAsRead(user.uid);
-        showToast(t('notifications.toast.markAllRead'), 'success');
+    const handleOpen = (notification: Notification) => {
+        if (!notification.read) void run(() => setRead(notification, true), 'notifications.toast.updateError');
+        const path = getNotificationPath(notification);
+        if (path) navigate(path);
     };
 
-    const formatTime = (timestamp: any) => {
+    const formatDeliveryTime = (timestamp: any) => {
         if (!timestamp) return '';
         const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
-        const now = new Date();
-        const diff = now.getTime() - date.getTime();
-        const minutes = Math.floor(diff / 60000);
-        const hours = Math.floor(diff / 3600000);
-        const days = Math.floor(diff / 86400000);
-
-        if (minutes < 1) return t('notifications.time.justNow');
-        if (minutes < 60) return t('notifications.time.minutesAgo').replace('{count}', String(minutes));
-        if (hours < 24) return t('notifications.time.hoursAgo').replace('{count}', String(hours));
-        if (days < 7) return t('notifications.time.daysAgo').replace('{count}', String(days));
-        return format(date, dateFormat, { locale: dateLocale });
-    };
-
-    const getNotificationIcon = (type: string) => {
-        switch (type) {
-            case 'task_assigned':
-            case 'subtask_assigned':
-                return 'task_alt';
-            case 'issue_assigned':
-                return 'bug_report';
-            case 'comment_added':
-            case 'comment_mention':
-                return 'comment';
-            case 'project_invite':
-            case 'project_shared':
-            case 'project_join_request':
-            case 'project_join_request_accepted':
-                return 'folder_shared';
-            case 'project_join_request_denied':
-                return 'block';
-            default:
-                return 'notifications';
-        }
+        return format(date, `${dateFormat} HH:mm`, { locale: dateLocale });
     };
 
     const getPermissionLabel = (permission?: WebNotificationDiagnostics['permission']) => {
@@ -226,47 +165,11 @@ export const Notifications = () => {
         }
     };
 
-    const handleJoinResponse = async (e: React.MouseEvent, notification: Notification, accept: boolean) => {
-        e.stopPropagation();
-        if (!notification.projectId || !notification.actorId) return;
-
-        try {
-            await respondToJoinRequest(
-                notification.id,
-                notification.projectId,
-                notification.actorId,
-                accept,
-                notification.tenantId
-            );
-            showToast(accept ? t('notifications.toast.requestAccepted') : t('notifications.toast.requestDenied'), 'success');
-        } catch (error) {
-            console.error(error);
-            const errorMessage = error instanceof Error ? error.message : t('notifications.error.unknown');
-            showToast(t('notifications.error.respond').replace('{error}', errorMessage), 'error');
-        }
-    };
-
-    const handleDelete = async (e: React.MouseEvent, notificationId: string, tenantId?: string) => {
-        e.stopPropagation();
-        try {
-            await deleteNotification(notificationId, tenantId);
-            showToast(t('notifications.toast.delete'), 'success');
-        } catch (error) {
-            console.error(error);
-            showToast(t('notifications.toast.deleteError'), 'error');
-        }
-    };
-
     const handleClearAll = async () => {
-        if (!user) return;
-        try {
-            await deleteAllNotifications(user.uid);
+        if (await run(removeAll, 'notifications.toast.clearError')) {
             showToast(t('notifications.toast.clearAll'), 'success');
-            setShowClearConfirm(false);
-        } catch (error) {
-            console.error(error);
-            showToast(t('notifications.toast.clearError'), 'error');
         }
+        setShowClearConfirm(false);
     };
 
     return (
@@ -293,7 +196,7 @@ export const Notifications = () => {
                     {unreadCount > 0 && (
                         <Button
                             variant="ghost"
-                            onClick={handleMarkAllAsRead}
+                            onClick={() => void run(markAllRead, 'notifications.toast.updateError')}
                             className="notifications-action"
                         >
                             <span className="material-symbols-outlined notifications-action__icon">done_all</span>
@@ -316,97 +219,31 @@ export const Notifications = () => {
             />
 
             {/* Notifications List */}
+            <div className="notifications-toolbar">
+                <NotificationFilterTabs value={filter} unreadCount={unreadCount} onChange={setFilter} />
+            </div>
+
             <Card padding="none" className="notifications-card">
+                <NotificationOtherWorkspaces
+                    items={otherUnread}
+                    onSwitch={(tenantId) => void run(() => switchWorkspace(tenantId, '/notifications'), 'notifications.toast.switchError')}
+                />
                 {loading ? (
-                    <div className="notifications-loading">
-                        <div className="notifications-spinner" />
-                    </div>
-                ) : notifications.length === 0 ? (
-                    <div className="notifications-empty">
-                        <div className="notifications-empty__icon">
-                            <span className="material-symbols-outlined notifications-empty__symbol">
-                                notifications_off
-                            </span>
-                        </div>
-                        <h3 className="notifications-empty__title">{t('notifications.empty.title')}</h3>
-                        <p className="notifications-empty__text">
-                            {t('notifications.empty.description')}
-                        </p>
-                    </div>
+                    <NotificationState kind="loading" />
+                ) : error ? (
+                    <NotificationState kind="error" />
+                ) : visible.length === 0 ? (
+                    <NotificationState kind={filter === 'unread' && notifications.length > 0 ? 'emptyUnread' : 'empty'} />
                 ) : (
-                    <div className="notifications-list">
-                        {notifications.map((notification) => (
-                            <div
-                                key={notification.id}
-                                role="button"
-                                tabIndex={0}
-                                onClick={() => handleNotificationClick(notification)}
-                                className={`notification-item ${!notification.read ? 'notification-item--unread' : ''}`}
-                            >
-                                <div className="notification-item__main">
-                                    {/* Icon */}
-                                    <div className={`notification-icon ${!notification.read ? 'notification-icon--unread' : 'notification-icon--read'}`}>
-                                        <span className="material-symbols-outlined notification-icon__symbol">
-                                            {getNotificationIcon(notification.type)}
-                                        </span>
-                                    </div>
-
-                                    {/* Content */}
-                                    <div className="notification-content">
-                                        <div className="notification-content__header">
-                                            <p className={`notification-title ${!notification.read ? 'notification-title--unread' : ''}`}>
-                                                {notification.title}
-                                            </p>
-                                            <span className="notification-time">
-                                                {formatTime(notification.createdAt)}
-                                            </span>
-                                        </div>
-                                        <p className="notification-message">
-                                            {notification.message}
-                                        </p>
-
-                                        {/* Action Buttons for specific types */}
-                                        {notification.type === 'project_join_request' && !notification.read && (
-                                            <div className="notification-actions">
-                                                <Button
-                                                    size="sm"
-                                                    variant="primary"
-                                                    onClick={(e) => handleJoinResponse(e, notification, true)}
-                                                    className="notification-action"
-                                                >
-                                                    {t('notifications.actions.accept')}
-                                                </Button>
-                                                <Button
-                                                    size="sm"
-                                                    variant="ghost"
-                                                    onClick={(e) => handleJoinResponse(e, notification, false)}
-                                                    className="notification-action notification-action--decline"
-                                                >
-                                                    {t('notifications.actions.decline')}
-                                                </Button>
-                                            </div>
-                                        )}
-                                    </div>
-
-                                    {/* Unread indicator & Actions */}
-                                    <div className="notification-meta">
-                                        {!notification.read && (
-                                            <span className="notification-unread-dot" />
-                                        )}
-                                        <button aria-label={t('notifications.actions.delete')}
-                                            onClick={(e) => handleDelete(e, notification.id, notification.tenantId)}
-                                            className="notification-delete"
-                                            title={t('notifications.actions.delete')}
-                                        >
-                                            <span className="material-symbols-outlined notification-delete__icon">close</span>
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
+                    <NotificationList
+                        notifications={visible}
+                        onOpen={handleOpen}
+                        onToggleRead={(notification) => void run(() => setRead(notification, !notification.read), 'notifications.toast.updateError')}
+                        onDelete={(notification) => void run(() => remove(notification), 'notifications.toast.deleteError')}
+                    />
                 )}
             </Card>
+
             {/* Delivery diagnostics are a setup tool: collapsed below the inbox. */}
             <details className="notifications-delivery">
                 <summary className="notifications-delivery__summary">
@@ -514,7 +351,7 @@ export const Notifications = () => {
                                                     {getDeliveryStatusLabel(log.status)}
                                                 </span>
                                                 <strong>{getDeliveryChannelLabel(log.channel)}</strong>
-                                                <span>{formatTime(log.createdAt)}</span>
+                                                <span>{formatDeliveryTime(log.createdAt)}</span>
                                             </div>
                                             <p>{log.reason}</p>
                                         </div>
