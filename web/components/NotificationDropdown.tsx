@@ -149,7 +149,7 @@ export const NotificationDropdown = ({ position = 'topbar' }: NotificationDropdo
                     aria-label={t('notifications.title')}
                 >
                     <div className="notification-panel__header">
-                        <h2 className="notification-panel__title">{t('notifications.title')}</h2>
+                        <NotificationFilterTabs value={filter} unreadCount={unreadCount} onChange={setFilter} />
                         <button
                             type="button"
                             className="notification-panel__icon-button"
@@ -169,9 +169,6 @@ export const NotificationDropdown = ({ position = 'topbar' }: NotificationDropdo
                         >
                             <span className="material-symbols-outlined" aria-hidden="true">tune</span>
                         </button>
-                    </div>
-                    <div className="notification-panel__toolbar">
-                        <NotificationFilterTabs value={filter} unreadCount={unreadCount} onChange={setFilter} />
                     </div>
                     <NotificationOtherWorkspaces items={otherUnread} onSwitch={handleSwitchWorkspace} />
                     <div className="notification-panel__body">

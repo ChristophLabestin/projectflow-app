@@ -14,9 +14,9 @@ interface NotificationFilterTabsProps {
 /** All / Unread segmented filter. */
 export const NotificationFilterTabs = ({ value, unreadCount, onChange }: NotificationFilterTabsProps) => {
     const { t } = useLanguage();
-    const options: Array<{ id: NotificationFilter; label: string }> = [
+    const options: Array<{ id: NotificationFilter; label: string; count?: number }> = [
         { id: 'all', label: t('notifications.filter.all') },
-        { id: 'unread', label: unreadCount > 0 ? `${t('notifications.filter.unread')} (${unreadCount})` : t('notifications.filter.unread') }
+        { id: 'unread', label: t('notifications.filter.unread'), count: unreadCount }
     ];
     return (
         <div className="notification-filter" role="tablist" aria-label={t('notifications.filter.label')}>
@@ -30,6 +30,7 @@ export const NotificationFilterTabs = ({ value, unreadCount, onChange }: Notific
                     onClick={() => onChange(option.id)}
                 >
                     {option.label}
+                    {!!option.count && <span className="notification-filter__count">{option.count > 99 ? '99+' : option.count}</span>}
                 </button>
             ))}
         </div>

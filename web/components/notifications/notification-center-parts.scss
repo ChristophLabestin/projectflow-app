@@ -9,6 +9,9 @@
 }
 
 .notification-filter__tab {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
     padding: 4px 12px;
     border: 0;
     border-radius: var(--radius-full);
@@ -28,6 +31,21 @@
         outline: 2px solid var(--color-primary);
         outline-offset: 1px;
     }
+}
+
+.notification-filter__count {
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    border-radius: var(--radius-full);
+    background: var(--color-error);
+    color: var(--color-absolute-white);
+    font-size: 0.6875rem;
+    font-weight: 700;
+    line-height: 18px;
+    text-align: center;
+    box-sizing: border-box;
+    font-variant-numeric: tabular-nums;
 }
 
 .notification-others {
