@@ -23,8 +23,10 @@ Die Prüfung bleibt Pflicht — nur der Weg ist billiger.
 
 ## iOS (`ios/`)
 
-1. Ein Simulator gleichzeitig ("ProjectFlow iPhone 18 Pro"); Install/Launch/Screenshot unter
-   Lock: `until mkdir /tmp/projectflow-sim.lock; do sleep 15; done` … `rm -rf /tmp/projectflow-sim.lock`.
+1. Jede Session bekommt einen eigenen Klon: `UDID=$(scripts/sim-session.sh create <session>)`.
+   Der Klon ist ein APFS-Klon von "ProjectFlow Golden" und belegt anfangs ~0 MB. Höchstens 3 Klone
+   laufen gleichzeitig, `create` wartet sonst. Für Install, Launch und Simulator-Tools immer diese
+   UDID verwenden (`device: <UDID>`). Am Ende ausnahmslos `scripts/sim-session.sh delete <session>`.
 2. Build: `(cd ios && xcodegen generate -q)` und `xcodebuild -project ios/ProjectFlow.xcodeproj -scheme ProjectFlow -destination 'generic/platform=iOS Simulator' -derivedDataPath .xcodebuild -quiet build 2>&1 | grep -E 'error:' | head -n 20`.
 3. `launch` mit `.xcodebuild/Build/Products/Debug-iphonesimulator/ProjectFlow.app`
    (Bundle `de.christophlabestin.projectflow`); Deep Links per `open_url` statt Durchklicken.

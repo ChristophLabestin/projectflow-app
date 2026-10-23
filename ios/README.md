@@ -11,6 +11,11 @@ xcodebuild -project ios/ProjectFlow.xcodeproj -scheme ProjectFlow \
   -destination 'platform=iOS Simulator,name=ProjectFlow iPhone 18 Pro' -derivedDataPath .xcodebuild build
 ```
 
+- Simulators per session: `scripts/sim-session.sh create <name>` clones the shut-down device
+  "ProjectFlow Golden" (iPhone 18 Pro, iOS 27.0, app preinstalled) to `PF-<name>`. The clone is
+  APFS copy-on-write, ~0 MB at first and a few hundred MB once booted. At most 3 run at once.
+  Remove it with `delete <name>`, and `prune` drops all shut-down clones. After larger app changes,
+  refresh the golden device with `scripts/sim-session.sh golden`.
 - Scheme `ProjectFlow` runs the **Emulator** configuration: Firebase project `demo-projectflow` on
   `127.0.0.1` (auth 9631, firestore 8631, functions 5631). Start the emulators + seed with
   `PORT=3030 bash scripts/dev-e2e.sh`. Login: `demo@projectflow.test` / `projectflow-demo`
