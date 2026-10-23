@@ -53,6 +53,7 @@ test('every capability builds with minimal input and a language instruction', ()
     const minimal = {
         studioChat: { messages: [{ role: 'user', content: 'hi' }], mode: 'Architect' },
         taskDescription: { title: 'T' },
+        taskDraft: { taskTitle: 'T', projectTitle: 'P', notes: 'n' },
         projectReport: { project: { title: 'P' } },
         projectBlueprint: { idea: 'App' },
         blogPost: { topic: 'T' },

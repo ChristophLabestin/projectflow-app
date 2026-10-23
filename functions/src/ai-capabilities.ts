@@ -134,6 +134,18 @@ const taskDescription = (input: Input, language: AiLanguage): CapabilityRequest 
     };
 };
 
+// Task description draft (iOS planning): plain text, builds on existing notes.
+const taskDraft = (input: Input, language: AiLanguage): CapabilityRequest => {
+    const taskTitle = required(input.taskTitle, LIMITS.short, 'taskTitle');
+    const projectTitle = text(input.projectTitle, LIMITS.short);
+    const notes = text(input.notes, 600);
+    let prompt = `Write a clear, concise task description (2-4 sentences, plain text, no headings or markdown) for a task named "${taskTitle}"`;
+    if (projectTitle) prompt += ` in the project "${projectTitle}"`;
+    prompt += '.';
+    if (notes) prompt += ` Existing notes to build on: ${notes}.`;
+    return { input: `${prompt}\n\n${languageInstruction(language)}`, temperature: 0.7, webSearch: false };
+};
+
 // --- Project status report ---
 
 const projectReport = (input: Input, language: AiLanguage): CapabilityRequest => {
@@ -350,6 +362,7 @@ Rules:
 const BUILDERS = {
     studioChat,
     taskDescription,
+    taskDraft,
     projectReport,
     projectBlueprint,
     blogPost,
