@@ -72,7 +72,7 @@ const requestMeta = (context: functions.https.CallableContext) => ({
     userAgent: String(context.rawRequest?.headers?.['user-agent'] || '').slice(0, 200),
 });
 
-export const adminApi = functions.region(REGION).runWith({ memory: '512MB', timeoutSeconds: 120 }).https.onCall(async (data, context) => {
+export const adminApi = functions.region(REGION).runWith({ memory: '512MB', timeoutSeconds: 120, secrets: ['STRIPE_SECRET_KEY'] }).https.onCall(async (data, context) => {
     const action = typeof data?.action === 'string' ? data.action.slice(0, 80) : '';
     const params = data?.params ?? {};
     const token = context.auth?.token as GateToken | undefined;

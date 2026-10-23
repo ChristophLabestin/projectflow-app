@@ -4,14 +4,13 @@
  */
 
 export type PlanId = 'free' | 'team' | 'organization';
-export type BillingStatus = 'trialing' | 'active' | 'past_due' | 'grace' | 'free' | 'canceled';
+/** `exempt` = internal/comp workspace (admin console flag `billingExempt`): Team scope incl. AI, no payment. */
+export type BillingStatus = 'trialing' | 'active' | 'past_due' | 'grace' | 'free' | 'canceled' | 'exempt';
 export type BillingInterval = 'month' | 'year';
 
 export const TRIAL_DAYS = 14;
 export const FREE_PROJECT_LIMIT = 3;
 export const TEAM_MEMBER_LIMIT = 50;
-/** Workspaces created before this moment are existing (beta) workspaces and start in grace. */
-export const BILLING_LAUNCH_AT = Date.parse('2026-10-24T00:00:00Z');
 
 export const PRICE_LOOKUP_KEYS: Record<BillingInterval, string> = {
     month: 'team_monthly',
@@ -43,7 +42,7 @@ export const PLAN_LIMITS: Record<PlanId, PlanLimits> = {
 
 /** Trial and beta grace unlock AI for every full member; paid plans need the add-on per user. */
 export const aiIncludedForStatus = (plan: PlanId, status: string) =>
-    plan !== 'free' && (status === 'trialing' || status === 'grace');
+    plan !== 'free' && (status === 'trialing' || status === 'grace' || status === 'exempt');
 
 /** Effective limits; a missing entitlement doc means a legacy workspace in grace (= Team, AI for all). */
 export const limitsFor = (doc: Record<string, unknown> | undefined | null): PlanLimits => {
@@ -110,10 +109,9 @@ export const periodExpired = (endsAtMs: number | null | undefined, now: number) 
     typeof endsAtMs === 'number' && Number.isFinite(endsAtMs) && endsAtMs <= now;
 
 /** Initial entitlement fields for a workspace that has none yet. */
+// No grace for new workspaces (owner 2026-10-23: no customers yet, internal workspaces use `billingExempt`).
+// `grace` remains only on the pre-launch docs written by the first backfill until they are decided.
 export const initialEntitlement = (createdAtMs: number | null, now: number) => {
-    if (createdAtMs !== null && createdAtMs < BILLING_LAUNCH_AT) {
-        return { plan: 'team' as PlanId, status: 'grace' as BillingStatus, trialEndsAtMs: null };
-    }
     const start = createdAtMs ?? now;
     return {
         plan: 'team' as PlanId,

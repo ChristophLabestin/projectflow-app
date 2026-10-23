@@ -41,8 +41,10 @@ test('locks all but the most recently updated projects', () => {
     assert.deepEqual(billing.projectsToLock(projects, null), []);
 });
 
-test('existing workspaces start in grace, new ones in a 14-day trial', () => {
-    assert.equal(billing.initialEntitlement(Date.parse('2026-01-01'), Date.now()).status, 'grace');
+test('every new workspace starts a 14-day trial; exempt workspaces get Team incl. AI', () => {
+    assert.equal(billing.initialEntitlement(Date.parse('2026-01-01'), Date.now()).status, 'trialing');
+    assert.equal(billing.aiEnabledFor({ plan: 'team', status: 'exempt' }, 'u1'), true);
+    assert.equal(billing.limitsFor({ plan: 'team', status: 'exempt' }).projectLimit, null);
     const created = Date.parse('2026-11-01T00:00:00Z');
     const trial = billing.initialEntitlement(created, created);
     assert.equal(trial.status, 'trialing');

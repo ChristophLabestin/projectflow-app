@@ -35,6 +35,8 @@ export interface AiPopoverProps {
     variant?: 'a' | 'b' | 'c';
     /** Render in place (no portal, no positioning) — style guide comparisons. */
     inline?: boolean;
+    /** No header (quick menu at the caret); grows into the full popover by switching this off. */
+    bare?: boolean;
 }
 
 const MARGIN = 12;
@@ -65,9 +67,9 @@ const place = (anchor: AiAnchor | undefined, width: number, height: number) => {
 export const AiPopover: React.FC<AiPopoverProps> = ({
     open, onClose, anchor, generating = false, expanded = false, onExpandedChange, label, headerExtra, footer, children,
     width = 380, closeOnOutside = false, ariaLabel, expandLabel = 'Expand', collapseLabel = 'Collapse', closeLabel = 'Close', className = '',
-    variant = 'a', inline = false
+    variant = 'a', inline = false, bare = false
 }) => {
-    const { mounted, exiting } = usePresence(open);
+    const { mounted, exiting } = usePresence(open, 90);
     const ref = useRef<HTMLDivElement>(null);
     const [position, setPosition] = useState<{ left: number; top: number; origin: string } | null>(null);
     const dragged = useRef(false);
@@ -141,7 +143,7 @@ export const AiPopover: React.FC<AiPopoverProps> = ({
             ref={ref}
             role="dialog"
             aria-label={ariaLabel}
-            className={`ai-popover ${inline ? 'ai-popover--inline' : ''} ${expanded ? 'ai-popover--expanded' : ''} ${exiting ? 'is-exiting' : ''} ${className}`.trim()}
+            className={`ai-popover ${inline ? 'ai-popover--inline' : ''} ${bare ? 'ai-popover--bare' : ''} ${expanded ? 'ai-popover--expanded' : ''} ${exiting ? 'is-exiting' : ''} ${className}`.trim()}
             data-generating={generating ? 'true' : 'false'}
             data-variant={variant}
             style={inline ? { width: '100%' } : {
@@ -152,29 +154,31 @@ export const AiPopover: React.FC<AiPopoverProps> = ({
                 maxHeight: expanded ? `${Math.round(window.innerHeight * EXPANDED.maxHeight)}px` : undefined
             }}
         >
-            <div
-                className="ai-popover__head"
-                onPointerDown={inline ? undefined : onHeaderPointerDown}
-                onPointerMove={inline ? undefined : onHeaderPointerMove}
-                onPointerUp={endDrag}
-                onPointerCancel={endDrag}
-            >
-                <span className="ai-popover__label">
-                    <AiSpark size="sm" />
-                    {label}
-                </span>
-                <div className="ai-popover__head-actions">
-                    {headerExtra}
-                    {onExpandedChange && (
-                        <button type="button" className="ai-popover__icon" onClick={() => onExpandedChange(!expanded)} aria-label={expanded ? collapseLabel : expandLabel} title={expanded ? collapseLabel : expandLabel}>
-                            <span className="material-symbols-outlined" aria-hidden="true">{expanded ? 'close_fullscreen' : 'open_in_full'}</span>
+            {!bare && (
+                <div
+                    className="ai-popover__head"
+                    onPointerDown={inline ? undefined : onHeaderPointerDown}
+                    onPointerMove={inline ? undefined : onHeaderPointerMove}
+                    onPointerUp={endDrag}
+                    onPointerCancel={endDrag}
+                >
+                    <span className="ai-popover__label">
+                        <AiSpark size="sm" />
+                        {label}
+                    </span>
+                    <div className="ai-popover__head-actions">
+                        {headerExtra}
+                        {onExpandedChange && (
+                            <button type="button" className="ai-popover__icon" onClick={() => onExpandedChange(!expanded)} aria-label={expanded ? collapseLabel : expandLabel} title={expanded ? collapseLabel : expandLabel}>
+                                <span className="material-symbols-outlined" aria-hidden="true">{expanded ? 'close_fullscreen' : 'open_in_full'}</span>
+                            </button>
+                        )}
+                        <button type="button" className="ai-popover__icon" onClick={onClose} aria-label={closeLabel} title={`${closeLabel} (Esc)`}>
+                            <span className="material-symbols-outlined" aria-hidden="true">close</span>
                         </button>
-                    )}
-                    <button type="button" className="ai-popover__icon" onClick={onClose} aria-label={closeLabel} title={`${closeLabel} (Esc)`}>
-                        <span className="material-symbols-outlined" aria-hidden="true">close</span>
-                    </button>
+                    </div>
                 </div>
-            </div>
+            )}
             <div className="ai-popover__body">{children}</div>
             {footer && <div className="ai-popover__footer">{footer}</div>}
         </div>

@@ -3,7 +3,7 @@
  * (keep both in sync); enforcement lives in Firestore rules and Cloud Functions.
  */
 export type PlanId = 'free' | 'team' | 'organization';
-export type BillingStatus = 'trialing' | 'active' | 'past_due' | 'grace' | 'free' | 'canceled';
+export type BillingStatus = 'trialing' | 'active' | 'past_due' | 'grace' | 'free' | 'canceled' | 'exempt';
 export type BillingInterval = 'month' | 'year';
 
 export const FREE_PROJECT_LIMIT = 3;
@@ -59,7 +59,7 @@ export const parseEntitlements = (data: Record<string, unknown> | undefined): En
         projectLimit: plan === 'free' ? Number(data?.projectLimit ?? FREE_PROJECT_LIMIT) : null,
         invitesAllowed: data?.invitesAllowed !== false,
         // Missing doc = legacy grace: AI for everyone (same as functions/src/billing-logic.ts).
-        aiIncluded: data ? plan !== 'free' && (status === 'trialing' || status === 'grace') : true,
+        aiIncluded: data ? plan !== 'free' && (status === 'trialing' || status === 'grace' || status === 'exempt') : true,
         aiAddonAvailable: plan !== 'free',
         aiAddonSeats: Number(data?.aiAddonSeats || 0),
         aiMemberIds: Array.isArray(data?.aiMemberIds) ? (data.aiMemberIds as string[]) : [],

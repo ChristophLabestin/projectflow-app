@@ -82,3 +82,5 @@ Begründungen:
 - Offen: Gründungspreis ja/nein, Höhe und Dauer (bis dahin nicht auf der Website).
 - Offen: Organization-Preis (Vorschlag ab 18 €) und SSO-Umsetzung.
 - Ab wann zahlen Beta-Workspaces (Stichtag + Vorlaufzeit von mind. 30 Tagen Ankündigung).
+- ✅ 2026-10-23: Kein Gründungsrabatt. Keine Übergangsfrist/Stichtag (noch keine Kunden); interne Workspaces über `billingExempt`.
+- ✅ 2026-10-23: Downgrade auf Free – zusätzliche Mitglieder bleiben (ohne KI, ohne Einladungen). Eigener OpenAI-Schlüssel auch für Team-Nutzer ohne KI-Paket erlaubt.

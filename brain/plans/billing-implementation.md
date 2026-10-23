@@ -25,7 +25,9 @@ Nicht enthalten (Owner-Follow-ups): USt./OSS, Live-Schlüssel, AGB/Datenschutz, 
 
 ## Abläufe
 1. **Neuer Workspace** → Trigger `onTenantCreatedBilling`: 14 Tage Team-Test (`status: trialing`, ohne Karte).
-2. **Bestandsworkspace** (vor `BILLING_LAUNCH_AT`) → Backfill im Sweep: `status: grace`, Team bis `cutoverAt`.
+2. **Intern/Review**: `billingExempt` (Admin-Konsole, `setBillingExempt`) → `status: exempt`, Team inkl. KI ohne Zahlung;
+   gesetzt 2026-10-23 für die Owner-Workspaces und `ws-app-review`. Keine Grace für neue Workspaces mehr.
+   Früher: **Bestandsworkspace** (vor `BILLING_LAUNCH_AT`) → Backfill im Sweep: `status: grace`, Team bis `cutoverAt`.
    Fehlt das Entitlement-Dokument ganz, gilt in Regeln und Functions ebenfalls Team (nichts bricht beim Deploy).
 3. **Upgrade** → Callable `createBillingCheckout` (Owner): Stripe Checkout (Abo, Menge = Vollmitglieder, Preis per
    Lookup-Key `team_monthly`/`team_yearly`); läuft noch ein Test, startet die Abrechnung erst an dessen Ende.
