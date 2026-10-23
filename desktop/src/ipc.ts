@@ -148,7 +148,7 @@ export const registerIpc = () => {
     });
 
     handle(IPC.upcomingEvents, () => upcomingEvents());
-    handle(IPC.signInExternally, (event) => senderWindow(event) === getMainWindow() && startExternalSignIn());
+    handle(IPC.signInExternally, (event, provider: unknown) => senderWindow(event) === getMainWindow() && startExternalSignIn(provider));
 
     on(IPC.appAction, (_event, action: AppAction) => {
         hideTrayPanel();

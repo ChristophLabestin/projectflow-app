@@ -9,7 +9,7 @@ import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
 import { WorkspaceConnecting } from '../context/WorkspaceContext';
 import { loginWithPasskey, preparePasskeyLogin, shouldAutoPrompt } from '../services/passkeyService';
-import { getDesktopBridge, hasDesktopCapability, isDesktop } from '../services/desktop';
+import { getDesktopBridge, hasDesktopCapability, isDesktop, type DesktopAuthProvider } from '../services/desktop';
 import { COMPANY_NAME } from '../config/company';
 import { AppleLogo } from '../components/ui/AppleLogo';
 import './login.scss';
@@ -18,7 +18,7 @@ const OAUTH_REDIRECT_KEY = 'pf.oauthRedirect';
 
 export const Login = () => {
     const { t, authScreenTranslationsReady, loadAuthScreenTranslations } = useLanguage();
-    const { user } = useAuth();
+    const { user, isAuthReady } = useAuth();
     const [isRegister, setIsRegister] = useState(false);
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -84,10 +84,10 @@ export const Login = () => {
     // Desktop: OAuth providers run in the system browser and come back via projectflow://auth (DesktopBridge).
     const canSignInExternally = isDesktopApp && hasDesktopCapability('external-auth');
     const [browserSignInStarted, setBrowserSignInStarted] = useState(false);
-    const handleBrowserSignIn = async () => {
+    const handleBrowserSignIn = async (provider: DesktopAuthProvider) => {
         setError('');
         try {
-            await getDesktopBridge()?.signInExternally?.();
+            await getDesktopBridge()?.signInExternally?.(provider);
             setBrowserSignInStarted(true);
         } catch (err) {
             console.error(err);
@@ -239,12 +239,69 @@ export const Login = () => {
 
     // Sign in with Apple (Firebase provider apple.com). Apple only returns the
     // name on the very first authorization, so request both scopes.
-    const handleAppleSignIn = () => {
+    const createAppleProvider = () => {
         const provider = new OAuthProvider('apple.com');
         provider.addScope('email');
         provider.addScope('name');
-        return handleOAuthSignIn(provider, 'login.error.apple');
+        return provider;
     };
+    const handleAppleSignIn = () => handleOAuthSignIn(createAppleProvider(), 'login.error.apple');
+
+    const renderSocialGrid = (onGoogle: () => void, onGithub: () => void, onApple: () => void) => (
+        <div className="login-page__social-grid">
+            <Button
+                type="button"
+                variant="secondary"
+                className="login-page__social-button"
+                onClick={onGoogle}
+                icon={<img src="https://www.svgrepo.com/show/475656/google-color.svg" className="login-page__social-icon" alt={t('login.social.google')} />}
+            >
+                {t('login.social.google')}
+            </Button>
+            <Button
+                type="button"
+                variant="secondary"
+                className="login-page__social-button"
+                onClick={onGithub}
+                icon={<img src="https://www.svgrepo.com/show/512317/github-142.svg" className="login-page__social-icon login-page__social-icon--invert" alt={t('login.social.github')} />}
+            >
+                {t('login.social.github')}
+            </Button>
+            <Button
+                type="button"
+                variant="secondary"
+                className="login-page__social-button login-page__social-button--apple"
+                onClick={onApple}
+                disabled={isBusy}
+                icon={<AppleLogo className="login-page__social-icon login-page__social-icon--glyph" />}
+            >
+                {t('login.social.apple')}
+            </Button>
+        </div>
+    );
+
+    // Desktop handoff (/desktop/auth?provider=…): the browser starts the provider the user picked in the app
+    // right away, as a full-page redirect (no popup without a click). Once per tab session, so a cancelled or
+    // failed attempt falls back to the normal login page.
+    const handoffProvider = !isDesktopApp && redirectUrl.startsWith('/desktop/auth') ? searchParams.get('provider') : null;
+    useEffect(() => {
+        if (!handoffProvider || !isAuthReady || auth.currentUser || sessionStorage.getItem(OAUTH_REDIRECT_KEY)) return;
+        const startedKey = `pf_desktop_handoff_${handoffProvider}`;
+        if (sessionStorage.getItem(startedKey)) return;
+        sessionStorage.setItem(startedKey, '1');
+        const provider = handoffProvider === 'google' ? new GoogleAuthProvider()
+            : handoffProvider === 'github' ? new GithubAuthProvider()
+                : handoffProvider === 'apple' ? createAppleProvider() : null;
+        if (!provider) return;
+        sessionStorage.setItem(OAUTH_REDIRECT_KEY, JSON.stringify({ redirectUrl, fallbackKey: `login.error.${handoffProvider}` }));
+        setIsLoading(true);
+        signInWithRedirect(auth, provider).catch((err) => {
+            sessionStorage.removeItem(OAUTH_REDIRECT_KEY);
+            setIsLoading(false);
+            handleOAuthMfaError(err, `login.error.${handoffProvider}`);
+        });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [handoffProvider, isAuthReady]);
 
     // Completes a sign-in that went through signInWithRedirect.
     useEffect(() => {
@@ -487,16 +544,7 @@ export const Login = () => {
                         canSignInExternally ? (
                             <>
                                 <div className="login-page__divider">{t('login.divider.orContinue')}</div>
-                                <Button
-                                    type="button"
-                                    variant="secondary"
-                                    className="login-page__primary"
-                                    onClick={handleBrowserSignIn}
-                                    disabled={isBusy}
-                                    icon={<span className="material-symbols-outlined">open_in_browser</span>}
-                                >
-                                    {t('login.desktop.browserAction')}
-                                </Button>
+                                {renderSocialGrid(() => void handleBrowserSignIn('google'), () => void handleBrowserSignIn('github'), () => void handleBrowserSignIn('apple'))}
                                 <p className="login-page__desktop-hint">
                                     {t(browserSignInStarted ? 'login.desktop.browserWaiting' : 'login.desktop.browserHint')}
                                 </p>
@@ -521,36 +569,7 @@ export const Login = () => {
                                 {t('passkey.login.action')}
                             </Button>
 
-                            <div className="login-page__social-grid">
-                                <Button
-                                    type="button"
-                                    variant="secondary"
-                                    className="login-page__social-button"
-                                    onClick={handleGoogleSignIn}
-                                    icon={<img src="https://www.svgrepo.com/show/475656/google-color.svg" className="login-page__social-icon" alt={t('login.social.google')} />}
-                                >
-                                    {t('login.social.google')}
-                                </Button>
-                                <Button
-                                    type="button"
-                                    variant="secondary"
-                                    className="login-page__social-button"
-                                    onClick={handleGithubSignIn}
-                                    icon={<img src="https://www.svgrepo.com/show/512317/github-142.svg" className="login-page__social-icon login-page__social-icon--invert" alt={t('login.social.github')} />}
-                                >
-                                    {t('login.social.github')}
-                                </Button>
-                                <Button
-                                    type="button"
-                                    variant="secondary"
-                                    className="login-page__social-button login-page__social-button--apple"
-                                    onClick={handleAppleSignIn}
-                                    disabled={isBusy}
-                                    icon={<AppleLogo className="login-page__social-icon login-page__social-icon--glyph" />}
-                                >
-                                    {t('login.social.apple')}
-                                </Button>
-                            </div>
+                            {renderSocialGrid(handleGoogleSignIn, handleGithubSignIn, handleAppleSignIn)}
                         </>
                     )}
 

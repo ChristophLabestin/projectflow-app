@@ -87,6 +87,9 @@ export interface DesktopTraySnapshot {
     pinned: { id: string; title: string; path: string | null }[];
 }
 
+/** OAuth providers the desktop app hands off to the system browser. */
+export type DesktopAuthProvider = 'google' | 'github' | 'apple';
+
 export interface DesktopBridge {
     apiVersion: number;
     capabilities: DesktopCapability[];
@@ -123,7 +126,7 @@ export interface DesktopBridge {
     getUpcomingEvents?(): Promise<{ id: string; title: string; start: string; end: string }[]>;
     appAction?(action: 'show-main' | 'quick-access' | 'capture' | 'settings' | 'day-close' | 'quit'): void;
     // Since capability 'external-auth': opens the sign-in page in the system browser (OAuth handoff).
-    signInExternally?(): Promise<boolean>;
+    signInExternally?(provider?: DesktopAuthProvider): Promise<boolean>;
     // Since capability 'spotlight': replaces the Spotlight index (macOS); [] clears it.
     // Since capability 'open-in-browser': opens an app path in the system browser.
     openInBrowser?(path: string): void;

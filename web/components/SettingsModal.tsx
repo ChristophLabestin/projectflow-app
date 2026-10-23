@@ -16,7 +16,6 @@ import {
     EmailAuthProvider,
     updatePassword,
     linkWithCredential,
-    reauthenticateWithPopup,
     GithubAuthProvider,
     GoogleAuthProvider,
     OAuthProvider,
@@ -33,6 +32,7 @@ import { Checkbox } from './ui/Checkbox';
 import { NotificationSettingsPanel } from './settings/NotificationSettingsPanel';
 import { DesktopSettingsPanel } from './settings/DesktopSettingsPanel';
 import { getDesktopBridge, hasDesktopCapability, isDesktop } from '../services/desktop';
+import { reauthenticateWithProvider } from '../services/reauth';
 import { AppleLogo } from './ui/AppleLogo';
 import { AnimatePresence } from 'framer-motion';
 import { Modal } from './ui/Modal';
@@ -415,9 +415,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
             } catch (linkError: any) {
                 if (linkError.code === 'auth/requires-recent-login') {
                     if (currentProviders.includes('github.com')) {
-                        await reauthenticateWithPopup(user, new GithubAuthProvider());
+                        await reauthenticateWithProvider(user, new GithubAuthProvider());
                     } else if (currentProviders.includes('google.com')) {
-                        await reauthenticateWithPopup(user, new GoogleAuthProvider());
+                        await reauthenticateWithProvider(user, new GoogleAuthProvider());
                     }
                     await linkWithPopup(user, new GoogleAuthProvider());
                 } else {
@@ -454,9 +454,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
             } catch (linkError: any) {
                 if (linkError.code === 'auth/requires-recent-login') {
                     if (currentProviders.includes('github.com')) {
-                        await reauthenticateWithPopup(user, new GithubAuthProvider());
+                        await reauthenticateWithProvider(user, new GithubAuthProvider());
                     } else if (currentProviders.includes('google.com')) {
-                        await reauthenticateWithPopup(user, new GoogleAuthProvider());
+                        await reauthenticateWithProvider(user, new GoogleAuthProvider());
                     }
                     await linkWithPopup(user, createAppleProvider());
                 } else {
@@ -501,15 +501,18 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
                         // Re-authenticate with OAuth providers if available
                         const currentProviders = user.providerData.map(p => p.providerId);
                         if (currentProviders.includes('github.com')) {
-                            await reauthenticateWithPopup(user, new GithubAuthProvider());
+                            await reauthenticateWithProvider(user, new GithubAuthProvider());
                         } else if (currentProviders.includes('google.com')) {
-                            await reauthenticateWithPopup(user, new GoogleAuthProvider());
+                            await reauthenticateWithProvider(user, new GoogleAuthProvider());
+                        } else if (currentProviders.includes('apple.com')) {
+                            await reauthenticateWithProvider(user, createAppleProvider());
                         } else {
                             // If they only have password, they'd need to re-auth with password
                             // For now we'll throw, as we don't have an "old password" field yet
                             throw updateError;
                         }
-                        await updatePassword(user, newPassword);
+                        // The desktop re-authentication replaces the User object.
+                        await updatePassword(auth.currentUser ?? user, newPassword);
                     } else {
                         throw updateError;
                     }
@@ -526,18 +529,20 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
                     if (linkError.code === 'auth/requires-recent-login') {
                         const currentProviders = user.providerData.map(p => p.providerId);
                         if (currentProviders.includes('github.com')) {
-                            await reauthenticateWithPopup(user, new GithubAuthProvider());
+                            await reauthenticateWithProvider(user, new GithubAuthProvider());
                         } else if (currentProviders.includes('google.com')) {
-                            await reauthenticateWithPopup(user, new GoogleAuthProvider());
+                            await reauthenticateWithProvider(user, new GoogleAuthProvider());
+                        } else if (currentProviders.includes('apple.com')) {
+                            await reauthenticateWithProvider(user, createAppleProvider());
                         }
-                        await linkWithCredential(user, credential);
+                        await linkWithCredential(auth.currentUser ?? user, credential);
                     } else {
                         throw linkError;
                     }
                 }
             }
 
-            setProviders(user.providerData.map(p => p.providerId));
+            setProviders((auth.currentUser ?? user).providerData.map(p => p.providerId));
             setShowSetPassword(false);
             setIsChangingPassword(false);
             setNewPassword('');
