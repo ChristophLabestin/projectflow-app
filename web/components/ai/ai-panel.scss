@@ -281,3 +281,136 @@
         color: var(--color-text-muted);
     }
 }
+
+// Action card (P3): a proposed change, applied only after confirmation.
+.ai-card {
+    margin-top: 8px;
+    padding: 12px;
+    border-radius: var(--radius-lg);
+    background: var(--color-surface-hover);
+
+    &--dismissed,
+    &--undone {
+        opacity: 0.6;
+    }
+
+    &__head {
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+
+        > .material-symbols-outlined {
+            font-size: 1.15rem;
+            color: var(--color-primary);
+        }
+
+        strong {
+            display: block;
+            font-size: 0.8125rem;
+        }
+    }
+
+    &__target {
+        display: block;
+        font-size: 0.75rem;
+        color: var(--color-text-muted);
+
+        a {
+            color: inherit;
+            text-decoration: underline;
+        }
+    }
+
+    &__changes {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        margin: 10px 0 0;
+    }
+
+    &__change {
+        display: grid;
+        grid-template-columns: 96px 1fr;
+        gap: 8px;
+        font-size: 0.8125rem;
+
+        dt {
+            color: var(--color-text-muted);
+        }
+
+        dd {
+            margin: 0;
+            min-width: 0;
+            overflow-wrap: anywhere;
+        }
+    }
+
+    &__from {
+        color: var(--color-text-muted);
+        text-decoration: line-through;
+    }
+
+    &__to {
+        color: var(--color-text-main);
+        font-weight: 500;
+    }
+
+    &__error {
+        margin: 8px 0 0;
+        font-size: 0.75rem;
+        color: var(--color-error);
+    }
+
+    &__actions {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 6px;
+        margin-top: 12px;
+    }
+
+    &__btn {
+        display: inline-flex;
+        align-items: center;
+        height: 28px;
+        padding: 0 12px;
+        border: 0;
+        border-radius: var(--radius-md);
+        background: var(--color-surface-card);
+        color: var(--color-text-main);
+        font-size: 0.8125rem;
+        white-space: nowrap;
+        text-decoration: none;
+        cursor: pointer;
+        box-shadow: var(--shadow-sm);
+
+        &:hover {
+            background: var(--color-surface-bg);
+        }
+
+        &--primary {
+            background: var(--color-primary);
+            color: var(--color-primary-text);
+
+            &:hover {
+                background: var(--color-primary-hover);
+            }
+        }
+    }
+
+    &__status {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        font-size: 0.75rem;
+        color: var(--color-text-muted);
+
+        &--done {
+            color: var(--color-success);
+        }
+
+        .material-symbols-outlined {
+            font-size: 1rem;
+        }
+    }
+}

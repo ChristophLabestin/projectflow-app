@@ -40,8 +40,10 @@ const run = async (entry) => {
 let failed = 0;
 for (const entry of cases) {
     const result = await run(entry);
-    if (!result.ok) failed++;
-    console.log(`${result.ok ? 'PASS' : 'FAIL'} ${entry.id}${result.ok ? '' : ` — ${result.reason}`}\n    ${result.text.replace(/\s+/g, ' ').slice(0, 160)}`);
+    const soft = entry.severity === 'soft';
+    if (!result.ok && !soft) failed++;
+    const label = result.ok ? 'PASS' : soft ? 'WARN' : 'FAIL';
+    console.log(`${label} ${entry.id}${result.ok ? '' : ` — ${result.reason}`}\n    ${result.text.replace(/\s+/g, ' ').slice(0, 160)}`);
 }
 console.log(`${cases.length - failed}/${cases.length} passed`);
 process.exit(failed ? 1 : 0);

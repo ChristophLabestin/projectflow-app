@@ -4,7 +4,8 @@ import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { useAiPanel } from '../../context/AiPanelContext';
 import { useInAppAi } from '../../hooks/useInAppAi';
-import { AiAssistError, streamAiAssist, type AiChatMessage, type AiContextEnvelope } from '../../services/aiAssistClient';
+import { AiAssistError, streamAiAssist, type AiChatMessage, type AiContextEnvelope, type AiProposalPreview } from '../../services/aiAssistClient';
+import { AiActionCard } from './AiActionCard';
 import { clearThread, loadThread, saveThread, threadKey } from '../../services/aiThreads';
 import { AiMessageText } from './AiMessageText';
 import './ai-panel.scss';
@@ -23,6 +24,8 @@ const SUGGESTIONS: Record<string, string[]> = {
     other: ['ai.panel.suggest.overdue', 'ai.panel.suggest.planDay']
 };
 
+type PanelMessage = AiChatMessage & { proposals?: AiProposalPreview[] };
+
 type Chip = { kind: 'project' | 'task' | 'selection' | 'surface'; label: string };
 
 export const AiPanel: React.FC = () => {
@@ -34,7 +37,7 @@ export const AiPanel: React.FC = () => {
     const tenantIdRef = useRef<string | null>(null);
     tenantIdRef.current = activeTenantId;
 
-    const [messages, setMessages] = useState<AiChatMessage[]>([]);
+    const [messages, setMessages] = useState<PanelMessage[]>([]);
     const [input, setInput] = useState('');
     const [running, setRunning] = useState(false);
     const [steps, setSteps] = useState<string[]>([]);
@@ -81,8 +84,11 @@ export const AiPanel: React.FC = () => {
         const tenantId = tenantIdRef.current;
         if (!content || running || !tenantId || !user) return;
         const key = keyRef.current;
-        const history: AiChatMessage[] = [...messages, { role: 'user', content }];
-        setMessages([...history, { role: 'assistant', content: '' }]);
+        const history: AiChatMessage[] = [...messages.map(({ role, content: text }) => ({ role, content: text })), { role: 'user', content }];
+        const earlier: PanelMessage[] = [...messages, { role: 'user', content }];
+        let proposals: AiProposalPreview[] = [];
+        const show = (text: string) => setMessages([...earlier, { role: 'assistant', content: text, proposals }]);
+        show('');
         setInput('');
         setSteps([]);
         setError('');
@@ -95,7 +101,11 @@ export const AiPanel: React.FC = () => {
                 signal: controller.signal,
                 onDelta: (delta) => {
                     answer += delta;
-                    setMessages([...history, { role: 'assistant', content: answer }]);
+                    show(answer);
+                },
+                onProposal: (proposal) => {
+                    proposals = [...proposals, proposal];
+                    show(answer);
                 },
                 onStep: ({ tool }) => setSteps((current) => [...current, tool]),
                 onContext: (resolved: any) => {
@@ -106,19 +116,19 @@ export const AiPanel: React.FC = () => {
                     if (next.length) setChips(next);
                 }
             });
-            const final = [...history, { role: 'assistant' as const, content: answer.trim() || t('ai.panel.empty') }];
-            setMessages(final);
-            if (keyRef.current === key) void saveThread(user.uid, key, tenantId, final).catch(() => undefined);
+            const finalText = answer.trim() || (proposals.length ? t('ai.panel.proposed') : t('ai.panel.empty'));
+            setMessages([...earlier, { role: 'assistant', content: finalText, proposals }]);
+            if (keyRef.current === key) void saveThread(user.uid, key, tenantId, [...history, { role: 'assistant', content: finalText }]).catch(() => undefined);
         } catch (caught) {
             if (controller.signal.aborted) {
-                setMessages(answer ? [...history, { role: 'assistant', content: answer }] : history);
+                setMessages(answer || proposals.length ? [...earlier, { role: 'assistant', content: answer, proposals }] : earlier);
                 return;
             }
             const code = caught instanceof AiAssistError ? caught.code : 'internal';
             const messageKey = `ai.error.${code}`;
             const message = t(messageKey);
             setError(message === messageKey ? t('ai.error.internal') : message);
-            setMessages(answer ? [...history, { role: 'assistant', content: answer }] : history);
+            setMessages(answer || proposals.length ? [...earlier, { role: 'assistant', content: answer, proposals }] : earlier);
         } finally {
             setRunning(false);
             setSteps([]);
@@ -181,8 +191,9 @@ export const AiPanel: React.FC = () => {
                 {messages.map((message, index) => (
                     <div key={index} className={`ai-message ai-message--${message.role}`}>
                         {message.role === 'assistant'
-                            ? (message.content ? <AiMessageText text={message.content} /> : <span className="ai-message__pending">…</span>)
+                            ? (message.content ? <AiMessageText text={message.content} /> : !message.proposals?.length && <span className="ai-message__pending">…</span>)
                             : <p className="ai-message__text">{message.content}</p>}
+                        {message.proposals?.map((proposal) => <AiActionCard key={proposal.id} proposal={proposal} />)}
                     </div>
                 ))}
                 {running && steps.length > 0 && (

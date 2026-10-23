@@ -32,6 +32,7 @@ import { getInitiativeById } from '../services/dataService';
 import { AdvancedEditorRuntime } from '../components/editor/AdvancedEditorRuntime';
 import { parseDateValue } from '../utils/taskDates';
 import { localizeActivityAction } from '../utils/activityText';
+import { AI_DATA_CHANGED_EVENT } from '../services/aiActions';
 
 const TaskCreateModal = lazy(() => import('../components/TaskCreateModal').then((module) => ({ default: module.TaskCreateModal })));
 
@@ -282,6 +283,16 @@ export const ProjectTaskDetail = () => {
     useEffect(() => {
         void loadData();
     }, [taskId, id, tenantId, navigate]);
+
+    // In-app AI applied or undid a change to this task: reload it.
+    useEffect(() => {
+        const onAiChange = (event: Event) => {
+            const detail = (event as CustomEvent<{ projectId?: string; taskId?: string }>).detail;
+            if (detail?.projectId === id && (!detail.taskId || detail.taskId === taskId)) void loadData();
+        };
+        window.addEventListener(AI_DATA_CHANGED_EVENT, onAiChange);
+        return () => window.removeEventListener(AI_DATA_CHANGED_EVENT, onAiChange);
+    }, [taskId, id, tenantId]);
 
     useEffect(() => {
         if (!task) return;
