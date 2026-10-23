@@ -45,6 +45,10 @@ import {
 } from './task-effects';
 
 const REGION = 'europe-west3';
+
+/** Flow writes (`writeVia.kind === 'automation'`): notifications show the flow, nobody is skipped as "the actor". */
+const notifyIdentity = (via: { kind: string; name?: string } | null, actorId: string, actor: Actor): { actorId: string; actor: Actor } =>
+    via?.kind === 'automation' ? { actorId: '', actor: { id: '', name: via.name || 'Flow', photoURL: '' } } : { actorId, actor };
 const TASK_PATH = 'tenants/{tenantId}/projects/{projectId}/tasks/{taskId}';
 const SUBTASK_PATH = 'tenants/{tenantId}/projects/{projectId}/tasks/{taskId}/subtasks/{subtaskId}';
 const COMMENT_PATH = 'tenants/{tenantId}/projects/{projectId}/comments/{commentId}';
@@ -194,7 +198,8 @@ export const onTaskWritten = functions.region(REGION).firestore
             await createActivityDoc(tenantId, projectId, actor, activity, `${eventId}-a${index}`);
         }
 
-        const notifications = planTaskNotifications(before, final, actorId, actor.name);
+        const notifier = notifyIdentity(freshWriteVia(before, after), actorId, actor);
+        const notifications = planTaskNotifications(before, final, notifier.actorId, notifier.actor.name);
         const streamEvents = planTaskEvents(before, final, taskId).map((event) =>
             event.type === 'task.assigned' || event.type === 'task.unassigned'
                 ? { ...event, meta: { ...event.meta, assigneeNames: ((event.meta?.assigneeIds as string[]) || []).map(names) } }
@@ -212,7 +217,7 @@ export const onTaskWritten = functions.region(REGION).firestore
                 projectId,
                 taskId,
                 extra: { params: { ...notification.params, ...compactParams({ projectTitle }) } }
-            }, actor, `${eventId}-${notification.type}-${idPart(notification.userId)}`);
+            }, notifier.actor, `${eventId}-${notification.type}-${idPart(notification.userId)}`);
         }
 
         // 3. Project progress after create / completion changes.
@@ -254,7 +259,8 @@ export const onSubtaskWritten = functions.region(REGION).firestore
                 buildActor(actorId ? actor : null, freshWriteVia(before, after)), subtaskEvents, 'onSubtaskWritten', eventId);
         }
 
-        const subtaskNotifications = planSubtaskNotifications(before, after, parentTitle, actorId);
+        const notifier = notifyIdentity(freshWriteVia(before, after), actorId, actor);
+        const subtaskNotifications = planSubtaskNotifications(before, after, parentTitle, notifier.actorId);
         const projectTitle = subtaskNotifications.length > 0 ? await loadProjectTitle(tenantId, projectId) : '';
         for (const notification of subtaskNotifications) {
             await createNotificationDoc({
@@ -266,7 +272,7 @@ export const onSubtaskWritten = functions.region(REGION).firestore
                 projectId,
                 taskId,
                 extra: { params: { ...notification.params, ...compactParams({ projectTitle }) } }
-            }, actor, `${eventId}-${notification.type}-${idPart(notification.userId)}`);
+            }, notifier.actor, `${eventId}-${notification.type}-${idPart(notification.userId)}`);
         }
     });
 
@@ -395,8 +401,9 @@ export const onCommentCreated = functions.region(REGION).firestore
             }
         }
 
+        const notifier = notifyIdentity(freshWriteVia(null, comment), authorId, author);
         const recipients = planCommentRecipients({
-            authorId,
+            authorId: notifier.actorId,
             targetType,
             mentionedUserIds: Array.from(mentioned),
             assigneeIds: effectiveAssignees(target),
@@ -427,7 +434,7 @@ export const onCommentCreated = functions.region(REGION).firestore
                 message: `You were mentioned in a comment on ${targetType} "${targetTitle}"`,
                 ...refs,
                 extra: { params: commentParams }
-            }, author, `${eventId}-comment_mention-${idPart(userId)}`);
+            }, notifier.actor, `${eventId}-comment_mention-${idPart(userId)}`);
         }
         for (const userId of recipients.comments) {
             await createNotificationDoc({
@@ -438,7 +445,7 @@ export const onCommentCreated = functions.region(REGION).firestore
                 message: `New comment on ${targetType} "${targetTitle}"`,
                 ...refs,
                 extra: { params: commentParams }
-            }, author, `${eventId}-comment_added-${idPart(userId)}`);
+            }, notifier.actor, `${eventId}-comment_added-${idPart(userId)}`);
         }
     });
 

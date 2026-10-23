@@ -156,6 +156,11 @@ export {
 export { onTaskWritten, onSubtaskWritten, onCommentCreated, onProjectWritten } from './task-triggers';
 export { onWikiDocWritten } from './wiki-triggers';
 export { computeWorkspaceInsights, refreshWorkspaceInsights, generateWeeklyInsightsReport } from './insights';
+// Flows (automations): brain/plans/flows-concept.md
+export {
+    onAutomationEvent, runAutomationSchedules, saveAutomation, setAutomationEnabled, deleteAutomation,
+    runAutomation, retryAutomationRun, previewAutomation
+} from './automations';
 export { deliverReminders } from './reminders';
 export { sendNudges } from './nudges';
 export { onUserFocusChanged } from './live-activity';
