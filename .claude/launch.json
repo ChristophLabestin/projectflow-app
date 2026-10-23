@@ -69,6 +69,24 @@
         "web"
       ],
       "port": 3000
+    },
+    {
+      "name": "web-e2e-isolated",
+      "runtimeExecutable": "env",
+      "runtimeArgs": [
+        "PORT=3010",
+        "AUTH_PORT=9731",
+        "FIRESTORE_PORT=8731",
+        "STORAGE_PORT=9732",
+        "FUNCTIONS_PORT=5731",
+        "npm",
+        "run",
+        "dev:e2e",
+        "--prefix",
+        "web"
+      ],
+      "port": 3010,
+      "autoPort": false
     }
   ]
 }

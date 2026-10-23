@@ -7,7 +7,9 @@ import { refreshCurrentUserProfile } from '../services/internal/workspaceDataCor
 import { Button } from '../components/common/Button/Button';
 import { TextInput } from '../components/common/Input/TextInput';
 import { useLanguage } from '../context/LanguageContext';
-import { loginWithPasskey, shouldAutoPrompt } from '../services/passkeyService';
+import { useAuth } from '../context/AuthContext';
+import { WorkspaceConnecting } from '../context/WorkspaceContext';
+import { loginWithPasskey, preparePasskeyLogin, shouldAutoPrompt } from '../services/passkeyService';
 import { COMPANY_NAME } from '../config/company';
 import { AppleLogo } from '../components/ui/AppleLogo';
 import './login.scss';
@@ -16,6 +18,7 @@ const OAUTH_REDIRECT_KEY = 'pf.oauthRedirect';
 
 export const Login = () => {
     const { t, authScreenTranslationsReady, loadAuthScreenTranslations } = useLanguage();
+    const { user } = useAuth();
     const [isRegister, setIsRegister] = useState(false);
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -41,12 +44,27 @@ export const Login = () => {
         void loadAuthScreenTranslations();
     }, [loadAuthScreenTranslations]);
 
+    // Target to leave the login screen for once the auth context has the user.
+    // Navigating before that bounced between /login and the app (the protected
+    // layout still saw no user), which made sign-in flicker.
+    const [pendingRedirect, setPendingRedirect] = useState<string | null>(() =>
+        auth.currentUser && redirectUrl !== window.location.pathname ? redirectUrl : null);
+    const isBusy = isLoading || pendingRedirect !== null;
+
     useEffect(() => {
-        // If already logged in AND we have a redirect that isn't the current page, redirect now
-        if (auth.currentUser && redirectUrl !== window.location.pathname) {
-            handleAuthSuccess();
+        if (!pendingRedirect || !user) return;
+        // Full URLs (with search params) are navigated within the app.
+        if (pendingRedirect.startsWith('http')) {
+            try {
+                const url = new URL(pendingRedirect);
+                navigate(url.pathname + url.search, { replace: true });
+            } catch (e) {
+                navigate('/', { replace: true });
+            }
+        } else {
+            navigate(pendingRedirect, { replace: true });
         }
-    }, [auth.currentUser, redirectUrl]);
+    }, [pendingRedirect, user, navigate]);
 
     useEffect(() => {
         const isRegisterMode = location.pathname.endsWith('/register') || searchParams.get('mode') === 'register';
@@ -59,19 +77,8 @@ export const Login = () => {
         setIsRegister(false);
     }, [inviteTenantId, location.state, searchParams, location.pathname]);
 
-    const handleAuthSuccess = async () => {
-        // If we have a complex redirect URL (with search params), we need to extract the path and search
-        if (redirectUrl.startsWith('http')) {
-            // It's a full URL, but we want to navigate within the app
-            try {
-                const url = new URL(redirectUrl);
-                navigate(url.pathname + url.search);
-            } catch (e) {
-                navigate('/');
-            }
-        } else {
-            navigate(redirectUrl);
-        }
+    const handleAuthSuccess = async (target: string = redirectUrl) => {
+        setPendingRedirect(target);
     };
 
     const createMfaResolver = (err: any) => {
@@ -239,7 +246,7 @@ export const Login = () => {
         setIsLoading(true);
         getRedirectResult(auth)
             .then((result) => {
-                if (result) navigate(stored.redirectUrl || redirectUrl);
+                if (result) void handleAuthSuccess(stored.redirectUrl || redirectUrl);
             })
             .catch((err) => handleOAuthMfaError(err, stored.fallbackKey || 'login.error.google'))
             .finally(() => setIsLoading(false));
@@ -272,6 +279,11 @@ export const Login = () => {
         }
     };
 
+    // Fetch a challenge and wake the verify function while the screen is open.
+    useEffect(() => {
+        if (!isRegister && !auth.currentUser) preparePasskeyLogin();
+    }, [isRegister]);
+
     // Auto-prompt effect
     useEffect(() => {
         // Only auto-prompt if checking for login, not register, and not already redirected
@@ -279,6 +291,12 @@ export const Login = () => {
             handlePasskeySignIn(true);
         }
     }, [authScreenTranslationsReady, isRegister, showMfaStep]); // Run once on mount/mode switch if conditions met
+
+    // Signed in and about to leave: the workspace gate remounts this screen once
+    // before the redirect; keep showing its loading state instead of the form.
+    if (user && pendingRedirect) {
+        return <WorkspaceConnecting />;
+    }
 
     if (!authScreenTranslationsReady) {
         return (
@@ -411,9 +429,9 @@ export const Login = () => {
 
                                 <Button
                                     type="submit"
-                                    isLoading={isLoading}
+                                    isLoading={isBusy}
                                     className="login-page__primary"
-                                    disabled={isLoading}
+                                    disabled={isBusy}
                                 >
                                     {isRegister ? t('login.action.createAccount') : t('login.action.signIn')}
                                 </Button>
@@ -444,7 +462,7 @@ export const Login = () => {
                                 )}
 
                                 <div className="login-page__mfa-actions">
-                                    <Button type="submit" isLoading={isLoading} className="login-page__primary" disabled={mfaCode.length !== 6}>
+                                    <Button type="submit" isLoading={isBusy} className="login-page__primary" disabled={mfaCode.length !== 6}>
                                         {t('login.mfa.submit')}
                                     </Button>
                                     <button
@@ -468,7 +486,7 @@ export const Login = () => {
                                 variant="secondary"
                                 className="login-page__primary"
                                 onClick={() => handlePasskeySignIn()}
-                                disabled={isLoading}
+                                disabled={isBusy}
                                 icon={<span className="material-symbols-outlined">fingerprint</span>}
                             >
                                 {t('passkey.login.action')}
@@ -498,7 +516,7 @@ export const Login = () => {
                                     variant="secondary"
                                     className="login-page__social-button login-page__social-button--apple"
                                     onClick={handleAppleSignIn}
-                                    disabled={isLoading}
+                                    disabled={isBusy}
                                     icon={<AppleLogo className="login-page__social-icon login-page__social-icon--glyph" />}
                                 >
                                     {t('login.social.apple')}

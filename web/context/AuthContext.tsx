@@ -43,11 +43,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
             if (currentUser) {
                 try {
-                    // Force get the token to ensure it's cached and propagated
-                    await currentUser.getIdToken(true);
-
-                    // Delay to allow Firestore SDK to sync with the new token
-                    await new Promise(resolve => setTimeout(resolve, 100));
+                    // The listener fires with a fresh token (sign-in or refresh), so the
+                    // cached token is current. A forced refresh here cost a network round
+                    // trip on every sign-in and kept the router waiting (login flicker).
+                    await currentUser.getIdToken();
                 } catch (err) {
                     console.warn("Token refresh failed:", err);
                 }
