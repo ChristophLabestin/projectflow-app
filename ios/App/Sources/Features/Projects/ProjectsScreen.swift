@@ -60,8 +60,10 @@ struct ProjectsScreen: View {
                 .accessibilityAddTraits(.isHeader)
             Spacer()
             if canCreate {
-                PFIconButton("plus", label: L10n.t("projects.new.title"), style: .glass) {
-                    presenter.present(detents: [.large]) { ProjectCreateSheet() }
+                PFRootActions {
+                    PFIconButton("plus", label: L10n.t("projects.new.title"), style: .glass) {
+                        presenter.present(detents: [.large]) { ProjectCreateSheet() }
+                    }
                 }
             }
         }

@@ -3,73 +3,122 @@ import PFData
 import PFDesign
 import PFModel
 
-/// Konto (route `.account`): profile, workspaces, settings entries, export, legal, sign out, delete.
+/// Konto (route `.account`): who you are, where you work, how the app behaves — then data, legal, sign out.
+/// iPhone: one column. Opened iPhone Duo (`pfIsWide`): identity + workspaces left, settings + data right.
 struct AccountScreen: View {
     @Environment(AppModel.self) private var model
     @Environment(\.openURL) private var openURL
+    @Environment(\.pfIsWide) private var isWide
+    @Environment(\.pfSideRegionWidth) private var sideRegion
 
     private var profile: UserProfile? { model.profile }
     private var session: SessionStore? { model.session }
+    private var displayName: String { profile?.displayName ?? model.auth.displayName ?? "—" }
 
     var body: some View {
-        SettingsScaffold(title: L10n.t("account.title")) {
-            Button { model.router.push(.accountPage(.profile)) } label: {
-                profileHeader.padding(.top, PFSpace.l).contentShape(.rect)
+        VStack(spacing: 0) {
+            PFTopBar(backLabel: L10n.t("common.back"), onBack: model.router.isDeep ? { model.router.pop() } : nil) {}
+            ScrollView {
+                Group {
+                    if isWide {
+                        HStack(alignment: .top, spacing: PFSpace.xl) {
+                            VStack(alignment: .leading, spacing: PFSpace.xl) { identity; workspaces }
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                            VStack(alignment: .leading, spacing: PFSpace.xl) { settingsGrid; dataCard; footer }
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                    } else {
+                        VStack(alignment: .leading, spacing: PFSpace.xl) {
+                            identity
+                            workspaces
+                            settingsGrid
+                            dataCard
+                            footer
+                        }
+                    }
+                }
+                .padding(.horizontal, PFSpace.page)
+                .padding(.top, PFSpace.s)
+                .padding(.bottom, PFSpace.xxl)
             }
-            .buttonStyle(.pfPressable)
-            .accessibilityHint(L10n.t("profile.edit"))
-            PFSectionHeader(L10n.t("account.workspaces"))
-            workspaceCard
-            PFSectionHeader(L10n.t("account.settings"))
-            settingsCard
-            PFSectionHeader(L10n.t("account.data"))
-            dataCard
-            PFSectionHeader(L10n.t("account.legal"))
-            legalCard
-            PFSectionHeader(L10n.t("account.session"))
-            sessionCard
-            Text(versionText)
-                .pfText(.caption)
-                .foregroundStyle(PFColor.textMuted)
-                .frame(maxWidth: .infinity)
-                .padding(.top, PFSpace.xl)
         }
+        // iPhone Duo outer display: editing the profile is the page action, above back in the side column.
+        .pfSideAction(sideRegion > 0 ? AnyView(
+            PFIconButton("pencil", label: L10n.t("account.editProfile"), style: .primary) { model.router.push(.accountPage(.profile)) }
+        ) : nil)
     }
 
-    // MARK: Profile
+    // MARK: Identity
 
-    private var profileHeader: some View {
-        HStack(spacing: PFSpace.m) {
-            PFAvatar(name: profile?.displayName ?? model.auth.displayName ?? "?", seed: model.uid, imageURL: profile?.photoURL, size: 72)
-            VStack(alignment: .leading, spacing: 4) {
-                Text(profile?.displayName ?? model.auth.displayName ?? "—").pfText(.title).foregroundStyle(PFColor.textMain)
-                    .lineLimit(2).minimumScaleFactor(0.8)
-                Text(profile?.email ?? model.auth.email ?? "").pfText(.meta).foregroundStyle(PFColor.textMuted).lineLimit(1)
-                if let role = session?.activeWorkspace?.role {
-                    PFPill(AccountLogic.roleLabel(role), compact: true).padding(.top, 2)
+    private var identity: some View {
+        VStack(alignment: .leading, spacing: PFSpace.m) {
+            PFEyebrow(L10n.t("account.title"))
+            HStack(alignment: .center, spacing: PFSpace.m) {
+                PFAvatar(name: displayName, seed: model.uid, imageURL: profile?.photoURL, size: 76)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(displayName).pfText(.display).foregroundStyle(PFColor.textMain)
+                        .lineLimit(2).minimumScaleFactor(0.7)
+                    Text(profile?.email ?? model.auth.email ?? "").pfText(.meta).foregroundStyle(PFColor.textMuted).lineLimit(1)
+                }
+                Spacer(minLength: 0)
+            }
+            .accessibilityElement(children: .combine)
+            if sideRegion == 0 {
+                PFButton(L10n.t("account.editProfile"), systemImage: "pencil", kind: .secondary, size: .small) {
+                    model.router.push(.accountPage(.profile))
                 }
             }
-            Spacer(minLength: 0)
-            Image(systemName: "chevron.right").font(.system(size: 12, weight: .semibold)).foregroundStyle(PFColor.textSubtle)
         }
-        .accessibilityElement(children: .combine)
     }
 
     // MARK: Workspaces
 
-    private var workspaceCard: some View {
-        SettingsCard {
-            ForEach(session?.workspaces ?? []) { workspace in
-                SettingsRow(systemImage: "square.stack.3d.up", title: workspace.name, subtitle: AccountLogic.roleLabel(workspace.role),
-                            showsChevron: false, action: { switchTo(workspace) }) {
-                    if workspace.id == session?.activeWorkspaceId {
-                        Image(systemName: "checkmark").font(.system(size: 14, weight: .bold)).foregroundStyle(PFColor.textMain)
+    private var workspaces: some View {
+        let all = session?.workspaces ?? []
+        let active = all.first { $0.id == session?.activeWorkspaceId }
+        let others = all.filter { $0.id != session?.activeWorkspaceId }
+        return VStack(alignment: .leading, spacing: PFSpace.s) {
+            PFEyebrow(L10n.t("account.currentWorkspace"))
+            if let active {
+                HStack(spacing: PFSpace.s) {
+                    WorkspaceMonogram(name: active.name, size: 48)
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(active.name).pfText(.section).foregroundStyle(PFColor.textMain).lineLimit(1)
+                        PFPill(AccountLogic.roleLabel(active.role), compact: true)
+                    }
+                    Spacer(minLength: 0)
+                    PFIconButton("gearshape", label: L10n.t("team.workspaceSettings"), style: .raised, size: 40) {
+                        model.router.push(.accountPage(.workspaceSettings))
                     }
                 }
-                .accessibilityAddTraits(workspace.id == session?.activeWorkspaceId ? .isSelected : [])
+                .padding(PFSpace.m)
+                .pfCard()
             }
-            SettingsRow(systemImage: "gearshape", title: L10n.t("team.workspaceSettings")) { model.router.push(.accountPage(.workspaceSettings)) }
-            SettingsRow(systemImage: "plus", title: L10n.t("account.newWorkspace")) { presentCreateWorkspace() }
+            if !others.isEmpty {
+                Text(L10n.t("account.switchTo")).pfText(.metaStrong).foregroundStyle(PFColor.textMuted)
+                    .padding(.top, PFSpace.xs).padding(.horizontal, 4)
+            }
+            SettingsCard {
+                ForEach(others) { workspace in
+                    Button { switchTo(workspace) } label: {
+                        HStack(spacing: PFSpace.s) {
+                            WorkspaceMonogram(name: workspace.name, size: 34)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(workspace.name).pfText(.rowTitle).foregroundStyle(PFColor.textMain).lineLimit(1)
+                                Text(AccountLogic.roleLabel(workspace.role)).pfText(.meta).foregroundStyle(PFColor.textMuted)
+                            }
+                            Spacer(minLength: 0)
+                            Image(systemName: "arrow.left.arrow.right").font(.system(size: 12, weight: .semibold))
+                                .foregroundStyle(PFColor.textSubtle)
+                        }
+                        .padding(.horizontal, PFSpace.m)
+                        .frame(minHeight: 56)
+                        .contentShape(.rect)
+                    }
+                    .buttonStyle(.pfPressable)
+                }
+                SettingsRow(systemImage: "plus", title: L10n.t("account.newWorkspace"), showsChevron: false) { presentCreateWorkspace() }
+            }
         }
     }
 
@@ -83,41 +132,71 @@ struct AccountScreen: View {
         model.presenter.present(detents: [.fit]) { CreateWorkspaceSheet() }
     }
 
-    // MARK: Settings and data
+    // MARK: Settings
 
-    private var settingsCard: some View {
-        SettingsCard {
-            SettingsRow(systemImage: "circle.lefthalf.filled", title: L10n.t("account.appearance"),
-                        subtitle: AccountLogic.appearanceSummary(profile)) { model.router.push(.appearanceSettings) }
-            SettingsRow(systemImage: "person.crop.circle", title: L10n.t("profile.title")) { model.router.push(.accountPage(.profile)) }
-            SettingsRow(systemImage: "bell", title: L10n.t("account.notifications")) { model.router.push(.notificationSettings) }
-            SettingsRow(systemImage: "lock.shield", title: L10n.t("account.security")) { model.router.push(.securitySettings) }
-            SettingsRow(systemImage: "person.2", title: L10n.t("account.team")) { model.router.push(.team) }
-        }
-    }
-
-    private var dataCard: some View {
-        SettingsCard(footer: L10n.t("account.export.footer")) {
-            SettingsRow(systemImage: "square.and.arrow.up", title: L10n.t("account.export")) { Task { await DataExport.run(model: model) } }
-            SettingsRow(systemImage: "safari", title: L10n.t("account.openWorkspaceWeb")) { openWeb("/profile") }
-        }
-    }
-
-    private var legalCard: some View {
-        SettingsCard {
-            SettingsRow(systemImage: "hand.raised", title: L10n.t("account.privacy")) { openWeb("/legal/privacy") }
-            SettingsRow(systemImage: "doc.text", title: L10n.t("account.terms")) { openWeb("/legal/terms") }
-            SettingsRow(systemImage: "building.2", title: L10n.t("account.imprint")) { openWeb("/legal/impressum") }
-        }
-    }
-
-    private var sessionCard: some View {
-        SettingsCard {
-            SettingsRow(systemImage: "rectangle.portrait.and.arrow.right", title: L10n.t("shell.signOut"), showsChevron: false) { signOut() }
-            SettingsRow(systemImage: "trash", title: L10n.t("account.delete"), role: .danger) {
-                model.presenter.present(detents: [.large]) { AccountDeletionSheet() }
+    private var settingsGrid: some View {
+        VStack(alignment: .leading, spacing: PFSpace.s) {
+            PFEyebrow(L10n.t("account.settings"))
+            // Rows of two; both tiles of a row share its height even when one hint wraps.
+            VStack(spacing: PFSpace.s) {
+                HStack(spacing: PFSpace.s) {
+                    SettingsTile(systemImage: "circle.lefthalf.filled", title: L10n.t("account.appearance"),
+                                 subtitle: AccountLogic.appearanceSummary(profile)) { model.router.push(.appearanceSettings) }
+                    SettingsTile(systemImage: "bell", title: L10n.t("account.notifications"),
+                                 subtitle: L10n.t("account.notifications.hint")) { model.router.push(.notificationSettings) }
+                }
+                .fixedSize(horizontal: false, vertical: true)
+                HStack(spacing: PFSpace.s) {
+                    SettingsTile(systemImage: "lock.shield", title: L10n.t("account.security"),
+                                 subtitle: L10n.t("account.security.hint")) { model.router.push(.securitySettings) }
+                    SettingsTile(systemImage: "person.2", title: L10n.t("account.team"),
+                                 subtitle: L10n.t("account.team.hint")) { model.router.push(.team) }
+                }
+                .fixedSize(horizontal: false, vertical: true)
             }
         }
+    }
+
+    // MARK: Data, legal, session
+
+    private var dataCard: some View {
+        VStack(alignment: .leading, spacing: PFSpace.s) {
+            PFEyebrow(L10n.t("account.data"))
+            SettingsCard(footer: L10n.t("account.export.footer")) {
+                SettingsRow(systemImage: "square.and.arrow.up", title: L10n.t("account.export")) { Task { await DataExport.run(model: model) } }
+                SettingsRow(systemImage: "safari", title: L10n.t("account.openWorkspaceWeb")) { openWeb("/profile") }
+            }
+        }
+    }
+
+    private var footer: some View {
+        VStack(spacing: PFSpace.m) {
+            PFButton(L10n.t("shell.signOut"), systemImage: "rectangle.portrait.and.arrow.right", kind: .secondary, size: .large,
+                     fullWidth: true) { signOut() }
+            Button {
+                model.presenter.present(detents: [.large]) { AccountDeletionSheet() }
+            } label: {
+                Text(L10n.t("account.delete")).pfText(.buttonSmall).foregroundStyle(PFColor.dangerText)
+                    .padding(.horizontal, PFSpace.m).frame(minHeight: 44).contentShape(.rect)
+            }
+            .buttonStyle(.pfPressable)
+            HStack(spacing: PFSpace.xs) {
+                legalLink(L10n.t("account.privacy"), "/legal/privacy")
+                Text("·").foregroundStyle(PFColor.textSubtle)
+                legalLink(L10n.t("account.terms"), "/legal/terms")
+                Text("·").foregroundStyle(PFColor.textSubtle)
+                legalLink(L10n.t("account.imprint"), "/legal/impressum")
+            }
+            .pfText(.meta)
+            Text(versionText).pfText(.caption).foregroundStyle(PFColor.textSubtle)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.top, PFSpace.s)
+    }
+
+    private func legalLink(_ title: String, _ path: String) -> some View {
+        Button { openWeb(path) } label: { Text(title).foregroundStyle(PFColor.textMuted) }
+            .buttonStyle(.pfPressable)
     }
 
     private func openWeb(_ path: String) {

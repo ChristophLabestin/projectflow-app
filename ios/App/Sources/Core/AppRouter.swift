@@ -30,6 +30,8 @@ final class AppRouter {
     var tab: AppTab = .today
     var isSearchActive = false
     var isFocusRoomOpen = false
+    /// iPhone Duo opened: the list column of a list/detail tab is folded away (rail toggle), e.g. for the board.
+    var isListColumnHidden = false
     /// Today opens in day-close mode (`/?mode=close`, day_close push).
     var todayMode: TodayMode = .normal
     let stacks: [AppTab: PFNavigationModel<AppRoute>] = Dictionary(uniqueKeysWithValues: AppTab.allCases.map { ($0, PFNavigationModel<AppRoute>()) })
@@ -118,5 +120,6 @@ final class AppRouter {
         tab = .today
         isSearchActive = false
         isFocusRoomOpen = false
+        isListColumnHidden = false
     }
 }

@@ -27,6 +27,7 @@ final class AppModel {
         // QA: `-pfSignedOut` starts on the sign-in screen (screenshots of the auth flow).
         if ProcessInfo.processInfo.arguments.contains("-pfSignedOut") { auth.signOut() }
         #endif
+        presenter.closeLabel = L10n.t("common.close")
         auth.start()
         network.start()
     }

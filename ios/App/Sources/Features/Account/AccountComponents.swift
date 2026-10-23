@@ -168,3 +168,50 @@ struct SettingsStateLabel: View {
         }
     }
 }
+
+/// Settings entry as a tile (account overview grid): icon, title, one-line hint.
+struct SettingsTile: View {
+    let systemImage: String
+    let title: String
+    let subtitle: String
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            VStack(alignment: .leading, spacing: PFSpace.s) {
+                Image(systemName: systemImage)
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundStyle(PFColor.textMain)
+                    .frame(width: 40, height: 40)
+                    .background(PFColor.raised, in: .circle)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title).pfText(.rowTitle).foregroundStyle(PFColor.textMain).lineLimit(1).minimumScaleFactor(0.85)
+                    Text(subtitle).pfText(.meta).foregroundStyle(PFColor.textMuted).lineLimit(2)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            .padding(PFSpace.m)
+            .pfCard()
+            .contentShape(.rect)
+        }
+        .buttonStyle(.pfPressable)
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(.isButton)
+    }
+}
+
+/// Workspace initial on a tinted square (no workspace logos yet).
+struct WorkspaceMonogram: View {
+    let name: String
+    let size: CGFloat
+
+    var body: some View {
+        Text(String(name.trimmingCharacters(in: .whitespaces).prefix(1)).uppercased())
+            .font(.system(size: size * 0.42, weight: .bold, design: .rounded))
+            .foregroundStyle(PFColor.onPrimary)
+            .frame(width: size, height: size)
+            .background(PFColor.primary, in: .rect(cornerRadius: size * 0.28, style: .continuous))
+            .accessibilityHidden(true)
+    }
+}

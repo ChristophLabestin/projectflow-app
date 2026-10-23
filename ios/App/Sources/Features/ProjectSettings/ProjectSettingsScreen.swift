@@ -33,6 +33,7 @@ private struct ProjectSettingsContent: View {
 private struct ProjectSettingsBody: View {
     @State var store: ProjectSettingsStore
     @Environment(AppModel.self) private var model
+    @Environment(\.pfSideRegionWidth) private var sideRegion
     @Environment(PFPresenter.self) private var presenter
     @State private var topInset: CGFloat = 0
 
@@ -58,7 +59,7 @@ private struct ProjectSettingsBody: View {
             if let data {
                 ScrollView {
                     VStack(alignment: .leading, spacing: PFSpace.xl) {
-                        Color.clear.frame(height: topInset + 48)
+                        Color.clear.frame(height: topInset + PFLayout.topBarClearance(sideRegion: sideRegion))
                         header(data)
                         if !canEdit { readOnlyBanner }
                         general(data)

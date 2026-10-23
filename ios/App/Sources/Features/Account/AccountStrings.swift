@@ -2,6 +2,9 @@
 // (`settings.security.*` keys are the web's).
 enum AccountStrings {
     static let de: [String: String] = [
+        "account.editProfile": "Profil bearbeiten", "account.currentWorkspace": "Aktueller Arbeitsbereich",
+        "account.switchTo": "Wechseln zu", "account.notifications.hint": "Push, E-Mail, Zusammenfassung",
+        "account.security.hint": "Passwort & Passkeys", "account.team.hint": "Mitglieder & Rollen",
         // Account
         "account.title": "Konto", "account.workspaces": "Arbeitsbereiche", "account.newWorkspace": "Neuer Arbeitsbereich",
         "account.workspaceName": "Name des Arbeitsbereichs", "account.createWorkspace": "Erstellen",
@@ -77,6 +80,9 @@ enum AccountStrings {
     ]
 
     static let en: [String: String] = [
+        "account.editProfile": "Edit profile", "account.currentWorkspace": "Current workspace",
+        "account.switchTo": "Switch to", "account.notifications.hint": "Push, email, digest",
+        "account.security.hint": "Password & passkeys", "account.team.hint": "Members & roles",
         "account.title": "Account", "account.workspaces": "Workspaces", "account.newWorkspace": "New workspace",
         "account.workspaceName": "Workspace name", "account.createWorkspace": "Create",
         "account.settings": "Settings", "account.data": "Data", "account.legal": "Legal", "account.session": "Session",

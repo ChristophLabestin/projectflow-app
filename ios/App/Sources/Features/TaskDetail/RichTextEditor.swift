@@ -27,6 +27,10 @@ final class RichEditorController {
     private(set) var block: EditorBlock = .p
     private(set) var hasSelection = false
     private(set) var isDirty = false
+    /// The text view holds the keyboard (drives autosave-on-leave and the side format button).
+    private(set) var isFocused = false
+    /// Set while a helper sheet (link) borrows the keyboard, so losing focus doesn't end editing.
+    @ObservationIgnored var isHoldingForSheet = false
     /// Bumped on every edit so the SwiftUI wrapper re-measures its height.
     private(set) var revision = 0
     @ObservationIgnored fileprivate var isNormalizing = false
@@ -118,6 +122,14 @@ final class RichEditorController {
     }
 
     func resign() { textView?.resignFirstResponder() }
+
+    /// Gives the keyboard back after a helper sheet, keeping the selection.
+    func refocus() { textView?.becomeFirstResponder() }
+
+    /// Clears the dirty flag after an autosave (no re-measure needed).
+    func markSaved() { isDirty = false }
+
+    fileprivate func setFocused(_ focused: Bool) { isFocused = focused }
 
     func focus() {
         guard let textView else { return }
@@ -573,6 +585,10 @@ struct RichTextEditorView: UIViewRepresentable {
             return true
         }
 
+        func textViewDidBeginEditing(_ textView: UITextView) { controller.setFocused(true) }
+
+        func textViewDidEndEditing(_ textView: UITextView) { controller.setFocused(false) }
+
         func textViewDidChange(_ textView: UITextView) {
             controller.normalize()
             controller.didEdit()
@@ -594,5 +610,41 @@ struct RichTextEditorView: UIViewRepresentable {
             guard let scroll = view as? UIScrollView else { return }
             scroll.scrollRectToVisible(textView.convert(rect, to: scroll), animated: true)
         }
+    }
+}
+
+// MARK: - Autosave
+
+extension View {
+    /// Description editing without cancel/save: saves a moment after typing pauses and when the editor
+    /// loses the keyboard (which also ends editing). `save` receives the HTML; `final` is the leave-save.
+    func descriptionAutosave(_ editor: RichEditorController, isEditing: Binding<Bool>,
+                             save: @escaping (_ html: String, _ final: Bool) -> Void) -> some View {
+        modifier(DescriptionAutosave(editor: editor, isEditing: isEditing, save: save))
+    }
+}
+
+private struct DescriptionAutosave: ViewModifier {
+    let editor: RichEditorController
+    @Binding var isEditing: Bool
+    let save: (String, Bool) -> Void
+
+    func body(content: Content) -> some View {
+        content
+            .task(id: editor.revision) {
+                guard isEditing, editor.isDirty else { return }
+                try? await Task.sleep(for: .seconds(1.2))
+                guard !Task.isCancelled, isEditing, editor.isDirty else { return }
+                editor.markSaved()
+                save(editor.html(), false)
+            }
+            .onChange(of: editor.isFocused) { _, focused in
+                guard !focused, isEditing, !editor.isHoldingForSheet else { return }
+                let html = editor.html()
+                let dirty = editor.isDirty
+                editor.markSaved()
+                withAnimation(PFMotion.respecting(PFMotion.fast)) { isEditing = false }
+                if dirty { save(html, true) }
+            }
     }
 }

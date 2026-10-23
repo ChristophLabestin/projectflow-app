@@ -107,7 +107,7 @@ public struct PFBoard<Item: Identifiable, Card: View>: View where Item.ID == Str
 
     private var lanes: some View {
         GeometryReader { proxy in
-            let laneWidth = (proxy.size.width * 0.82).rounded()
+            let laneWidth = Self.laneWidth(for: proxy.size.width)
             ScrollView(.horizontal) {
                 LazyHStack(alignment: .top, spacing: spacing) {
                     ForEach(columns) { column in
@@ -262,7 +262,17 @@ public struct PFBoard<Item: Identifiable, Card: View>: View where Item.ID == Str
         }
     }
 
-    private var laneWidth: CGFloat { (boardWidth * 0.85).rounded() }
+    private var laneWidth: CGFloat { Self.laneWidth(for: boardWidth) }
+
+    /// Phone: one lane at 82 % so the next one peeks in. Wide boards (iPhone Duo opened) show as many lanes
+    /// of at least `PFLayout.minLaneWidth` as fit side by side.
+    static func laneWidth(for width: CGFloat) -> CGFloat {
+        let usable = width - 2 * PFSpace.page
+        let count = Int((usable + 12) / (PFLayout.minLaneWidth + 12))
+        guard count >= 2 else { return (width * 0.82).rounded() }
+        let lanes = CGFloat(count)
+        return ((usable - 12 * (lanes - 1)) / lanes).rounded(.down)
+    }
 
     private func updateEdge(_ direction: Int, laneWidth: CGFloat) {
         guard direction != edgeDirection else { return }

@@ -10,6 +10,8 @@ struct InitiativeScreen: View {
     let initiativeId: String
 
     @Environment(AppModel.self) private var model
+
+    @Environment(\.pfSideRegionWidth) private var sideRegion
     @Environment(PFPresenter.self) private var presenter
     @State private var store: ProjectStore
     @State private var comments: CommentsStore
@@ -40,7 +42,7 @@ struct InitiativeScreen: View {
             if let initiative {
                 ScrollView {
                     VStack(alignment: .leading, spacing: PFSpace.l) {
-                        Color.clear.frame(height: topInset + 48)
+                        Color.clear.frame(height: topInset + PFLayout.topBarClearance(sideRegion: sideRegion))
                         header(initiative)
                         if let metric = initiative.successMetric { metricCard(metric) }
                         progressCard

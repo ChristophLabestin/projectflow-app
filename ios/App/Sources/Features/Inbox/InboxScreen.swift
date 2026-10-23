@@ -55,7 +55,7 @@ struct InboxScreen: View {
         HStack(alignment: .center) {
             Text(L10n.t("tab.inbox")).pfText(.display).foregroundStyle(PFColor.textMain)
             Spacer()
-            HStack(spacing: PFSpace.xs) {
+            PFRootActions {
                 if unreadCount > 0 {
                     PFIconButton("checkmark.circle", label: L10n.t("notifications.actions.markAllRead"), style: .glass) { markAllRead() }
                         .transition(.scale.combined(with: .opacity))

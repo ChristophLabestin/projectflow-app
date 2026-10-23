@@ -36,6 +36,13 @@ public struct PFNavigator<Route: Hashable, Root: View, Destination: View>: View 
     @Bindable var model: PFNavigationModel<Route>
     let root: Root
     let destination: (Route) -> Destination
+    @State private var topInset: CGFloat = 60
+    @Environment(\.pfSideRegionWidth) private var sideRegion
+
+    /// Displays without a top status bar (iPhone Duo outer display: status bar and camera sit in the side
+    /// region) report a top inset of 0; headers would touch the rounded screen edge. Top it up to a minimum.
+    /// Every regular iPhone has a taller status bar, so this adds nothing there.
+    private var extraTop: CGFloat { max(0, PFLayout.minTopMargin - topInset) }
 
     public init(model: PFNavigationModel<Route>, @ViewBuilder root: () -> Root, @ViewBuilder destination: @escaping (Route) -> Destination) {
         self.model = model
@@ -46,14 +53,18 @@ public struct PFNavigator<Route: Hashable, Root: View, Destination: View>: View 
     public var body: some View {
         NavigationStack(path: $model.path) {
             root
+                .safeAreaPadding(.top, extraTop)
                 .toolbar(.hidden, for: .navigationBar)
                 .navigationDestination(for: Route.self) { route in
                     destination(route)
+                        .pfSideControlsHost(side: sideRegion)
+                        .safeAreaPadding(.top, extraTop)
                         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
                         .background(PFCanvas())
                         .toolbar(.hidden, for: .navigationBar)
                 }
         }
+        .onGeometryChange(for: CGFloat.self) { $0.safeAreaInsets.top } action: { topInset = $0 }
     }
 }
 
@@ -63,6 +74,7 @@ public struct PFTopBar<Trailing: View>: View {
     let backLabel: String
     let onBack: (() -> Void)?
     let trailing: Trailing
+    @Environment(\.pfSideRegionWidth) private var sideRegion
 
     public init(title: String? = nil, backLabel: String = "Back", onBack: (() -> Void)? = nil, @ViewBuilder trailing: () -> Trailing) {
         self.title = title
@@ -72,6 +84,32 @@ public struct PFTopBar<Trailing: View>: View {
     }
 
     public var body: some View {
+        if sideRegion > 0, let onBack {
+            // iPhone Duo outer display: back and the trailing buttons stack in the side region (back lowest,
+            // under the thumb); only the title stays up here.
+            HStack(spacing: PFSpace.xs) {
+                if let title { titleCapsule(title) }
+                Spacer(minLength: 0)
+            }
+            .frame(minHeight: 44)
+            .padding(.horizontal, PFSpace.page)
+            .padding(.top, 4)
+            .preference(key: PFSideControlsKey.self, value: PFSideControls(
+                toolbar: AnyView(VStack(spacing: 10) { trailing }),
+                back: AnyView(PFIconButton("chevron.left", label: backLabel, action: onBack))
+            ))
+        } else {
+            bar
+        }
+    }
+
+    private func titleCapsule(_ title: String) -> some View {
+        Text(title).pfText(.section).foregroundStyle(PFColor.textMain).lineLimit(1)
+            .padding(.horizontal, 14).frame(minHeight: 40)
+            .pfGlass(in: .capsule, interactive: false)
+    }
+
+    private var bar: some View {
         HStack(spacing: PFSpace.xs) {
             if let onBack {
                 PFIconButton("chevron.left", label: backLabel, action: onBack)
@@ -124,10 +162,23 @@ public struct PFDock: View {
     @Namespace private var glider
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    private static let searchId = "__search"
+    let axis: Axis
+    let accessory: PFDockAccessory?
+    let focus: PFDockFocus?
 
+    private static let searchId = "__search"
+    private static let accessoryId = "__accessory"
+    /// Outer width of the vertical rail (58 pt items + 6 pt frost padding each side).
+    public static let railWidth: CGFloat = 70
+
+    /// `axis: .vertical` turns the dock into a side rail (iPhone Duo opened); `accessory` adds one extra
+    /// toggle after search (the rail's list-column switch).
     public init(items: [PFDockItem], selection: Binding<String>, searchLabel: String, isSearchSelected: Bool,
+                axis: Axis = .horizontal, accessory: PFDockAccessory? = nil, focus: PFDockFocus? = nil,
                 onSearch: @escaping () -> Void, onReselect: @escaping (String) -> Void) {
+        self.axis = axis
+        self.focus = focus
+        self.accessory = accessory
         self.items = items
         self._selection = selection
         self.searchLabel = searchLabel
@@ -139,7 +190,17 @@ public struct PFDock: View {
     private var activeId: String { isSearchSelected ? Self.searchId : selection }
 
     public var body: some View {
-        HStack(spacing: 2) {
+        let vertical = axis == .vertical
+        let layout = vertical ? AnyLayout(VStackLayout(spacing: 2)) : AnyLayout(HStackLayout(spacing: 2))
+        return layout {
+            if vertical, let focus {
+                focusItem(focus)
+                Capsule()
+                    .fill(PFColor.hairlineStrong)
+                    .frame(width: 28, height: 1)
+                    .padding(.vertical, 3)
+                    .accessibilityHidden(true)
+            }
             ForEach(items) { item in
                 itemButton(id: item.id, title: item.title, systemImage: item.systemImage, badge: item.badge) {
                     if item.id == selection && !isSearchSelected {
@@ -151,22 +212,29 @@ public struct PFDock: View {
             }
             Capsule()
                 .fill(PFColor.hairlineStrong)
-                .frame(width: 1, height: 28)
-                .padding(.horizontal, 3)
+                .frame(width: vertical ? 28 : 1, height: vertical ? 1 : 28)
+                .padding(vertical ? .vertical : .horizontal, 3)
                 .accessibilityHidden(true)
             itemButton(id: Self.searchId, title: searchLabel, systemImage: "magnifyingglass", badge: 0, compact: true) {
                 withAnimation(PFMotion.respecting(PFMotion.snappy)) { onSearch() }
             }
+            if let accessory {
+                itemButton(id: Self.accessoryId, title: accessory.title, systemImage: accessory.systemImage, badge: 0,
+                           compact: true, isOn: accessory.isOn) {
+                    withAnimation(PFMotion.respecting(PFMotion.snappy)) { accessory.action() }
+                }
+            }
         }
         .padding(6)
         .pfFrost(in: RoundedRectangle(cornerRadius: 26, style: .continuous))
-        .padding(.horizontal, PFSpace.m)
+        .padding(.horizontal, vertical ? 0 : PFSpace.m)
         .animation(reduceMotion ? .easeInOut(duration: 0.15) : PFMotion.snappy, value: activeId)
     }
 
     private func itemButton(id: String, title: String, systemImage: String, badge: Int, compact: Bool = false,
-                            action: @escaping () -> Void) -> some View {
+                            isOn: Bool = false, action: @escaping () -> Void) -> some View {
         let selected = id == activeId
+        let vertical = axis == .vertical
         return Button {
             PFHaptics.selection()
             action()
@@ -193,8 +261,9 @@ public struct PFDock: View {
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
             }
-            .foregroundStyle(selected ? PFColor.textMain : PFColor.textMuted)
-            .frame(maxWidth: compact ? 64 : .infinity, minHeight: 54)
+            .foregroundStyle(selected || isOn ? PFColor.textMain : PFColor.textMuted)
+            .frame(width: vertical ? 58 : nil, height: vertical ? 56 : nil)
+            .frame(maxWidth: vertical ? nil : (compact ? 64 : .infinity), minHeight: vertical ? nil : 54)
             .background {
                 if selected {
                     RoundedRectangle(cornerRadius: 19, style: .continuous)
@@ -213,7 +282,75 @@ public struct PFDock: View {
         }
         .buttonStyle(PFDockPressStyle())
         .accessibilityLabel(badge > 0 ? "\(title), \(badge)" : title)
-        .accessibilityAddTraits(selected ? [.isButton, .isSelected] : .isButton)
+        .accessibilityAddTraits(selected || isOn ? [.isButton, .isSelected] : .isButton)
+    }
+}
+
+/// Extra toggle at the end of the dock (used by the side rail for the list column).
+public struct PFDockAccessory {
+    let title: String
+    let systemImage: String
+    let isOn: Bool
+    let action: () -> Void
+
+    public init(title: String, systemImage: String, isOn: Bool, action: @escaping () -> Void) {
+        self.title = title
+        self.systemImage = systemImage
+        self.isOn = isOn
+        self.action = action
+    }
+}
+
+/// The running focus as the rail's first item (side rail only): a dock-styled "Fokus" entry with a live
+/// pulse; tap opens the focus room, completing is a VoiceOver action (and lives in the room itself).
+public struct PFDockFocus {
+    let label: String
+    let accessibilityLabel: String
+    let completeLabel: String
+    let isBlocked: Bool
+    let onOpen: () -> Void
+    let onComplete: () -> Void
+
+    public init(label: String, accessibilityLabel: String, completeLabel: String, isBlocked: Bool,
+                onOpen: @escaping () -> Void, onComplete: @escaping () -> Void) {
+        self.label = label
+        self.accessibilityLabel = accessibilityLabel
+        self.completeLabel = completeLabel
+        self.isBlocked = isBlocked
+        self.onOpen = onOpen
+        self.onComplete = onComplete
+    }
+}
+
+extension PFDock {
+    func focusItem(_ focus: PFDockFocus) -> some View {
+        let tint = focus.isBlocked ? PFColor.danger : PFColor.primary
+        return Button {
+            PFHaptics.selection()
+            focus.onOpen()
+        } label: {
+            VStack(spacing: 3) {
+                Image(systemName: "scope")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundStyle(tint)
+                    .frame(width: 28, height: 24)
+                    .overlay(alignment: .topTrailing) {
+                        PFPulseDot(color: tint)
+                            .scaleEffect(0.8)
+                            .offset(x: 3, y: -1)
+                    }
+                Text(focus.label)
+                    .pfText(.tab)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+                    .foregroundStyle(PFColor.textMain)
+            }
+            .frame(width: 58, height: 56)
+            .contentShape(.rect(cornerRadius: 19))
+        }
+        .buttonStyle(PFDockPressStyle())
+        .accessibilityLabel(focus.accessibilityLabel)
+        .accessibilityAction(named: focus.completeLabel) { focus.onComplete() }
     }
 }
 

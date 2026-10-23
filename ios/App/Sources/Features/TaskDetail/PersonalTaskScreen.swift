@@ -11,11 +11,14 @@ struct PersonalTaskScreen: View {
     let taskId: String
 
     @Environment(AppModel.self) private var model
+
+    @Environment(\.pfSideRegionWidth) private var sideRegion
     @Environment(PFPresenter.self) private var presenter
     @State private var titleDraft = ""
     @State private var topInset: CGFloat = 0
     @State private var editor = RichEditorController()
     @State private var isEditingDescription = false
+    @State private var showsFormatBar = false
     @State private var keyboardVisible = false
     @State private var isDeleting = false
 
@@ -39,9 +42,12 @@ struct PersonalTaskScreen: View {
             }
             topBar
         }
-        .pfBottomFloat {
+        .pfBottomFloat(isActive: sideRegion == 0 || (isEditingDescription && showsFormatBar)) {
             if task != nil { floating }
         }
+        .pfSideAction(sideAction)
+        .descriptionAutosave(editor, isEditing: $isEditingDescription) { html, _ in saveDescription(html) }
+        .onChange(of: isEditingDescription) { _, editing in if !editing { showsFormatBar = false } }
         .onGeometryChange(for: CGFloat.self) { $0.safeAreaInsets.top } action: { topInset = $0 }
         .onChange(of: task?.title, initial: true) { _, title in if let title { titleDraft = title } }
         .onChange(of: task == nil) { _, missing in
@@ -67,7 +73,7 @@ struct PersonalTaskScreen: View {
         let actions = WorkItemActions(model: model)
         return ScrollView {
             VStack(alignment: .leading, spacing: PFSpace.m) {
-                Color.clear.frame(height: topInset + 48)
+                Color.clear.frame(height: topInset + PFLayout.topBarClearance(sideRegion: sideRegion))
                 VStack(alignment: .leading, spacing: 10) {
                     HStack(spacing: 6) {
                         Image(systemName: "lock.fill").font(.system(size: 10, weight: .bold)).foregroundStyle(PFColor.textMuted)
@@ -85,7 +91,8 @@ struct PersonalTaskScreen: View {
                 if !task.isCompleted { focusCard }
                 descriptionCard(task)
                 detailsCard(task, actions: actions)
-                Color.clear.frame(height: 96)
+                // Room for the floating action; on the Duo outer display it sits in the side column instead.
+                Color.clear.frame(height: sideRegion > 0 ? 0 : 96)
             }
             .padding(.horizontal, PFSpace.page)
             // Pin the content to the screen width so the vertical scroll view never pans sideways.
@@ -265,14 +272,25 @@ struct PersonalTaskScreen: View {
         }
     }
 
+    /// iPhone Duo outer display: complete/reopen moves into the side column above back.
+    private var sideAction: AnyView? {
+        guard sideRegion > 0 else { return nil }
+        if isEditingDescription {
+            return editor.isFocused ? AnyView(DescriptionToolbar.sideToggle(isOn: $showsFormatBar)) : nil
+        }
+        guard let task else { return nil }
+        return AnyView(PFIconButton(task.isCompleted ? "arrow.uturn.backward" : "checkmark",
+                                    label: L10n.t(task.isCompleted ? "common.reopen" : "taskDetail.actions.markDone"),
+                                    style: task.isCompleted ? .glass : .primary) {
+            if let item { Task { await WorkItemActions(model: model).toggleComplete(item) } }
+        })
+    }
+
     @ViewBuilder
     private var floating: some View {
         if isEditingDescription {
-            DescriptionToolbar(controller: editor, onLink: presentLink, onCancel: {
-                editor.resign()
-                withAnimation(PFMotion.respecting(PFMotion.fast)) { isEditingDescription = false }
-            }, onDone: saveDescription)
-        } else if !keyboardVisible, let task {
+            DescriptionToolbar(controller: editor, onLink: presentLink)
+        } else if !keyboardVisible, sideRegion == 0, let task {
             if task.isCompleted {
                 PFButton(L10n.t("common.reopen"), systemImage: "arrow.uturn.backward", kind: .secondary, size: .large, fullWidth: true) {
                     if let item { Task { await WorkItemActions(model: model).toggleComplete(item) } }
@@ -288,13 +306,14 @@ struct PersonalTaskScreen: View {
 
     private func presentLink() {
         let current = editor.currentLink
-        presenter.present(detents: [.fit]) { LinkSheet(initial: current) { url in editor.applyLink(url) } }
+        editor.isHoldingForSheet = true
+        presenter.present(detents: [.fit], onDismiss: {
+            editor.isHoldingForSheet = false
+            editor.refocus()
+        }) { LinkSheet(initial: current) { url in editor.applyLink(url) } }
     }
 
-    private func saveDescription() {
-        let html = editor.html()
-        editor.resign()
-        withAnimation(PFMotion.respecting(PFMotion.fast)) { isEditingDescription = false }
+    private func saveDescription(_ html: String) {
         run { try await $0.updatePersonalTask(taskId, ["description": html]) }
     }
 

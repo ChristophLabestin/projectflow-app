@@ -11,6 +11,8 @@ struct TaskDetailScreen: View {
     let ref: TaskRef
 
     @Environment(AppModel.self) var model
+
+    @Environment(\.pfSideRegionWidth) private var sideRegion
     @Environment(PFPresenter.self) var presenter
     @State var store: TaskDetailStore
     @State var project: ProjectStore
@@ -28,6 +30,8 @@ struct TaskDetailScreen: View {
     @State var labelStore: ProjectLabelsStore
     @State var groupStore: WorkspaceGroupsStore
     @State var isDraftingDescription = false
+    /// iPhone Duo outer display: format bar shown above the keyboard (toggled from the side column).
+    @State var showsFormatBar = false
     @SwiftUI.FocusState var subtaskFocused: Bool
 
     init(ref: TaskRef) {
@@ -74,9 +78,12 @@ struct TaskDetailScreen: View {
             }
             topBar
         }
-        .pfBottomFloat {
+        .pfBottomFloat(isActive: sideRegion == 0 || (isEditingDescription && showsFormatBar)) {
             if task != nil { floating }
         }
+        .pfSideAction(sideAction)
+        .descriptionAutosave(editor, isEditing: $isEditingDescription) { html, final in autosaveDescription(html, final: final) }
+        .onChange(of: isEditingDescription) { _, editing in if !editing { showsFormatBar = false } }
         .onGeometryChange(for: CGFloat.self) { $0.safeAreaInsets.top } action: { topInset = $0 }
         .task {
             store.start()
@@ -108,7 +115,7 @@ struct TaskDetailScreen: View {
     private func content(_ task: WorkTask) -> some View {
         ScrollView {
             VStack(alignment: .leading, spacing: PFSpace.m) {
-                Color.clear.frame(height: topInset + 48)
+                Color.clear.frame(height: topInset + PFLayout.topBarClearance(sideRegion: sideRegion))
                 header(task)
                 workbench(task)
                 subtasksCard(task)
@@ -119,7 +126,8 @@ struct TaskDetailScreen: View {
                 remindersCard(task)
                 relationshipsCard(task)
                 activityCard
-                Color.clear.frame(height: 96)
+                // Room for the floating action; on the Duo outer display it sits in the side column instead.
+                Color.clear.frame(height: sideRegion > 0 ? 0 : 96)
             }
             .padding(.horizontal, PFSpace.page)
             // Pin the content to the screen width so the vertical scroll view never pans sideways.
@@ -201,11 +209,25 @@ struct TaskDetailScreen: View {
 
     // MARK: Floating action
 
+    /// iPhone Duo outer display: complete/reopen moves into the side column above back.
+    private var sideAction: AnyView? {
+        guard sideRegion > 0 else { return nil }
+        if isEditingDescription {
+            return editor.isFocused ? AnyView(DescriptionToolbar.sideToggle(isOn: $showsFormatBar)) : nil
+        }
+        guard canEdit, let task else { return nil }
+        return AnyView(PFIconButton(task.isCompleted ? "arrow.uturn.backward" : "checkmark",
+                                    label: L10n.t(task.isCompleted ? "common.reopen" : "taskDetail.actions.markDone"),
+                                    style: task.isCompleted ? .glass : .primary) {
+            Task { await WorkItemActions(model: model).toggleComplete(.task(task)) }
+        })
+    }
+
     @ViewBuilder
     private var floating: some View {
         if isEditingDescription {
-            DescriptionToolbar(controller: editor, onLink: presentLinkSheet, onCancel: cancelDescription, onDone: saveDescription)
-        } else if canEdit, !keyboardVisible, let task {
+            DescriptionToolbar(controller: editor, onLink: presentLinkSheet)
+        } else if canEdit, !keyboardVisible, sideRegion == 0, let task {
             if task.isCompleted {
                 PFButton(L10n.t("common.reopen"), systemImage: "arrow.uturn.backward", kind: .secondary, size: .large, fullWidth: true) {
                     Task { await WorkItemActions(model: model).toggleComplete(.task(task)) }
