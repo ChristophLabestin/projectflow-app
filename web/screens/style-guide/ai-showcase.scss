@@ -122,4 +122,8 @@
         display: flex;
         gap: 4px;
     }
+
+    &__w-panel { max-width: 360px; }
+
+    &__w-menu { max-width: 210px; }
 }
