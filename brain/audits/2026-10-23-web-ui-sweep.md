@@ -54,7 +54,7 @@ initiatives + initiative detail, sprints, milestones, activity, details, effort,
 
 - **Help center content is English-only** (7 pages, ~2,100 lines of hardcoded copy and palette colors in
   `web/components/help/pages/*`). Needs a content translation pass into locale keys (or MDX per language). L.
-- **Dead code:** `web/components/Sidebar.tsx` and `web/components/WorkspaceTeamIndicator.tsx` are no longer imported
+- ✅ **Done 2026-10-23 (web-app):** `Sidebar.tsx` was still lazy-imported by `AppLayout` as a flag switch (`config/sidebarV2.ts`, default on) to the legacy sidebar; `AppLayout` now loads `SidebarNavigator` directly and `Sidebar.tsx`, `WorkspaceTeamIndicator.tsx`, `ProjectSwitcher.tsx` and the flag are deleted. Original note — **Dead code:** `web/components/Sidebar.tsx` and `web/components/WorkspaceTeamIndicator.tsx` are no longer imported
   (replaced by `SidebarNavigator`) but carry ~55 hardcoded palette classes; delete them. S.
 - **Button icon size:** give `.btn__icon .material-symbols-outlined` a size per button size (sm 16 / md 18 / lg 20) and
   drop the per-call `text-[18px]` overrides. S/M, touches many call sites.

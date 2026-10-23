@@ -15,7 +15,7 @@ import { isProjectExcludedFromHealth } from '../services/healthService';
 import { isClientProject } from '../config/projectTemplates';
 import { getDesktopBridge } from '../services/desktop';
 
-const Sidebar = lazy(() => import('./Sidebar').then((module) => ({ default: module.Sidebar })));
+const Sidebar = lazy(() => import('./SidebarNavigator').then((module) => ({ default: module.SidebarNavigator })));
 const TopBar = lazy(() => import('./TopBar').then((module) => ({ default: module.TopBar })));
 const TaskCreateModal = lazy(() => import('./TaskCreateModal').then((module) => ({ default: module.TaskCreateModal })));
 const CreateProjectModal = lazy(() => import('./CreateProjectModal').then((module) => ({ default: module.CreateProjectModal })));
