@@ -5,5 +5,6 @@ export { usePresence } from './usePresence';
 export { useFlipList } from './useFlipList';
 export { useMotionOnChange } from './useMotionOnChange';
 export { useSlidingIndicator } from './useSlidingIndicator';
+export { TabIndicator } from './TabIndicator';
 export { AnimatedNumber } from './AnimatedNumber';
 export { MOTION } from './tokens';

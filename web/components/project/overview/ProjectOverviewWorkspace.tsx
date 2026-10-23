@@ -1,5 +1,6 @@
 import React from 'react';
 import './overview-workspace-content.scss';
+import { TabIndicator } from '../../motion';
 
 export type ProjectOverviewWorkspaceTab = 'tasks' | 'sprints' | 'milestones' | 'steuerung' | 'aktivitaeten';
 
@@ -53,7 +54,8 @@ export const ProjectOverviewWorkspace: React.FC<ProjectOverviewWorkspaceProps> =
     children
 }) => (
     <section className="project-overview-workspace" aria-label={t('projectOverview.workspace.label')}>
-        <div className="project-overview-workspace__tabs" role="tablist" aria-label={t('projectOverview.workspace.tabsLabel')}>
+        <div className="project-overview-workspace__tabs motion-tabs" role="tablist" aria-label={t('projectOverview.workspace.tabsLabel')}>
+            <TabIndicator activeKey={activeTab} />
             {tabs.map((tab) => (
                 <button
                     key={tab.id}

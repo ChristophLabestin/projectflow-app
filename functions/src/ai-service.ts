@@ -2,47 +2,74 @@ import * as functions from 'firebase-functions/v1';
 import OpenAI, { toFile } from 'openai';
 import { db } from './init';
 import { FieldValue } from 'firebase-admin/firestore';
+import {
+    buildAskCoraPrompt, buildCapabilityRequest, CapabilityInputError, normalizeImageInput, normalizeImagePrompt
+} from './ai-capabilities';
 
 const TEXT_MODEL = 'gpt-5-mini';
 const IMAGE_MODEL = 'gpt-image-1-mini';
-const isEmulator = process.env.FUNCTIONS_EMULATOR === 'true';
 
-// Per-user daily quota. Counter docs live in a server-only collection
-// (no client rules match it, so access is denied by default).
+// Server-side AI quota (the only one that is enforced): per user and day (requests) plus per user and
+// month (tokens / images). Counter docs live in a server-only collection (no client rules match it).
 const AI_QUOTA_COLLECTION = 'ai_usage_quotas';
 const AI_DAILY_LIMITS = {
     text: Number(process.env.AI_DAILY_TEXT_LIMIT) || 200,
     image: Number(process.env.AI_DAILY_IMAGE_LIMIT) || 30
 } as const;
+const AI_MONTHLY_TOKEN_LIMIT = Number(process.env.AI_MONTHLY_TOKEN_LIMIT) || 1_000_000;
+const AI_MONTHLY_IMAGE_LIMIT = Number(process.env.AI_MONTHLY_IMAGE_LIMIT) || 50;
 
 type AiQuotaKind = keyof typeof AI_DAILY_LIMITS;
 
+const quotaRefs = (uid: string) => {
+    const now = new Date().toISOString();
+    const day = now.slice(0, 10);
+    const month = now.slice(0, 7);
+    return {
+        day,
+        month,
+        daily: db.collection(AI_QUOTA_COLLECTION).doc(`${uid}_${day}`),
+        monthly: db.collection(AI_QUOTA_COLLECTION).doc(`${uid}_${month}`)
+    };
+};
+
 const consumeAiQuota = async (uid: string, kind: AiQuotaKind) => {
-    const day = new Date().toISOString().slice(0, 10);
-    const ref = db.collection(AI_QUOTA_COLLECTION).doc(`${uid}_${day}`);
+    const { day, month, daily, monthly } = quotaRefs(uid);
     const limit = AI_DAILY_LIMITS[kind];
 
-    const allowed = await db.runTransaction(async (tx) => {
-        const snap = await tx.get(ref);
-        const used = Number(snap.data()?.[kind] || 0);
-        if (used >= limit) {
-            return false;
+    const denied = await db.runTransaction(async (tx) => {
+        const [daySnap, monthSnap] = await Promise.all([tx.get(daily), tx.get(monthly)]);
+        const used = Number(daySnap.data()?.[kind] || 0);
+        if (used >= limit) return `Daily AI ${kind} limit of ${limit} requests reached. Try again tomorrow.`;
+        if (kind === 'text' && Number(monthSnap.data()?.tokens || 0) >= AI_MONTHLY_TOKEN_LIMIT) {
+            return `Monthly AI token limit of ${AI_MONTHLY_TOKEN_LIMIT.toLocaleString('en')} reached.`;
         }
-        tx.set(ref, {
-            uid,
-            day,
-            [kind]: used + 1,
-            updatedAt: FieldValue.serverTimestamp()
-        }, { merge: true });
-        return true;
+        if (kind === 'image' && Number(monthSnap.data()?.images || 0) >= AI_MONTHLY_IMAGE_LIMIT) {
+            return `Monthly AI image limit of ${AI_MONTHLY_IMAGE_LIMIT} reached.`;
+        }
+        tx.set(daily, { uid, day, [kind]: used + 1, updatedAt: FieldValue.serverTimestamp() }, { merge: true });
+        if (kind === 'image') {
+            tx.set(monthly, { uid, month, images: FieldValue.increment(1), updatedAt: FieldValue.serverTimestamp() }, { merge: true });
+        }
+        return null;
     });
 
-    if (!allowed) {
-        throw new functions.https.HttpsError(
-            'resource-exhausted',
-            `Daily AI ${kind} limit of ${limit} requests reached. Try again tomorrow.`
-        );
+    if (denied) {
+        throw new functions.https.HttpsError('resource-exhausted', denied);
     }
+};
+
+const recordMonthlyTokens = async (uid: string, tokens: number) => {
+    if (tokens <= 0) return;
+    const { month, monthly } = quotaRefs(uid);
+    await monthly.set({ uid, month, tokens: FieldValue.increment(tokens), updatedAt: FieldValue.serverTimestamp() }, { merge: true });
+};
+
+const invalidInput = (error: unknown): never => {
+    if (error instanceof CapabilityInputError) {
+        throw new functions.https.HttpsError('invalid-argument', error.message);
+    }
+    throw error;
 };
 
 type Confidence = 'Low' | 'Medium' | 'High';
@@ -51,6 +78,7 @@ type Confidence = 'Low' | 'Medium' | 'High';
 const trackUsage = async (uid: string, tokens: number) => {
     if (tokens <= 0) return;
     try {
+        await recordMonthlyTokens(uid, tokens);
         // Usage is owner-only data: users/{uid} itself is readable by every signed-in user.
         const userRef = db.collection('users').doc(uid).collection('private').doc('usage');
         await userRef.set({
@@ -64,26 +92,13 @@ const trackUsage = async (uid: string, tokens: number) => {
     }
 };
 
-// Initialize with process.env for standard Cloud Functions config.
-// Only the local emulator accepts a client-supplied key to keep local development flexible.
-const getApiKey = (providedKey?: string) => {
-    if (isEmulator && providedKey) {
-        return providedKey;
-    }
-
-    const key = process.env.OPENAI_API_KEY;
-    if (!key) {
+const getClient = () => {
+    const apiKey = process.env.OPENAI_API_KEY;
+    if (!apiKey) {
         throw new Error('OPENAI_API_KEY is not set in environment variables.');
     }
-
-    if (providedKey && !isEmulator) {
-        console.warn('Ignoring client-provided API key for non-emulator execution.');
-    }
-
-    return key;
+    return new OpenAI({ apiKey });
 };
-
-const getClient = (providedKey?: string) => new OpenAI({ apiKey: getApiKey(providedKey) });
 
 const extractTextFromResponse = (response: any): string => {
     if (typeof response?.output_text === 'string' && response.output_text.length > 0) {
@@ -158,81 +173,6 @@ const parseJsonText = (text: string): Record<string, any> => {
     return {};
 };
 
-const normalizeSchemaType = (typeValue: unknown) => {
-    if (typeof typeValue === 'string') {
-        return typeValue.toLowerCase();
-    }
-    if (Array.isArray(typeValue)) {
-        return typeValue.map((entry) => typeof entry === 'string' ? entry.toLowerCase() : entry);
-    }
-    return typeValue;
-};
-
-const normalizeSchema = (schema: any): any => {
-    if (!schema || typeof schema !== 'object') {
-        return schema;
-    }
-
-    if (Array.isArray(schema)) {
-        return schema.map((entry) => normalizeSchema(entry));
-    }
-
-    const normalized: Record<string, any> = {};
-    for (const [key, value] of Object.entries(schema)) {
-        normalized[key] = normalizeSchema(value);
-    }
-
-    if (Object.prototype.hasOwnProperty.call(normalized, 'type')) {
-        normalized.type = normalizeSchemaType(normalized.type);
-    }
-
-    return normalized;
-};
-
-const buildTextFormat = (jsonMode: boolean, responseSchema?: any) => {
-    if (responseSchema) {
-        return {
-            format: {
-                type: 'json_schema',
-                name: 'structured_response',
-                schema: normalizeSchema(responseSchema),
-                strict: true
-            }
-        };
-    }
-
-    if (jsonMode) {
-        return {
-            format: {
-                type: 'json_object'
-            }
-        };
-    }
-
-    return undefined;
-};
-
-const normalizeTools = (tools: any) => {
-    if (!Array.isArray(tools)) {
-        return undefined;
-    }
-
-    const normalizedTools: any[] = [];
-
-    for (const tool of tools) {
-        if (tool?.googleSearch !== undefined) {
-            normalizedTools.push({ type: 'web_search_preview' });
-            continue;
-        }
-
-        if (typeof tool?.type === 'string') {
-            normalizedTools.push(tool);
-        }
-    }
-
-    return normalizedTools.length > 0 ? normalizedTools : undefined;
-};
-
 const urlToDataUrl = async (url: string) => {
     const response = await fetch(url);
     if (!response.ok) {
@@ -276,16 +216,16 @@ export const askCora = functions.region('europe-west3').runWith({ secrets: ['OPE
     if (!context.auth) {
         throw new functions.https.HttpsError('unauthenticated', 'User must be logged in.');
     }
+    let finalPrompt = '';
+    try {
+        finalPrompt = buildAskCoraPrompt(data?.question, data?.contextStr, data?.language);
+    } catch (error) {
+        invalidInput(error);
+    }
     await consumeAiQuota(context.auth.uid, 'text');
 
-    const { question, contextStr, instruction, apiKey: clientApiKey } = data;
-
-    if (!question || !contextStr) {
-        throw new functions.https.HttpsError('invalid-argument', 'Missing question or context');
-    }
-
     try {
-        const client = getClient(clientApiKey);
+        const client = getClient();
 
         const responseSchema = {
             type: 'object',
@@ -307,22 +247,6 @@ export const askCora = functions.region('europe-west3').runWith({ secrets: ['OPE
             },
             required: ['answer', 'relevantProjects', 'relevantTasks', 'confidence']
         };
-
-        const prompt = `You are CORA, a project management assistant. Answer the following question based on the project context provided.
-
-Context:
-${contextStr}
-
-Question: ${question}
-
-Provide a helpful, concise answer (2-3 sentences max). Include IDs of relevant projects and tasks in your response.
-If you reference specific projects or tasks, use their exact titles.
-Rate your confidence in the answer as Low, Medium, or High.`;
-
-        let finalPrompt = prompt;
-        if (instruction) {
-            finalPrompt += `\n\n${instruction}`;
-        }
 
         const response: any = await client.responses.create({
             model: TEXT_MODEL,
@@ -368,15 +292,16 @@ export const generateImage = functions.region('europe-west3').runWith({ secrets:
     if (!context.auth) {
         throw new functions.https.HttpsError('unauthenticated', 'User must be logged in.');
     }
+    let prompt = '';
+    try {
+        prompt = normalizeImagePrompt(data?.prompt);
+    } catch (error) {
+        invalidInput(error);
+    }
     await consumeAiQuota(context.auth.uid, 'image');
 
-    const { prompt, apiKey: clientApiKey } = data;
-    if (!prompt) {
-        throw new functions.https.HttpsError('invalid-argument', 'Missing prompt');
-    }
-
     try {
-        const client = getClient(clientApiKey);
+        const client = getClient();
 
         const response: any = await client.images.generate({
             model: IMAGE_MODEL,
@@ -407,16 +332,20 @@ export const editImage = functions.region('europe-west3').runWith({ secrets: ['O
     if (!context.auth) {
         throw new functions.https.HttpsError('unauthenticated', 'User must be logged in.');
     }
+    // image expects a base64 string without data-URL header
+    let prompt = '';
+    let image = '';
+    let mimeType = 'image/png';
+    try {
+        prompt = normalizeImagePrompt(data?.prompt);
+        ({ image, mimeType } = normalizeImageInput(data?.image, data?.mimeType));
+    } catch (error) {
+        invalidInput(error);
+    }
     await consumeAiQuota(context.auth.uid, 'image');
 
-    const { prompt, image, mimeType = 'image/png', apiKey: clientApiKey } = data; // image expects base64 string (no header)
-
-    if (!prompt || !image) {
-        throw new functions.https.HttpsError('invalid-argument', 'Missing prompt or image data');
-    }
-
     try {
-        const client = getClient(clientApiKey);
+        const client = getClient();
 
         const imageBuffer = Buffer.from(image, 'base64');
         const imageFile = await toFile(imageBuffer, `source.${mimeTypeToExtension(mimeType)}`, { type: mimeType });
@@ -444,89 +373,48 @@ export const editImage = functions.region('europe-west3').runWith({ secrets: ['O
     }
 });
 
-// --- Generic ChatGPT Call ---
-
-export const callGemini = functions.region('europe-west3').runWith({ secrets: ['OPENAI_API_KEY'] }).https.onCall(async (data, context) => {
+// --- Fixed AI capabilities (replaces the former generic `callGemini` proxy) ---
+export const runAiCapability = functions.region('europe-west3').runWith({ secrets: ['OPENAI_API_KEY'] }).https.onCall(async (data, context) => {
     if (!context.auth) {
         throw new functions.https.HttpsError('unauthenticated', 'User must be logged in.');
     }
+
+    let spec: ReturnType<typeof buildCapabilityRequest> | null = null;
+    try {
+        spec = buildCapabilityRequest(data?.capability, data?.input, data?.language);
+    } catch (error) {
+        invalidInput(error);
+    }
+    if (!spec) {
+        throw new functions.https.HttpsError('invalid-argument', 'Invalid AI capability request');
+    }
     await consumeAiQuota(context.auth.uid, 'text');
 
-    const {
-        systemInstruction,
-        prompt,
-        image,
-        mimeType = 'image/png',
-        temperature = 0.7,
-        jsonMode = false,
-        apiKey: clientApiKey,
-        responseSchema,
-        tools
-    } = data;
-
-    if (!prompt) {
-        throw new functions.https.HttpsError('invalid-argument', 'Missing prompt');
-    }
-
     try {
-        const client = getClient(clientApiKey);
-
-        const wantsJson = Boolean(jsonMode || responseSchema);
-        const textFormat = buildTextFormat(Boolean(jsonMode), responseSchema);
-        const normalizedTools = normalizeTools(tools);
-
-        const instructionSegments: string[] = [];
-        if (typeof systemInstruction === 'string' && systemInstruction.trim().length > 0) {
-            instructionSegments.push(systemInstruction.trim());
-        }
-        if (wantsJson) {
-            instructionSegments.push('Return valid JSON only.');
-        }
-
         const request: any = {
             model: TEXT_MODEL,
-            temperature
+            input: spec.input,
+            temperature: spec.temperature
         };
-
-        if (instructionSegments.length > 0) {
-            request.instructions = instructionSegments.join('\n\n');
+        if (spec.instructions) {
+            request.instructions = spec.instructions;
+        }
+        if (spec.schema) {
+            request.instructions = [request.instructions, 'Return valid JSON only.'].filter(Boolean).join('\n\n');
+            request.text = { format: { type: 'json_schema', name: 'structured_response', schema: spec.schema, strict: true } };
+        }
+        if (spec.webSearch) {
+            request.tools = [{ type: 'web_search_preview' }];
         }
 
-        if (image) {
-            request.input = [
-                {
-                    role: 'user',
-                    content: [
-                        { type: 'input_text', text: prompt },
-                        { type: 'input_image', image_url: `data:${mimeType};base64,${image}` }
-                    ]
-                }
-            ];
-        } else {
-            request.input = prompt;
-        }
-
-        if (textFormat) {
-            request.text = textFormat;
-        }
-
-        if (normalizedTools) {
-            request.tools = normalizedTools;
-        }
-
-        const response: any = await client.responses.create(request);
+        const response: any = await getClient().responses.create(request);
         const text = extractTextFromResponse(response);
         const tokensUsed = extractTokensUsed(response);
-
         await trackUsage(context.auth.uid, tokensUsed);
 
-        return {
-            text,
-            tokensUsed
-        };
-
+        return { text, tokensUsed };
     } catch (error: any) {
-        console.error('CallGemini Error:', error);
-        throw error instanceof functions.https.HttpsError ? error : new functions.https.HttpsError('internal', 'ChatGPT request failed');
+        console.error('runAiCapability Error:', error);
+        throw error instanceof functions.https.HttpsError ? error : new functions.https.HttpsError('internal', 'AI request failed');
     }
 });

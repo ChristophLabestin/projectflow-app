@@ -10,6 +10,7 @@ import {
     groupNotifications
 } from '../../utils/notificationPresentation';
 import './notification-list.scss';
+import { useFlipList } from '../motion';
 
 interface NotificationListProps {
     notifications: Notification[];
@@ -50,8 +51,12 @@ export const NotificationList = ({ notifications, compact = false, onOpen, onTog
         }
     };
 
+    // New notifications rise in, dismissed ones slide away, the rest close the gap.
+    const listRef = React.useRef<HTMLDivElement>(null);
+    useFlipList(listRef);
+
     return (
-        <div className={`notification-list${compact ? ' notification-list--compact' : ''}`}>
+        <div ref={listRef} className={`notification-list${compact ? ' notification-list--compact' : ''}`}>
             {groupNotifications(notifications).map((group) => (
                 <section key={group.key} className="notification-list__group" aria-label={t(`notifications.group.${group.key}`)}>
                     <h3 className="notification-list__group-title">{t(`notifications.group.${group.key}`)}</h3>
@@ -59,7 +64,7 @@ export const NotificationList = ({ notifications, compact = false, onOpen, onTog
                         {group.items.map((notification) => {
                             const text = getNotificationText(notification, t, formatDate);
                             return (
-                                <li key={notification.id}>
+                                <li key={notification.id} data-flip-key={notification.id}>
                                     <div
                                         role="button"
                                         tabIndex={0}

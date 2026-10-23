@@ -1,5 +1,6 @@
 import { useTenantDeepLink } from '../hooks/useTenantDeepLink';
 import React, { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react';
+import { useFlipList } from '../components/motion';
 import { Link, useNavigate, useOutletContext, useParams, useSearchParams } from 'react-router-dom';
 import '../src/styles/components/_project-task-detail.scss';
 import { getProjectCategories, subscribeProjectMilestones, updateMilestone } from '../services/domain/projectMetaService';
@@ -209,6 +210,9 @@ export const ProjectTaskDetail = () => {
     const doneCount = subTasks.filter(s => s.isCompleted).length;
     const totalCount = subTasks.length;
     const progressPct = totalCount ? Math.round((doneCount / totalCount) * 100) : 0;
+    // Subtasks rise in when added, slide out when deleted.
+    const subtaskListRef = useRef<HTMLDivElement>(null);
+    useFlipList(subtaskListRef);
 
     const taskAssignees = useMemo(() => {
         if (!task) return [];
@@ -776,7 +780,7 @@ export const ProjectTaskDetail = () => {
                             </Button>
                         </form>
 
-                        <div className="task-detail__subtasks-list" style={{ marginTop: '4px' }}>
+                        <div ref={subtaskListRef} className="task-detail__subtasks-list" style={{ marginTop: '4px' }}>
                             {subTasks.length === 0 && (
                                 <div className="task-detail__empty-inline">
                                     <span className="material-symbols-outlined">splitscreen_add</span>
@@ -784,7 +788,7 @@ export const ProjectTaskDetail = () => {
                                 </div>
                             )}
                             {subTasks.map(sub => (
-                                <div key={sub.id} className="task-detail__subtask" data-complete={sub.isCompleted ? 'true' : 'false'}>
+                                <div key={sub.id} data-flip-key={sub.id} className="task-detail__subtask" data-complete={sub.isCompleted ? 'true' : 'false'}>
                                     <button type="button" onClick={() => handleToggleSubTask(sub.id, sub.isCompleted)} className="task-detail__subtask-toggle" aria-label={sub.isCompleted ? t('common.reopen') : t('common.complete')}>
                                         <span className="material-symbols-outlined">check</span>
                                     </button>

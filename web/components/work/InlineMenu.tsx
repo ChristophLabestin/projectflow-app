@@ -56,7 +56,7 @@ export const InlineMenu = ({
 }: InlineMenuProps) => {
     const [open, setOpen] = useState(false);
     const [activeIndex, setActiveIndex] = useState(0);
-    const [position, setPosition] = useState({ top: 0, left: 0 });
+    const [position, setPosition] = useState({ top: 0, left: 0, above: false });
     const triggerRef = useRef<HTMLButtonElement>(null);
     const menuRef = useRef<HTMLDivElement>(null);
 
@@ -72,7 +72,7 @@ export const InlineMenu = ({
         const fitsBelow = rect.bottom + MENU_GAP + menuHeight < window.innerHeight;
         const top = fitsBelow ? rect.bottom + MENU_GAP : Math.max(8, rect.top - MENU_GAP - menuHeight);
         const left = Math.min(Math.max(8, rect.left), window.innerWidth - width - 8);
-        setPosition({ top, left });
+        setPosition({ top, left, above: !fitsBelow });
     }, [open, width]);
 
     useEffect(() => {
@@ -180,6 +180,7 @@ export const InlineMenu = ({
                 <div
                     ref={menuRef}
                     className="inline-menu"
+                    data-placement={position.above ? 'above' : 'below'}
                     role="menu"
                     aria-label={label}
                     style={{ top: position.top, left: position.left, width }}

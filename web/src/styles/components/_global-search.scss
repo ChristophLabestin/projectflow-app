@@ -169,6 +169,11 @@
     &::-webkit-scrollbar { display: none; }
 }
 
+.gsearch__scopes {
+    --motion-indicator-bg: var(--color-surface-hover);
+    --motion-indicator-shadow: none;
+}
+
 .gsearch__scope {
     flex: 0 0 auto;
     padding: 0.375rem 0.75rem;

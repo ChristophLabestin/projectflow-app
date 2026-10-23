@@ -4,6 +4,7 @@ import type { OtherWorkspaceUnread } from '../../hooks/useNotifications';
 import type { NotificationFilter } from '../../utils/notificationPresentation';
 import './notification-list.scss';
 import './notification-center-parts.scss';
+import { TabIndicator } from '../motion';
 
 interface NotificationFilterTabsProps {
     value: NotificationFilter;
@@ -19,7 +20,8 @@ export const NotificationFilterTabs = ({ value, unreadCount, onChange }: Notific
         { id: 'unread', label: t('notifications.filter.unread'), count: unreadCount }
     ];
     return (
-        <div className="notification-filter" role="tablist" aria-label={t('notifications.filter.label')}>
+        <div className="notification-filter motion-tabs" role="tablist" aria-label={t('notifications.filter.label')}>
+            <TabIndicator activeKey={value} />
             {options.map((option) => (
                 <button
                     key={option.id}

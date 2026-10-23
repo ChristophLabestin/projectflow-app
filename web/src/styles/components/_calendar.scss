@@ -128,6 +128,10 @@
     color: var(--color-text-muted);
 }
 
+.calendar-view-toggle {
+    --motion-indicator-radius: var(--radius-sm);
+}
+
 .calendar-view-toggle .calendar-view-toggle__button.is-active {
     background: var(--color-surface-card);
     color: var(--color-text-main);
