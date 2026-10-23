@@ -16,7 +16,7 @@ Rules:
 | `Button` | Primary/secondary/ghost/danger styles | Actions, forms | Supports `sm`, `md`, `lg`, `icon` sizes. Loading state + optional icon support. |
 | `IconButton` | Compact icon-only button | Toolbars, inline actions | Must include tooltip/aria-label support |
 | `Card` | Standard surface container | Dashboards, lists, panels | Includes `CardHeader`, `CardBody`, `CardFooter`. |
-| `Badge` / `Tag` | Status + labeling | Priority, states, categories | Variants: `neutral`, `success`, `warning`, `error`. |
+| `Badge` / `Tag` | Status + labeling | Priority, states, categories | Variants: `neutral`, `success`, `warning`, `error`. `components/ui/Badge` variants (`primary`, `secondary`, `success`, `warning`, `error`) map to theme tokens only. |
 | `Avatar` | User/brand avatar | Member lists, headers | Fallback initials + optional image |
 | `Divider` | Visual separation | Layout sections | Uses surface border token. |
 | `Tooltip` | Hover help | Dense UI actions | Avoid for mobile-only reliance |
@@ -73,7 +73,7 @@ Rules:
 
 | Component | Purpose | Typical Usage | Notes |
 |---|---|---|---|
-| `Modal` | Standard modal dialog | Forms, pickers | Focus trap + escape handling |
+| `Modal` | Standard modal dialog | Forms, pickers | Focus trap + escape handling; header close button is the material `close` icon with `common.close` label. |
 | `Drawer` | Side overlay | Mobile/detail panels | |
 | `ConfirmDialog` | Destructive confirmations | Deletes, irreversible actions | |
 | `Toast` / `Notifications` | Non-blocking feedback | Success/error/info | |

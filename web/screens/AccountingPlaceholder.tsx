@@ -6,8 +6,8 @@ export const AccountingPlaceholder = () => {
 
     return (
         <div className="flex flex-col items-center justify-center h-full p-8 text-center animate-fade-in">
-            <div className="size-24 rounded-3xl bg-gradient-to-br from-emerald-500/20 to-teal-500/20 flex items-center justify-center mb-6 shadow-xl shadow-emerald-500/10">
-                <span className="material-symbols-outlined text-5xl text-emerald-600 dark:text-emerald-400">receipt_long</span>
+            <div className="size-24 rounded-3xl bg-success/15 flex items-center justify-center mb-6">
+                <span className="material-symbols-outlined text-5xl text-success">receipt_long</span>
             </div>
             <h1 className="text-3xl font-bold text-main mb-3">{t('accounting.placeholder.title')}</h1>
             <p className="text-subtle max-w-md text-lg">

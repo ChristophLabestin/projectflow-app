@@ -386,6 +386,15 @@ Treat these as v1 defaults before creating one-off versions in feature screens; 
 - New UI components must reference tokens from `web/styles/_tokens.scss`.
 - If a new token is introduced, it must be documented here and added to `_tokens.scss`.
 - **Borderless Design (Strict):** Never use borders or outlines on any element. Separate layers with **background contrast** (lighter/darker surfaces) and **shadows** only.
+- **Container-driven grids:** card grids inside the app shell (sidebar + optional side panels) use
+  `repeat(auto-fill|auto-fit, minmax(min(100%, <card>px), 1fr))` instead of viewport breakpoints
+  (`lg:grid-cols-3`, `@media (max-width: 1024px)`), because the viewport width does not include the sidebar or an open
+  detail panel (UI sweep 2026-10-23: Team, Finance cockpit).
+- **Buttons never wrap:** `.btn` is `white-space: nowrap; flex-shrink: 0; max-width: 100%` (fixed heights). Rows that
+  hold a description plus a button use `flex-wrap` so the button drops below the text on narrow widths.
+- **Tailwind color utilities:** use the token aliases (`text-main/muted/subtle`, `bg-surface-card/hover`,
+  `text-primary`, `bg-success/15`, `text-warning`, `text-error`, `border-error/30` …) from `web/tailwind.config.cjs`;
+  never palette classes like `text-rose-600` or `bg-zinc-100 dark:bg-zinc-800`.
 
 ---
 

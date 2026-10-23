@@ -302,12 +302,12 @@ function DraggableRoleItem({
                         <span className="font-medium text-main">{role.name}</span>
                         {role.isSystem && (
                             <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-surface-border text-muted">
-                                SYSTEM
+                                {t('roles.manage.systemBadge')}
                             </span>
                         )}
                     </div>
                     <p className="text-xs text-muted">
-                        {role.permissions.allow.length} permissions
+                        {t('roles.manage.permissionCount').replace('{count}', String(role.permissions.allow.length))}
                     </p>
                 </div>
 
@@ -813,9 +813,9 @@ export function RoleManagement() {
             </div>
 
             {/* 2-Column Layout - takes remaining space */}
-            <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 flex-1 min-h-0">
+            <div className="grid grid-cols-1 xl:grid-cols-5 gap-6 flex-1 min-h-0">
                 {/* Left: Role hierarchy list */}
-                <div className="lg:col-span-2 space-y-3 overflow-y-auto pr-2 scrollbar-thin">
+                <div className="xl:col-span-2 space-y-3 overflow-y-auto pr-2 scrollbar-thin">
                     <div className="flex items-center gap-1.5 text-[10px] text-muted uppercase tracking-wider mb-3 px-2">
                         <span className="material-symbols-outlined text-xs">arrow_upward</span>
                         <span>{t('roles.hierarchy.higher')}</span>
@@ -849,7 +849,7 @@ export function RoleManagement() {
                 </div>
 
                 {/* Right: Permission details */}
-                <div className="lg:col-span-3 rounded-2xl bg-surface-card shadow-sm overflow-hidden flex flex-col min-h-0">
+                <div className="xl:col-span-3 rounded-2xl bg-surface-card shadow-sm overflow-hidden flex flex-col min-h-0">
                     <PermissionDisplayPanel
                         role={selectedRole}
                         onEdit={() => selectedRole && handleOpenEdit(selectedRole)}

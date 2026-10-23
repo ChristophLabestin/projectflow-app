@@ -17,15 +17,15 @@ export const Badge = ({ children, variant = 'default', size = 'md', className = 
     if (variant === 'default') {
         variantStyles = "bg-surface-hover text-muted border-surface";
     } else if (variant === 'primary') {
-        variantStyles = "bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-300 border-indigo-100 dark:border-indigo-800";
+        variantStyles = "bg-primary/10 text-primary border-primary/20";
     } else if (variant === 'secondary') {
-        variantStyles = "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700";
+        variantStyles = "bg-surface-hover text-main border-surface";
     } else if (variant === 'success') {
-        variantStyles = "bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-300 border-emerald-100 dark:border-emerald-800";
+        variantStyles = "bg-success/10 text-success border-success/20";
     } else if (variant === 'warning') {
-        variantStyles = "bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 border-amber-100 dark:border-amber-800";
+        variantStyles = "bg-warning/10 text-warning border-warning/20";
     } else if (variant === 'error') {
-        variantStyles = "bg-rose-50 dark:bg-rose-900/30 text-rose-600 dark:text-rose-300 border-rose-100 dark:border-rose-800";
+        variantStyles = "bg-error/10 text-error border-error/20";
     } else if (variant === 'outline') {
         variantStyles = "bg-transparent text-subtle border-surface";
     }

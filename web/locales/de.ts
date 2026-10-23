@@ -3500,6 +3500,8 @@ const de = {
     'roles.manage.total': '{count} insgesamt',
     'roles.manage.dangerous': 'kritisch',
     'roles.manage.explicitlyDenied': 'Ausdrücklich verweigert ({count})',
+    'roles.manage.permissionCount': '{count} Berechtigungen',
+    'roles.manage.systemBadge': 'System',
     // MediaLibraryPage
     'mediaPage.linkCopied': 'Link in die Zwischenablage kopiert',
     'mediaPage.copyLink': 'Link kopieren',

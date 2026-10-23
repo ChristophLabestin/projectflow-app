@@ -3501,6 +3501,8 @@ const en = {
     'roles.manage.total': '{count} total',
     'roles.manage.dangerous': 'dangerous',
     'roles.manage.explicitlyDenied': 'Explicitly Denied ({count})',
+    'roles.manage.permissionCount': '{count} permissions',
+    'roles.manage.systemBadge': 'System',
     // MediaLibraryPage
     'mediaPage.linkCopied': 'Link copied to clipboard',
     'mediaPage.copyLink': 'Copy Link',
