@@ -90,7 +90,7 @@ export const categoryForType = (type: string): PrefCategory | null => CATEGORY_B
 export interface ChannelDecision {
     push: boolean;
     email: boolean;
-    category: PrefCategory | 'nudge' | 'transactional';
+    category: PrefCategory | 'nudge' | 'transactional' | 'automation';
 }
 
 /**
@@ -99,7 +99,15 @@ export interface ChannelDecision {
  * - morning_briefing / day_close: push always (the doc only exists when the user enabled it), no email
  * - everything else (invites, join requests, diagnostics...) is transactional: push + email as before
  */
-export const decideChannels = (type: string, prefs: ResolvedNotificationPrefs): ChannelDecision => {
+export const decideChannels = (
+    type: string,
+    prefs: ResolvedNotificationPrefs,
+    requested?: { push?: unknown; email?: unknown } | null
+): ChannelDecision => {
+    // Flow notifications: the flow chooses the channels (push on unless off, email only when asked).
+    if (type === 'automation_notice') {
+        return { push: requested?.push !== false, email: requested?.email === true, category: 'automation' };
+    }
     if (NUDGE_ONLY_TYPES.has(type)) {
         return { push: true, email: false, category: 'nudge' };
     }

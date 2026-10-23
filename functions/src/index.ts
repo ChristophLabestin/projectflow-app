@@ -15,6 +15,7 @@ import { requestWaitlist, confirmWaitlist } from './waitlist';
 import { requestNewsletterSignup, confirmNewsletterSignup } from './newsletter-public';
 import { sendContactFormEmail } from './contact';
 import { askCora, generateImage, editImage, runAiCapability } from './ai-service';
+import { aiAssist } from './ai-assist';
 import { getInitiativeFeedbackForm, saveInitiativeFeedbackConfig, submitInitiativeFeedback } from './initiative-feedback';
 import { getProjectIntakeForm, saveProjectIntakeConfig, submitProjectIntake } from './project-intake';
 import { autoStartSprints, dailyHealthSnapshots } from './scheduler';
@@ -87,6 +88,7 @@ export {
     generateImage,
     editImage,
     runAiCapability,
+    aiAssist,
     saveInitiativeFeedbackConfig,
     getInitiativeFeedbackForm,
     submitInitiativeFeedback,
@@ -156,6 +158,11 @@ export {
 export { onTaskWritten, onSubtaskWritten, onCommentCreated, onProjectWritten } from './task-triggers';
 export { onWikiDocWritten } from './wiki-triggers';
 export { computeWorkspaceInsights, refreshWorkspaceInsights, generateWeeklyInsightsReport } from './insights';
+// Flows (automations): brain/plans/flows-concept.md
+export {
+    onAutomationEvent, runAutomationSchedules, saveAutomation, setAutomationEnabled, deleteAutomation,
+    runAutomation, retryAutomationRun, previewAutomation
+} from './automations';
 export { deliverReminders } from './reminders';
 export { sendNudges } from './nudges';
 export { onUserFocusChanged } from './live-activity';

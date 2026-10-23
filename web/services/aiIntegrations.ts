@@ -52,7 +52,16 @@ export type AiConnection = {
     expiresAt: string | null;
 };
 
-export type AiPolicy = { enabled: boolean; allowGuests: boolean; allowDeleteScopes: boolean; allowPersonalTokens: boolean };
+export type AiPolicy = {
+    enabled: boolean;
+    allowGuests: boolean;
+    allowDeleteScopes: boolean;
+    allowPersonalTokens: boolean;
+    /** In-app assistant (✦, ⌘J) for this workspace. */
+    inAppEnabled: boolean;
+    /** Rollout flag for the in-app assistant. */
+    inAppAi: boolean;
+};
 
 export type AiAuditEntry = {
     id: string;

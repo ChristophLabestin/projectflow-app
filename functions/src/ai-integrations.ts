@@ -11,7 +11,7 @@ import { aiPolicyRef, forgetAiPolicy, loadAiPolicy } from './ai-store';
 import { db } from './init';
 
 const REGION = 'europe-west3';
-const POLICY_KEYS: (keyof AiPolicy)[] = ['enabled', 'allowGuests', 'allowDeleteScopes', 'allowPersonalTokens'];
+const POLICY_KEYS: (keyof AiPolicy)[] = ['enabled', 'allowGuests', 'allowDeleteScopes', 'allowPersonalTokens', 'inAppEnabled', 'inAppAi'];
 
 const requireRole = async (tenantId: unknown, context: functions.https.CallableContext, roles: string[]) => {
     const uid = context.auth?.uid;

@@ -49,6 +49,11 @@
     ],
     "rewrites": [
       {
+        "source": "/api/assist",
+        "function": "aiAssist",
+        "region": "europe-west3"
+      },
+      {
         "source": "/mcp",
         "function": "mcpServer",
         "region": "europe-west3"
