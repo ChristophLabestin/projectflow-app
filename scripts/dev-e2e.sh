@@ -12,6 +12,7 @@
 #   E2E_FUNCTIONS=0 bash scripts/dev-e2e.sh         # skip the Functions emulator
 #   E2E_LEGAL=1 bash scripts/dev-e2e.sh             # seed legal docs v1 (consent gate active) and
 #                                                   # make the demo owner a platform admin (/admin/legal)
+#   E2E_ADMIN=1 bash scripts/dev-e2e.sh             # only make the demo owner a platform admin (/admin/*)
 #
 # Emulator accounts (emulator only):
 #   demo@projectflow.test     / projectflow-demo     (seeded workspace owner)
@@ -72,6 +73,9 @@ FIRESTORE_EMULATOR_HOST="127.0.0.1:$FIRESTORE_PORT" FIREBASE_AUTH_EMULATOR_HOST=
 if [[ "${E2E_LEGAL:-0}" == "1" ]]; then
     GCLOUD_PROJECT="$PROJECT_ID" FIRESTORE_EMULATOR_HOST="127.0.0.1:$FIRESTORE_PORT" \
         node functions/scripts/import-legal-docs.mjs legal/v1 --publish-initial
+    GCLOUD_PROJECT="$PROJECT_ID" FIREBASE_AUTH_EMULATOR_HOST="127.0.0.1:$AUTH_PORT" \
+        node functions/scripts/grant-platform-admin.mjs demo@projectflow.test
+elif [[ "${E2E_ADMIN:-0}" == "1" ]]; then
     GCLOUD_PROJECT="$PROJECT_ID" FIREBASE_AUTH_EMULATOR_HOST="127.0.0.1:$AUTH_PORT" \
         node functions/scripts/grant-platform-admin.mjs demo@projectflow.test
 fi

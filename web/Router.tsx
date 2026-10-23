@@ -45,6 +45,9 @@ import { useAuth } from './context/AuthContext';
 import { useUIState } from './context/UIContext';
 
 // Style guide is a dev-only tool; lazy-loaded so it never ships in the main bundle.
+const AdminLayout = React.lazy(() => import('./screens/admin/AdminLayout').then((module) => ({ default: module.AdminLayout })));
+const CrashReports = React.lazy(() => import('./screens/admin/CrashReports').then((module) => ({ default: module.CrashReports })));
+const CrashIssueDetail = React.lazy(() => import('./screens/admin/CrashIssueDetail').then((module) => ({ default: module.CrashIssueDetail })));
 const LegalAdmin = React.lazy(() => import('./screens/LegalAdmin').then((module) => ({ default: module.LegalAdmin })));
 const StyleGuidePage = React.lazy(() => import('./screens/StyleGuidePage').then((module) => ({ default: module.StyleGuidePage })));
 
@@ -258,7 +261,12 @@ export const AppRouter = () => {
                         <Route path="/" element={<Dashboard />} />
                         <Route path="/notifications" element={<Notifications />} />
                         <Route path="/insights/onboarding" element={withRouteSuspense(<OnboardingInsights />)} />
-                        <Route path="/admin/legal" element={withRouteSuspense(<LegalAdmin />)} />
+                        <Route path="/admin" element={withRouteSuspense(<AdminLayout />)}>
+                            <Route index element={<Navigate to="/admin/crashes" replace />} />
+                            <Route path="crashes" element={withRouteSuspense(<CrashReports />)} />
+                            <Route path="crashes/:issueId" element={withRouteSuspense(<CrashIssueDetail />)} />
+                            <Route path="legal" element={withRouteSuspense(<LegalAdmin />)} />
+                        </Route>
                         <Route path="/projects" element={<ProjectsList />} />
                         <Route path="/tasks" element={<Tasks />} />
                         <Route path="/calendar" element={<Calendar />} />

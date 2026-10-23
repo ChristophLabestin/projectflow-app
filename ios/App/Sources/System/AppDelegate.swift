@@ -24,10 +24,26 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
         #endif
     }
 
+    /// `crashIngest` (functions/src/crash-reports.ts): hosting rewrite in production, the Functions emulator locally.
+    static var crashEndpoint: URL {
+        switch backend {
+        case .production:
+            return URL(string: "https://app.getprojectflow.com/api/crash")!
+        case let .emulator(host, _, _, functionsPort, _):
+            return URL(string: "http://\(host):\(functionsPort)/demo-projectflow/\(PFFirebase.functionsRegion)/crashIngest")!
+        }
+    }
+
     /// Set by `ProjectFlowApp` so notification actions can write through the signed-in session.
     weak var model: AppModel?
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
+        // First, so the last crash is collected early; does nothing unless the user opted in.
+        CrashReporter.configure(endpoint: Self.crashEndpoint)
+        CrashReporter.applyConsent()
+        #if DEBUG
+        CrashReporter.crashIfRequested()
+        #endif
         PFFont.registerIfNeeded()
         PFFirebase.configure(Self.backend)
         AppIntentBridge.bootstrap()

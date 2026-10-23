@@ -294,6 +294,11 @@ Pure, React/Firebase-free modules that the web app and the iOS app (`PFDomain`) 
 - `LegalDocumentViewer` — modal with one version's Markdown and a toggle to the diff against an older version.
 - `MarkdownContent` / `MarkdownDiff` — sanitized (DOMPurify) renderer for the legal Markdown subset (`renderMarkdown`) and paragraph-level LCS diff (`diffMarkdown`); unchanged paragraphs are hidden, headings before changes stay as context.
 
+## Admin platform (`web/screens/admin/`, 2026-10-23)
+- `AdminLayout.tsx`: `/admin/*` shell with side nav; gates on the `platformAdmin` claim (404 otherwise) and renders child routes via `<Outlet />`. New admin sections: add a `SECTIONS` entry + nested route in `web/Router.tsx`.
+- `CrashReports.tsx` / `CrashIssueDetail.tsx` (+ `crashFormat.ts`, `admin.scss`): crash issue list and detail on `services/crashReportsService.ts`.
+- Web crash capture lives in `services/errorReporting.ts` (`reportError`, global handlers, `isCrashReportingEnabled`/`setCrashReportingEnabled`); the ErrorBoundary reports render crashes through it.
+
 ## Notes for future components
 - When adding a reusable component, update this file and ensure it uses tokens from `brain/reference/app/STYLING.md`.
 - Avoid “one-off” styles in feature pages; promote patterns into reusable components whenever repeated.

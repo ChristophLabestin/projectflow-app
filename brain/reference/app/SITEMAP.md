@@ -42,7 +42,10 @@ These routes are rendered inside the authenticated app shell/layout.
 - [x] Refactored SCSS | `/` | Main dashboard command center (quiet date/greeting with persisted current focus, resume/focus action, then scroll-driven stages for today plan and workspace health/momentum)
 - [x] `/notifications` — Notifications center (SCSS refactor, ConfirmModal, web push diagnostics and registration)
 - [x] `/insights/onboarding` — Onboarding survey statistics (lazy; only with custom claim `platformAdmin`, else NotFound; data from callable `getOnboardingStats`; grant via `functions/scripts/grant-platform-admin.mjs <email>`)
-- [x] `/admin/legal` — Legal documents admin (lazy `LegalAdmin`; `platformAdmin` claim only): drafts with DE/EN Markdown editor, preview, diff, change summary, type, effective date, publish dialog, history with acceptance rate and mail status.
+- [x] `/admin` — Admin platform shell (lazy `AdminLayout`, `web/screens/admin/`; `platformAdmin` claim only, others 404): side nav Crash reports / Legal documents / Onboarding insights; `/admin` redirects to `/admin/crashes`.
+- [x] `/admin/crashes` — Crash reports (`CrashReports`): issues from web/desktop/iOS grouped by fingerprint, filters platform/status/environment, totals.
+- [x] `/admin/crashes/:issueId` — Crash issue (`CrashIssueDetail`): resolve/ignore/reopen, recent events, stack (symbolicated when `crash-symbolicate.mjs` ran), device/release context.
+- [x] `/admin/legal` (inside the admin shell) — Legal documents admin (lazy `LegalAdmin`; `platformAdmin` claim only): drafts with DE/EN Markdown editor, preview, diff, change summary, type, effective date, publish dialog, history with acceptance rate and mail status.
 - Consent gate: every signed-in route (incl. `/desktop/quick-access|capture|day|tray`) is wrapped in `LegalConsentGate`; contract `brain/plans/legal-consent-contract.md`.
 - [x] `/projects` — Projects list (SCSS refactor complete: cards/spotlight/suggestion/table/toolbars aligned to tokens + common components; company/startup projects are grouped separately with linked workstreams, and bottom lifecycle lists separate backlog/planning, paused, completed, and canceled projects)
 - [x] `/tasks` — Global tasks overview (SCSS refactor, common controls, board + modal alignment)

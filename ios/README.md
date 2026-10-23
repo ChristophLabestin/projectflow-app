@@ -24,6 +24,16 @@ xcodebuild -project ios/ProjectFlow.xcodeproj -scheme ProjectFlow \
   sign-in screen, `-pfHoldLaunch` keeps the cold-start scene on screen, `-pfShowOnboarding` (DEBUG) forces the first-sign-in welcome onboarding (name + optional photo → about → team → how → notifications) for the signed-in user.
 - `Debug`/`Release` use `App/Resources/Firebase/GoogleService-Info.plist` (project `projectflow-labestin`).
 
+### Crash reports
+
+Own system, opt-in only (`FirstRunState.crashReportsEnabled`): `App/Sources/System/CrashReporter.swift` records fatal
+signals and uncaught Objective-C exceptions to `Application Support/CrashReports` and posts them on the next launch to
+`crashIngest` (production `https://app.getprojectflow.com/api/crash`, emulator via `PF_EMULATOR_*` ports); MetricKit
+diagnostics are added on devices. Reports hold image + offset only; symbolicate on the Mac with
+`node functions/scripts/crash-symbolicate.mjs` (finds the archived dSYM by UUID; `--binary-dir .xcodebuild/Build/Products/Emulator-iphonesimulator`
+for local builds). Simulator test: launch with `-PFCrashTest` (exception) or `-PFCrashTestSignal` (trap), relaunch, then
+open `/admin/crashes`. Release = `MARKETING_VERSION`, build = `CURRENT_PROJECT_VERSION`; keep the archives.
+
 ## Layout
 
 | Path | Content |

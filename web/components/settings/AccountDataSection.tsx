@@ -6,6 +6,8 @@ import { Modal } from '../ui/Modal';
 import { useToast } from '../../context/UIContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { auth } from '../../services/firebase';
+import { isCrashReportingEnabled, setCrashReportingEnabled } from '../../services/errorReporting';
+import { SettingsSwitch } from './SettingsSwitch';
 import {
     AccountDeletionError,
     SharedWorkspaceBlocker,
@@ -22,6 +24,7 @@ export const AccountDataSection: React.FC = () => {
     const { showSuccess, showError } = useToast();
     const email = auth.currentUser?.email || '';
 
+    const [crashReports, setCrashReports] = useState(isCrashReportingEnabled);
     const [exporting, setExporting] = useState(false);
     const [dialogOpen, setDialogOpen] = useState(false);
     const [confirmEmail, setConfirmEmail] = useState('');
@@ -83,8 +86,23 @@ export const AccountDataSection: React.FC = () => {
         }
     };
 
+    const toggleCrashReports = (enabled: boolean) => {
+        setCrashReportingEnabled(enabled);
+        setCrashReports(enabled);
+    };
+
     return (
         <>
+            <section className="p-6 rounded-2xl bg-surface-card shadow-sm">
+                <div className="flex items-center justify-between gap-4">
+                    <div>
+                        <h3 className="font-bold text-main text-lg">{t('accountData.crash.title')}</h3>
+                        <p className="text-sm text-muted mt-1">{t('accountData.crash.description')}</p>
+                    </div>
+                    <SettingsSwitch checked={crashReports} onChange={toggleCrashReports} label={t('accountData.crash.label')} />
+                </div>
+            </section>
+
             <section className="p-6 rounded-2xl bg-surface-card shadow-sm">
                 <div className="flex items-center justify-between gap-4">
                     <div>

@@ -94,6 +94,11 @@
         "region": "europe-west3"
       },
       {
+        "source": "/api/crash",
+        "function": "crashIngest",
+        "region": "europe-west3"
+      },
+      {
         "source": "/api/legal",
         "function": "legalDocument",
         "region": "europe-west3"
