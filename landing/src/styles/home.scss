@@ -495,8 +495,12 @@ html:not(.is-ready) {
         top: 0;
         left: 0;
         z-index: 2;
-        will-change: transform;
         cursor: pointer;
+    }
+
+    // Promote cards to layers only while the story is on screen.
+    .story__pin.is-active .scard {
+        will-change: transform;
     }
 
     .scard__kind {
@@ -1341,4 +1345,353 @@ html:not(.is-ready) {
     &:hover {
         --btn-bg: var(--color-surface-hover);
     }
+}
+
+// ================================================================ Section heads, ticks, badges
+.sec-head {
+    display: grid;
+    gap: 14px;
+    max-width: 760px;
+    margin-bottom: clamp(28px, 4vw, 48px);
+}
+
+.sec-head--split {
+    max-width: none;
+    grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+    gap: 16px clamp(32px, 6vw, 96px);
+    align-items: end;
+
+    > div {
+        display: grid;
+        gap: 14px;
+    }
+
+    @media (max-width: 860px) {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
+.ticks {
+    display: grid;
+    gap: 9px;
+
+    li {
+        display: flex;
+        align-items: flex-start;
+        gap: 9px;
+        font-size: var(--text-sm);
+    }
+
+    .icon {
+        flex: none;
+        width: 18px;
+        height: 18px;
+        padding: 3px;
+        margin-top: 1px;
+        border-radius: var(--radius-full);
+        background: rgba(var(--status-done-rgb), 0.14);
+        color: var(--color-status-done-text);
+    }
+}
+
+.pill-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 9px;
+    margin-left: 6px;
+    border-radius: var(--radius-full);
+    background: rgba(var(--status-review-rgb), 0.16);
+    color: var(--color-status-review-text);
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.pill-badge--light {
+    background: var(--color-primary);
+    color: var(--color-primary-text);
+}
+
+.soon {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 44px;
+    color: var(--color-text-muted);
+    font-weight: 600;
+}
+
+// ================================================================ Audience
+.audience__grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 16px;
+
+    @media (max-width: 900px) {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
+.audience__item {
+    display: grid;
+    gap: 10px;
+    align-content: start;
+    padding: clamp(22px, 3vw, 32px);
+    border-radius: var(--radius-surface);
+    background: var(--color-surface-card);
+    box-shadow: var(--shadow-sm);
+    transition: transform var(--dur-2) var(--ease-out), box-shadow var(--dur-2) var(--ease-out);
+
+    &:hover {
+        transform: translate3d(0, -3px, 0);
+        box-shadow: var(--shadow-md);
+    }
+
+    h3 {
+        font-size: 1.15rem;
+        font-weight: 650;
+    }
+
+    > p {
+        color: var(--color-text-muted);
+    }
+
+    .ticks {
+        margin-top: 8px;
+    }
+}
+
+// ================================================================ Apps
+.apps__grid {
+    display: grid;
+    grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+    gap: 16px;
+
+    @media (max-width: 900px) {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
+.app-card {
+    display: grid;
+    gap: 18px;
+    align-content: start;
+    justify-items: start;
+    padding: clamp(24px, 3vw, 36px);
+    border-radius: var(--radius-surface);
+    background: var(--color-surface-card);
+    box-shadow: var(--shadow-sm);
+}
+
+.app-card__copy {
+    display: grid;
+    gap: 8px;
+
+    h3 {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 1.25rem;
+        font-weight: 650;
+    }
+
+    p {
+        color: var(--color-text-muted);
+    }
+}
+
+.shortcuts {
+    display: grid;
+    gap: 8px;
+    width: 100%;
+
+    li {
+        display: grid;
+        grid-template-columns: 112px minmax(0, 1fr);
+        align-items: center;
+        gap: 12px;
+        padding: 10px 12px;
+        border-radius: var(--radius-control);
+        background: var(--color-surface-hover-light);
+        font-size: var(--text-sm);
+        transition: background-color var(--dur-1) var(--ease-out), transform var(--dur-2) var(--ease-out);
+
+        &:hover,
+        &.is-hot {
+            background: var(--color-surface-hover);
+            transform: translate3d(4px, 0, 0);
+        }
+    }
+}
+
+.keys {
+    display: flex;
+    gap: 4px;
+}
+
+kbd {
+    display: inline-grid;
+    place-items: center;
+    min-width: 28px;
+    height: 28px;
+    padding: 0 6px;
+    border-radius: 7px;
+    background: var(--color-surface-card);
+    box-shadow: 0 1px 0 var(--color-surface-border-hover), inset 0 0 0 1px var(--color-surface-border);
+    font-family: var(--font-sans);
+    font-size: 13px;
+    font-weight: 600;
+    transition: transform var(--dur-1) var(--ease-out), box-shadow var(--dur-1) var(--ease-out);
+}
+
+.is-hot kbd {
+    transform: translate3d(0, 1px, 0);
+    box-shadow: inset 0 0 0 1px var(--color-surface-border-hover);
+}
+
+// ================================================================ Pricing
+.pricing__head {
+    display: grid;
+    justify-items: center;
+    gap: 14px;
+    max-width: 760px;
+    margin: 0 auto clamp(28px, 4vw, 48px);
+    text-align: center;
+}
+
+.billing-toggle {
+    position: relative;
+    display: inline-grid;
+    grid-template-columns: 1fr 1fr;
+    margin-top: 8px;
+    padding: 4px;
+    border-radius: var(--radius-full);
+    background: var(--color-surface-hover);
+
+    button {
+        position: relative;
+        z-index: 1;
+        min-height: 40px;
+        padding: 0 16px;
+        border: 0;
+        border-radius: var(--radius-full);
+        background: transparent;
+        font-size: var(--text-sm);
+        font-weight: 600;
+        color: var(--color-text-muted);
+        cursor: pointer;
+        white-space: nowrap;
+
+        &[aria-pressed='true'] {
+            color: var(--color-text-main);
+        }
+
+        em {
+            margin-left: 4px;
+            font-style: normal;
+            font-size: 11px;
+            color: var(--color-status-done-text);
+        }
+    }
+}
+
+.billing-toggle__thumb {
+    position: absolute;
+    top: 4px;
+    bottom: 4px;
+    left: 4px;
+    width: var(--thumb-w, calc(50% - 4px));
+    border-radius: var(--radius-full);
+    background: var(--color-surface-card);
+    box-shadow: var(--shadow-sm);
+    transform: translateX(var(--thumb-x, 100%));
+    transition: transform var(--dur-3) var(--ease-out), width var(--dur-3) var(--ease-out);
+}
+
+.plans {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 16px;
+    align-items: start;
+
+    @media (max-width: 960px) {
+        grid-template-columns: minmax(0, 1fr);
+        max-width: 520px;
+        margin-inline: auto;
+    }
+}
+
+.plan {
+    display: grid;
+    gap: 14px;
+    padding: clamp(24px, 3vw, 32px);
+    border-radius: var(--radius-surface);
+    background: var(--color-surface-card);
+    box-shadow: var(--shadow-sm);
+
+    .btn {
+        width: 100%;
+    }
+
+    .ticks {
+        margin-top: 6px;
+        padding-top: 18px;
+        border-top: 1px solid var(--color-surface-border);
+    }
+}
+
+.plan__top {
+    display: grid;
+    gap: 6px;
+
+    h3 {
+        display: flex;
+        align-items: center;
+        font-size: 1.15rem;
+        font-weight: 650;
+    }
+
+    p {
+        color: var(--color-text-muted);
+        font-size: var(--text-sm);
+    }
+}
+
+.plan__price {
+    font-size: clamp(2.4rem, 2rem + 1vw, 3rem);
+    line-height: 1;
+    letter-spacing: -0.04em;
+
+    b {
+        display: inline-block;
+        font-weight: 680;
+        font-variant-numeric: tabular-nums;
+    }
+}
+
+.plan__from {
+    font-size: 1rem;
+    letter-spacing: 0;
+    color: var(--color-text-muted);
+}
+
+.plan__unit {
+    margin-top: -6px;
+    color: var(--color-text-muted);
+    font-size: var(--text-sm);
+}
+
+.plan--featured {
+    box-shadow: var(--shadow-xl);
+
+    @media (min-width: 961px) {
+        margin-top: -12px;
+    }
+
+    .ticks .icon {
+        background: rgba(var(--status-done-rgb), 0.2);
+    }
+}
+
+.pricing__note {
+    text-align: center;
 }

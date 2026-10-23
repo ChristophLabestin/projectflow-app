@@ -51,3 +51,19 @@ for (const issue of issues) {
 }
 await db.doc('crashIssues/' + (await db.collection('crashIssues').where('type', '==', 'Error').limit(1).get()).docs[0].id).update({ status: 'resolved', resolvedRelease: '2026.10.20' });
 console.log(`Seeded ${count} crash events.`);
+
+// AI usage, MCP grants and an iOS device for the overview / user detail.
+const demo = await admin.auth().getUserByEmail('demo@projectflow.test');
+const tenantId = (await db.collectionGroup('members').where('uid', '==', demo.uid).limit(1).get()).docs[0]?.ref.parent.parent?.id || 'unknown';
+const month = new Date().toISOString().slice(0, 7);
+for (let d = 0; d < 20; d++) {
+    const day = new Date(now - d * DAY).toISOString().slice(0, 10);
+    await db.doc(`ai_usage_quotas/${demo.uid}_${day}`).set({ uid: demo.uid, day, text: (d * 7) % 23 + 2, image: d % 4, updatedAt: admin.firestore.Timestamp.now() });
+}
+await db.doc(`ai_usage_quotas/${demo.uid}_${month}`).set({ uid: demo.uid, month, tokens: 412_000, images: 18, updatedAt: admin.firestore.Timestamp.now() });
+await db.collection('ai_grants').doc('seed-grant-claude').set({ uid: demo.uid, tenantId, kind: 'oauth', clientName: 'Claude', clientDocId: 'cimd_seed', scopes: ['tasks:read', 'tasks:write'], resource: 'https://app.getprojectflow.com/mcp', revokedAt: null, createdAt: admin.firestore.Timestamp.fromMillis(now - 5 * DAY), updatedAt: admin.firestore.Timestamp.now(), lastUsedAt: admin.firestore.Timestamp.fromMillis(now - 3_600_000) });
+await db.collection('ai_grants').doc('seed-grant-pat').set({ uid: demo.uid, tenantId, kind: 'personal-token', clientName: 'CLI', tokenPrefix: 'pfp_ab12', scopes: ['projects:read'], revokedAt: null, createdAt: admin.firestore.Timestamp.fromMillis(now - 9 * DAY), updatedAt: admin.firestore.Timestamp.now(), lastUsedAt: null });
+await db.collection('ai_tokens').doc('seed-token-claude').set({ type: 'access', grantId: 'seed-grant-claude', uid: demo.uid, tenantId, scopes: ['tasks:read'], expireAt: admin.firestore.Timestamp.fromMillis(now + DAY) });
+await db.doc(`users/${demo.uid}/devices/seed-iphone`).set({ platform: 'ios', fcmToken: 'seed', appVersion: '1.0', locale: 'de_DE', timezone: 'Europe/Berlin', updatedAt: admin.firestore.Timestamp.now() });
+await db.doc('newsletter_subscribers/lead@example.com').set({ email: 'lead@example.com', status: 'active', source: 'landing_page', subscribedAt: admin.firestore.Timestamp.fromMillis(now - 2 * DAY) });
+console.log('Seeded AI usage, 2 MCP grants, 1 device, 1 subscriber.');

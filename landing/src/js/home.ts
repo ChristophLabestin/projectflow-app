@@ -238,6 +238,7 @@ function storyScene(mobile: boolean) {
         animation: tl,
         invalidateOnRefresh: true,
         onUpdate: (self) => applyState(self.progress * ACTS),
+        onToggle: (self) => stage.classList.toggle('is-active', self.isActive),
     });
     applyState(0);
 
@@ -340,6 +341,65 @@ function mcpScene() {
     });
 }
 
+/* ==================================================================== pricing + shortcuts */
+
+/** Monthly / yearly switch; works with and without motion. */
+function billingToggle() {
+    const group = $('[data-billing]');
+    if (!group) return;
+    const options = $$<HTMLButtonElement>('[data-billing-option]', group);
+    const prices = $$('[data-price]');
+    const units = $$('[data-billing-unit]');
+    const animate = prefersMotion();
+    const thumb = $('.billing-toggle__thumb', group);
+    const placeThumb = () => {
+        const active = options.find((o) => o.getAttribute('aria-pressed') === 'true');
+        if (!active || !thumb) return;
+        thumb.style.setProperty('--thumb-w', `${active.offsetWidth}px`);
+        thumb.style.setProperty('--thumb-x', `${active.offsetLeft - 4}px`);
+    };
+    placeThumb();
+    window.addEventListener('resize', placeThumb);
+    document.fonts?.ready.then(placeThumb);
+    options.forEach((btn) => btn.addEventListener('click', () => {
+        const mode = btn.dataset.billingOption as 'monthly' | 'yearly';
+        group.dataset.billing = mode;
+        options.forEach((o) => o.setAttribute('aria-pressed', String(o === btn)));
+        placeThumb();
+        units.forEach((u) => { u.textContent = u.dataset[mode] ?? ''; });
+        prices.forEach((el) => {
+            const to = Number(el.dataset[mode]);
+            const from = Number.parseFloat(el.textContent ?? '0');
+            const suffix = '\u00a0€';
+            if (!animate || from === to) { el.textContent = `${to}${suffix}`; return; }
+            const state = { v: from };
+            gsap.to(state, { v: to, duration: motion.dur3, ease: motion.ease, onUpdate: () => { el.textContent = `${Math.round(state.v)}${suffix}`; } });
+            gsap.fromTo(el, { y: -6 }, { y: 0, duration: motion.dur3, ease: motion.easeSpring });
+        });
+    }));
+}
+
+/** Desktop shortcuts light up one after another, like keys being pressed. */
+function shortcutsScene() {
+    const list = $('[data-shortcuts]');
+    if (!list) return;
+    const items = $$('li', list);
+    let i = 0;
+    let id = 0;
+    ScrollTrigger.create({
+        trigger: list, start: 'top 85%', end: 'bottom 15%',
+        onToggle: (self) => {
+            window.clearInterval(id);
+            items.forEach((it) => it.classList.remove('is-hot'));
+            if (!self.isActive) return;
+            id = window.setInterval(() => {
+                items.forEach((it, n) => it.classList.toggle('is-hot', n === i % items.length));
+                i += 1;
+            }, 1400);
+        },
+    });
+}
+
 /* ==================================================================== small things */
 
 function spotlights() {
@@ -371,10 +431,13 @@ if (prefersMotion()) {
     mm.add('(min-width: 1000px)', () => storyScene(false));
     mm.add('(max-width: 999px)', () => storyScene(true));
     mcpScene();
+    shortcutsScene();
     spotlights();
     reveals();
     document.fonts?.ready.then(() => ScrollTrigger.refresh());
 }
+
+billingToggle();
 
 // Dev-only hook so scenes can be verified in a hidden/background preview (no rAF there).
 if (import.meta.env.DEV) Object.assign(window, { __motion: { gsap, ScrollTrigger } });

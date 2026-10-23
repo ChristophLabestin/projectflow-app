@@ -176,6 +176,9 @@ service cloud.firestore {
     match /admin_audit/{entryId} {
       allow read, write: if false;
     }
+    match /admin_config/{docId} {
+      allow read, write: if false;
+    }
 
     // Crash reports (web + iOS, opt-in): written only by the crashIngest function, read and triaged only
     // through adminApi in the admin console (admin/) — no client access, platform admins included.

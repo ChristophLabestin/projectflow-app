@@ -26,6 +26,10 @@ import { AI_TOOLS, findTool, parseToolArgs, serializeToolResult, toOpenAiTools, 
 import { callApi, compact, summarizeProject } from './ai-tools/api';
 
 const REGION = 'europe-west3';
+/** Emulator: any local dev port may call (dev-e2e runs on custom ports). */
+const CORS_ORIGINS: Array<string | RegExp> = process.env.FUNCTIONS_EMULATOR === 'true'
+    ? [...ALLOWED_ORIGINS, /^http:\/\/(localhost|127\.0\.0\.1):\d+$/]
+    : ALLOWED_ORIGINS;
 const MAX_TOOL_ROUNDS = 5;
 
 /** Rollout default when a workspace has not set `inAppAi` (env `AI_IN_APP_DEFAULT=true` opens it for all). */
@@ -147,7 +151,7 @@ const CAPABILITIES: Record<string, { credit: CreditCapability; tier: ModelTier }
 
 export const aiAssist = onRequest({
     region: REGION,
-    cors: ALLOWED_ORIGINS,
+    cors: CORS_ORIGINS,
     secrets: ['OPENAI_API_KEY'],
     memory: '512MiB',
     timeoutSeconds: 120,

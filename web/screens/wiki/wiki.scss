@@ -8,7 +8,11 @@
 }
 
 .wiki {
-    --wiki-sticky-top: 76px;
+    // Sticky `top` is measured inside the padded `main.app-main-scroll`: subtract its padding so the
+    // tree and page bar sit right under the top-bar pills (pattern: --workstream-command-sticky-top).
+    --wiki-sticky-gap: 1.375rem; // clears the top-bar pills (they end ~72px)
+    --wiki-sticky-visual: calc(var(--topbar-sticky-inset, 3.625rem) + var(--wiki-sticky-gap));
+    --wiki-sticky-top: calc(var(--wiki-sticky-visual) - var(--app-main-scroll-padding-top, calc(var(--topbar-overlay-clearance, 5rem) + 1rem)));
     --wiki-nav-width: 264px;
     --wiki-read-width: 760px;
     display: grid;
@@ -18,7 +22,7 @@
     width: 100%;
     max-width: 1480px;
     margin: 0 auto;
-    min-height: calc(100vh - var(--wiki-sticky-top) - 24px);
+    min-height: calc(100vh - var(--app-main-scroll-padding-top, 6rem) - 24px);
 
     @container (max-width: 860px) {
         grid-template-columns: minmax(0, 1fr);
@@ -111,7 +115,7 @@
     top: var(--wiki-sticky-top);
     display: flex;
     flex-direction: column;
-    max-height: calc(100vh - var(--wiki-sticky-top) - 16px);
+    max-height: calc(100vh - var(--wiki-sticky-visual) - 16px);
     padding: 10px;
     border-radius: var(--radius-card);
     background: var(--color-surface-card);
@@ -1460,7 +1464,7 @@
         font-weight: 750;
         letter-spacing: -0.01em;
         line-height: 1.25;
-        scroll-margin-top: calc(var(--wiki-sticky-top) + 64px);
+        scroll-margin-top: calc(var(--wiki-sticky-visual) + 64px);
     }
 
     h1 { font-size: 28px; }

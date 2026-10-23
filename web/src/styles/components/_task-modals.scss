@@ -207,32 +207,6 @@
         .task-create__description-input .text-area {
             min-height: 88px;
         }
-
-        .generate-btn {
-            margin-top: 0.5rem;
-            display: inline-flex;
-            align-items: center;
-            gap: 0.35rem;
-            font-size: 0.75rem;
-            color: var(--color-text-muted);
-            transition: color var(--transition-fast);
-            border: 0;
-            background: transparent;
-            cursor: pointer;
-
-            &:hover {
-                color: var(--color-primary);
-            }
-
-            &:disabled {
-                opacity: 0.5;
-                cursor: not-allowed;
-            }
-        }
-
-        .generate-icon {
-            font-size: 0.9rem;
-        }
     }
 
     .subtasks-section,

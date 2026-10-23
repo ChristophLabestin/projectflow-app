@@ -35,9 +35,9 @@ export async function adminApi<T = any>(action: string, params?: unknown): Promi
         const result = await call({ action, params: params ?? {}, sessionId: getSessionId() });
         return result.data as T;
     } catch (error: any) {
-        const reason = (error?.details?.reason || undefined) as GateReason | undefined;
         const code = String(error?.code || 'unknown').replace('functions/', '');
-        if (reason && action !== 'session.start' && ['session-expired', 'session-missing', 'revoked', 'not-admin', 'not-allowlisted', 'mfa-required'].includes(reason)) {
+        const reason = (error?.details?.reason || (code === 'unauthenticated' ? 'unauthenticated' : undefined)) as GateReason | undefined;
+        if (reason && action !== 'session.start' && ['unauthenticated', 'session-expired', 'session-missing', 'revoked', 'not-admin', 'not-allowlisted', 'mfa-required'].includes(reason)) {
             setSessionId(null);
             sessionListeners.forEach((listener) => listener(reason));
         }

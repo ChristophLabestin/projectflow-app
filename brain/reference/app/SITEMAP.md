@@ -129,7 +129,7 @@ Social module and Marketing dashboard/ads/email/recipients were removed 2026-10-
 
 ## Landing (getprojectflow.com, separate app in `landing/`)
 Static pages rendered at build time from `landing/src/templates/pages.ts` (Firebase site `getprojectflow`, cleanUrls):
-- `/` (DE) · `/en` (EN) — home: pinned story stage (6 acts: noise → inbox → board → focus → done & team → everywhere/app frame), MCP scene, features grid, FAQ, CTA
+- `/` (DE) · `/en` (EN) — home: pinned story stage (6 acts), Für wen (#teams), Apps (#apps), KI & MCP (#mcp), Funktionen (#more), Preise (#pricing, planned prices – see brain/plans/pricing-strategy.md), FAQ, CTA
 - Legal: no texts in the landing. `LEGAL_SOURCE` in `landing/src/templates/pages.ts`: `app-link` links to `app.getprojectflow.com/legal/<type>`; `api` (current since 2026-10-23) builds `/impressum` · `/en/imprint`, `/datenschutz` · `/en/privacy`, `/agb` · `/en/terms` as shells that load `GET /api/legal/<type>?lang=` (`landing/src/js/legal.ts`). Source texts: `legal/<type>.<lang>.md` (imported as drafts by `functions/scripts/import-legal-docs.mjs`)
 - `/docs/mcp` · `/en/docs/mcp` — public MCP guide (`landing/src/content/docs-mcp.ts`, template `docs.ts`); server URL constant `MCP_URL` in `landing/src/templates/pages.ts`. Linked from nav, footer and the AI section. Keep in sync with `brain/operations/mcp-install-guide.md` and `web/components/settings/aiClients.ts`.
 - `404.html` — bilingual not-found
@@ -186,7 +186,11 @@ CTAs point to the app: `/register`, `/login`, `/download`. Concept: `brain/plans
 Separate Vite/React app, hosting site `projectflow-admin` (later `admin.getprojectflow.com`). Platform admin only;
 auth chain and modules: `brain/plans/admin-console-concept.md`. All data via the callable `adminApi`. Routes (`admin/src/App.tsx`):
 
-- `/` → `/crashes`
+- `/` — overview: users (total, DAU/WAU/MAU, signups), workspaces, projects/tasks, crashes, AI cost estimate, MCP connections, terms acceptance, client versions; 7/30/90 days
+- `/users` (`?uid=` opens the drawer) — all Auth accounts; drawer: account, workspaces, devices/passkeys, AI usage + connections, consent, activity; actions: data export, revoke sessions, lock/unlock (confirm + audit)
+- `/workspaces` (`?id=`) — all tenants; drawer: members, projects, AI policy (editable), machine writes, MCP grants, API tokens, activity
+- `/ai` — AI & MCP: usage/cost per user and workspace, all grants (disconnect), OAuth clients, API/MCP request log
+- `/system` — Cloud Scheduler jobs, functions, hosting releases, AI pricing for the estimate, AI limits
 - `/crashes`, `/crashes/:id` — crash issues (trend, platform/release/status filter, stack, events, releases/devices, triage)
 - `/legal`, `/legal/:type` — legal documents (overview with acceptance rate + mail status; draft editor DE/EN, diff to current version, publish)
 - `/onboarding` — onboarding survey aggregates

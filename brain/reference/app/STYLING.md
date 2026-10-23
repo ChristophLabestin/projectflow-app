@@ -454,6 +454,7 @@ Treat these as v1 defaults before creating one-off versions in feature screens; 
   `repeat(auto-fill|auto-fit, minmax(min(100%, <card>px), 1fr))` instead of viewport breakpoints
   (`lg:grid-cols-3`, `@media (max-width: 1024px)`), because the viewport width does not include the sidebar or an open
   detail panel (UI sweep 2026-10-23: Team, Finance cockpit).
+- **Pages scroll in `app-main-scroll`:** screens never add their own full-height scroll container (`height: 100%; overflow-y: auto`) or top padding; content scrolls behind the overlay top bar like every other page (full-width routes add side padding only). Check and details: GOTCHAS 2026-10-23 "pages must scroll in app-main-scroll".
 - **Buttons never wrap:** `.btn` is `white-space: nowrap; flex-shrink: 0; max-width: 100%` (fixed heights). Rows that
   hold a description plus a button use `flex-wrap` so the button drops below the text on narrow widths.
 - **Tailwind color utilities:** use the token aliases (`text-main/muted/subtle`, `bg-surface-card/hover`,

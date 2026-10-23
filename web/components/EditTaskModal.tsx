@@ -5,6 +5,7 @@ import { Task } from '../types';
 import { Button } from './ui/Button';
 import { Input } from './ui/Input';
 import { Textarea } from './ui/Textarea';
+import { AiTextAssist } from './ai/AiTextAssist';
 import { MultiAssigneeSelector } from './MultiAssigneeSelector';
 import { updateTaskFields } from '../services/domain/tasksService';
 import { useLanguage } from '../context/LanguageContext';
@@ -85,13 +86,15 @@ export const EditTaskModal: React.FC<EditTaskModalProps> = ({ task, isOpen, onCl
 
                         <div className="field-wrapper">
                             <label>{t('editTaskModal.fields.description')}</label>
-                            <Textarea
-                                value={description}
-                                onChange={(e) => setDescription(e.target.value)}
-                                placeholder={t('editTaskModal.fields.descriptionPlaceholder')}
-                                rows={8}
-                                className="min-h-[200px]"
-                            />
+                            <AiTextAssist value={description} onApply={setDescription} field="description" itemTitle={title}>
+                                <Textarea
+                                    value={description}
+                                    onChange={(e) => setDescription(e.target.value)}
+                                    placeholder={t('editTaskModal.fields.descriptionPlaceholder')}
+                                    rows={8}
+                                    className="min-h-[200px]"
+                                />
+                            </AiTextAssist>
                         </div>
 
                         <div className="field-wrapper">
