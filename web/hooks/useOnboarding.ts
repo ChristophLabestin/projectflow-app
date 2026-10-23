@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 
 import { useAuth } from '../context/AuthContext';
-import { readOnboarding, writeOnboarding, type OnboardingState } from '../services/domain/userPrivateData';
+import { readOnboarding, writeOnboarding, writeOnboardingSurvey, type OnboardingState } from '../services/domain/userPrivateData';
+import type { OnboardingSurvey } from '../utils/onboardingSurvey';
 
 // Shared across the welcome dialog and the dashboard checklist so both react to
 // the same update without refetching.
@@ -41,5 +42,11 @@ export const useOnboarding = () => {
         await writeOnboarding(uid, patch).catch((error) => console.warn('Could not save onboarding state', error));
     }, [uid]);
 
-    return { onboarding: state, loaded, update };
+    const saveSurvey = useCallback(async (survey: Omit<OnboardingSurvey, 'platform' | 'answeredAt'>) => {
+        if (!uid) return;
+        publish(uid, { ...(cache?.state || {}), survey: { ...survey, platform: 'web' } });
+        await writeOnboardingSurvey(uid, survey).catch((error) => console.warn('Could not save onboarding survey', error));
+    }, [uid]);
+
+    return { onboarding: state, loaded, update, saveSurvey };
 };

@@ -57,6 +57,7 @@ const ProjectInvoices = React.lazy(() => import('./screens/ProjectInvoices').the
 const ProjectEffort = React.lazy(() => import('./screens/ProjectEffort').then((module) => ({ default: module.ProjectEffort })));
 const ProjectActivity = React.lazy(() => import('./screens/ProjectActivity').then((module) => ({ default: module.ProjectActivity })));
 const ProjectMilestones = React.lazy(() => import('./screens/ProjectMilestones').then((module) => ({ default: module.ProjectMilestones })));
+const OnboardingInsights = React.lazy(() => import('./screens/OnboardingInsights').then((module) => ({ default: module.OnboardingInsights })));
 const MarketingLayout = React.lazy(() => import('./screens/marketing/MarketingLayout').then((module) => ({ default: module.MarketingLayout })));
 const MarketingSettings = React.lazy(() => import('./screens/marketing/MarketingSettings').then((module) => ({ default: module.MarketingSettings })));
 const BlogList = React.lazy(() => import('./screens/marketing/BlogList').then((module) => ({ default: module.BlogList })));
@@ -215,6 +216,7 @@ export const AppRouter = () => {
                     <Route element={<AuthenticatedLayout />}>
                         <Route path="/" element={<Dashboard />} />
                         <Route path="/notifications" element={<Notifications />} />
+                        <Route path="/insights/onboarding" element={withRouteSuspense(<OnboardingInsights />)} />
                         <Route path="/projects" element={<ProjectsList />} />
                         <Route path="/tasks" element={<Tasks />} />
                         <Route path="/calendar" element={<Calendar />} />

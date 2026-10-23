@@ -42,6 +42,7 @@
 		240F1BD55EB301BBBE2661B4 /* ProjectFlowShare.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 830BDE5F5C6CAD9936D3FC4E /* ProjectFlowShare.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		27868D6BD87F5688E89D652E /* WorkItemActions.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADA588D640F94EA3DE37F4AD /* WorkItemActions.swift */; };
 		288C81A6BED0634E26AAE076 /* PersonalTaskMove.swift in Sources */ = {isa = PBXBuildFile; fileRef = 66B2397A7A74AC093FA14641 /* PersonalTaskMove.swift */; };
+		2897BCBC3337D6FEDF07C767 /* OnboardingSurvey.swift in Sources */ = {isa = PBXBuildFile; fileRef = 244E3BBFC7644105E695F68C /* OnboardingSurvey.swift */; };
 		2CC1D968E42F515A2E740B79 /* SystemStrings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 288A008F6C9B89C7BC73E1BD /* SystemStrings.swift */; };
 		2FD9DA18082C9D01CB4078DB /* ShareComposerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9BC753BC1A7E9C4F19B10416 /* ShareComposerView.swift */; };
 		3020E0F216B29DEBC1341C27 /* InitiativeEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 292969C5EA9AE3BBB071390A /* InitiativeEditor.swift */; };
@@ -252,6 +253,7 @@
 		1C2AC12C9A6F4C14DFB30D19 /* InboxLogic.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InboxLogic.swift; sourceTree = "<group>"; };
 		1FB343B95C66C528DD5FF0EF /* ProjectFlowWidgets.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = ProjectFlowWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		21DA1DE587E9530C30A7ECB4 /* ProjectsScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectsScreen.swift; sourceTree = "<group>"; };
+		244E3BBFC7644105E695F68C /* OnboardingSurvey.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingSurvey.swift; sourceTree = "<group>"; };
 		24A409679F9A7291F2796316 /* WorkStrings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkStrings.swift; sourceTree = "<group>"; };
 		262029F9B685E488D00A5BCF /* AccountDeletion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountDeletion.swift; sourceTree = "<group>"; };
 		2676FD47E57BFFD0F7B1DA3E /* TodayStrings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TodayStrings.swift; sourceTree = "<group>"; };
@@ -508,6 +510,7 @@
 				3D4A9CFEB27D4BFBBF394733 /* InviteFlow.swift */,
 				A6F21AD5892131A8CD9F3610 /* OnboardingIntro.swift */,
 				9F2C55D6DEF452B4EC3875A3 /* OnboardingStrings.swift */,
+				244E3BBFC7644105E695F68C /* OnboardingSurvey.swift */,
 				AC8B43F37E72C6DE915F853F /* WelcomeOnboardingView.swift */,
 			);
 			path = Onboarding;
@@ -1168,6 +1171,7 @@
 				55D2121BDFCEB4EFCE077EDE /* NotificationSettingsScreen.swift in Sources */,
 				488865E417383801EFFE3558 /* OnboardingIntro.swift in Sources */,
 				885ED3A7C258B98122C8DC28 /* OnboardingStrings.swift in Sources */,
+				2897BCBC3337D6FEDF07C767 /* OnboardingSurvey.swift in Sources */,
 				86A2CEF6594776D3D8658103 /* PFIntents.swift in Sources */,
 				44BD9609C2C81CE8697C6689 /* PasskeyRegistration.swift in Sources */,
 				288C81A6BED0634E26AAE076 /* PersonalTaskMove.swift in Sources */,

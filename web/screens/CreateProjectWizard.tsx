@@ -17,6 +17,8 @@ import { DatePicker } from '../components/common/DateTime/DatePicker';
 import { Select } from '../components/common/Select/Select';
 import { type Priority } from '../components/common/PrioritySelect/PrioritySelect';
 import { Card } from '../components/common/Card/Card';
+import { useOnboarding } from '../hooks/useOnboarding';
+import { suggestTemplateId } from '../utils/onboardingSurvey';
 import { CompanyProjectRole, Project, ProjectModule, StartupJurisdictionTemplateId, StartupTrackId, WorkspaceGroup, ProjectCadence, ProjectDateConfidence, ProjectOperatingMode, ProjectStatus, ProjectTemplateId, ProjectType } from '../types';
 import {
     PROJECT_TEMPLATE_DEFINITIONS,
@@ -218,6 +220,18 @@ export const CreateProjectWizard: React.FC<CreateProjectWizardProps> = ({ onClos
         if (initialTemplateId !== 'blank') handleTemplateSelect(initialTemplateId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
+
+    // No explicit template: preselect the one suggested by the onboarding use cases (once).
+    const { onboarding } = useOnboarding();
+    const suggestionApplied = useRef(initialTemplateId !== 'blank');
+    useEffect(() => {
+        if (suggestionApplied.current) return;
+        const suggested = suggestTemplateId(onboarding?.survey?.useCases);
+        if (!suggested) return;
+        suggestionApplied.current = true;
+        if (suggested !== 'blank') handleTemplateSelect(suggested);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [onboarding?.survey?.useCases]);
 
     const handleNext = () => {
         const currentTemplate = getProjectTemplateDefinition(templateId);

@@ -91,6 +91,20 @@
   ],
   "fieldOverrides": [
     {
+      "collectionGroup": "private",
+      "fieldPath": "survey.answeredAt",
+      "indexes": [
+        {
+          "order": "ASCENDING",
+          "queryScope": "COLLECTION"
+        },
+        {
+          "order": "ASCENDING",
+          "queryScope": "COLLECTION_GROUP"
+        }
+      ]
+    },
+    {
       "collectionGroup": "tasks",
       "fieldPath": "nextReminderAt",
       "indexes": [

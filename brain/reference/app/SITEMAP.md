@@ -33,6 +33,7 @@ These routes are rendered inside the authenticated app shell/layout.
 
 - [x] Refactored SCSS | `/` | Main dashboard command center (quiet date/greeting with persisted current focus, resume/focus action, then scroll-driven stages for today plan and workspace health/momentum)
 - [x] `/notifications` — Notifications center (SCSS refactor, ConfirmModal, web push diagnostics and registration)
+- [x] `/insights/onboarding` — Onboarding survey statistics (lazy; only with custom claim `platformAdmin`, else NotFound; data from callable `getOnboardingStats`; grant via `functions/scripts/grant-platform-admin.mjs <email>`)
 - [x] `/projects` — Projects list (SCSS refactor complete: cards/spotlight/suggestion/table/toolbars aligned to tokens + common components; company/startup projects are grouped separately with linked workstreams, and bottom lifecycle lists separate backlog/planning, paused, completed, and canceled projects)
 - [x] `/tasks` — Global tasks overview (SCSS refactor, common controls, board + modal alignment)
 - [x] `/calendar` — Global calendar view (SCSS refactor, common components, schedule modal + tooltip alignment)

@@ -2,6 +2,7 @@ import { deleteField, doc, getDoc, increment, serverTimestamp, setDoc } from 'fi
 
 import { db } from '../firebase';
 import type { AIUsage } from '../../types';
+import type { OnboardingSurvey } from '../../utils/onboardingSurvey';
 
 /**
  * Owner-only user data. `users/{uid}` is readable by every signed-in user (for
@@ -83,6 +84,8 @@ export const writeLastTenantId = (userId: string, tenantId: string) =>
 export type OnboardingState = {
     welcomePending?: boolean;
     checklistDismissed?: boolean;
+    /** Optional statistics answers (shared contract with iOS); written once when the survey ends. */
+    survey?: OnboardingSurvey;
 };
 
 const onboardingDocRef = (userId: string) => doc(db, 'users', userId, 'private', 'onboarding');
@@ -94,3 +97,10 @@ export const readOnboarding = async (userId: string): Promise<OnboardingState | 
 
 export const writeOnboarding = (userId: string, patch: OnboardingState) =>
     setDoc(onboardingDocRef(userId), { ...patch, updatedAt: serverTimestamp() }, { merge: true });
+
+export const writeOnboardingSurvey = (userId: string, survey: Omit<OnboardingSurvey, 'platform' | 'answeredAt'>) =>
+    setDoc(
+        onboardingDocRef(userId),
+        { survey: { ...survey, platform: 'web', answeredAt: serverTimestamp() }, updatedAt: serverTimestamp() },
+        { merge: true }
+    );

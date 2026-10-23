@@ -167,6 +167,7 @@ struct ProjectCreateSheet: View {
     @Environment(AppModel.self) private var model
     @Environment(PFPresenter.self) private var presenter
     @State private var input = NewProjectInput()
+    @State private var suggestedApplied = false
     @State private var step = Step.basics
     @State private var isCreating = false
     @State private var openDate: DateField?
@@ -189,6 +190,15 @@ struct ProjectCreateSheet: View {
         }
         .padding(.bottom, PFSpace.l)
         .animation(PFMotion.respecting(PFMotion.snappy), value: step)
+        .onAppear {
+            // Preselect the template the onboarding survey suggested (derived, nothing extra stored).
+            guard !suggestedApplied else { return }
+            suggestedApplied = true
+            if let id = OnboardingSurvey.suggestedTemplateId(useCases: model.session?.surveyUseCases ?? []),
+               let template = ProjectTemplate.all.first(where: { $0.id == id }) {
+                input.apply(template)
+            }
+        }
         // Pinned by the sheet below the content, so the keyboard never hides it.
         .pfSheetFooter([step.rawValue, trimmedTitle.isEmpty ? 1 : 0, isCreating ? 1 : 0]) { footer }
     }

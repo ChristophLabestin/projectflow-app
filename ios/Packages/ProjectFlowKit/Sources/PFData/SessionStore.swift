@@ -28,6 +28,8 @@ public final class SessionStore {
     public private(set) var state: State = .idle
     /// `users/{uid}/private/onboarding.welcomePending`: the first-sign-in onboarding is still open (shared with web).
     public private(set) var welcomePending = false
+    /// `onboarding.survey.useCases` (shared survey, web + iOS); drives the suggested project template.
+    public private(set) var surveyUseCases: [String] = []
     private let listeners = ListenerBag()
     private let defaults: UserDefaults
 
@@ -86,9 +88,23 @@ public final class SessionStore {
             MainActor.assumeIsolated {
                 guard let self else { return }
                 self.welcomePending = (snapshot?.data()?["welcomePending"] as? Bool) == true
+                self.surveyUseCases = ((snapshot?.data()?["survey"] as? [String: Any])?["useCases"] as? [String]) ?? []
             }
         }
         listeners.set("onboarding", registration)
+    }
+
+    /// Stores the onboarding survey once (all fields optional; skipped answers stay absent). Shared contract with web.
+    public func saveSurvey(role: String?, useCases: [String], teamSize: String?, industry: String?, source: String?, previousTool: String?) async {
+        var survey: [String: Any] = ["platform": "ios", "answeredAt": FieldValue.serverTimestamp()]
+        if let role { survey["role"] = role }
+        if !useCases.isEmpty { survey["useCases"] = useCases }
+        if let teamSize { survey["teamSize"] = teamSize }
+        if let industry { survey["industry"] = industry }
+        if let source { survey["source"] = source }
+        if let previousTool { survey["previousTool"] = previousTool }
+        surveyUseCases = useCases
+        try? await Self.onboardingDoc(uid).setData(["survey": survey, "updatedAt": FieldValue.serverTimestamp()], merge: true)
     }
 
     /// Ends the onboarding for good on every platform (web `update({ welcomePending: false })`).

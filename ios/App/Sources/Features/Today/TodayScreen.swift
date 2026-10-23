@@ -175,6 +175,7 @@ struct TodayBand: View {
 private struct TodayFirstRun: View {
     let now: Date
     @Environment(AppModel.self) private var model
+    @Environment(PFPresenter.self) private var presenter
 
     var body: some View {
         VStack(alignment: .leading, spacing: PFSpace.l) {
@@ -184,7 +185,7 @@ private struct TodayFirstRun: View {
                 actionTitle: L10n.t("today.empty.capture")
             ) { CaptureLauncher.present(model: model) }
             PFButton(L10n.t("today.empty.project"), systemImage: "square.stack.3d.up", kind: .ghost, fullWidth: true) {
-                model.router.select(.projects)
+                presenter.present(detents: [.large]) { ProjectCreateSheet() }
             }
         }
         .pfAppear(0)

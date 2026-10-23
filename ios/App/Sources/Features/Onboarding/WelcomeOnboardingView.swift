@@ -3,12 +3,11 @@ import PFData
 import PFDesign
 import PFModel
 
-/// Full-screen first-sign-in onboarding: name → workspace (owners only) → notifications.
+/// Full-screen first-sign-in onboarding: name → about you → team (+ workspace for owners) → how you got here → notifications.
 /// Shown while `users/{uid}/private/onboarding.welcomePending` is true (web shows the same flow);
 /// finishing it on any platform clears the flag everywhere.
 struct WelcomeOnboardingView: View {
-    private enum Step: Int { case name, workspace, notifications }
-    private enum Mode: Hashable { case solo, team }
+    private enum Step: Int { case name, about, team, how, notifications }
 
     @Environment(AppModel.self) private var model
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -17,7 +16,12 @@ struct WelcomeOnboardingView: View {
     @State private var markCenter: CGPoint?
     @State private var name = ""
     @State private var workspaceName = ""
-    @State private var mode: Mode = .solo
+    @State private var role: String?
+    @State private var useCases: Set<String> = []
+    @State private var teamSize: String?
+    @State private var industry: String?
+    @State private var source: String?
+    @State private var previousTool: String?
     @State private var emails = ""
     @State private var isBusy = false
     @State private var error: String?
@@ -25,7 +29,9 @@ struct WelcomeOnboardingView: View {
     @State private var goingBack = false
 
     private var isOwner: Bool { model.session?.role == .owner }
-    private var steps: [Step] { isOwner ? [.name, .workspace, .notifications] : [.name, .notifications] }
+    private var steps: [Step] { [.name, .about, .team, .how, .notifications] }
+    private var invitesEnabled: Bool { isOwner && teamSize != nil && teamSize != "solo" }
+    private var isSurveyStep: Bool { step == .about || step == .team || step == .how }
     private var stepIndex: Int { steps.firstIndex(of: step) ?? 0 }
     private var parsedEmails: [String] {
         emails.split(whereSeparator: { ", ;\n\t".contains($0) }).map { $0.lowercased() }
@@ -109,6 +115,10 @@ struct WelcomeOnboardingView: View {
             PFButton(primaryTitle, systemImage: step == .notifications ? "bell.badge" : "arrow.right", size: .large, fullWidth: true) { primaryAction() }
                 .disabled(isBusy || !canContinue)
                 .overlay(alignment: .trailing) { if isBusy { ProgressSpinner().padding(.trailing, 20) } }
+            if isSurveyStep {
+                PFButton(L10n.t("survey.skip"), kind: .ghost, size: .medium, fullWidth: true) { skip() }
+                    .disabled(isBusy)
+            }
             if step == .notifications {
                 PFButton(L10n.t("welcome.notify.skip"), kind: .ghost, size: .medium, fullWidth: true) { finish() }
                     .disabled(isBusy)
@@ -125,7 +135,9 @@ struct WelcomeOnboardingView: View {
     @ViewBuilder private var content: some View {
         switch step {
         case .name: nameStep
-        case .workspace: workspaceStep
+        case .about: aboutStep
+        case .team: teamStep
+        case .how: howStep
         case .notifications: notificationsStep
         }
     }
@@ -153,16 +165,47 @@ struct WelcomeOnboardingView: View {
         }
     }
 
-    private var workspaceStep: some View {
+    private func options(_ group: String, _ ids: [String]) -> [ChoiceChips.Option] {
+        ids.map { ChoiceChips.Option(id: $0, title: L10n.t("survey.\(group).\($0)")) }
+    }
+
+    private func question(_ label: String, @ViewBuilder _ chips: () -> some View) -> some View {
+        VStack(alignment: .leading, spacing: PFSpace.s) {
+            PFEyebrow(label)
+            chips()
+        }
+    }
+
+    private func single(_ group: String, _ ids: [String], _ value: Binding<String?>) -> some View {
+        ChoiceChips(options: options(group, ids), selection: Set([value.wrappedValue].compactMap { $0 })) { id in
+            value.wrappedValue = value.wrappedValue == id ? nil : id
+        }
+    }
+
+    private var aboutStep: some View {
         VStack(alignment: .leading, spacing: PFSpace.xl) {
-            heading(L10n.t("welcome.workspace.title"), L10n.t("welcome.workspace.subtitle"))
-            PFTextField(L10n.t("welcome.workspace.name"), text: $workspaceName, systemImage: "building.2")
-            VStack(alignment: .leading, spacing: PFSpace.xs) {
-                PFSegmented([(Mode.solo, L10n.t("welcome.mode.solo")), (Mode.team, L10n.t("welcome.mode.team"))], selection: $mode)
-                Text(mode == .solo ? L10n.t("welcome.mode.soloHint") : L10n.t("welcome.mode.teamHint"))
-                    .pfText(.meta).foregroundStyle(PFColor.textMuted)
+            heading(L10n.t("survey.about.title"), L10n.t("survey.about.subtitle"))
+            question(L10n.t("survey.role.label")) { single("role", OnboardingSurvey.roles, $role) }
+            question(L10n.t("survey.useCases.label")) {
+                ChoiceChips(options: options("useCases", OnboardingSurvey.useCases), selection: useCases) { id in
+                    if useCases.contains(id) { useCases.remove(id) } else { useCases.insert(id) }
+                }
             }
-            if mode == .team {
+        }
+    }
+
+    private var teamStep: some View {
+        VStack(alignment: .leading, spacing: PFSpace.xl) {
+            heading(L10n.t("survey.team.title"), L10n.t("survey.team.subtitle"))
+            question(L10n.t("survey.teamSize.label")) { single("teamSize", OnboardingSurvey.teamSizes, $teamSize) }
+            question(L10n.t("survey.industry.label")) { single("industry", OnboardingSurvey.industries, $industry) }
+            if isOwner {
+                VStack(alignment: .leading, spacing: PFSpace.xs) {
+                    PFEyebrow(L10n.t("welcome.workspace.name"))
+                    PFTextField(L10n.t("welcome.workspace.name"), text: $workspaceName, systemImage: "building.2")
+                }
+            }
+            if invitesEnabled {
                 VStack(alignment: .leading, spacing: PFSpace.xs) {
                     PFEyebrow(L10n.t("welcome.invite.label"))
                     PFTextField(L10n.t("welcome.invite.placeholder"), text: $emails, systemImage: "envelope", axis: .vertical)
@@ -174,7 +217,15 @@ struct WelcomeOnboardingView: View {
                 .transition(.opacity)
             }
         }
-        .animation(reduceMotion ? nil : .easeOut(duration: 0.2), value: mode)
+        .animation(reduceMotion ? nil : .easeOut(duration: 0.2), value: invitesEnabled)
+    }
+
+    private var howStep: some View {
+        VStack(alignment: .leading, spacing: PFSpace.xl) {
+            heading(L10n.t("survey.how.title"), L10n.t("survey.how.subtitle"))
+            question(L10n.t("survey.source.label")) { single("source", OnboardingSurvey.sources, $source) }
+            question(L10n.t("survey.previousTool.label")) { single("previousTool", OnboardingSurvey.previousTools, $previousTool) }
+        }
     }
 
     private var notificationsStep: some View {
@@ -186,6 +237,10 @@ struct WelcomeOnboardingView: View {
                 .background(PFColor.card, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
                 .pfElevation(.card, radius: 22)
             heading(L10n.t("welcome.notify.title"), L10n.t("welcome.notify.subtitle"))
+            if let id = OnboardingSurvey.suggestedTemplateId(useCases: Array(useCases)), let key = OnboardingSurvey.templateLabelKey(id) {
+                Label(L10n.t("welcome.notify.template", ["name": L10n.t(key)]), systemImage: "square.stack.3d.up")
+                    .pfText(.meta).foregroundStyle(PFColor.textMuted)
+            }
         }
     }
 
@@ -193,8 +248,8 @@ struct WelcomeOnboardingView: View {
 
     private var primaryTitle: String {
         switch step {
-        case .name: L10n.t("onboarding.next")
-        case .workspace: mode == .team && !parsedEmails.isEmpty ? L10n.t("welcome.invite.send") : L10n.t("onboarding.next")
+        case .team: invitesEnabled && !parsedEmails.isEmpty ? L10n.t("welcome.invite.send") : L10n.t("onboarding.next")
+        case .name, .about, .how: L10n.t("onboarding.next")
         case .notifications: L10n.t("welcome.notify.allow")
         }
     }
@@ -202,8 +257,8 @@ struct WelcomeOnboardingView: View {
     private var canContinue: Bool {
         switch step {
         case .name: !name.trimmingCharacters(in: .whitespaces).isEmpty
-        case .workspace: !workspaceName.trimmingCharacters(in: .whitespaces).isEmpty
-        case .notifications: true
+        case .team: !isOwner || !workspaceName.trimmingCharacters(in: .whitespaces).isEmpty
+        case .about, .how, .notifications: true
         }
     }
 
@@ -218,7 +273,11 @@ struct WelcomeOnboardingView: View {
     private func primaryAction() {
         switch step {
         case .name: saveName()
-        case .workspace: saveWorkspace()
+        case .about: go(back: false)
+        case .team: saveWorkspace()
+        case .how:
+            saveSurvey()
+            go(back: false)
         case .notifications:
             isBusy = true
             Task {
@@ -247,9 +306,29 @@ struct WelcomeOnboardingView: View {
         }
     }
 
+    /// Skips the current survey screen: its answers stay absent, nothing else is saved.
+    private func skip() {
+        switch step {
+        case .about: role = nil; useCases = []
+        case .team: teamSize = nil; industry = nil
+        case .how: source = nil; previousTool = nil; saveSurvey()
+        default: break
+        }
+        go(back: false)
+    }
+
+    /// Written once when the last survey screen is left (also when everything was skipped).
+    private func saveSurvey() {
+        let ordered = OnboardingSurvey.useCases.filter(useCases.contains)
+        Task {
+            await model.session?.saveSurvey(role: role, useCases: ordered, teamSize: teamSize, industry: industry,
+                                            source: source, previousTool: previousTool)
+        }
+    }
+
     private func saveWorkspace() {
-        guard let session = model.session, let active = session.activeWorkspace else { return }
-        if mode == .team, !invalidEmails.isEmpty {
+        guard isOwner, let session = model.session, let active = session.activeWorkspace else { go(back: false); return }
+        if invitesEnabled, !invalidEmails.isEmpty {
             error = L10n.t("welcome.invite.invalid", ["emails": invalidEmails.joined(separator: ", ")])
             return
         }
@@ -264,7 +343,7 @@ struct WelcomeOnboardingView: View {
                     try await actions.renameWorkspace(newName)
                     await session.reloadWorkspaces()
                 }
-                if mode == .team {
+                if invitesEnabled {
                     let language = L10n.locale.language.languageCode?.identifier ?? "de"
                     for email in parsedEmails {
                         try await actions.createInvitation(kind: .email, email: email, role: "Member", tenantName: newName,
