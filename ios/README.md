@@ -115,9 +115,12 @@ whole 84 pt system side region.
 ## Workspace sidebar and areas
 
 `Features/Workspace/WorkspaceSidebar.swift` + `Shell/SidebarDrawer.swift`: a left drawer like the ChatGPT app — screen-edge pan
-from the left on any root screen (disabled once something is pushed), or the ☰ button in Today's top bar (replaces the old
-workspace chip). It holds the areas (`WorkspaceArea.all`), all workspaces (switch, "Neuer Workspace") and workspace settings.
-iPhone: the content slides right and dims; iPhone Duo (side inset): the sidebar slides over the dimmed content, because shifted scroll views re-wrap there. Tap or drag back to close. The Projects tab no longer shows an areas row.
+from the left on any root screen (disabled once something is pushed), tapping the date above Today's headline, or the VoiceOver
+action "Workspace-Menü öffnen". It holds the areas (`WorkspaceArea.all`), all workspaces (switch, "Neuer Workspace"),
+workspace settings and the account (avatar row at the bottom). Today has no top bar of its own any more: on iPhone ✦/+ sit on
+the date line, on the Duo in the rail. `Shell/SidebarHint.swift`: one-time coach mark (dimmed, handle + arrow at the left edge,
+the sidebar peeks in), later only the peek after 14 days without opening it; QA: `-pfSidebarHint`. iPhone: the content slides
+right and dims; iPhone Duo (side inset): the sidebar slides over the dimmed content, because shifted scroll views re-wrap there.
 
 
 `Features/Workspace`: Activity feed (`tenants/{t}/activity`, workspace and per project; contract

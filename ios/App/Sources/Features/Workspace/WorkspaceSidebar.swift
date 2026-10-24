@@ -37,10 +37,30 @@ struct WorkspaceSidebar: View {
             }
             .scrollIndicators(.hidden)
             PFRowDivider()
-            row(icon: "gearshape", title: L10n.t("team.workspaceSettings")) { open(.accountPage(.workspaceSettings)) }
-                .padding(.horizontal, PFSpace.s)
-                .padding(.vertical, PFSpace.xs)
+            VStack(spacing: 2) {
+                row(icon: "gearshape", title: L10n.t("team.workspaceSettings")) { open(.accountPage(.workspaceSettings)) }
+                accountRow
+            }
+            .padding(.horizontal, PFSpace.s)
+            .padding(.vertical, PFSpace.xs)
         }
+    }
+
+    /// The account (moved here from Today's top bar), like the profile row at the bottom of ChatGPT's sidebar.
+    private var accountRow: some View {
+        Button { open(.account) } label: {
+            HStack(spacing: PFSpace.s) {
+                PFAvatar(name: model.profile?.displayName ?? "", seed: model.uid, imageURL: model.profile?.photoURL, size: 28)
+                Text(model.profile?.displayName ?? L10n.t("today.account")).pfText(.rowTitle).foregroundStyle(PFColor.textMain).lineLimit(1)
+                Spacer(minLength: 0)
+            }
+            .padding(.horizontal, PFSpace.s)
+            .frame(minHeight: 48)
+            .contentShape(.rect)
+        }
+        .buttonStyle(.pfPressable)
+        .accessibilityLabel(L10n.t("today.account"))
+        .accessibilityValue(model.profile?.displayName ?? "")
     }
 
     private func header(_ workspace: SessionStore.WorkspaceSummary) -> some View {

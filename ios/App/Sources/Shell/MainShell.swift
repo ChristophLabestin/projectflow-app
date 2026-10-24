@@ -100,7 +100,9 @@ struct MainShell: View {
             }
         }
         // Measured outside the drawer: the shifted content would otherwise lose the Duo's side region.
-        .sidebarDrawer(isOpen: $router.isSidebarOpen, isEnabled: !router.isDeep && !router.isFocusRoomOpen) { WorkspaceSidebar() }
+        .sidebarDrawer(isOpen: $router.isSidebarOpen, isEnabled: !router.isDeep && !router.isFocusRoomOpen,
+                       peek: router.sidebarPeek) { WorkspaceSidebar() }
+        .overlay { SidebarHint() }
         .onGeometryChange(for: EdgeInsets.self) { $0.safeAreaInsets } action: { safeInsets = $0 }
         .environment(\.pfIsWide, isWide)
         .animation(PFMotion.respecting(PFMotion.snappy), value: router.isFocusRoomOpen)
