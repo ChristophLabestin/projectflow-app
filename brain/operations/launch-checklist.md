@@ -13,8 +13,9 @@ Details: [plans/billing-implementation.md](../plans/billing-implementation.md), 
 - [ ] Test-Abo „Labestin Digital“ (`0Kbs579DnwflExGeLgx8`) gehört zum Testkonto; nach dem Umstieg auf Live dort aufräumen.
 
 ## Steuern und Recht
-- [ ] USt/OSS klären (Kleinunternehmer?), danach Stripe Tax aktivieren und `automatic_tax` in Checkout/Subscriptions einbauen;
-      Steuer-Platzhalter (`tax: 0`) in Vorschau und Kaufseite ersetzen, Rechnungs-Fußzeile ggf. um USt-Hinweis ergänzen.
+- [x] USt: Kleinunternehmerregelung § 19 UStG (Owner 2026-10-24) → keine USt, kein Stripe Tax, keine Steuersätze; Rechnungs-Fußzeile
+      enthält „Gemäß § 19 UStG wird keine Umsatzsteuer berechnet.“ (DE/EN), Landing zeigt Endpreise mit demselben Hinweis.
+      Bei Überschreiten der Umsatzgrenze: Stripe Tax/`automatic_tax` einbauen und `tax` in der Vorschau befüllen.
 - [ ] Widerrufsbelehrung (digitale Dienstleistung, Zustimmung zum vorzeitigen Beginn) und AGB-Abschnitt Entgelte/Laufzeit/Kündigung,
       Kaufformulierungen auf `/checkout` („zahlungspflichtig bestellen“), Datenschutz um Stripe ergänzen (`/admin/legal`).
 

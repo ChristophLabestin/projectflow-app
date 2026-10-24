@@ -123,7 +123,7 @@ function start(root: HTMLElement, c: any) {
                 ${planLines().map((l) => `<span>${esc(l)}</span>`).join('')}</div></div>`));
         }
         if (idx > 1 && state.user) parts.push(item('account', c.recap.account, `<p class="ck-recap__line">${svg('mail')}${esc(state.user.email ?? '')}</p>`));
-        if (idx > 2) parts.push(item('workspace', c.recap.workspace, `<p class="ck-recap__line">${svg('users')}${esc(ws?.workspaceType === 'personal' ? c.workspace.personalName : ws?.name ?? '')}</p>`));
+        if (idx > 2) parts.push(item('workspace', c.recap.workspace, `<p class="ck-recap__line">${svg('users')}${esc(ws?.workspaceType === 'personal' ? c.workspace.personalName : ws?.name ?? (state.tenantId === 'new' ? state.newTeamName : ''))}</p>`));
         const recap = $('[data-recap]');
         recap.innerHTML = parts.join('');
         recap.hidden = !parts.length;
@@ -305,17 +305,8 @@ function start(root: HTMLElement, c: any) {
             if (state.plan === 'team' && state.tenantId === 'new') {
                 state.newTeamName = ($<HTMLInputElement>('input[name="wsName"]', box).value || '').trim();
                 if (!state.newTeamName) { if (err) { err.hidden = false; err.textContent = c.errors.nameRequired; } return; }
-                btn.disabled = true;
-                try {
-                    state.tenantId = await api.createTeam(state.newTeamName, lang);
-                    // The trigger starts the trial; no second round trip needed to show the new workspace.
-                    state.workspaces = [...state.workspaces, { tenantId: state.tenantId, name: state.newTeamName, workspaceType: 'team', status: 'trialing', memberCount: 1, trialEndsAt: Date.now() + 14 * 864e5 }];
-                    workspacesReq = null;
-                } catch (ex) {
-                    if (err) { err.hidden = false; err.textContent = errorText(ex); }
-                    btn.disabled = false;
-                    return;
-                }
+                // Nothing is created here: the name travels with the subscription request, and the backend creates
+                // the workspace only once the card is saved (an abandoned checkout leaves nothing behind).
             }
             // Seats can't go below the workspace's full members; raise them and show it in the recap.
             const chosen = state.workspaces.find((w) => w.tenantId === state.tenantId);
@@ -377,8 +368,8 @@ function start(root: HTMLElement, c: any) {
             ? c.payment.dueTrial.replace('{d}', date(trialEnd))
             : c.payment.dueNow.replace('{Interval}', billed).replace('{interval}', billed);
         $('[data-totals]').innerHTML = `${rows.join('')}
-            <div class="ck-totals__total"><dt>${esc(tax > 0 ? c.payment.total : c.payment.totalNet)}</dt><dd>${money(total)}</dd></div>
-            <p class="ck-totals__note">${esc(note)}${tax > 0 ? '' : `<br>${esc(c.payment.netNote)}`}</p>`;
+            <div class="ck-totals__total"><dt>${esc(c.payment.total)}</dt><dd>${money(total)}</dd></div>
+            <p class="ck-totals__note">${esc(note)}${tax > 0 ? '' : `<br>${esc(c.payment.taxNote)}`}</p>`;
         $('[data-fine]').textContent = state.interval === 'year' ? c.payment.fineYearly : c.payment.fineMonthly;
         if (trialEnd && !due) $('[data-lead]').textContent = c.intro.payment.leadTrial.replace('{d}', date(trialEnd));
     };
@@ -412,18 +403,36 @@ function start(root: HTMLElement, c: any) {
         };
     };
 
+    /** The workspace the purchase is for; a new one gets its ID from the subscription request. */
+    const paidTenant = () => (state.tenantId === 'new' ? state.intent?.tenantId ?? '' : state.tenantId);
     const returnUrl = () => {
         const url = new URL(location.pathname, location.origin);
         url.searchParams.set('step', 'done');
-        url.searchParams.set('tenant', state.tenantId);
+        url.searchParams.set('tenant', paidTenant());
         url.searchParams.set('plan', state.plan);
         return url.toString();
     };
+    // The subscription request runs while the form is already visible (Stripe "deferred intent"): the elements
+    // render from the expected mode/amount and are confirmed against the real client secret on submit.
+    let intentReq: Promise<Intent> | null = null;
     const confirm = async () => {
-        const fn = state.intent?.intentType === 'setup' ? stripe.confirmSetup : stripe.confirmPayment;
-        const { error } = await fn.call(stripe, { elements, confirmParams: { return_url: returnUrl() }, redirect: 'if_required' });
+        const { error: submitError } = await elements.submit();
+        if (submitError) throw submitError;
+        const intent = await intentReq!;
+        const fn = intent.intentType === 'setup' ? stripe.confirmSetup : stripe.confirmPayment;
+        const { error } = await fn.call(stripe, { elements, clientSecret: intent.clientSecret, confirmParams: { return_url: returnUrl() }, redirect: 'if_required' });
         if (error) throw error;
-        void showDone(state.tenantId, 'succeeded');
+        void showDone(paidTenant(), 'succeeded');
+    };
+
+    /** What the server will most likely ask for: a team workspace still in a long trial only saves the card. */
+    const expectedMode = () => {
+        const ws = state.workspaces.find((w) => w.tenantId === state.tenantId);
+        const trialEnd = Number(ws?.trialEndsAt ? new Date(ws.trialEndsAt).getTime() : 0);
+        const setup = state.plan === 'team' && (state.tenantId === 'new' || (ws?.status === 'trialing' && trialEnd - Date.now() > 48 * 3600e3));
+        const months = state.interval === 'year' ? 12 : 1;
+        const seats = state.plan === 'team' ? Math.max(state.seats, ws?.memberCount ?? 1) : 1;
+        return setup ? { mode: 'setup' as const } : { mode: 'subscription' as const, amount: c.prices[state.plan][state.interval] * months * 100 * seats };
     };
 
     const preparePayment = async () => {
@@ -435,24 +444,28 @@ function start(root: HTMLElement, c: any) {
         express.innerHTML = '';
         express.hidden = false;
         or.hidden = true;
+        state.intent = null;
         renderTotals();
+        const isNew = state.plan === 'team' && state.tenantId === 'new';
+        intentReq = api.intent({
+            ...(isNew ? { newWorkspace: { name: state.newTeamName, language: lang } } : { tenantId: state.tenantId }),
+            plan: state.plan, interval: state.interval, seats: state.plan === 'team' ? state.seats : undefined, language: lang,
+        });
+        intentReq.catch(() => { /* handled below */ });
         try {
-            const [intent, stripeInstance] = await Promise.all([
-                api.intent({ tenantId: state.tenantId, plan: state.plan, interval: state.interval, seats: state.plan === 'team' ? state.seats : undefined, language: lang }),
-                prepareStripe(),
-            ]);
-            state.intent = intent;
-            renderTotals();
-            if (state.intent.intentType === 'none') { mount.innerHTML = ''; return; }
             if (api.mock) {
                 express.innerHTML = '<div class="ck-mock ck-mock--wallet">Apple Pay · Google Pay</div>';
                 or.hidden = false;
                 mount.innerHTML = `<div class="ck-mock">${lang === 'de' ? 'Hier erscheint das Stripe-Zahlungsformular (Karte, SEPA).' : 'The Stripe payment form appears here (card, SEPA).'}</div>`;
+                state.intent = await intentReq;
+                renderTotals();
                 return;
             }
-            stripe = stripeInstance;
+            stripe = await prepareStripe();
+            const expected = expectedMode();
             elements = stripe.elements({
-                clientSecret: state.intent.clientSecret,
+                ...expected,
+                currency: 'eur',
                 appearance: appearance(),
                 // Same self-hosted variable font as the page (served with CORS for the Stripe iframe).
                 fonts: [{ family: 'Plus Jakarta Sans', src: `url(${location.origin}/fonts/pjs-latin.woff2)`, weight: '200 800' }],
@@ -470,6 +483,16 @@ function start(root: HTMLElement, c: any) {
             expressEl.mount(express);
             mount.innerHTML = '';
             elements.create('payment', { layout: 'tabs', wallets: { applePay: 'never', googlePay: 'never' } }).mount(mount);
+
+            state.intent = await intentReq;
+            renderTotals();
+            if (state.intent.intentType === 'none') { mount.innerHTML = ''; express.hidden = true; or.hidden = true; return; }
+            // Align the form with what the server actually created (mode and first amount).
+            const mode = state.intent.intentType === 'setup' ? 'setup' : 'subscription';
+            const amount = state.intent.summary?.amountDue ?? state.intent.summary?.total;
+            if (mode !== expected.mode || (mode === 'subscription' && amount && amount !== (expected as { amount?: number }).amount)) {
+                elements.update(mode === 'setup' ? { mode } : { mode, amount });
+            }
         } catch (e) {
             mount.innerHTML = '';
             showPayError(errorText(e));
@@ -488,7 +511,7 @@ function start(root: HTMLElement, c: any) {
         try {
             if (api.mock || state.intent?.intentType === 'none') {
                 await new Promise((r) => window.setTimeout(r, 700));
-                void showDone(state.tenantId, 'succeeded');
+                void showDone(paidTenant(), 'succeeded');
                 return;
             }
             await confirm();
@@ -515,6 +538,7 @@ function start(root: HTMLElement, c: any) {
             : doneStatus.status === 'trialing' && trialEnd ? c.done.statusTrial.replace('{d}', date(trialEnd)) : c.done.statusActive;
         const rows: [string, string][] = [[c.done.rowPlan, `${c.plan[state.plan].name}${state.plan === 'team' ? ` · ${seatText(state.seats)}` : ''} · ${interval === 'year' ? c.plan.yearly : c.plan.monthly}`]];
         if (ws) rows.push([c.done.rowWorkspace, ws.workspaceType === 'personal' ? c.workspace.personalName : ws.name]);
+        else if (state.newTeamName) rows.push([c.done.rowWorkspace, state.newTeamName]);
         if (state.user?.email) rows.push([c.done.rowAccount, state.user.email]);
         box.innerHTML = `${rows.map(([k, v]) => `<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join('')}
             <div><dt>${esc(c.done.rowStatus)}</dt><dd><span class="ck-pill${doneStatus?.active ? ' is-ok' : ''}">${esc(statusText)}</span></dd></div>`;
@@ -558,6 +582,9 @@ function start(root: HTMLElement, c: any) {
             } catch { /* keep polling */ }
             await new Promise((r) => window.setTimeout(r, 2000));
         }
+        // A new workspace only exists once the webhook ran; reload the list for the receipt.
+        workspacesReq = null;
+        state.workspaces = [];
         void renderReceipt();
     };
 

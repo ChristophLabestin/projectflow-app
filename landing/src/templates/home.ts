@@ -189,50 +189,58 @@ const apps = (t: SiteCopy) => {
 const pricing = (t: SiteCopy, lang: Lang) => {
     const buy = lang === 'de' ? '/checkout' : '/en/checkout';
     const p = t.pricing;
-    const price = (plan: (typeof p.plans)[number], yearly: boolean) => (yearly ? plan.yearly : plan.monthly);
+    const column = (plan: (typeof p.plans)[number]) => {
+        const featured = plan.key === 'team';
+        const href = plan.key === 'org' ? 'mailto:hello@getprojectflow.com?subject=ProjectFlow%20Organization'
+            : plan.key === 'free' ? links.register : `${buy}?plan=${plan.key}&interval=year`;
+        const amount = plan.key === 'org'
+            ? `<b class="price-col__request">${esc(p.onRequest)}</b>`
+            : `<b data-price data-monthly="${plan.monthly}" data-yearly="${plan.yearly}">${plan.yearly}&nbsp;${p.currency}</b>`;
+        const unit = plan.key === 'free' ? esc(p.forever)
+            : plan.key === 'org' ? esc(p.onRequestUnit)
+            : `${esc(plan.key === 'personal' ? p.perMonth : p.perSeat)}, <span data-billing-unit data-monthly="${esc(p.billedMonthly)}" data-yearly="${esc(p.billedYearly)}">${esc(p.billedYearly)}</span>`;
+        return `
+            <article class="price-col${featured ? ' is-featured' : ''}" role="listitem" aria-labelledby="plan-${plan.key}">
+                <div class="price-col__name">
+                    <h3 id="plan-${plan.key}">${esc(plan.name)}</h3>
+                    ${featured ? `<span class="price-col__badge">${esc(p.popular)}</span>` : ''}
+                </div>
+                <p class="price-col__desc">${esc(plan.desc)}</p>
+                <p class="price-col__price">${amount}</p>
+                <p class="price-col__unit">${unit}</p>
+                <a class="price-col__cta${featured ? ' is-primary' : ''}" href="${href}"${plan.key === 'personal' || plan.key === 'team' ? ' data-buy-link' : ''}>${esc(plan.cta)}${icon('arrowRight')}</a>
+                <ul class="price-col__list">${plan.features.map((f) => `<li>${icon('check')}${esc(f)}</li>`).join('')}</ul>
+            </article>`;
+    };
     return `
 <section class="section pricing" id="pricing" aria-labelledby="pricing-title">
     <div class="container">
         <header class="pricing__head" data-reveal>
-            <p class="eyebrow">${esc(p.eyebrow)} <span class="pill-badge">${esc(p.badge)}</span></p>
-            <h2 class="sec-title" id="pricing-title">${headline(p.title)}</h2>
-            <p class="sec-text">${esc(p.text)}</p>
-            <div class="billing-toggle" role="group" aria-label="${esc(p.monthly)} / ${esc(p.yearly)}" data-billing>
-                <button type="button" aria-pressed="false" data-billing-option="monthly">${esc(p.monthly)}</button>
-                <button type="button" aria-pressed="true" data-billing-option="yearly">${esc(p.yearly)} <em>${esc(p.save)}</em></button>
-                <i class="billing-toggle__thumb" aria-hidden="true"></i>
+            <div class="pricing__intro">
+                <p class="eyebrow">${esc(p.eyebrow)}</p>
+                <h2 class="pricing__title" id="pricing-title">${esc(p.title)}</h2>
+                <p class="pricing__lead">${esc(p.text)}</p>
+            </div>
+            <div class="pricing__switch">
+                <div class="billing-toggle" role="group" aria-label="${esc(p.monthly)} / ${esc(p.yearly)}" data-billing>
+                    <button type="button" aria-pressed="false" data-billing-option="monthly">${esc(p.monthly)}</button>
+                    <button type="button" aria-pressed="true" data-billing-option="yearly">${esc(p.yearly)}</button>
+                    <i class="billing-toggle__thumb" aria-hidden="true"></i>
+                </div>
+                <p class="pricing__save">${esc(p.saveHint)}</p>
             </div>
         </header>
-        <ul class="plans">
-            ${p.plans.map((plan) => {
-                const featured = plan.key === 'team';
-                const href = plan.key === 'org' ? 'mailto:hello@getprojectflow.com?subject=ProjectFlow%20Organization'
-                    : plan.key === 'free' ? links.register : `${buy}?plan=${plan.key}&interval=year`;
-                const amount = plan.key === 'org'
-                    ? `<span class="plan__from">${esc(p.from)}</span> <b>${plan.yearly}&nbsp;${p.currency}</b>`
-                    : `<b data-price data-monthly="${plan.monthly}" data-yearly="${plan.yearly}">${price(plan, true)}&nbsp;${p.currency}</b>`;
-                const unit = plan.key === 'free' ? esc(p.forever)
-                    : plan.key === 'org' ? `${esc(p.perSeat)}, ${esc(p.billedYearly)}`
-                    : `${esc(plan.key === 'personal' ? p.perMonth : p.perSeat)}, <span data-billing-unit data-monthly="${esc(p.billedMonthly)}" data-yearly="${esc(p.billedYearly)}">${esc(p.billedYearly)}</span>`;
-                return `
-            <li class="plan${featured ? ' plan--featured theme-dark' : ''}" data-reveal data-spot>
-                <div class="plan__top">
-                    <h3>${esc(plan.name)}${featured ? `<span class="pill-badge pill-badge--light">${esc(p.popular)}</span>` : ''}</h3>
-                    <p>${esc(plan.desc)}</p>
-                </div>
-                <p class="plan__price">${amount}</p>
-                <p class="plan__unit">${unit}</p>
-                <a class="btn ${featured ? 'btn--primary' : 'btn--ghost'}" href="${href}"${plan.key === 'personal' || plan.key === 'team' ? ' data-buy-link' : ''}>${esc(plan.cta)}${icon('arrowRight')}</a>
-                <ul class="ticks">${plan.features.map((f) => `<li>${icon('check')}${esc(f)}</li>`).join('')}</ul>
-            </li>`;
-            }).join('')}
-        </ul>
-        <p class="fineprint pricing__note">${esc(p.note)}</p>
+        <div class="price-grid" role="list" data-reveal>
+            ${p.plans.map(column).join('')}
+        </div>
+        <div class="price-included" data-reveal>
+            <h3>${esc(p.included.title)}</h3>
+            <ul>${p.included.items.map((it) => `<li>${icon('check')}${esc(it)}</li>`).join('')}</ul>
+        </div>
+        <p class="pricing__note">${esc(p.note)}</p>
     </div>
 </section>`;
 };
-
-/* ------------------------------------------------------------------ more, faq, cta */
 
 const more = (t: SiteCopy) => `
 <section class="section more" id="more" aria-labelledby="more-title">
