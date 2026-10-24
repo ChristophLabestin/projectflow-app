@@ -111,7 +111,7 @@ show a hint, not an error. QA without a key: `-pfAiFake`.
 `Features/Workspace/WorkspaceSidebar.swift` + `Shell/SidebarDrawer.swift`: a left drawer like the ChatGPT app — screen-edge pan
 from the left on any root screen (disabled once something is pushed), or the ☰ button in Today's top bar (replaces the old
 workspace chip). It holds the areas (`WorkspaceArea.all`), all workspaces (switch, "Neuer Workspace") and workspace settings.
-The content slides right and dims; tap or drag it back to close. The Projects tab no longer shows an areas row.
+iPhone: the content slides right and dims; iPhone Duo (side inset): the sidebar slides over the dimmed content, because shifted scroll views re-wrap there. Tap or drag back to close. The Projects tab no longer shows an areas row.
 
 
 `Features/Workspace`: Activity feed (`tenants/{t}/activity`, workspace and per project; contract

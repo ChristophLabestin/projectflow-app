@@ -11,9 +11,13 @@ struct SidebarDrawer<Sidebar: View>: ViewModifier {
 
     @State private var drag: CGFloat?
     @State private var width: CGFloat = 390
+    @State private var insets = EdgeInsets()
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private var drawerWidth: CGFloat { min(width * 0.82, 330) }
+    /// iPhone: the content slides right (ChatGPT style). With a side inset (iPhone Duo's status region) a shifted scroll
+    /// view re-reads its safe area from where it's drawn and re-wraps, so there the sidebar slides in over the content.
+    private var pushesContent: Bool { insets.leading == 0 && insets.trailing == 0 }
     private var progress: CGFloat {
         let base: CGFloat = isOpen ? 1 : 0
         guard let drag else { return base }
@@ -22,33 +26,37 @@ struct SidebarDrawer<Sidebar: View>: ViewModifier {
 
     func body(content: Content) -> some View {
         ZStack(alignment: .leading) {
-            if progress > 0 {
-                sidebar()
-                    .frame(width: drawerWidth)
-                    .frame(maxHeight: .infinity, alignment: .top)
-                    .offset(x: reduceMotion ? 0 : -drawerWidth * 0.25 * (1 - progress))
-                    .opacity(Double(0.4 + 0.6 * progress))
-            }
+            // Both layers stay in the hierarchy (no insert/remove while swiping).
             content
                 .allowsHitTesting(progress == 0)
                 .overlay {
-                    if progress > 0 {
-                        Color.black.opacity(0.22 * progress)
-                            .ignoresSafeArea()
-                            .contentShape(.rect)
-                            .onTapGesture { set(false) }
-                            .accessibilityLabel(L10n.t("sidebar.close"))
-                            .accessibilityAddTraits(.isButton)
-                    }
+                    Color.black.opacity(0.22 * progress)
+                        .ignoresSafeArea()
+                        .contentShape(.rect)
+                        .onTapGesture { set(false) }
+                        .allowsHitTesting(progress > 0)
+                        .accessibilityLabel(L10n.t("sidebar.close"))
+                        .accessibilityAddTraits(.isButton)
+                        .accessibilityHidden(progress == 0)
                 }
+                .offset(x: pushesContent ? drawerWidth * progress : 0)
+                .zIndex(pushesContent ? 1 : 0)
+            sidebar()
+                .frame(width: drawerWidth)
+                .frame(maxHeight: .infinity, alignment: .top)
+                .background { if !pushesContent { PFCanvas() } }
                 // A crisp hairline instead of a soft shadow that would smear grey over the sidebar.
-                .overlay(alignment: .leading) {
-                    if progress > 0 { Rectangle().fill(PFColor.hairlineStrong).frame(width: 1).ignoresSafeArea() }
+                .overlay(alignment: .trailing) {
+                    Rectangle().fill(PFColor.hairlineStrong).frame(width: 1).ignoresSafeArea().opacity(progress > 0 ? 1 : 0)
                 }
-                .offset(x: drawerWidth * progress)
+                .offset(x: pushesContent ? (reduceMotion ? 0 : -drawerWidth * 0.25 * (1 - progress)) : -drawerWidth * (1 - progress))
+                .opacity(pushesContent ? (progress > 0 ? Double(0.4 + 0.6 * progress) : 0) : (progress > 0 ? 1 : 0))
+                .allowsHitTesting(progress > 0)
+                .accessibilityHidden(progress == 0)
         }
         .background(PFCanvas())
         .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { width = $0 }
+        .onGeometryChange(for: EdgeInsets.self) { $0.safeAreaInsets } action: { insets = $0 }
         .gesture(EdgePan(isEnabled: isEnabled && !isOpen,
                          onChange: { drag = max($0, 0) },
                          onEnd: { translation, velocity in end(open: velocity > 300 || (velocity > -300 && translation > drawerWidth * 0.4)) }))
