@@ -352,6 +352,16 @@ kbd {
     animation: ai-family-fade 80ms linear both;
 }
 
+.ai-bar-window {
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    height: 100vh;
+    padding: 16px;
+
+    .ai-bar { width: 100%; max-height: 100%; -webkit-app-region: no-drag; }
+}
+
 .ai-bar {
     display: flex;
     flex-direction: column;

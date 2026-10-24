@@ -209,6 +209,12 @@ button, header = OS drag region, buttons `no-drag`) and:
    `will-navigate` from `file://` to the app origin allowed). Offline mode only covers *initial load*; once loaded,
    Firebase handles transient offline as in the browser.
 7. **External links** always open in the default browser. Downloads use Electron's default save dialog (`will-download`).
+8. **AI pop-out** (2026-10-24, capability `assist`): the global AI shortcut (⌃⌘J / Ctrl+Shift+Alt+J) opens `windows/assistWindow.ts`
+   (floating panel like the palette, page `/desktop/assist` = the ⌘J bar with `variant="window"`, links open in the main window).
+   IPC `pf:assist`: `{ action: 'open', image?, prompt? }` from any window (Quick Capture „✦ In Aufgaben verwandeln“ hands over its
+   screenshot) and `{ action: 'capture-screen' }` only from the pop-out, only on click („Bildschirm anhängen“, `desktopCapturer`
+   of the pop-out's display, the panel hides for the frame). Older web builds without the route: the shell still loads it
+   (redirects to `/`); older shells keep sending `open-ai` to the main window.
 
 ## 8. Web changes
 
