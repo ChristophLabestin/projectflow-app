@@ -237,6 +237,12 @@ export const onProjectCountBilling = functions.region(REGION).firestore
         { merge: true });
     });
 
+/** Purchase-page subscription not yet confirmed: unpaid, or a trial without a saved card (SetupIntent not done). */
+export const isPendingPurchase = (subscription: Stripe.Subscription) =>
+    subscription.status === 'incomplete'
+    || (subscription.status === 'trialing' && !subscription.default_payment_method
+        && subscription.metadata?.source === 'purchase-page');
+
 /**
  * Seat reductions are Stripe subscription schedules that switch quantities at the period end (no refunds).
  * Returns the next phase's quantities, or null.
@@ -287,11 +293,13 @@ export const syncSubscription = async (subscription: Stripe.Subscription, tenant
     const mapped = mapStripeStatus(subscription.status, isPersonalLookupKey(item?.price?.lookup_key) ? 'personal' : 'team');
     const current = (await entRef(tenantId).get()).data() || {};
     const drivesWorkspace = current.stripeSubscriptionId === subscription.id;
-    // Own purchase page (default_incomplete): an unpaid subscription changes nothing until it is paid; when Stripe
-    // expires it after 23 h only the pending marker is cleared.
-    if (!drivesWorkspace && (subscription.status === 'incomplete' || subscription.status === 'incomplete_expired')) {
+    // Own purchase page: an unpaid subscription (default_incomplete) or a trial subscription whose card was never
+    // confirmed changes nothing; it only becomes the workspace's subscription once paid / once a card is saved.
+    // Expired or canceled pending subscriptions just clear the marker.
+    const pending = isPendingPurchase(subscription);
+    if (!drivesWorkspace && (pending || subscription.status === 'incomplete_expired' || subscription.status === 'canceled')) {
         await customerRef(tenantId).set({
-            pendingSubscriptionId: subscription.status === 'incomplete' ? subscription.id : FieldValue.delete(),
+            pendingSubscriptionId: pending ? subscription.id : FieldValue.delete(),
             updatedAt: FieldValue.serverTimestamp(),
         }, { merge: true });
         return;
@@ -771,26 +779,28 @@ export const createSubscriptionIntent = functions.region(REGION).runWith({ secre
         const pendingId = customerDoc.data()?.pendingSubscriptionId;
         if (typeof pendingId === 'string') {
             const pending = await stripe.subscriptions.retrieve(pendingId, { expand }).catch(() => null);
-            const same = pending && pending.status === 'incomplete' && !promotion
+            const same = pending && isPendingPurchase(pending) && !promotion
                 && pending.items.data.length === newItems.length
                 && newItems.every((wanted) => pending.items.data.some((have) => have.price.id === wanted.price && have.quantity === wanted.quantity));
             if (pending && same) return toResult(pending);
-            if (pending && pending.status === 'incomplete') await stripe.subscriptions.cancel(pending.id).catch(() => undefined);
+            if (pending && isPendingPurchase(pending)) await stripe.subscriptions.cancel(pending.id).catch(() => undefined);
         }
 
         const subscription = await stripe.subscriptions.create({
             customer,
             items: newItems,
             payment_behavior: 'default_incomplete',
+            // Abandoned trial checkout (no card confirmed): Stripe cancels it at the trial end instead of invoicing.
+            ...(trialEnd ? { trial_settings: { end_behavior: { missing_payment_method: 'cancel' as const } } } : {}),
             payment_settings: { save_default_payment_method: 'on_subscription' },
             metadata: { tenantId: input.tenantId, source: 'purchase-page' },
             ...(trialEnd ? { trial_end: trialEnd } : {}),
             ...(promotion ? { discounts: [{ promotion_code: promotion }] } : {}),
             expand,
         });
-        // A trial subscription is already `trialing` (not incomplete) and drives the workspace via the webhook.
+        // Pending until paid (incomplete) or until the trial's card is saved (SetupIntent); the webhook then switches it over.
         await customerRef(input.tenantId).set({
-            pendingSubscriptionId: subscription.status === 'incomplete' ? subscription.id : FieldValue.delete(),
+            pendingSubscriptionId: isPendingPurchase(subscription) ? subscription.id : FieldValue.delete(),
             updatedAt: FieldValue.serverTimestamp(),
         }, { merge: true });
         return toResult(subscription);
