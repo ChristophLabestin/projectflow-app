@@ -54,18 +54,21 @@ struct ProjectsScreen: View {
 
     // MARK: Header
 
-    /// No page title: the eyebrow line ("Wo hinschauen", or "Projekte" when nothing needs attention) carries the
-    /// + on the same line, like Today's date line; the attention statement follows right below.
+    /// No page title and no eyebrow: the attention headline ("2 von 2 Projekten …") shares its line with +.
+    /// Without attention entries (or projects) the line just reads "Projekte".
     private var header: some View {
-        let hasAttention = workspace?.loaded.contains(.projects) == true && !projects.isEmpty
-            && !portfolio.attention(projects: projects, health: health).entries.isEmpty
-        return HStack {
-            PFEyebrow(L10n.t(hasAttention ? "projects.attention.eyebrow" : "projects.portfolio.title"))
-                .padding(.vertical, 6)
-                .accessibilityAddTraits(.isHeader)
-            Spacer(minLength: 0)
-        }
-        .overlay(alignment: .trailing) {
+        let result = workspace?.loaded.contains(.projects) == true && !projects.isEmpty
+            ? portfolio.attention(projects: projects, health: health) : nil
+        return HStack(alignment: .top, spacing: PFSpace.s) {
+            Group {
+                if let result, !result.entries.isEmpty {
+                    statement(result.statement)
+                } else {
+                    Text(L10n.t("projects.portfolio.title")).pfText(.title).foregroundStyle(PFColor.textMain)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .accessibilityAddTraits(.isHeader)
             if canCreate {
                 PFRootActions {
                     PFIconButton("plus", label: L10n.t("projects.new.title"), style: .glass) {
@@ -96,10 +99,6 @@ struct ProjectsScreen: View {
 
     private func attentionSection(_ result: AttentionResult) -> some View {
         VStack(alignment: .leading, spacing: PFSpace.s) {
-            // The eyebrow sits in the header line (with +); the statement follows directly.
-            statement(result.statement)
-                .padding(.horizontal, PFSpace.page)
-                .padding(.top, 4)
 
             if result.attention.isEmpty {
                 Text(L10n.t("dashboard.pulse.attention.empty"))
