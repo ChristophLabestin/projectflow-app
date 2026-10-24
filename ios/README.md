@@ -122,7 +122,7 @@ whole 84 pt system side region.
 
 ## Project detail chrome
 
-No tab bar, no title pill, no ··· menu. iPhone: back left, ✦ + section picker ("Überblick ⌄", option sheet) right. Duo outer
+No tab bar, no title pill, no ··· menu. iPhone: back left, ✦ + section picker ("Überblick ⌄") right, opening our own glass popover under it (not a sheet or system menu). Duo outer
 display: no top bar (`PFTopBar(collapsesOnSide:)`), the sections are circle buttons in the side rail (current inverted,
 back lowest). Project settings, copy link and open in web sit at the end of the overview. Horizontal scrollers next to the
 Duo rail fade out (`pfSideFade`).
