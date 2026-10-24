@@ -202,7 +202,7 @@ export const Profile = () => {
                                 <button
                                     onClick={() => setActiveTab('overview')}
                                     className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${activeTab === 'overview'
-                                        ? 'bg-surface-hover text-main shadow-sm ring-1 ring-black/5 dark:ring-white/10'
+                                        ? 'bg-surface-card text-main'
                                         : 'text-muted hover:bg-surface-hover hover:text-main'
                                         }`}
                                 >
@@ -212,7 +212,7 @@ export const Profile = () => {
                                 <button
                                     onClick={() => setActiveTab('projects')}
                                     className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${activeTab === 'projects'
-                                        ? 'bg-surface-hover text-main shadow-sm ring-1 ring-black/5 dark:ring-white/10'
+                                        ? 'bg-surface-card text-main'
                                         : 'text-muted hover:bg-surface-hover hover:text-main'
                                         }`}
                                 >
@@ -228,7 +228,7 @@ export const Profile = () => {
                                 <button
                                     onClick={() => setActiveTab('activity')}
                                     className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${activeTab === 'activity'
-                                        ? 'bg-surface-hover text-main shadow-sm ring-1 ring-black/5 dark:ring-white/10'
+                                        ? 'bg-surface-card text-main'
                                         : 'text-muted hover:bg-surface-hover hover:text-main'
                                         }`}
                                 >
@@ -238,7 +238,7 @@ export const Profile = () => {
                                 <button
                                     onClick={() => setActiveTab('about')}
                                     className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${activeTab === 'about'
-                                        ? 'bg-surface-hover text-main shadow-sm ring-1 ring-black/5 dark:ring-white/10'
+                                        ? 'bg-surface-card text-main'
                                         : 'text-muted hover:bg-surface-hover hover:text-main'
                                         }`}
                                 >

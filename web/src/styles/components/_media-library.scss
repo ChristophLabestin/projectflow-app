@@ -125,7 +125,7 @@
     position: relative;
     flex: 1;
     overflow: hidden;
-    background-color: var(--color-surface-bg);
+    background-color: transparent;
 }
 
 .media-library__uploading {
@@ -198,7 +198,7 @@
     gap: 0.75rem;
     text-align: center;
     border-radius: var(--radius-2xl);
-    background-color: var(--color-surface-bg);
+    background-color: var(--color-surface-hover);
     box-shadow: inset 0 0 0 2px var(--color-surface-border);
     transition: background-color var(--transition-fast), box-shadow var(--transition-fast);
 
@@ -372,8 +372,7 @@
     padding: 0.875rem 1rem;
     border: 1px solid var(--color-surface-border);
     border-radius: var(--radius-xl);
-    background-color: var(--color-surface-card);
-    box-shadow: var(--shadow-sm);
+    background-color: var(--color-surface-hover);
 }
 
 .media-library__gallery-scope {
@@ -387,7 +386,7 @@
         width: 2.25rem;
         height: 2.25rem;
         border-radius: var(--radius-lg);
-        background-color: var(--color-surface-hover);
+        background-color: color-mix(in srgb, var(--color-surface-hover) 50%, var(--color-surface-card));
         color: var(--color-primary);
         display: inline-flex;
         align-items: center;
@@ -418,7 +417,7 @@
     min-height: 2.5rem;
     padding: 0.55rem 0.85rem;
     border-radius: var(--radius-control);
-    background-color: var(--color-surface-hover);
+    background-color: color-mix(in srgb, var(--color-surface-hover) 50%, var(--color-surface-card));
     color: var(--color-text-main);
     font-size: 0.8rem;
     font-weight: 700;
@@ -429,7 +428,7 @@
     }
 
     &:hover {
-        background-color: var(--color-surface-hover-light);
+        background-color: var(--color-surface-card);
     }
 
     &.is-active {
@@ -492,11 +491,9 @@
     border-radius: var(--radius-lg);
     overflow: hidden;
     background-color: var(--color-surface-hover);
-    box-shadow: var(--shadow-sm);
-    transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+    transition: transform var(--transition-fast);
 
     &:hover {
-        box-shadow: var(--shadow-md);
 
         .media-library__asset-media {
             transform: scale(1.05);
@@ -628,7 +625,7 @@
     gap: 0.5rem;
     padding: 0.25rem;
     border-radius: var(--radius-xl);
-    background-color: var(--color-surface-bg);
+    background-color: color-mix(in srgb, var(--color-surface-hover) 50%, var(--color-surface-card));
 }
 
 .media-library__ai-mode-button {
@@ -653,9 +650,7 @@
     }
 
     &.is-active {
-        background-color: var(--color-surface-card);
-        color: var(--color-text-main);
-        box-shadow: var(--shadow-sm);
+        @include tokens.selected;
     }
 }
 
@@ -681,8 +676,7 @@
     position: relative;
     border-radius: var(--radius-lg);
     overflow: hidden;
-    background-color: var(--color-surface-card);
-    box-shadow: var(--shadow-sm);
+    background-color: color-mix(in srgb, var(--color-surface-hover) 50%, var(--color-surface-card));
 }
 
 .media-library__reference-media {
@@ -750,7 +744,7 @@
     padding: 0.75rem;
     border-radius: var(--radius-lg);
     border: none;
-    background-color: var(--color-surface-card);
+    background-color: color-mix(in srgb, var(--color-surface-hover) 50%, var(--color-surface-card));
     font-size: 0.875rem;
     color: var(--color-text-main);
     resize: none;
@@ -774,7 +768,7 @@
     padding: 0.5rem;
     border-radius: var(--radius-md);
     border: none;
-    background-color: var(--color-surface-card);
+    background-color: color-mix(in srgb, var(--color-surface-hover) 50%, var(--color-surface-card));
     font-size: 0.75rem;
     font-weight: 600;
     color: var(--color-text-muted);
@@ -849,7 +843,7 @@
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    background-color: var(--color-surface-bg);
+    background-color: transparent;
 }
 
 .media-library__ai-pattern {
@@ -953,7 +947,6 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    box-shadow: var(--shadow-sm);
 
     .material-symbols-outlined {
         font-size: 2rem;
@@ -996,7 +989,7 @@
 
     &:hover {
         color: var(--color-text-main);
-        background-color: var(--color-surface-bg);
+        background-color: var(--field-bg-hover);
     }
 }
 
@@ -1018,8 +1011,7 @@
     border-radius: var(--radius-lg);
     overflow: hidden;
     cursor: pointer;
-    box-shadow: var(--shadow-sm);
-    transition: box-shadow var(--transition-fast), transform var(--transition-fast);
+    transition: transform var(--transition-fast);
 
     img {
         width: 100%;
@@ -1028,7 +1020,6 @@
     }
 
     &:hover {
-        box-shadow: var(--shadow-md);
         transform: translateY(-2px);
     }
 
@@ -1108,7 +1099,6 @@
     border-radius: var(--radius-2xl);
     overflow: hidden;
     background-color: var(--color-surface-hover);
-    box-shadow: var(--shadow-lg);
     animation: fadeIn 0.3s ease-out;
 
     img {
@@ -1285,11 +1275,9 @@
     border-radius: var(--radius-lg);
     overflow: hidden;
     background-color: var(--color-surface-hover);
-    box-shadow: var(--shadow-sm);
-    transition: box-shadow var(--transition-fast), transform var(--transition-fast);
+    transition: transform var(--transition-fast);
 
     &:hover {
-        box-shadow: var(--shadow-md);
         transform: translateY(-2px);
     }
 

@@ -208,7 +208,7 @@ export const TwoFactorSetupModal: React.FC<TwoFactorSetupModalProps> = ({ isOpen
                                         onClick={() => setReauthProvider(provider)}
                                         className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-xs font-medium transition-all ${reauthProvider === provider
                                             ? 'bg-primary/10 border-primary text-primary'
-                                            : 'bg-surface border-surface hover:bg-surface-hover text-muted'
+                                            : 'bg-surface-hover border-surface text-muted'
                                             }`}
                                     >
                                         <span className="material-symbols-outlined text-[16px]">

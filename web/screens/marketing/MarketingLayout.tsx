@@ -30,7 +30,7 @@ const MarketingLayout = () => {
                             className={({ isActive }) => `
                                 relative h-8 px-3 rounded-md flex items-center gap-1.5 text-xs font-medium transition-all whitespace-nowrap
                                 ${isActive
-                                    ? 'bg-surface-hover text-main shadow-sm'
+                                    ? 'bg-surface-hover text-main'
                                     : 'text-muted hover:text-main hover:bg-surface-hover'
                                 }
                             `}

@@ -1,3 +1,4 @@
+@use '../../../styles/tokens';
 /* ===========================================================================
    Invoices — list, builder & A4 preview (client-project billing)
    =========================================================================== */
@@ -28,7 +29,7 @@
     select {
         width: 100%;
         padding: 0.55rem 0.7rem;
-        background: var(--color-surface-bg);
+        background: var(--color-surface-hover);
         border: 1px solid var(--color-surface-border);
         border-radius: var(--radius-md);
         color: var(--color-text-main);
@@ -67,7 +68,7 @@
     margin: 0.25rem 0 0;
     font-size: 0.82rem;
     color: var(--color-text-muted);
-    background: var(--color-surface-bg);
+    background: var(--color-surface-hover);
     padding: 0.6rem 0.75rem;
     border-radius: var(--radius-md);
 }
@@ -169,7 +170,7 @@
         text-transform: uppercase;
         letter-spacing: 0.04em;
         color: var(--color-text-muted);
-        background: var(--color-surface-bg);
+        background: var(--color-surface-hover);
     }
 
     &__row {
@@ -469,10 +470,10 @@
     padding: 0.6rem 0.6rem 0.6rem 0.85rem;
     margin-bottom: 1rem;
     border-radius: var(--radius-lg);
-    background: var(--color-surface-bg);
+    background: var(--color-surface-hover);
     color: var(--color-text-muted);
 
-    &.is-saved { background: var(--color-surface-card); box-shadow: var(--shadow-sm); }
+    &.is-saved { background: color-mix(in srgb, var(--color-surface-hover) 50%, var(--color-surface-card)); }
 
     &__icon { font-size: 1.25rem; color: var(--color-text-subtle); flex: none; }
     .is-saved &__icon { color: var(--color-primary, var(--color-text-main)); }
@@ -520,7 +521,7 @@
 /* Positions editor */
 .inv-pos-list { display: flex; flex-direction: column; gap: 0.85rem; }
 .inv-pos {
-    background: var(--color-surface-bg);
+    background: var(--color-surface-hover);
     border-radius: var(--radius-lg);
     padding: 0.9rem;
     display: flex;
@@ -551,7 +552,7 @@
         cursor: pointer;
         transition: background var(--transition-fast), color var(--transition-fast);
 
-        &:hover { background: var(--color-surface-card); color: var(--color-error); }
+        &:hover { background: var(--field-bg-hover); color: var(--color-error); }
         .material-symbols-outlined { font-size: 1.2rem; }
     }
     &__total {
@@ -572,7 +573,7 @@
     text-align: center;
     padding: 2.5rem 1rem;
     color: var(--color-text-muted);
-    background: var(--color-surface-bg);
+    background: var(--color-surface-hover);
     border-radius: var(--radius-lg);
 
     .material-symbols-outlined { font-size: 2rem; color: var(--color-text-subtle); }
@@ -592,7 +593,7 @@
     grid-auto-columns: 1fr;
     gap: 4px;
     padding: 4px;
-    background: var(--color-surface-bg);
+    background: var(--color-surface-hover);
     border-radius: var(--radius-md);
 
     &--mini { width: 100%; }
@@ -610,7 +611,7 @@
         transition: background var(--transition-fast), color var(--transition-fast);
 
         &:hover { color: var(--color-text-main); }
-        &.is-active { background: var(--color-surface-card); color: var(--color-text-main); box-shadow: var(--shadow-sm); }
+        &.is-active { @include tokens.selected; }
     }
 }
 
@@ -620,9 +621,10 @@
     flex-direction: column;
     gap: 0.7rem;
     padding: 0.85rem 0.9rem;
-    background: var(--color-surface-card);
+    background: var(--color-surface-hover);
+    --control-bg: color-mix(in srgb, var(--color-surface-hover) 50%, var(--color-surface-card));
+    --control-bg-hover: var(--field-bg-hover);
     border-radius: var(--radius-lg);
-    box-shadow: var(--shadow-sm);
 
     &__head { display: flex; align-items: center; gap: 0.6rem; }
     &__idx {
@@ -630,7 +632,7 @@
         width: 22px; height: 22px;
         display: inline-flex; align-items: center; justify-content: center;
         border-radius: 999px;
-        background: var(--color-surface-bg);
+        background: color-mix(in srgb, var(--color-surface-hover) 50%, var(--color-surface-card));
         color: var(--color-text-muted);
         font-size: 0.72rem; font-weight: 700;
     }
@@ -698,9 +700,10 @@
     flex-direction: column;
     gap: 0.7rem;
     padding: 0.85rem 0.9rem;
-    background: var(--color-surface-card);
+    background: var(--color-surface-hover);
+    --control-bg: color-mix(in srgb, var(--color-surface-hover) 50%, var(--color-surface-card));
+    --control-bg-hover: var(--field-bg-hover);
     border-radius: var(--radius-lg);
-    box-shadow: var(--shadow-sm);
 
     &__head { display: flex; align-items: center; gap: 0.55rem; }
     &__label {
@@ -729,15 +732,15 @@
 .inv-summary__grand { box-shadow: none !important; margin-top: 0.5rem; }
 
 /* Position cards become elevated white panels (shadow = depth), inputs recess into them */
-.inv-pos { background: var(--color-surface-card); box-shadow: var(--shadow-sm); }
-.inv-pos__remove:hover { background: var(--color-surface-hover); }
+.inv-pos { background: var(--color-surface-hover); }
+.inv-pos__remove:hover { background: var(--field-bg-hover); }
 
 /* Filled, borderless form controls — recessed by brightness, brighten on focus */
 .inv-builder {
     .text-input,
     .text-area {
         box-shadow: none !important;
-        background: var(--color-surface-hover);
+        background: var(--control-bg, var(--color-surface-hover));
         border-radius: var(--radius-md);
         transition: background var(--transition-fast);
 
@@ -751,7 +754,7 @@
 
     .select-input__trigger {
         box-shadow: none !important;
-        background: var(--color-surface-hover);
+        background: var(--control-bg, var(--color-surface-hover));
         border-radius: var(--radius-md);
     }
     .select-input--open .select-input__trigger { box-shadow: none !important; background: color-mix(in srgb, var(--color-primary) 8%, var(--color-surface-card)); }
@@ -849,7 +852,7 @@
         text-transform: uppercase;
         letter-spacing: 0.03em;
         color: var(--color-text-muted);
-        background: var(--color-surface-bg);
+        background: var(--color-surface-hover);
         font-weight: 600;
     }
 
@@ -859,7 +862,7 @@
         input, select {
             width: 100%;
             padding: 0.4rem 0.5rem;
-            background: var(--color-surface-bg);
+            background: var(--color-surface-hover);
             border: 1px solid transparent;
             border-radius: var(--radius-control);
             color: var(--color-text-main);
@@ -869,14 +872,14 @@
 
             &:focus {
                 outline: none;
-                background: var(--color-surface-card);
+                @include tokens.sunken-field;
             }
         }
     }
 
     /* Rows locked because they're billed on a saved invoice */
     &__row.is-locked {
-        background: var(--color-surface-bg);
+        background: var(--color-surface-hover);
 
         input, select {
             background: transparent;
@@ -900,7 +903,7 @@
     &__input {
         width: 100%;
         padding: 0.75rem;
-        background: var(--color-surface-bg);
+        background: var(--color-surface-hover);
         border: 1px solid var(--color-surface-border);
         border-radius: var(--radius-md);
         color: var(--color-text-main);
@@ -912,7 +915,7 @@
     }
 
     &__preview {
-        background: var(--color-surface-bg);
+        background: var(--color-surface-hover);
         border-radius: var(--radius-md);
         padding: 0.75rem;
         overflow: auto;
@@ -946,7 +949,7 @@
         grid-template-columns: 1fr 1fr;
         gap: 4px;
         padding: 4px;
-        background: var(--color-surface-bg);
+        background: var(--color-surface-hover);
         border-radius: var(--radius-md);
     }
     &__seg-btn {
@@ -961,7 +964,7 @@
         transition: background var(--transition-fast), color var(--transition-fast);
 
         &:hover { color: var(--color-text-main); }
-        &.is-active { background: var(--color-surface-card); color: var(--color-text-main); box-shadow: var(--shadow-sm); }
+        &.is-active { @include tokens.selected; }
     }
 
     /* billing options — aligned rows */
@@ -992,7 +995,7 @@
         select, input {
             width: 100%;
             padding: 0.55rem 0.7rem;
-            background: var(--color-surface-bg);
+            background: var(--color-surface-hover);
             border: none;
             border-radius: var(--radius-md);
             color: var(--color-text-main);
@@ -1008,7 +1011,7 @@
     &__list {
         max-height: 320px;
         overflow: auto;
-        background: var(--color-surface-bg);
+        background: var(--color-surface-hover);
         border-radius: var(--radius-md);
     }
 
@@ -1042,7 +1045,7 @@
 .inv-items { display: flex; flex-direction: column; gap: 0.85rem; }
 
 .inv-item {
-    background: var(--color-surface-bg);
+    background: var(--color-surface-hover);
     border-radius: var(--radius-md);
     padding: 0.85rem;
     display: flex;
@@ -1059,7 +1062,7 @@
         align-items: center;
         justify-content: center;
         border-radius: var(--radius-full);
-        background: var(--color-surface-card);
+        background: color-mix(in srgb, var(--color-surface-hover) 50%, var(--color-surface-card));
         color: var(--color-text-muted);
         font-size: 0.8rem;
         font-weight: 600;
@@ -1077,7 +1080,7 @@
         padding: 0.35rem;
         border-radius: var(--radius-md);
 
-        &:hover { color: var(--color-error); background: var(--color-surface-card); }
+        &:hover { color: var(--color-error); background: var(--field-bg-hover); }
     }
 
     &__nums {
@@ -1126,7 +1129,7 @@
         width: 120px;
         height: 64px;
         object-fit: contain;
-        background: var(--color-surface-bg);
+        background: var(--color-surface-hover);
         border-radius: var(--radius-md);
         padding: 0.4rem;
 

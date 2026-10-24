@@ -1,3 +1,5 @@
+@use '../../../styles/tokens';
+
 // Planning surfaces: shared time scale, task timeline (lanes per person),
 // people board (who does what) and project roadmap. Borderless: depth via
 // surface contrast and shadows only.
@@ -458,7 +460,7 @@
         }
 
         &:hover {
-            background: var(--color-surface-card);
+            background: color-mix(in srgb, var(--color-surface-hover) 50%, var(--color-surface-card));
             color: var(--color-text-main);
         }
     }
@@ -481,7 +483,7 @@
         min-height: 320px;
         padding: 12px;
         border-radius: var(--radius-lg);
-        background: var(--color-surface-hover);
+        background: var(--color-surface-card);
         transition: background var(--transition-fast), box-shadow var(--transition-fast);
 
         &.is-drop-target {
@@ -519,7 +521,7 @@
         gap: 3px;
         padding: 2px 8px;
         border-radius: var(--radius-full);
-        background: var(--color-surface-card);
+        background: color-mix(in srgb, var(--color-surface-hover) 50%, var(--color-surface-card));
         font-size: 11px;
         font-weight: 600;
         color: var(--color-text-muted);
@@ -555,14 +557,13 @@
     width: 100%;
     padding: 10px 12px;
     border-radius: var(--radius-card);
-    background: var(--color-surface-card);
-    box-shadow: var(--shadow-sm);
+    background: var(--color-surface-hover);
     text-align: left;
     cursor: grab;
-    transition: box-shadow var(--transition-fast), transform var(--transition-fast);
+    transition: background var(--transition-fast), transform var(--transition-fast);
 
     &:hover {
-        box-shadow: var(--shadow-md);
+        background: var(--field-bg-hover);
     }
 
     &.is-dragging {
@@ -621,6 +622,7 @@
     }
 
     &__actions {
+        @include tokens.depth-canvas; // chips on the canvas: Level 1
         display: flex;
         gap: 8px;
     }
@@ -1082,8 +1084,7 @@
         }
 
         &:hover {
-            background: var(--color-surface-card);
-            box-shadow: var(--shadow-sm);
+            background: var(--field-bg-hover);
         }
     }
 

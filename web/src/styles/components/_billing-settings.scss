@@ -7,6 +7,11 @@
     gap: 16px;
     max-width: 56rem;
 
+    // Banners directly on the page canvas sit at L1 (inside a card they stay L2).
+    > .billing-settings__banner:not(.billing-settings__banner--success):not(.billing-settings__banner--warning) {
+        background: var(--color-surface-card);
+    }
+
     &__banner {
         margin: 0;
         padding: 12px 16px;
@@ -107,7 +112,7 @@
         padding: 12px 14px;
         border: 1px solid var(--color-surface-border);
         border-radius: var(--radius-control);
-        background: var(--color-surface-card);
+        background: var(--color-surface-hover);
         color: var(--color-text-muted);
         text-align: left;
         cursor: pointer;
@@ -189,12 +194,12 @@
             width: 36px;
             height: 36px;
             border: none;
-            background: var(--color-surface-card);
+            background: var(--color-surface-hover);
             color: var(--color-text-main);
             cursor: pointer;
 
             &:disabled { color: var(--color-text-subtle); cursor: not-allowed; }
-            &:not(:disabled):hover { background: var(--color-surface-hover); }
+            &:not(:disabled):hover { background: var(--field-bg-hover); }
             .material-symbols-outlined { font-size: 18px; }
         }
 

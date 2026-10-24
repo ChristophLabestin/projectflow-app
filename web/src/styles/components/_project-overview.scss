@@ -2455,8 +2455,7 @@ a.project-overview__company-context-chip:hover {
                         align-items: center;
                         justify-content: center;
                         cursor: pointer;
-                        background: linear-gradient(to bottom right, var(--color-surface-hover), var(--color-surface-bg)); // approximate gradient
-                        box-shadow: var(--shadow-sm);
+                        background: var(--color-surface-hover);
 
                         &.with-image img {
                             width: 100%;
@@ -2735,7 +2734,7 @@ a.project-overview__company-context-chip:hover {
             &.no-image {
                 background:
                     linear-gradient(135deg, rgba(var(--color-primary-rgb), 0.18), transparent 46%),
-                    linear-gradient(100deg, var(--color-surface-hover), var(--color-surface-card) 58%, var(--color-surface-bg));
+                    linear-gradient(100deg, var(--color-surface-hover), var(--color-surface-card) 58%, var(--color-surface-card));
             }
 
             .edit-cover-btn-wrapper {
@@ -7434,8 +7433,7 @@ button.project-next-action-card__primary.is-warning:hover {
     min-width: 0;
     padding: 0.65rem 0.75rem;
     border-radius: var(--radius-lg);
-    background: var(--color-surface-card);
-    box-shadow: var(--shadow-sm);
+    background: var(--color-surface-hover);
 
     span,
     strong {
@@ -7498,8 +7496,7 @@ button.project-next-action-card__primary.is-warning:hover {
     align-items: center;
     padding: 1rem;
     border-radius: var(--radius-xl);
-    background: var(--color-surface-card);
-    box-shadow: var(--shadow-sm);
+    background: var(--color-surface-hover);
 }
 
 .project-resume-modal__task-main {
@@ -7778,7 +7775,7 @@ button.project-next-action-card__primary.is-warning:hover {
     overflow-x: auto;
     border: 1px solid var(--color-surface-border);
     border-radius: var(--radius-lg);
-    background: rgba(var(--color-surface-hover-rgb), 0.42);
+    background: var(--color-surface-card);
     scrollbar-width: none;
 
     &::-webkit-scrollbar {
@@ -7805,13 +7802,11 @@ button.project-next-action-card__primary.is-warning:hover {
 
     &:hover {
         color: var(--color-text-main);
-        background: rgba(var(--color-surface-card-rgb), 0.72);
+        background: var(--color-surface-hover);
     }
 
     &.is-active {
-        color: var(--color-text-main);
-        background: var(--color-surface-card);
-        box-shadow: var(--shadow-sm);
+        @include tokens.selected;
     }
 }
 
@@ -7888,10 +7883,7 @@ button.project-next-action-card__primary.is-warning:hover {
     }
 
     &.is-active {
-        color: var(--color-primary);
-        background: var(--color-surface-card);
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
-        transform: translateY(-1px);
+        @include tokens.selected;
     }
 
     @media (max-width: 640px) {

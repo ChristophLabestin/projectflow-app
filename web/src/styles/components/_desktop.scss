@@ -384,7 +384,7 @@ html.is-desktop.desktop-window-capture {
     padding: 0 10px;
     border: 1px solid var(--color-surface-border);
     border-radius: 999px;
-    background: var(--color-surface-bg);
+    background: var(--color-surface-hover);
     color: var(--color-text-muted);
     font: inherit;
     font-size: 0.78rem;
@@ -404,7 +404,7 @@ html.is-desktop.desktop-window-capture {
     cursor: pointer;
 
     &:hover {
-        background: var(--color-surface-hover);
+        background: var(--field-bg-hover);
     }
 }
 
@@ -450,7 +450,7 @@ html.is-desktop.desktop-window-capture {
 .quick-capture__footer {
     padding: 10px 18px;
     border-top: 1px solid var(--color-surface-border);
-    background: var(--color-surface-bg);
+    background: var(--color-surface-hover);
     font-size: 0.75rem;
 }
 
@@ -620,7 +620,7 @@ html.is-desktop.desktop-window-palette {
     gap: 14px;
     padding: 9px 18px;
     border-top: 1px solid var(--color-surface-border);
-    background: var(--color-surface-bg);
+    background: var(--color-surface-hover);
     color: var(--color-text-subtle);
     font-size: 0.75rem;
 
@@ -628,7 +628,7 @@ html.is-desktop.desktop-window-palette {
         padding: 1px 5px;
         border: 1px solid var(--color-surface-border);
         border-radius: 4px;
-        background: var(--color-surface-card);
+        background: color-mix(in srgb, var(--color-surface-hover) 50%, var(--color-surface-card));
         font: inherit;
         font-weight: 600;
     }
@@ -711,7 +711,7 @@ html.is-desktop.desktop-window-day #root {
     margin: 0 24px 12px;
     padding: 10px 12px;
     border-radius: 12px;
-    background: var(--color-surface-bg);
+    background: var(--color-surface-hover);
     color: var(--color-text-main);
 }
 
@@ -851,7 +851,7 @@ html.is-desktop.desktop-window-day #root {
     padding: 0 12px;
     border: 1px solid var(--color-surface-border);
     border-radius: var(--radius-md);
-    background: var(--color-surface-bg);
+    background: var(--color-surface-hover);
     color: var(--color-text-main);
     font: inherit;
     font-size: 0.85rem;
@@ -871,7 +871,7 @@ html.is-desktop.desktop-window-day #root {
     padding: 0 10px;
     border: 1px solid var(--color-surface-border);
     border-radius: var(--radius-md);
-    background: var(--color-surface-bg);
+    background: var(--color-surface-hover);
     color: var(--color-text-main);
     font: inherit;
     font-size: 0.85rem;
@@ -1004,7 +1004,7 @@ html.is-desktop.desktop-window-tray {
     margin: 0 10px;
     padding: 12px 14px;
     border-radius: 12px;
-    background: var(--color-surface-bg);
+    background: var(--color-surface-hover);
     border: 1px solid var(--color-surface-border);
 }
 
@@ -1159,11 +1159,11 @@ html.is-desktop.desktop-window-tray {
 
 .tray-panel__secondary {
     border: 1px solid var(--color-surface-border);
-    background: var(--color-surface-card);
+    background: var(--color-surface-hover);
     color: var(--color-text-main);
 
     &:hover {
-        background: var(--color-surface-hover);
+        background: var(--field-bg-hover);
     }
 }
 
@@ -1221,7 +1221,7 @@ html.is-desktop.desktop-window-tray {
     height: 38px;
     border: 1px solid var(--color-surface-border);
     border-radius: 10px;
-    background: var(--color-surface-bg);
+    background: var(--color-surface-hover);
 
     .material-symbols-outlined {
         font-size: 18px;
@@ -1262,7 +1262,7 @@ html.is-desktop.desktop-window-tray {
     margin: 10px 10px 0;
     padding: 3px;
     border-radius: 10px;
-    background: var(--color-surface-bg);
+    background: var(--color-surface-hover);
 }
 
 .tray-panel__tab {
@@ -1282,9 +1282,7 @@ html.is-desktop.desktop-window-tray {
     cursor: pointer;
 
     &.is-active {
-        background: var(--color-surface-card);
-        color: var(--color-text-main);
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+        @include tokens.selected;
     }
 }
 
@@ -1443,7 +1441,7 @@ html.is-desktop.desktop-window-tray {
     flex-shrink: 0;
     border: 0;
     border-radius: 6px;
-    background: var(--color-surface-card);
+    background: color-mix(in srgb, var(--color-surface-hover) 50%, var(--color-surface-card));
     color: var(--color-text-muted);
     opacity: 0;
     cursor: pointer;
@@ -1484,7 +1482,7 @@ html.is-desktop.desktop-window-tray {
 .tray-panel__footer {
     display: flex;
     border-top: 1px solid var(--color-surface-border);
-    background: var(--color-surface-bg);
+    background: var(--color-surface-hover);
 }
 
 .tray-panel__update {

@@ -331,13 +331,13 @@
     padding: 8px 12px;
     border: 1px solid var(--color-surface-border);
     border-radius: var(--radius-md);
-    background: var(--color-surface-bg);
+    background: var(--color-surface-hover);
     cursor: pointer;
     transition: all var(--transition-fast);
 
     &:hover, &[data-open='true'] {
         border-color: var(--color-surface-border-hover);
-        background: var(--color-surface-hover);
+        background: var(--field-bg-hover);
     }
 }
 
@@ -888,7 +888,7 @@
 .initiative-feedback-builder__mode-tabs {
     border: 1px solid var(--color-surface-border);
     border-radius: var(--radius-sm);
-    background-color: var(--color-surface-bg);
+    background-color: var(--color-surface-hover);
     display: inline-flex;
     padding: 0.15rem;
 
@@ -903,11 +903,13 @@
         min-height: 1.9rem;
         padding: 0 0.72rem;
 
-        &:hover,
-        &.is-active {
-            background-color: var(--color-surface-card);
+        &:hover {
+            background-color: var(--field-bg-hover);
             color: var(--color-text-main);
-            box-shadow: var(--shadow-sm);
+        }
+
+        &.is-active {
+            @include tokens.selected;
         }
     }
 }
@@ -1319,7 +1321,7 @@
     min-height: 2.45rem;
     border: 1px solid var(--color-surface-border);
     border-radius: var(--radius-sm);
-    background-color: var(--color-surface-card);
+    background-color: var(--color-surface-hover);
     padding: 0 0.65rem;
     display: flex;
     align-items: center;
@@ -1423,7 +1425,7 @@
     max-height: 28rem;
     overflow: auto;
     border-radius: var(--radius-md);
-    background-color: var(--color-surface-card);
+    background-color: color-mix(in srgb, var(--color-surface-hover) 50%, var(--color-surface-card));
     border: 1px solid var(--color-surface-border);
     padding: 1rem;
 
@@ -1630,12 +1632,17 @@
 }
 
 .initiative-feedback-builder__access-row,
-.initiative-feedback-builder__issue-row,
 .initiative-feedback-builder__publish-status,
 .initiative-feedback-builder__empty-link-state {
     border: 0;
     border-radius: var(--radius-md);
-    background-color: var(--color-surface-card);
+    background-color: color-mix(in srgb, var(--color-surface-hover) 50%, var(--color-surface-card));
+}
+
+.initiative-feedback-builder__issue-row {
+    border: 0;
+    border-radius: var(--radius-md);
+    background-color: var(--color-surface-hover);
 }
 
 
@@ -1746,14 +1753,14 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    background-color: var(--color-surface-bg);
+    background-color: var(--color-surface-hover);
     box-shadow: inset 0 0 0 2px var(--color-surface-border);
     transition: background-color var(--transition-fast), box-shadow var(--transition-fast);
     flex-shrink: 0;
 
     &.is-done {
         background-color: var(--color-success);
-        box-shadow: var(--shadow-sm);
+        box-shadow: none;
         color: #fff;
     }
 

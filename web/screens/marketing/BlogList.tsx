@@ -179,11 +179,11 @@ const BlogList = () => {
                         </div>
                     )}
 
-                    <div className="flex items-center p-1 bg-surface-hover rounded-lg">
+                    <div className="flex items-center p-1 bg-surface-card rounded-lg">
                         <button aria-label={t('marketing.blogList.gridView')}
                             onClick={() => setViewMode('grid')}
                             className={`p-1.5 rounded-md transition-all ${viewMode === 'grid'
-                                ? 'bg-surface-card shadow-sm text-main'
+                                ? 'bg-primary text-on-primary'
                                 : 'text-muted hover:text-main'}`}
                             title={t('marketing.blogList.gridView')}
                         >
@@ -192,7 +192,7 @@ const BlogList = () => {
                         <button aria-label={t('marketing.blogList.listView')}
                             onClick={() => setViewMode('list')}
                             className={`p-1.5 rounded-md transition-all ${viewMode === 'list'
-                                ? 'bg-surface-card shadow-sm text-main'
+                                ? 'bg-primary text-on-primary'
                                 : 'text-muted hover:text-main'}`}
                             title={t('marketing.blogList.listView')}
                         >

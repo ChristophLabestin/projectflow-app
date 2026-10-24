@@ -1,3 +1,5 @@
+@use '../../../styles/tokens';
+
 /* =========================================
    WORKSTREAM PAGES — Shared shell for Tasks
    and Initiatives list views
@@ -246,7 +248,7 @@
     .text-input {
         border-radius: var(--radius-control);
         border: 1px solid var(--color-surface-border);
-        background: var(--color-surface-bg);
+        background: var(--color-surface-hover);
         box-shadow: none;
     }
 
@@ -259,7 +261,7 @@
     display: inline-flex;
     padding: 0.2rem;
     border-radius: var(--radius-lg);
-    background: var(--color-surface-bg);
+    background: var(--color-surface-hover);
     border: 1px solid var(--color-surface-border);
     gap: 0.15rem;
 }
@@ -290,9 +292,7 @@
     }
 
     &.is-active {
-        background: var(--color-surface-card);
-        color: var(--color-primary);
-        box-shadow: var(--shadow-sm);
+        @include tokens.selected;
     }
 }
 
@@ -300,7 +300,7 @@
     display: inline-flex;
     padding: 0.2rem;
     border-radius: var(--radius-control);
-    background: var(--color-surface-bg);
+    background: var(--color-surface-hover);
     border: 1px solid var(--color-surface-border);
     gap: 0.15rem;
 }
@@ -327,9 +327,7 @@
     }
 
     &.is-active {
-        background: var(--color-surface-card);
-        color: var(--color-primary);
-        box-shadow: var(--shadow-sm);
+        @include tokens.selected;
     }
 }
 
@@ -342,7 +340,7 @@
     .select-input__trigger {
         border-radius: var(--radius-control);
         border: 1px solid var(--color-surface-border);
-        background: var(--color-surface-bg);
+        background: var(--color-surface-hover);
         box-shadow: none;
     }
 
@@ -401,7 +399,7 @@
     align-items: center;
     justify-content: center;
     gap: 0.35rem;
-    background: var(--color-surface-bg);
+    background: var(--color-surface-hover);
     color: var(--color-text-muted);
     cursor: pointer;
     transition: background var(--transition-fast), color var(--transition-fast), opacity var(--transition-fast);
@@ -411,7 +409,7 @@
     }
 
     &:hover:not(:disabled) {
-        background: var(--color-surface-hover);
+        background: var(--field-bg-hover);
         color: var(--color-text-main);
     }
 
@@ -460,7 +458,7 @@
         min-height: 2.15rem;
         border: 0;
         border-radius: var(--radius-control);
-        background: var(--color-surface-bg);
+        background: var(--color-surface-hover);
         box-shadow: none;
     }
 }

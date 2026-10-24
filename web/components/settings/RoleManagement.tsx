@@ -90,7 +90,7 @@ function PermissionGroup({
             <button
                 type="button"
                 onClick={() => setIsExpanded(!isExpanded)}
-                className="w-full flex items-center justify-between p-2.5 bg-surface hover:bg-surface-hover transition-colors"
+                className="w-full flex items-center justify-between p-2.5 bg-surface-card hover:bg-surface-hover transition-colors"
             >
                 <div className="flex items-center gap-2">
                     <span className="material-symbols-outlined text-base text-muted">
@@ -264,10 +264,10 @@ function DraggableRoleItem({
                 onDrop={handleDrop}
                 onClick={onSelect}
                 className={`
-                    flex items-center gap-4 p-4 rounded-xl transition-all duration-200 shadow-sm
+                    flex items-center gap-4 p-4 rounded-xl transition-all duration-200
                     ${isDragging
-                        ? 'opacity-30 scale-95 bg-surface'
-                        : 'bg-surface-card hover:shadow-md hover:-translate-y-0.5'
+                        ? 'opacity-30 scale-95 bg-surface-card'
+                        : 'bg-surface-hover hover:-translate-y-0.5'
                     }
                     ${isSelected
                         ? 'ring-2 ring-primary/50 bg-primary/5'
@@ -849,7 +849,7 @@ export function RoleManagement() {
                 </div>
 
                 {/* Right: Permission details */}
-                <div className="xl:col-span-3 rounded-2xl bg-surface-card shadow-sm overflow-hidden flex flex-col min-h-0">
+                <div className="xl:col-span-3 rounded-2xl bg-surface-hover overflow-hidden flex flex-col min-h-0">
                     <PermissionDisplayPanel
                         role={selectedRole}
                         onEdit={() => selectedRole && handleOpenEdit(selectedRole)}

@@ -179,7 +179,7 @@ export const PersonalTasksPage = () => {
             </div>
 
             {/* Filter Tabs */}
-            <div className="flex bg-surface-hover p-1 rounded-xl">
+            <div className="flex bg-surface-card p-1 rounded-xl">
                 {(['open', 'completed', 'all'] as const).map(status => (
                     <button
                         key={status}
@@ -187,7 +187,7 @@ export const PersonalTasksPage = () => {
                         className={`
                             flex-1 px-6 py-2 rounded-lg text-sm font-semibold capitalize transition-all
                             ${statusFilter === status
-                                ? 'bg-surface-paper text-main shadow-sm'
+                                ? 'bg-primary text-on-primary'
                                 : 'text-muted hover:text-main'}
                         `}
                     >
@@ -223,7 +223,7 @@ export const PersonalTasksPage = () => {
             <div className="flex flex-col gap-3">
                 {filteredTasks.length === 0 ? (
                     <div className="py-16 text-center flex flex-col items-center justify-center">
-                        <div className="bg-surface-hover p-6 rounded-full mb-4">
+                        <div className="bg-surface-card p-6 rounded-full mb-4">
                             <span className="material-symbols-outlined text-4xl text-subtle">
                                 {statusFilter === 'completed' ? 'task_alt' : 'check_circle'}
                             </span>

@@ -1,5 +1,6 @@
 // Workspaces: resolution gate, switcher section, invite modal, accept page.
 // Depth via surface contrast + shadow only (borderless design).
+@use '../../../styles/tokens';
 
 .workspace-gate {
     min-height: 100vh;
@@ -189,9 +190,7 @@
         }
 
         &.is-active {
-            background: var(--color-surface-card);
-            color: var(--color-text-main);
-            box-shadow: var(--shadow-sm);
+            @include tokens.selected;
         }
     }
 
@@ -235,8 +234,7 @@
         }
 
         &.is-active {
-            background: var(--color-surface-card);
-            box-shadow: var(--shadow-md);
+            @include tokens.selected;
         }
     }
 
@@ -276,7 +274,7 @@
         }
 
         &:hover {
-            background: var(--color-surface-card);
+            background: var(--field-bg-hover);
         }
     }
 

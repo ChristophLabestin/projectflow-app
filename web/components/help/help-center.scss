@@ -331,7 +331,6 @@
     font-size: 0.75rem;
     font-weight: 500;
     cursor: pointer;
-    box-shadow: var(--shadow-sm);
     transition: background var(--transition-fast);
 
     &:hover {
@@ -536,7 +535,6 @@
 .help-kbd {
     min-width: 22px;
     background: var(--color-surface-card);
-    box-shadow: var(--shadow-sm);
     text-align: center;
 }
 

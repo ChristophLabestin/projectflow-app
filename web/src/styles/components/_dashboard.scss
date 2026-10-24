@@ -170,7 +170,7 @@
 }
 
 .dashboard-band__seg--rest {
-    background: rgba(var(--color-surface-hover-rgb), 0.55);
+    background: var(--color-surface-card);
 }
 
 .dashboard-band__caption {
@@ -959,7 +959,7 @@
     display: block;
     height: 5px;
     border-radius: 999px;
-    background: rgba(var(--color-surface-hover-rgb), 0.7);
+    background: var(--color-surface-card);
 
     i {
         display: block;

@@ -364,7 +364,7 @@
     transition: background-color var(--transition-fast), border-color var(--transition-fast);
 
     &:hover {
-        background: var(--color-surface-bg);
+        background: var(--color-surface-hover);
     }
 
     @include tokens.sunken-field;
@@ -395,7 +395,7 @@
     transition: background-color var(--motion-duration-fast) var(--motion-ease-out);
 
     &:hover {
-        background: var(--color-surface-bg);
+        background: var(--color-surface-hover);
     }
 }
 
@@ -548,7 +548,7 @@
     min-height: 40px;
     padding: 8px 12px;
     border-radius: var(--radius-control);
-    background: var(--color-surface-bg);
+    background: var(--color-surface-hover);
     border: 1px solid var(--color-surface-border);
     font-size: 14px;
 }
@@ -563,13 +563,13 @@
     padding: 8px 12px;
     border: 1px solid var(--color-surface-border);
     border-radius: var(--radius-control);
-    background: var(--color-surface-bg);
+    background: var(--color-surface-hover);
     cursor: pointer;
     transition: all var(--transition-fast);
 
     &:hover, &[data-open='true'] {
         border-color: var(--color-surface-border-hover);
-        background: var(--color-surface-hover);
+        background: var(--field-bg-hover);
     }
 }
 
@@ -939,13 +939,13 @@
     gap: 12px;
     padding: 10px;
     border-radius: var(--radius-md);
-    background: var(--color-surface-bg);
+    background: var(--color-surface-hover);
     color: var(--color-text-main);
     text-decoration: none;
     border: 1px solid transparent;
 
     &:hover:not(.task-detail__linked-row--static) {
-        background: var(--color-surface-hover);
+        background: var(--field-bg-hover);
         border-color: var(--color-surface-border);
     }
 
@@ -1011,7 +1011,7 @@
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    background: var(--color-surface-bg);
+    background: var(--color-surface-hover);
     border: 1px solid var(--color-surface-border);
     padding: 4px 8px;
     border-radius: var(--radius-control);
@@ -1021,7 +1021,7 @@
     cursor: pointer;
 
     &:hover {
-        background: var(--color-surface-hover);
+        background: var(--field-bg-hover);
     }
 
     .material-symbols-outlined {
@@ -1090,7 +1090,7 @@
     justify-content: center;
     border: 1px dashed var(--color-surface-border-hover);
     border-radius: var(--radius-full);
-    background-color: var(--color-surface-bg);
+    background-color: var(--color-surface-hover);
     background-position: center;
     background-size: cover;
     color: var(--color-text-subtle);
@@ -1100,7 +1100,7 @@
 
 .task-detail__subtask-avatar:hover {
     border-color: var(--color-surface-border);
-    background-color: var(--color-surface-hover);
+    background-color: var(--field-bg-hover);
 }
 
 .task-detail__subtask-avatar[data-assigned='true'] {
