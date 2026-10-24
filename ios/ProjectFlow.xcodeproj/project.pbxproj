@@ -142,6 +142,7 @@
 		9A43638B9FA468A1CEB44FD5 /* TeamMemberViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35F1B3D88491AA9401F60620 /* TeamMemberViews.swift */; };
 		9B8A35F4BD0FB234F14CA1E3 /* TodayDayClose.swift in Sources */ = {isa = PBXBuildFile; fileRef = 12A2D230FC996843CF2F20E6 /* TodayDayClose.swift */; };
 		9BB88635AFCF70D5AA0DC34C /* AccountPages.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00603851C276F2A7710DE3A /* AccountPages.swift */; };
+		9C2249AE6DF59F224EB28D67 /* FlowsScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30AF273FCD05972A618C2547 /* FlowsScreen.swift */; };
 		9E4874C25B21D29DD07CA797 /* TaskDetailScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F2D69EA16B9FED082CC0F29 /* TaskDetailScreen.swift */; };
 		A20B8F9A90746CDD44E391E3 /* TodaySections.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1F5319B03EC11682128D570 /* TodaySections.swift */; };
 		A26A9DB169938AEED8E98EC3 /* PFDesign in Frameworks */ = {isa = PBXBuildFile; productRef = 9F06AC3B6186753189A0058B /* PFDesign */; };
@@ -179,6 +180,7 @@
 		D5BD415E4AFEDB0B6DFCBF1E /* AccountDeletion.swift in Sources */ = {isa = PBXBuildFile; fileRef = 262029F9B685E488D00A5BCF /* AccountDeletion.swift */; };
 		D656A94FFC8356B786E1FDAC /* FocusActivityViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2BB867C71BA83C7E6ED4AA95 /* FocusActivityViews.swift */; };
 		D7FECEA1D41EB39B46E17225 /* TaskDetailPlanning.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6CBCA0B365B6DFC7E5FC55A7 /* TaskDetailPlanning.swift */; };
+		D89ED7D808778E18C5882717 /* FlowsWebStrings.swift in Sources */ = {isa = PBXBuildFile; fileRef = A80B6B6BC8803F1619060B2E /* FlowsWebStrings.swift */; };
 		D8C73D502767B9A0A9BE7966 /* FocusActivityViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2BB867C71BA83C7E6ED4AA95 /* FocusActivityViews.swift */; };
 		DB9B0085AB28604B46BC4EEA /* Controls.swift in Sources */ = {isa = PBXBuildFile; fileRef = 93A34A5BA31F750720D5C8EA /* Controls.swift */; };
 		DC5731F152E47EAD1AD41036 /* ShareModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = DAA49F86E3FA87036F47EC82 /* ShareModel.swift */; };
@@ -302,6 +304,7 @@
 		2D1985111B7FB6BAF88DEC42 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		2E8ADB646766500730AF6A52 /* NotificationSettingsScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationSettingsScreen.swift; sourceTree = "<group>"; };
 		2EEDD7FE2AD6D4ADD9608198 /* ProjectSettingsCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectSettingsCatalog.swift; sourceTree = "<group>"; };
+		30AF273FCD05972A618C2547 /* FlowsScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlowsScreen.swift; sourceTree = "<group>"; };
 		321DE633FD70608674BBEEF4 /* TeamGroupViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TeamGroupViews.swift; sourceTree = "<group>"; };
 		35A8E40548116A045F1EAE8A /* RichText.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RichText.swift; sourceTree = "<group>"; };
 		35B48FF264D306493C02F408 /* ProjectFlowNotificationService.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = ProjectFlowNotificationService.appex; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -385,6 +388,7 @@
 		A648F8137C19ED9D12D956D8 /* WikiScreens.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WikiScreens.swift; sourceTree = "<group>"; };
 		A6BF9B91926B63A8F94BFD77 /* WidgetIntents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetIntents.swift; sourceTree = "<group>"; };
 		A6F21AD5892131A8CD9F3610 /* OnboardingIntro.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingIntro.swift; sourceTree = "<group>"; };
+		A80B6B6BC8803F1619060B2E /* FlowsWebStrings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlowsWebStrings.swift; sourceTree = "<group>"; };
 		A8B5CD24A9D84680E2EAC8F6 /* ActivityWebStrings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActivityWebStrings.swift; sourceTree = "<group>"; };
 		AB7AE0A7A730052421068FA4 /* WidgetSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetSupport.swift; sourceTree = "<group>"; };
 		ABC953F44C1AEBBF747F1FB3 /* MediaUpload.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediaUpload.swift; sourceTree = "<group>"; };
@@ -542,6 +546,8 @@
 				6DE73E86700EC7F245653535 /* ActivityScreen.swift */,
 				A8B5CD24A9D84680E2EAC8F6 /* ActivityWebStrings.swift */,
 				D32ECAB5FAD204F96B27AA9E /* FilesWebStrings.swift */,
+				30AF273FCD05972A618C2547 /* FlowsScreen.swift */,
+				A80B6B6BC8803F1619060B2E /* FlowsWebStrings.swift */,
 				D92173B52273E92C63C04FCC /* InsightsScreen.swift */,
 				2673250DF04AF77261EEC4D6 /* WorkspaceAreas.swift */,
 				21AC04787CA873C212004651 /* WorkspaceStrings.swift */,
@@ -1309,6 +1315,8 @@
 				5D11DF943593D2D67F0F757C /* FirstRunFlowView.swift in Sources */,
 				E706D2CD02079E2B6CA4B508 /* FirstRunState.swift in Sources */,
 				35FD40C6E13AB3ABB12291CA /* FirstRunStrings.swift in Sources */,
+				9C2249AE6DF59F224EB28D67 /* FlowsScreen.swift in Sources */,
+				D89ED7D808778E18C5882717 /* FlowsWebStrings.swift in Sources */,
 				EF362EE57527794B275CABDE /* FocusActivityAttributes.swift in Sources */,
 				D656A94FFC8356B786E1FDAC /* FocusActivityViews.swift in Sources */,
 				8C1DC6A2D3576B6C8A209694 /* FocusController.swift in Sources */,

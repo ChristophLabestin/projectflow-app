@@ -117,7 +117,9 @@ Quick Look preview, camera/photos/Files pickers, overview at `/files`); the shar
 task it creates (callables over REST). Wiki (`brain/plans/wiki-concept.md`): `PFData/WikiData.swift` (tree store, chunked body, `bodyRev`-checked save with the
 web's derived fields, create, task links), `Features/Wiki` (tree + search, native renderer for the Tiptap JSON, checklists
 toggle in place, tap-to-edit as Markdown-light text with locked `⟦n⟧` placeholders for blocks iOS can't edit, @-mentions of
-people, task "Docs" card, project tab "Wiki"). Copy for these areas comes from the web locales (`ActivityWebStrings`, generated). Files, Wiki and Flows join the same row.
+people, task "Docs" card, project tab "Wiki"). Flows (`brain/plans/flows-concept.md`): `PFData/FlowsData.swift` + `Features/Workspace/FlowsScreen.swift`: list with trigger →
+actions, status and on/off switch (`setAutomationEnabled`), detail with "Jetzt ausführen" (`runAutomation`, asks for a task
+when the actions need one), run log with retry (`retryAutomationRun`). Creating/editing stays web-only (hint on screen). Copy for these areas comes from the web locales (`ActivityWebStrings`, generated). Files, Wiki and Flows join the same row.
 
 ## Startup template seed data
 
