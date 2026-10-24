@@ -152,6 +152,8 @@ const de = {
         billedMonthly: 'bei monatlicher Zahlung',
         forever: 'für immer',
         from: 'ab',
+        onRequest: 'Preis auf Anfrage',
+        onRequestUnit: 'Individuelles Angebot ab 10 Plätzen',
         popular: 'Beliebt',
         plans: [
             { key: 'free', name: 'Free', monthly: 0, yearly: 0, desc: 'Zum Ausprobieren und für den Einstieg.', features: ['1 Person, bis 3 Projekte', '1 GB Dateispeicher', 'Dateien bis 50 MB'], cta: 'Kostenlos starten' },
@@ -394,6 +396,8 @@ const en: SiteCopy = {
         billedMonthly: 'billed monthly',
         forever: 'forever',
         from: 'from',
+        onRequest: 'Price on request',
+        onRequestUnit: 'Custom quote from 10 seats',
         popular: 'Popular',
         plans: [
             { key: 'free', name: 'Free', monthly: 0, yearly: 0, desc: 'To try it out and get started.', features: ['1 person, up to 3 projects', '1 GB file storage', 'Files up to 50 MB'], cta: 'Start for free' },

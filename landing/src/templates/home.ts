@@ -194,10 +194,10 @@ const pricing = (t: SiteCopy, lang: Lang) => {
         const href = plan.key === 'org' ? 'mailto:hello@getprojectflow.com?subject=ProjectFlow%20Organization'
             : plan.key === 'free' ? links.register : `${buy}?plan=${plan.key}&interval=year`;
         const amount = plan.key === 'org'
-            ? `<span class="price-col__from">${esc(p.from)}</span> <b>${plan.yearly}&nbsp;${p.currency}</b>`
+            ? `<b class="price-col__request">${esc(p.onRequest)}</b>`
             : `<b data-price data-monthly="${plan.monthly}" data-yearly="${plan.yearly}">${plan.yearly}&nbsp;${p.currency}</b>`;
         const unit = plan.key === 'free' ? esc(p.forever)
-            : plan.key === 'org' ? `${esc(p.perSeat)}, ${esc(p.billedYearly)}`
+            : plan.key === 'org' ? esc(p.onRequestUnit)
             : `${esc(plan.key === 'personal' ? p.perMonth : p.perSeat)}, <span data-billing-unit data-monthly="${esc(p.billedMonthly)}" data-yearly="${esc(p.billedYearly)}">${esc(p.billedYearly)}</span>`;
         return `
             <article class="price-col${featured ? ' is-featured' : ''}" role="listitem" aria-labelledby="plan-${plan.key}">

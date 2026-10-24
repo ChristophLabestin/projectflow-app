@@ -1693,8 +1693,10 @@ kbd {
 
 .price-col__price {
     display: flex;
-    align-items: baseline;
+    align-items: flex-end;
     gap: 6px;
+    // Fixed height so numeric prices and "Preis auf Anfrage" keep the buttons on one line.
+    min-height: clamp(2.5rem, 2rem + 1.2vw, 3.25rem);
     margin: 24px 0 0;
 
     b {
@@ -1706,9 +1708,11 @@ kbd {
     }
 }
 
-.price-col__from {
-    color: var(--color-text-muted);
-    font-size: 1rem;
+// "Preis auf Anfrage" sits on the same line height as the numeric prices.
+.price-col__price .price-col__request {
+    font-size: clamp(1.6rem, 1.3rem + 0.7vw, 2rem);
+    letter-spacing: -0.03em;
+    line-height: 1;
 }
 
 .price-col__unit {
