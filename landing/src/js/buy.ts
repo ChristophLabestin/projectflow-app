@@ -19,6 +19,10 @@ function start(root: HTMLElement, c: any) {
     const $$ = <T extends HTMLElement = HTMLElement>(sel: string, scope: ParentNode = root) => Array.from(scope.querySelectorAll<T>(sel));
     const esc = (v: string) => v.replace(/[&<>"]/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]!));
     const money = (cents: number) => new Intl.NumberFormat(lang === 'de' ? 'de-DE' : 'en-IE', { style: 'currency', currency: 'EUR', minimumFractionDigits: 2 }).format(cents / 100);
+    /** Whole euros without decimals ("5 €"), for list prices. */
+    const price = (cents: number) => new Intl.NumberFormat(lang === 'de' ? 'de-DE' : 'en-IE', { style: 'currency', currency: 'EUR', minimumFractionDigits: cents % 100 ? 2 : 0 }).format(cents / 100);
+    const seatText = (n: number) => (n === 1 ? c.payment.seatOne : c.payment.seats.replace('{n}', String(n)));
+    const clampSeats = (n: number) => Math.min(50, Math.max(1, Math.round(Number.isFinite(n) ? n : 1)));
     const date = (v: string | number | null | undefined) => (v ? new Date(v).toLocaleDateString(lang === 'de' ? 'de-DE' : 'en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : '');
     const errorText = (e: any) => c.errors[e?.code] ?? c.errors[String(e?.message ?? '').replace(/^.*?(billing-[a-z-]+).*$/, '$1')] ?? c.errors.generic;
     const svg = (name: string) => iconSvg[name] ?? '';
@@ -27,7 +31,8 @@ function start(root: HTMLElement, c: any) {
     const state = {
         plan: (params.get('plan') === 'personal' ? 'personal' : 'team') as Plan,
         interval: (params.get('interval') === 'month' ? 'month' : 'year') as Interval,
-        ai: params.get('ai') === '1',
+        // Team seats booked up front (min. the full members of the chosen workspace, max. 50).
+        seats: clampSeats(Number(params.get('seats') ?? 1)),
         user: null as BuyUser | null,
         workspaces: [] as Workspace[],
         // Links from the app pass ?tenant= to preselect the workspace (ignored if it is not an open team workspace of the user).
@@ -84,10 +89,18 @@ function start(root: HTMLElement, c: any) {
     });
 
     /* ---------------------------------------------------------------- recap (left) */
-    const planLine = () => {
-        const unit = c.prices[state.plan][state.interval] * 100;
-        const price = c.plan[state.plan].price.replace('{p}', money(unit));
-        return state.interval === 'year' ? `${price} · ${c.plan.yearly}` : price;
+    /** Recap of the plan as it will be billed: total per billing period, then how it adds up. */
+    const planLines = () => {
+        const yearly = state.interval === 'year';
+        const months = yearly ? 12 : 1;
+        const seats = state.plan === 'team' ? state.seats : 1;
+        const perSeat = c.prices[state.plan][state.interval] * months * 100;
+        const total = c.recap.total.replace('{amount}', money(perSeat * seats)).replace('{unit}', yearly ? c.plan.perYearShort : c.plan.perMonthShort);
+        const billed = yearly ? c.recap.billedYearly : c.recap.billedMonthly;
+        const detail = state.plan === 'team'
+            ? c.recap.seatsDetail.replace('{n}', String(seats)).replace('{p}', price(perSeat)).replace('{billed}', billed)
+            : yearly ? c.recap.personalYear.replace('{m}', price(c.prices.personal.year * 100)).replace('{billed}', billed) : billed;
+        return [total, detail];
     };
     const renderRecap = () => {
         const idx = ORDER.indexOf(state.current);
@@ -102,8 +115,8 @@ function start(root: HTMLElement, c: any) {
         if (idx > 0) {
             parts.push(item('plan', c.recap.plan, `
                 <div class="ck-recap__plan"><span class="ck-recap__tile">${svg(state.plan === 'team' ? 'users' : 'user')}</span>
-                <div><b>${esc(c.plan[state.plan].name)}${state.ai ? ` + ${esc(c.plan.aiTitle)}` : ''}</b>
-                <span>${esc(planLine())}</span><span>${esc(c.plan[state.plan].text)}</span></div></div>`));
+                <div><b>${esc(c.plan[state.plan].name)}${state.plan === 'team' ? ` · ${esc(seatText(state.seats))}` : ''}</b>
+                ${planLines().map((l) => `<span>${esc(l)}</span>`).join('')}</div></div>`));
         }
         if (idx > 1 && state.user) parts.push(item('account', c.recap.account, `<p class="ck-recap__line">${svg('mail')}${esc(state.user.email ?? '')}</p>`));
         if (idx > 2) parts.push(item('workspace', c.recap.workspace, `<p class="ck-recap__line">${svg('users')}${esc(ws?.workspaceType === 'personal' ? c.workspace.personalName : ws?.name ?? '')}</p>`));
@@ -116,34 +129,48 @@ function start(root: HTMLElement, c: any) {
     /* ---------------------------------------------------------------- 1 · plan */
     const planInputs = $$<HTMLInputElement>('input[name="plan"]');
     const intervalInputs = $$<HTMLInputElement>('input[name="interval"]');
-    const aiInput = $<HTMLInputElement>('input[name="ai"]');
+    const seatsInput = $<HTMLInputElement>('input[name="seats"]');
     planInputs.forEach((i) => { i.checked = i.value === state.plan; });
     intervalInputs.forEach((i) => { i.checked = i.value === state.interval; });
-    aiInput.checked = state.ai;
+    seatsInput.value = String(state.seats);
 
     const renderPlan = () => {
-        $$('[data-plan-price]').forEach((el) => {
-            const key = el.dataset.planPrice as Plan;
-            el.textContent = c.plan[key].price.replace('{p}', money(c.prices[key][state.interval] * 100));
-        });
-        $('[data-ai-text]').textContent = state.plan === 'team' ? c.plan.aiTextTeam : c.plan.aiTextPersonal;
-        const note = $('[data-seats-note]');
-        note.textContent = c.plan.seatsNote;
-        note.hidden = state.plan !== 'team';
+        const team = state.plan === 'team';
+        const months = state.interval === 'year' ? 12 : 1;
+        const seats = team ? state.seats : 1;
+        $$('[data-plan-amount]').forEach((el) => { el.textContent = price(c.prices[el.dataset.planAmount as Plan][state.interval] * 100); });
+        $('[data-seats]').hidden = !team;
+        seatsInput.value = String(state.seats);
+        $<HTMLButtonElement>('[data-seat-step="-1"]').disabled = state.seats <= 1;
+        $<HTMLButtonElement>('[data-seat-step="1"]').disabled = state.seats >= 50;
+        const name = c.plan[state.plan].name;
+        const perMonth = c.prices[state.plan].year * 100;
+        const suffix = team ? ` ${c.plan.perSeatSuffix}` : '';
+        $('[data-interval-note]').textContent = (state.interval === 'year' ? c.plan.intervalNoteYear : c.plan.intervalNoteMonth)
+            .replace('{plan}', name).replace('{year}', `${price(perMonth * 12)}${suffix}`).replace('{month}', price(perMonth));
+        const interval = state.interval === 'year' ? c.payment.perYear : c.payment.perMonth;
+        $('[data-sum-label]').textContent = c.plan.sumLabel.replace('{plan}', team ? `${name} · ${seatText(seats)}` : name).replace('{interval}', interval);
+        $('[data-sum-amount]').textContent = money(c.prices[state.plan][state.interval] * months * 100 * seats);
+        $('[data-sum-unit]').textContent = state.interval === 'year' ? c.plan.perYearShort : c.plan.perMonthShort;
     };
     const syncPlan = () => {
         state.plan = (planInputs.find((i) => i.checked)?.value ?? 'team') as Plan;
         state.interval = (intervalInputs.find((i) => i.checked)?.value ?? 'year') as Interval;
-        state.ai = aiInput.checked;
+        state.seats = clampSeats(Number(seatsInput.value));
         const url = new URL(location.href);
         url.searchParams.set('plan', state.plan);
         url.searchParams.set('interval', state.interval);
-        if (state.ai) url.searchParams.set('ai', '1'); else url.searchParams.delete('ai');
+        if (state.plan === 'team' && state.seats > 1) url.searchParams.set('seats', String(state.seats)); else url.searchParams.delete('seats');
+        url.searchParams.delete('ai');
         history.replaceState(history.state, '', url);
         state.intent = null;
         renderPlan();
     };
-    [...planInputs, ...intervalInputs, aiInput].forEach((i) => i.addEventListener('change', syncPlan));
+    [...planInputs, ...intervalInputs, seatsInput].forEach((i) => i.addEventListener('change', syncPlan));
+    $$<HTMLButtonElement>('[data-seat-step]').forEach((b) => b.addEventListener('click', () => {
+        seatsInput.value = String(clampSeats(state.seats + Number(b.dataset.seatStep)));
+        syncPlan();
+    }));
     $('[data-next="plan"]').addEventListener('click', () => go('account'));
 
     /* ---------------------------------------------------------------- 2 · account */
@@ -286,6 +313,12 @@ function start(root: HTMLElement, c: any) {
                     return;
                 }
             }
+            // Seats can't go below the workspace's full members; raise them and show it in the recap.
+            const chosen = state.workspaces.find((w) => w.tenantId === state.tenantId);
+            if (state.plan === 'team' && chosen && (chosen.memberCount ?? 1) > state.seats) {
+                seatsInput.value = String(clampSeats(chosen.memberCount ?? 1));
+                syncPlan();
+            }
             go('payment');
         });
     };
@@ -321,17 +354,18 @@ function start(root: HTMLElement, c: any) {
         const s = state.intent?.summary;
         const months = state.interval === 'year' ? 12 : 1;
         const ws = state.workspaces.find((w) => w.tenantId === state.tenantId);
-        const seats = state.plan === 'team' ? (s?.lines[0]?.quantity ?? Math.max(1, ws?.memberCount ?? 1)) : 1;
+        const seats = state.plan === 'team' ? (s?.lines[0]?.quantity ?? Math.max(state.seats, ws?.memberCount ?? 1)) : 1;
         const planAmount = s?.lines[0]?.amount ?? c.prices[state.plan][state.interval] * months * 100 * seats;
-        const aiAmount = s ? s.lines.slice(1).reduce((sum, l) => sum + l.amount, 0) : (state.ai ? c.prices.ai[state.interval] * months * 100 : 0);
-        const subtotal = s?.subtotal ?? planAmount + aiAmount;
+        // Extra server lines (e.g. an AI add-on booked in the app) are shown as they come.
+        const extras = s ? s.lines.slice(1) : [];
+        const subtotal = s?.subtotal ?? planAmount;
         const tax = s?.tax ?? 0;
         const total = s?.total ?? subtotal;
         const per = state.interval === 'year' ? c.payment.perYear : c.payment.perMonth;
         const billed = state.interval === 'year' ? c.payment.yearlyBilled : c.payment.monthlyBilled;
-        const planName = `${c.plan[state.plan].name}${state.plan === 'team' ? `, ${c.payment.seats.replace('{n}', String(seats))}` : ''}`;
+        const planName = `${c.plan[state.plan].name}${state.plan === 'team' ? `, ${seatText(seats)}` : ''}`;
         const rows = [`<div><dt>${esc(c.payment.subtotal.replace('{plan}', planName).replace('{interval}', per))}</dt><dd>${money(planAmount)}</dd></div>`];
-        if (aiAmount) rows.push(`<div><dt>${esc(c.payment.ai)}</dt><dd>${money(aiAmount)}</dd></div>`);
+        extras.forEach((l) => rows.push(`<div><dt>${esc(l.label)}</dt><dd>${money(l.amount)}</dd></div>`));
         if (tax > 0) rows.push(`<div><dt>${esc(c.payment.vat.replace('{r}', String(Math.round((tax / subtotal) * 100))))}</dt><dd>${money(tax)}</dd></div>`);
         const trialEnd = s?.trialEnd ?? state.intent?.trialEnd ?? null;
         const due = s?.amountDue ?? (trialEnd ? 0 : total);
@@ -345,13 +379,12 @@ function start(root: HTMLElement, c: any) {
         if (trialEnd && !due) $('[data-lead]').textContent = c.intro.payment.leadTrial.replace('{d}', date(trialEnd));
     };
 
-    /** Stripe Appearance API fed from the live design tokens, so light/dark and radii match the page. */
-    const darkQuery = matchMedia('(prefers-color-scheme: dark)');
+    /** Stripe Appearance API fed from the live design tokens, so colours and radii match the page. */
     const appearance = () => {
         const css = getComputedStyle(document.body);
         const v = (name: string) => css.getPropertyValue(name).trim();
         return {
-            theme: darkQuery.matches ? 'night' : 'stripe',
+            theme: 'stripe',
             labels: 'above',
             variables: {
                 fontFamily: '"Plus Jakarta Sans", system-ui, sans-serif',
@@ -374,7 +407,6 @@ function start(root: HTMLElement, c: any) {
             },
         };
     };
-    darkQuery.addEventListener('change', () => elements?.update({ appearance: appearance() }));
 
     const returnUrl = () => {
         const url = new URL(location.pathname, location.origin);
@@ -402,7 +434,7 @@ function start(root: HTMLElement, c: any) {
         renderTotals();
         try {
             const [intent, stripeInstance] = await Promise.all([
-                api.intent({ tenantId: state.tenantId, plan: state.plan, interval: state.interval, aiAddon: state.ai, language: lang }),
+                api.intent({ tenantId: state.tenantId, plan: state.plan, interval: state.interval, seats: state.plan === 'team' ? state.seats : undefined, language: lang }),
                 prepareStripe(),
             ]);
             state.intent = intent;
@@ -474,11 +506,10 @@ function start(root: HTMLElement, c: any) {
         if (state.user && !state.workspaces.length) state.workspaces = await loadWorkspaces().catch(() => []);
         const ws = state.workspaces.find((w) => w.tenantId === doneTenant);
         const interval = (doneStatus?.interval as Interval | undefined) ?? state.interval;
-        const ai = doneStatus?.aiAddonSeats !== undefined ? doneStatus.aiAddonSeats > 0 : state.ai;
         const trialEnd = state.intent?.summary?.trialEnd ?? state.intent?.trialEnd ?? (ws?.status === 'trialing' ? ws.trialEndsAt : null);
         const statusText = !doneStatus?.active ? c.done.statusPending
             : doneStatus.status === 'trialing' && trialEnd ? c.done.statusTrial.replace('{d}', date(trialEnd)) : c.done.statusActive;
-        const rows: [string, string][] = [[c.done.rowPlan, `${c.plan[state.plan].name}${ai ? ` + ${c.plan.aiTitle}` : ''} · ${interval === 'year' ? c.plan.yearly : c.plan.monthly}`]];
+        const rows: [string, string][] = [[c.done.rowPlan, `${c.plan[state.plan].name}${state.plan === 'team' ? ` · ${seatText(state.seats)}` : ''} · ${interval === 'year' ? c.plan.yearly : c.plan.monthly}`]];
         if (ws) rows.push([c.done.rowWorkspace, ws.workspaceType === 'personal' ? c.workspace.personalName : ws.name]);
         if (state.user?.email) rows.push([c.done.rowAccount, state.user.email]);
         box.innerHTML = `${rows.map(([k, v]) => `<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join('')}
@@ -532,11 +563,8 @@ function start(root: HTMLElement, c: any) {
     if (params.get('step') === 'done' && params.get('tenant')) {
         const status = params.get('redirect_status');
         void showDone(params.get('tenant')!, status === 'failed' ? 'failed' : status);
-    } else if (params.has('plan')) {
-        // Coming from a pricing CTA the plan is already chosen: start at the account step; back returns to the plan.
-        history.replaceState({ step: 'plan' }, '', location.href);
-        go('account');
     } else {
+        // Always start with the plan step (preselected from the pricing CTA), so the choice is visible once more.
         history.replaceState({ step: 'plan' }, '', location.href);
         go('plan', false);
     }

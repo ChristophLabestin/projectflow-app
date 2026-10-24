@@ -87,3 +87,4 @@ Begründungen:
 - Ab wann zahlen Beta-Workspaces (Stichtag + Vorlaufzeit von mind. 30 Tagen Ankündigung).
 - ✅ 2026-10-23: Kein Gründungsrabatt. Keine Übergangsfrist/Stichtag (noch keine Kunden); interne Workspaces über `billingExempt`.
 - ✅ 2026-10-23: Downgrade auf Free – zusätzliche Mitglieder bleiben (ohne KI, ohne Einladungen). Eigener OpenAI-Schlüssel auch für Team-Nutzer ohne KI-Paket erlaubt.
+- ✅ 2026-10-24: KI-Paket nicht mehr auf der Landing (Preisbereich, Checkout); es bleibt ein Zusatz, der später in der Web-App gebucht wird. Checkout: Team-Plätze vorab wählbar (Zähler 1–50, mindestens Vollmitglieder).

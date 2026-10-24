@@ -21,7 +21,6 @@ export const buyBody = (lang: Lang): string => {
         prices: {
             personal: { month: personal.monthly, year: personal.yearly },
             team: { month: team.monthly, year: team.yearly },
-            ai: { month: p.addon.price, year: p.addon.price },
         },
     }).replace(/</g, '\\u003c');
 
@@ -32,14 +31,15 @@ export const buyBody = (lang: Lang): string => {
             </li>`).join('');
 
     const planCard = (key: 'personal' | 'team', ic: 'user' | 'users') => `
-                    <label class="ck-option">
+                    <label class="ck-option ck-option--plan">
                         <input type="radio" name="plan" value="${key}">
+                        <span class="ck-option__radio" aria-hidden="true"></span>
                         <span class="ck-option__icon">${icon(ic)}</span>
                         <span class="ck-option__body">
                             <b>${esc(c.plan[key].name)}</b>
                             <small>${esc(c.plan[key].text)}</small>
                         </span>
-                        <span class="ck-option__price" data-plan-price="${key}"></span>
+                        <span class="ck-option__price"><b data-plan-amount="${key}"></b> ${esc(c.plan[key].unit)}</span>
                     </label>`;
 
     const terms = esc(c.payment.terms)
@@ -67,6 +67,7 @@ export const buyBody = (lang: Lang): string => {
             <h1 class="ck-headline" data-headline></h1>
             <p class="ck-lead" data-lead></p>
             <div class="ck-recap" data-recap></div>
+            <p class="ck-intro__foot">${esc(c.plan.pricesNet)}</p>
         </section>
 
         <section class="ck-panel" aria-labelledby="ck-question">
@@ -78,22 +79,31 @@ export const buyBody = (lang: Lang): string => {
                         ${planCard('personal', 'user')}
                         ${planCard('team', 'users')}
                     </fieldset>
-                    <fieldset class="ck-seg">
-                        <legend class="sr-only">${esc(c.plan.monthly)} / ${esc(c.plan.yearly)}</legend>
-                        <label><input type="radio" name="interval" value="month"><span>${esc(c.plan.monthly)}</span></label>
-                        <label><input type="radio" name="interval" value="year"><span>${esc(c.plan.yearly)} <em>${esc(c.plan.save)}</em></span></label>
-                    </fieldset>
-                    <label class="ck-option ck-option--check">
-                        <input type="checkbox" name="ai">
-                        <span class="ck-option__icon">${icon('sparkles')}</span>
-                        <span class="ck-option__body">
-                            <b>${esc(c.plan.aiTitle)} <span class="ck-muted">${esc(c.plan.aiPrice.replace('{p}', `${p.addon.price} €`))}</span></b>
-                            <small data-ai-text></small>
-                        </span>
-                        <span class="ck-option__box" aria-hidden="true">${icon('check')}</span>
-                    </label>
-                    <p class="ck-note" data-seats-note></p>
-                    <button type="button" class="ck-btn" data-next="plan">${esc(c.next)}${icon('arrowRight')}</button>
+                    <div class="ck-seats" data-seats hidden>
+                        <div class="ck-seats__text">
+                            <label for="ck-seats-input">${esc(c.plan.seats)}</label>
+                            <small>${esc(c.plan.seatsHint)}</small>
+                        </div>
+                        <div class="ck-counter">
+                            <button type="button" data-seat-step="-1" aria-label="${esc(c.plan.seatsLess)}">−</button>
+                            <input id="ck-seats-input" name="seats" type="number" min="1" max="50" step="1" inputmode="numeric" value="1">
+                            <button type="button" data-seat-step="1" aria-label="${esc(c.plan.seatsMore)}">+</button>
+                        </div>
+                    </div>
+                    <div class="ck-interval">
+                        <p class="ck-label" id="ck-interval-label">${esc(c.plan.intervalLabel)}</p>
+                        <div class="ck-seg" role="radiogroup" aria-labelledby="ck-interval-label">
+                            <label><input type="radio" name="interval" value="month"><span>${esc(c.plan.monthly)}</span></label>
+                            <label><input type="radio" name="interval" value="year"><span>${esc(c.plan.yearly)}</span></label>
+                        </div>
+                        <p class="ck-note" data-interval-note></p>
+                    </div>
+                    <div class="ck-plan-sum">
+                        <b data-sum-label></b>
+                        <span><b data-sum-amount></b> ${esc(c.plan.net)} <span data-sum-unit></span></span>
+                    </div>
+                    <button type="button" class="ck-btn" data-next="plan">${esc(c.plan.nextPlan)}${icon('arrowRight')}</button>
+                    <p class="ck-fine">${esc(c.plan.checkLater)}</p>
                 </div>
 
                 <div class="ck-pane" data-pane="account" hidden></div>

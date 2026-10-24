@@ -60,7 +60,7 @@ export interface BuyApi {
     publishableKey(): Promise<string>;
     workspaces(language: string): Promise<Workspace[]>;
     createTeam(name: string, language: string): Promise<string>;
-    intent(input: { tenantId: string; plan: Plan; interval: Interval; aiAddon: boolean; language: string }): Promise<Intent>;
+    intent(input: { tenantId: string; plan: Plan; interval: Interval; seats?: number; language: string }): Promise<Intent>;
     status(tenantId: string, plan: Plan): Promise<SubscriptionStatus>;
 }
 
@@ -129,14 +129,12 @@ function mockApi(): BuyApi {
         publishableKey: async () => '',
         workspaces: async () => { await wait(); return spaces; },
         createTeam: async (name) => { await wait(); spaces.push({ tenantId: 'team_new', name, workspaceType: 'team', status: 'trialing', memberCount: 1, trialEndsAt: new Date(Date.now() + 14 * 864e5).toISOString() }); return 'team_new'; },
-        intent: async ({ tenantId, plan, interval, aiAddon }) => {
+        intent: async ({ tenantId, plan, interval, seats: wanted }) => {
             await wait();
             const ws = spaces.find((w) => w.tenantId === tenantId);
-            const seats = plan === 'team' ? ws?.memberCount ?? 1 : 1;
+            const seats = plan === 'team' ? Math.max(wanted ?? 1, ws?.memberCount ?? 1) : 1;
             const unit = plan === 'team' ? (interval === 'year' ? 120 : 12) : (interval === 'year' ? 48 : 5);
-            const ai = interval === 'year' ? 120 : 10;
             const lines: SummaryLine[] = [{ label: plan === 'team' ? 'Team' : 'Personal', quantity: seats, unitAmount: unit * 100, amount: unit * seats * 100 }];
-            if (aiAddon) lines.push({ label: 'KI-Paket', quantity: 1, unitAmount: ai * 100, amount: ai * 100 });
             const trialing = ws?.status === 'trialing';
             const subtotal = lines.reduce((sum, l) => sum + l.amount, 0);
             return {
