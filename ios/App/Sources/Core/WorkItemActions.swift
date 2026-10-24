@@ -220,6 +220,8 @@ struct OptionSheet: View {
                         }
                         .padding(.horizontal, PFSpace.m)
                         .frame(minHeight: 52)
+                        // Menu rule: the chosen option sinks in with a short primary bar (not inverted).
+                        .pfMenuOption(selected: option.isSelected, cornerRadius: PFRadius.card)
                         .contentShape(.rect)
                     }
                     .buttonStyle(.pfPressable)

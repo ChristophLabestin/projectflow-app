@@ -163,8 +163,8 @@
 
   > .motion-indicator {
     z-index: -1;
-    background: var(--motion-indicator-bg, var(--color-surface-card));
-    box-shadow: var(--motion-indicator-shadow, var(--shadow-sm));
+    background: var(--motion-indicator-bg, var(--sunken-bg));
+    box-shadow: var(--motion-indicator-shadow, var(--sunken-shadow));
     border-radius: var(--motion-indicator-radius, var(--radius-full));
   }
 

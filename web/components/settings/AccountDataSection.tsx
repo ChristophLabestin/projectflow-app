@@ -93,7 +93,7 @@ export const AccountDataSection: React.FC = () => {
 
     return (
         <>
-            <section className="p-6 rounded-2xl bg-surface-card shadow-sm">
+            <section className="p-6 rounded-2xl bg-surface-hover">
                 <div className="flex flex-wrap items-center justify-between gap-4">
                     <div className="min-w-[14rem] flex-1">
                         <h3 className="font-bold text-main text-lg">{t('accountData.crash.title')}</h3>
@@ -103,7 +103,7 @@ export const AccountDataSection: React.FC = () => {
                 </div>
             </section>
 
-            <section className="p-6 rounded-2xl bg-surface-card shadow-sm">
+            <section className="p-6 rounded-2xl bg-surface-hover">
                 <div className="flex flex-wrap items-center justify-between gap-4">
                     <div className="min-w-[14rem] flex-1">
                         <h3 className="font-bold text-main text-lg">{t('accountData.export.title')}</h3>
@@ -116,7 +116,7 @@ export const AccountDataSection: React.FC = () => {
                 </div>
             </section>
 
-            <section className="p-6 rounded-2xl bg-surface-card shadow-sm border border-error/30">
+            <section className="p-6 rounded-2xl bg-surface-hover border border-error/30">
                 <div className="flex flex-wrap items-center justify-between gap-4">
                     <div className="min-w-[14rem] flex-1">
                         <h3 className="font-bold text-error text-lg">{t('accountData.delete.title')}</h3>

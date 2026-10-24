@@ -1,4 +1,5 @@
 /* Sprint members dialog (SprintDetailsModal). */
+@use '../../../styles/tokens';
 .sprint-detail {
     display: flex;
     flex-direction: column;
@@ -11,9 +12,8 @@
     gap: 0.75rem;
     padding: 1.5rem;
     border-radius: var(--radius-2xl);
-    border: 1px solid color-mix(in srgb, var(--color-surface-border) 60%, transparent);
-    background: linear-gradient(180deg, rgba(255, 255, 255, 0.04) 0%, transparent 100%), var(--color-surface-card);
-    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.03);
+    border: 0;
+    background: var(--color-surface-hover);
 }
 
 .sprint-detail__badges {
@@ -58,12 +58,9 @@
     align-items: center;
     gap: 0.25rem;
     padding: 0.35rem;
-    border: 1px solid color-mix(in srgb, var(--color-surface-border) 60%, transparent);
+    border: 0;
     border-radius: var(--radius-full);
-    background: rgba(var(--color-surface-card-rgb), 0.6);
-    box-shadow: var(--shadow-sm);
-    backdrop-filter: blur(16px) saturate(180%);
-    -webkit-backdrop-filter: blur(16px) saturate(180%);
+    background: var(--color-surface-hover);
 }
 
 .sprint-detail__tab {
@@ -84,9 +81,7 @@
 }
 
 .sprint-detail__tab.is-active {
-    background-color: var(--color-surface-card);
-    color: var(--color-text-main);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+    @include tokens.selected;
 }
 
 .sprint-detail__tab-indicator {
@@ -287,7 +282,6 @@
     font-size: 0.75rem;
     font-weight: 700;
     color: var(--color-text-muted);
-    box-shadow: var(--shadow-sm);
 }
 
 .sprint-detail__requests {
@@ -318,8 +312,7 @@
     gap: 1rem;
     padding: 1rem;
     border-radius: var(--radius-xl);
-    background-color: var(--color-surface-card);
-    box-shadow: var(--shadow-sm);
+    background-color: var(--color-surface-hover);
 }
 
 .sprint-detail__request .sprint-detail__member-info p {
@@ -352,7 +345,6 @@
     justify-content: center;
     font-weight: 700;
     color: var(--color-text-muted);
-    box-shadow: var(--shadow-sm);
 }
 
 .sprint-detail__request-actions,
@@ -420,8 +412,7 @@
     gap: 1rem;
     padding: 1rem;
     border-radius: var(--radius-xl);
-    background-color: var(--color-surface-card);
-    box-shadow: var(--shadow-sm);
+    background-color: var(--color-surface-hover);
 }
 
 .sprint-detail__member-name {

@@ -41,10 +41,10 @@
   --color-surface-active: var(--color-surface-hover);
   --color-surface-bg-offset: var(--color-surface-hover);
   --color-surface-highlight: var(--color-surface-hover);
-  --color-surface-input: var(--color-surface-bg);
+  --color-surface-input: var(--color-surface-hover); /* L2 field fill; depth-canvas lifts it to card (§5.2) */
   --color-surface-order: var(--color-surface-border);
   --color-surface-pressed: var(--color-surface-hover);
-  --color-surface-sunken: var(--color-surface-bg);
+  --color-surface-sunken: var(--sunken-bg); /* recessed track/well, never the canvas tone (§5.2) */
   --color-accent: var(--color-primary);
   --color-primary-active: var(--color-primary-dark);
   --color-primary-rgb: 23, 23, 23;
@@ -143,7 +143,7 @@
   /* Sunken (STYLING.md §1.10): focus, current and list selection read as a slightly recessed
      surface, never as a border; choices (options, chips, segments) invert when selected.
      --focus-ring is the only extra cue, for :focus-visible on non-text controls (keyboard).
-     Fields: rest --color-surface-hover, hover --field-bg-hover, focus sunken.
+     Fields: rest --control-bg (depth-relative, §5.2), hover --control-bg-hover, focus sunken.
      Use the sunken / selected / sunken-field / focus-ring mixins below. */
   --field-bg-hover: #e9e9eb;
   /* Glass menus (Select / InlineMenu popovers, STYLING.md §1.11): milky, slightly see-through. */
@@ -245,10 +245,10 @@ html.dark {
   --color-surface-active: var(--color-surface-hover);
   --color-surface-bg-offset: var(--color-surface-hover);
   --color-surface-highlight: var(--color-surface-hover);
-  --color-surface-input: var(--color-surface-bg);
+  --color-surface-input: var(--color-surface-hover); /* L2 field fill; depth-canvas lifts it to card (§5.2) */
   --color-surface-order: var(--color-surface-border);
   --color-surface-pressed: var(--color-surface-hover);
-  --color-surface-sunken: var(--color-surface-bg);
+  --color-surface-sunken: var(--sunken-bg); /* recessed track/well, never the canvas tone (§5.2) */
   --color-accent: var(--color-primary);
   --color-primary-active: var(--color-primary-dark);
   --color-primary-rgb: 229, 229, 229;
@@ -282,6 +282,53 @@ html.dark {
   --priority-medium-rgb: 96, 165, 250;
   --priority-low: #94a3b8;
   --priority-low-rgb: 148, 163, 184;
+}
+
+// ---- Depth ladder (STYLING.md §5.2) ---------------------------------------------------
+// Depth is relative to the direct parent: a control (field, search pill, chip, segment track,
+// tile) sits one level above the surface it lives on — Level 1 card tone on the canvas,
+// Level 2 hover tone inside a card / modal / panel. Containers declare where their controls
+// sit; controls read the variables with the in-shell value as fallback:
+//   background-color: var(--control-bg, var(--color-surface-hover));
+//   &:hover { background-color: var(--control-bg-hover, var(--field-bg-hover)); }
+// Scope depth-canvas to the toolbar / filter row itself (not the whole page), so cards
+// further down keep the default. Shells (Card, Modal, glass menus) reset with depth-shell.
+// Blocks that are Level 1 on the canvas but Level 2 inside a shell (secondary buttons,
+// EmptyState, Skeleton block) read --nested-bg / --nested-shadow with the canvas value as
+// fallback: background: var(--nested-bg, var(--color-surface-card)); box-shadow: var(--nested-shadow, var(--shadow-sm));
+@mixin depth-canvas {
+  --control-bg: var(--color-surface-card);
+  --color-surface-input: var(--color-surface-card);
+  --nested-bg: var(--color-surface-card);
+  --nested-bg-hover: var(--color-surface-hover);
+  --nested-shadow: var(--shadow-sm);
+  --nested-shadow-hover: var(--shadow-md);
+  --nested-frame-bg: var(--color-surface-card);
+  --nested-inner-bg: var(--color-surface-hover);
+  --control-bg-hover: color-mix(in srgb, var(--color-surface-card) 45%, var(--color-surface-hover));
+}
+
+@mixin depth-shell {
+  --control-bg: var(--color-surface-hover);
+  --color-surface-input: var(--color-surface-hover);
+  --control-bg-hover: var(--field-bg-hover);
+  // Nested blocks (secondary buttons, empty states, skeletons) step down to Level 2 without a
+  // shadow; frame-only wrappers (ListToolbar) drop their own surface inside a shell.
+  --nested-bg: var(--color-surface-hover);
+  --nested-bg-hover: var(--field-bg-hover);
+  --nested-shadow: none;
+  --nested-shadow-hover: none;
+  --nested-frame-bg: transparent;
+  --nested-inner-bg: var(--color-surface-card);
+}
+
+// Control surface on the current depth (rest + hover); focus/selection stay sunken/selected.
+@mixin control-surface {
+  background-color: var(--control-bg, var(--color-surface-hover));
+
+  &:hover:not(:disabled) {
+    background-color: var(--control-bg-hover, var(--field-bg-hover));
+  }
 }
 
 // ---- Sunken state mixins (STYLING.md §1.10) ---------------------------------
@@ -329,6 +376,7 @@ html.dark {
 // option stays sunken and gets a primary bar + weight (no inverted fill in menus).
 // Options need >= 14px left padding so the bar clears the label/icon.
 @mixin glass-panel {
+  @include depth-shell;
   background-color: var(--glass-bg);
   -webkit-backdrop-filter: var(--glass-filter);
   backdrop-filter: var(--glass-filter);

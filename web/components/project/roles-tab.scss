@@ -274,8 +274,7 @@
 }
 
 .roles-tab__permission-item--active {
-    background-color: rgba(var(--color-primary-rgb), 0.12);
-    box-shadow: var(--shadow-sm);
+    @include tokens.selected;
 }
 
 .roles-tab__permission-item .checkbox__label {

@@ -236,8 +236,9 @@
 
     &__change {
         display: grid;
-        grid-template-columns: 72px 1fr;
-        gap: 6px;
+        // Label column fits the longest German label („Beschreibung“); rows stay aligned.
+        grid-template-columns: 96px 1fr;
+        column-gap: 10px;
         font-size: 0.75rem;
 
         dt { color: var(--color-text-muted); }

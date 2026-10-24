@@ -115,7 +115,7 @@ kbd {
 
 // ---------------------------------------------------------------- write menu
 .ai-menu {
-    width: 280px;
+    width: 312px;
     border-radius: var(--radius-lg);
     background: var(--color-surface-card);
     box-shadow: $float-shadow;
@@ -521,7 +521,7 @@ kbd {
         color: var(--color-text-muted);
         cursor: pointer;
 
-        input { margin: 0; accent-color: var(--color-text-main); }
+        input[type='checkbox'] { margin: 0; accent-color: var(--color-text-main); }
     }
 
     &__attach-error { margin-left: 6px; color: var(--color-error); }

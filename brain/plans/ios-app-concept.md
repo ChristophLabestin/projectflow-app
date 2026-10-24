@@ -76,7 +76,7 @@ App ankommen (§9.4).
 |---|---|---|
 | **Heute** | *Kuratiert*: die Lage in einem Satz, max. 4 Stopps, „Wartet auf dich", Woche, Über Nacht | `/` Dashboard |
 | **Arbeit** | *Vollständig*: alle meine Aufgaben + persönliche; Liste ⇄ Woche | `/tasks`, `/calendar`, `/personal-tasks` |
-| **Projekte** | „Wo hinschauen" + Portfolio + Projektdetail | `/projects`, `/project/:id/*` |
+| **Projekte** | Aufmerksamkeits-Headline mit +, Fokus-Karten (max. 3, ohne Dopplung), Filter-Chips nach Status, kompakte Liste (Abgeschlossene hinter Chip) + Projektdetail | `/projects`, `/project/:id/*` |
 | **Eingang** | Benachrichtigungen als Triage mit Aktionen, Badge | `/notifications` |
 | **Suche** (Search-Rolle, rechts abgesetzt) | Globale Suche + Befehle | ⌘K-Palette |
 

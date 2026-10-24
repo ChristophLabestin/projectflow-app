@@ -1261,7 +1261,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
                                     </div>
                                 </div>
                             </div>
-                            <section className="p-6 rounded-2xl bg-surface-card shadow-sm space-y-6">
+                            <section className="p-6 rounded-2xl bg-surface-hover space-y-6">
                                 <h3 className="text-lg font-bold text-main">{t('settings.prebeta.title')} Configuration</h3>
                                 <div className="space-y-5">
                                     <div>
@@ -1310,7 +1310,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
                             <p className="text-muted text-sm mt-1">{t('settings.preferences.subtitle')}</p>
                         </div>
                         <div className="space-y-6 max-w-4xl">
-                            <section className="p-6 rounded-2xl bg-surface-card shadow-sm space-y-6">
+                            <section className="p-6 rounded-2xl bg-surface-hover space-y-6">
                                 <h3 className="text-lg font-bold text-main">{t('settings.preferences.language.label')}</h3>
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                     <button
@@ -1319,7 +1319,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
                                             flex items-center gap-4 p-4 rounded-xl text-left transition-all duration-200
                                             ${language === 'en'
                                                 ? 'bg-primary/5 shadow-sm'
-                                                : 'bg-surface hover:bg-surface-hover hover:shadow-sm'}
+                                                : 'bg-surface-card hover:bg-surface-hover'}
                                         `}
                                     >
                                         <div className="size-10 rounded-full bg-surface-hover flex items-center justify-center font-bold text-sm shrink-0">
@@ -1339,7 +1339,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
                                             flex items-center gap-4 p-4 rounded-xl text-left transition-all duration-200
                                             ${language === 'de'
                                                 ? 'bg-primary/5 shadow-sm'
-                                                : 'bg-surface hover:bg-surface-hover hover:shadow-sm'}
+                                                : 'bg-surface-card hover:bg-surface-hover'}
                                         `}
                                     >
                                         <div className="size-10 rounded-full bg-surface-hover flex items-center justify-center font-bold text-sm shrink-0">
@@ -1356,7 +1356,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
                                 </div>
                             </section>
 
-                            <section className="p-6 rounded-2xl bg-surface-card shadow-sm space-y-5">
+                            <section className="p-6 rounded-2xl bg-surface-hover space-y-5">
                                 <h3 className="text-lg font-bold text-main">{t('settings.preferences.regional.title')}</h3>
                                 <div>
                                     <Select
@@ -1399,10 +1399,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
 
                         <div className="space-y-6 max-w-4xl">
                             {/* Company details live in the Workspace tab; this tab only holds email and storage services. */}
-                            <section className="p-6 rounded-2xl bg-surface-card shadow-sm space-y-6">
+                            <section className="p-6 rounded-2xl bg-surface-hover space-y-6">
                                 <h3 className="text-lg font-bold text-main">{t('settings.general.smtp.title')}</h3>
                                 <div className="space-y-5">
-                                    <div className="flex items-center justify-between bg-surface-hover p-4 rounded-xl">
+                                    <div className="flex items-center justify-between bg-surface-card p-4 rounded-xl">
                                         <label className="text-sm font-medium text-main cursor-pointer" onClick={() => setUseCustomSmtp(!useCustomSmtp)}>
                                             {t('settings.general.smtp.useCustom')}
                                         </label>
@@ -1483,7 +1483,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
                                 </div>
                             </section>
 
-                            <section className="p-6 rounded-2xl bg-surface-card shadow-sm space-y-6">
+                            <section className="p-6 rounded-2xl bg-surface-hover space-y-6">
                                 <h3 className="text-lg font-bold text-main">{t('settings.storage.title')}</h3>
                                 <div className="space-y-5">
                                     <Select
@@ -1550,7 +1550,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
                                                     placeholder={t('settings.storage.s3.keepExistingHint')}
                                                 />
                                             </div>
-                                            <div className="flex items-center justify-between bg-surface-hover p-4 rounded-xl">
+                                            <div className="flex items-center justify-between bg-surface-card p-4 rounded-xl">
                                                 <label className="text-sm font-medium text-main cursor-pointer" onClick={() => setStorageS3ForcePathStyle(!storageS3ForcePathStyle)}>
                                                     {t('settings.storage.s3.forcePathStyle')}
                                                 </label>
@@ -1564,7 +1564,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
 
                                     {storageActiveProvider === 'googleDrive' && (
                                         <div className="space-y-4 pt-2">
-                                            <div className="text-sm font-medium text-muted bg-surface-hover p-4 rounded-xl">
+                                            <div className="text-sm font-medium text-muted bg-surface-card p-4 rounded-xl">
                                                 {storageDriveConnected
                                                     ? t('settings.storage.googleDrive.connectedAs').replace('{email}', storageDriveEmail || t('settings.storage.googleDrive.unknownAccount'))
                                                     : t('settings.storage.googleDrive.notConnected')}
@@ -1622,12 +1622,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
                                         </Button>
                                     </div>
                                     {storageStatusMessage && (
-                                        <p className="text-sm text-muted bg-surface-hover p-3 rounded-xl">{storageStatusMessage}</p>
+                                        <p className="text-sm text-muted bg-surface-card p-3 rounded-xl">{storageStatusMessage}</p>
                                     )}
                                 </div>
                             </section>
 
-                            <section className="flex items-center justify-between p-6 bg-surface-card shadow-sm rounded-2xl">
+                            <section className="flex items-center justify-between p-6 bg-surface-hover rounded-2xl">
                                 <div>
                                     <h3 className="font-bold text-main">{t('settings.general.onboarding.title')}</h3>
                                     <p className="text-sm text-muted mt-1 max-w-sm">{t('settings.general.onboarding.description')}</p>
@@ -1655,7 +1655,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
 
                         <div className="space-y-6 max-w-4xl">
                             {/* Email Verification */}
-                            <section className="p-6 rounded-2xl bg-surface-card shadow-sm">
+                            <section className="p-6 rounded-2xl bg-surface-hover">
                                 <div className="flex items-start justify-between">
                                     <div>
                                         <h3 className="font-bold text-main flex items-center gap-3 text-lg">
@@ -1694,11 +1694,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
                             </section>
 
                             {/* Connected Accounts */}
-                            <section className="p-6 rounded-2xl bg-surface-card shadow-sm space-y-5">
+                            <section className="p-6 rounded-2xl bg-surface-hover space-y-5">
                                 <h3 className="text-lg font-bold text-main">{t('settings.account.connected.title')}</h3>
                                 <div className="space-y-3">
                                     {/* GitHub */}
-                                    <div className="flex items-center justify-between p-4 rounded-xl bg-surface-hover transition-colors">
+                                    <div className="flex items-center justify-between p-4 rounded-xl bg-surface-card transition-colors">
                                         <div className="flex items-center gap-4">
                                             <div className="size-10 rounded-full bg-black/5 dark:bg-white/10 flex items-center justify-center">
                                                 <svg viewBox="0 0 24 24" className="size-6 text-main" fill="currentColor" aria-hidden="true">
@@ -1734,7 +1734,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
                                     </div>
 
                                     {/* Google */}
-                                    <div className="flex items-center justify-between p-4 rounded-xl bg-surface-hover transition-colors">
+                                    <div className="flex items-center justify-between p-4 rounded-xl bg-surface-card transition-colors">
                                         <div className="flex items-center gap-4">
                                             <div className="size-10 rounded-full bg-white shadow-sm flex items-center justify-center shrink-0">
                                                 <img src="https://www.google.com/favicon.ico" alt="Google" className="size-5" />
@@ -1761,7 +1761,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
                                     </div>
 
                                     {/* Apple */}
-                                    <div className="flex items-center justify-between p-4 rounded-xl bg-surface-hover transition-colors">
+                                    <div className="flex items-center justify-between p-4 rounded-xl bg-surface-card transition-colors">
                                         <div className="flex items-center gap-4">
                                             <div className="size-10 rounded-full bg-black/5 dark:bg-white/10 flex items-center justify-center shrink-0 text-main">
                                                 <AppleLogo />
@@ -1790,7 +1790,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
                             </section>
 
                             {/* Password Management */}
-                            <section className="p-6 rounded-2xl bg-surface-card shadow-sm">
+                            <section className="p-6 rounded-2xl bg-surface-hover">
                                 <div className="flex items-center justify-between mb-2">
                                     <div>
                                         <h3 className="text-lg font-bold text-main">{t('settings.account.password.title')}</h3>
@@ -1812,7 +1812,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
                                 </div>
 
                                 {showSetPassword && (
-                                    <div className="bg-surface-hover p-6 rounded-2xl mt-6 animate-fade-in space-y-5">
+                                    <div className="bg-surface-card p-6 rounded-2xl mt-6 animate-fade-in space-y-5">
                                         <Input
                                             label={t('settings.account.password.newPassword')}
                                             type="password"
@@ -1853,7 +1853,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
 
                         <div className="space-y-6 max-w-4xl">
                             {/* Two Factor Auth */}
-                            <section className="flex items-center justify-between p-6 bg-surface-card shadow-sm rounded-2xl">
+                            <section className="flex items-center justify-between p-6 bg-surface-hover rounded-2xl">
                                 <div>
                                     <h3 className="font-bold text-main text-lg">{t('settings.security.2fa.title')}</h3>
                                     <p className="text-sm text-muted mt-1">
@@ -1873,7 +1873,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
                             </section>
 
                             {/* Passkeys */}
-                            <section className="p-6 bg-surface-card shadow-sm rounded-2xl">
+                            <section className="p-6 bg-surface-hover rounded-2xl">
                                 <div className="flex items-center justify-between mb-6">
                                     <div>
                                         <h3 className="text-lg font-bold text-main">{t('settings.security.passkeys.title')}</h3>
@@ -1890,7 +1890,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
                                 {passkeys.length > 0 ? (
                                     <div className="space-y-3">
                                         {passkeys.map((key) => (
-                                            <div key={key.id} className="flex items-center justify-between gap-4 p-4 rounded-xl bg-surface-hover transition-colors">
+                                            <div key={key.id} className="flex items-center justify-between gap-4 p-4 rounded-xl bg-surface-card transition-colors">
                                                 <div className="flex items-center gap-4 min-w-0 flex-1">
                                                     <div className="size-10 shrink-0 rounded-full bg-blue-500/10 text-blue-500 flex items-center justify-center">
                                                         <span className="material-symbols-outlined text-xl">passkey</span>
@@ -2008,7 +2008,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
                             <McpConnectPanel />
 
                             {/* Create Token Section */}
-                            <section className="p-6 rounded-2xl bg-surface-card shadow-sm space-y-6">
+                            <section className="p-6 rounded-2xl bg-surface-hover space-y-6">
                                 <h3 className="font-bold text-main text-lg">{t('settings.api.create.title')}</h3>
                                 <div className="space-y-6">
                                     <Input
@@ -2030,7 +2030,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
                                                     className={`rounded-xl p-4 text-left transition-all duration-200 ${
                                                         tokenPreset === preset.id
                                                             ? 'bg-primary/5 ring-2 ring-primary/20 shadow-sm'
-                                                            : 'bg-surface hover:bg-surface-hover shadow-sm'
+                                                            : 'bg-surface-card hover:bg-surface-hover'
                                                     }`}
                                                 >
                                                     <div className="font-bold text-sm text-main">
@@ -2073,7 +2073,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
                             </section>
 
                             {/* Token List */}
-                            <section className="p-6 rounded-2xl bg-surface-card shadow-sm">
+                            <section className="p-6 rounded-2xl bg-surface-hover">
                                 <h3 className="text-lg font-bold text-main mb-6">{t('settings.api.list.title')}</h3>
                                 {loadingTokens ? (
                                     <div className="flex justify-center p-8">
@@ -2082,7 +2082,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
                                 ) : apiTokens.length > 0 ? (
                                     <div className="space-y-3">
                                         {apiTokens.map((token) => (
-                                            <div key={token.id} className="flex items-center justify-between p-4 rounded-xl bg-surface-hover transition-colors">
+                                            <div key={token.id} className="flex items-center justify-between p-4 rounded-xl bg-surface-card transition-colors">
                                                 <div>
                                                     <div className="flex items-center gap-3">
                                                         <div className="font-bold text-sm text-main">{token.name}</div>
@@ -2097,7 +2097,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
                                                         {(token.permissions || []).map((permission) => (
                                                             <span
                                                                 key={`${token.id}-${permission}`}
-                                                                className="rounded-full bg-surface-card px-2.5 py-1 text-[10px] font-medium text-muted shadow-sm"
+                                                                className="rounded-full bg-surface-hover px-2.5 py-1 text-[10px] font-medium text-muted"
                                                             >
                                                                 {permissionLabel(permission)}
                                                             </span>
@@ -2145,7 +2145,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
                         <span className="material-symbols-outlined animate-spin text-3xl text-muted">progress_activity</span>
                     </div>
                 ) : (
-                    <div className="flex h-[80vh] -m-6 rounded-b-2xl overflow-hidden bg-surface-bg">
+                    <div className="flex h-[80vh] -m-6 rounded-b-2xl overflow-hidden bg-surface-card">
                         {/* Sidebar */}
                         <div className="w-64 shrink-0 bg-surface-hover/30 p-4 flex flex-col gap-1 overflow-y-auto">
                             <div className="text-xs font-bold text-muted uppercase tracking-wider mb-2 px-3 pt-2 truncate">
@@ -2169,7 +2169,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
                         </div>
 
                         {/* Content Area */}
-                        <div className="flex-1 flex flex-col min-w-0 bg-surface-bg">
+                        <div className="flex-1 flex flex-col min-w-0 bg-surface-card">
                             <div className="flex-1 overflow-y-auto p-8 lg:p-12 scrollbar-thin">
                                 {renderContent()}
                             </div>

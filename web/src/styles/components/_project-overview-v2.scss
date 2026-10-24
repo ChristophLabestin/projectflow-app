@@ -221,7 +221,7 @@
         color: var(--color-text-muted);
         padding: 2px 8px;
         border-radius: var(--radius-full);
-        background: var(--color-surface-hover);
+        background: var(--color-surface-card); // hero sits on the canvas: Level 1
     }
 
     &__chip {
@@ -428,7 +428,7 @@
         z-index: 30;
         min-width: 200px;
         background: var(--color-surface-card);
-        border: 1px solid var(--color-surface-border);
+        border: 0;
         border-radius: var(--radius-md);
         box-shadow: var(--shadow-lg);
         padding: 6px;
@@ -475,7 +475,7 @@
         margin-left: auto;
         padding: 5px 12px;
         border-radius: var(--radius-control);
-        border: 1px solid currentColor;
+        border: 0;
         background: none;
         color: inherit;
         font-size: 12px;
@@ -498,7 +498,7 @@
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        border: 1px solid var(--color-surface-border);
+        border: 0;
         border-radius: var(--radius-md);
         background: var(--color-surface-card);
         color: var(--color-text-muted);
@@ -545,7 +545,7 @@
         flex-direction: column;
         gap: 10px;
         padding: 10px;
-        border: 1px solid var(--color-surface-border);
+        border: 0;
         border-radius: var(--radius-lg);
         background: var(--color-surface-card);
         box-shadow: var(--shadow-lg);
@@ -636,7 +636,7 @@
             min-width: 0;
             border: none;
             border-radius: var(--radius-md);
-            background: var(--color-surface-card);
+            background: var(--color-surface-hover);
             color: var(--color-text-main);
             padding: 0 10px;
             font: inherit;
@@ -659,7 +659,7 @@
             height: 34px;
             border: 0;
             border-radius: var(--radius-md);
-            background: var(--color-surface-card);
+            background: var(--color-surface-hover);
             font-size: 12px;
             box-shadow: none;
         }
@@ -772,7 +772,7 @@
         gap: 5px;
         border: none;
         border-radius: var(--radius-full);
-        background: var(--color-surface-card);
+        background: var(--color-surface-hover);
         color: var(--color-text-muted);
         padding: 5px 8px;
         font-size: 12px;
@@ -816,7 +816,7 @@
 }
 
 .po-ref-card {
-    border: 1px solid var(--color-surface-border);
+    border: 0;
     border-radius: var(--radius-lg);
     background: var(--color-surface-card);
     padding: 14px;
@@ -928,14 +928,14 @@
         padding: 0 12px;
         border: 1px solid transparent;
         border-radius: var(--radius-md);
-        background: var(--color-surface-card);
+        background: var(--color-surface-hover);
         color: var(--color-text-main);
         font-size: 13px;
         cursor: pointer;
         transition: var(--transition-fast);
 
         .material-symbols-outlined { font-size: 18px; }
-        &:hover { background: var(--color-surface-hover); }
+        &:hover { background: var(--field-bg-hover); }
         &.is-active { @include tokens.sunken; }
     }
 
@@ -967,7 +967,7 @@
             padding: 0 8px;
             border: 1px solid transparent;
             border-radius: var(--radius-md);
-            background: var(--color-surface-card);
+            background: var(--color-surface-hover);
             color: var(--color-text-main);
             font-size: 13px;
             cursor: pointer;
@@ -1000,7 +1000,7 @@
 
         .material-symbols-outlined { font-size: 18px; }
         &:hover { color: var(--color-text-main); }
-        &.is-active { background: var(--color-surface-card); color: var(--color-primary); box-shadow: var(--shadow-sm); }
+        &.is-active { @include tokens.selected; }
     }
 }
 
@@ -1062,7 +1062,7 @@
     z-index: 30;
     width: 300px;
     background: var(--color-surface-card);
-    border: 1px solid var(--color-surface-border);
+    border: 0;
     border-radius: var(--radius-md);
     box-shadow: var(--shadow-lg);
     padding: 14px;
@@ -1074,14 +1074,14 @@
     &__chips { display: flex; flex-wrap: wrap; gap: 6px; }
     &__chip {
         padding: 4px 10px;
-        border: 1px solid var(--color-surface-border);
+        border: 0;
         border-radius: var(--radius-full);
-        background: var(--color-surface-card);
+        background: var(--color-surface-hover);
         font-size: 12px;
         color: var(--color-text-muted);
         cursor: pointer;
         transition: var(--transition-fast);
-        &:hover { background: var(--color-surface-hover); }
+        &:hover { background: var(--field-bg-hover); }
         &.is-active { background: var(--color-primary); color: var(--color-primary-text); border-color: var(--color-primary); }
     }
     &__switch { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--color-text-main); cursor: pointer; }
@@ -1170,15 +1170,6 @@
     }
 }
 
-/* Light mode: grey lanes, white elevated cards (clearer than grey on white). */
-html:not(.dark) .po-board {
-    .po-board__lane-body { background: var(--color-surface-hover); }
-    .po-board__task {
-        background: var(--color-surface-card);
-        box-shadow: var(--shadow-sm);
-    }
-}
-
 .po-command__focus-btn {
     flex-shrink: 0;
     width: 36px;
@@ -1186,9 +1177,9 @@ html:not(.dark) .po-board {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    border: 1px solid var(--color-surface-border);
+    border: 0;
     border-radius: var(--radius-md);
-    background: var(--color-surface-card);
+    background: var(--color-surface-hover);
     color: var(--color-text-muted);
     cursor: pointer;
     transition: var(--transition-fast);
@@ -1257,7 +1248,7 @@ html:not(.dark) .po-board {
     &__title-text { font-size: 13px; color: var(--color-text-main); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
     &__select {
-        height: 28px; border: 1px solid var(--color-surface-border); border-radius: var(--radius-sm);
+        height: 28px; border: 0; border-radius: var(--radius-sm);
         background: var(--color-surface-card); font-size: 12px; color: var(--color-text-main); cursor: pointer; padding: 0 4px;
     }
 
@@ -1382,6 +1373,8 @@ html:not(.dark) .po-board {
     }
 
     &__task {
+        // Level 2 card in a board column; badges/controls inside are Level 3.
+        --control-bg: color-mix(in srgb, var(--color-surface-hover) 50%, var(--color-surface-card));
         background: var(--color-surface-hover);
         border: 0;
         border-radius: var(--radius-lg);
@@ -1449,13 +1442,13 @@ html:not(.dark) .po-board {
 .po-calendar {
     &__head { display: flex; align-items: center; gap: 8px; padding: 4px 0 12px; }
     &__title { font-size: 15px; font-weight: 700; color: var(--color-text-main); }
-    &__nav { width: 30px; height: 30px; border: 1px solid var(--color-surface-border); border-radius: var(--radius-sm); background: var(--color-surface-card); cursor: pointer; color: var(--color-text-muted);
+    &__nav { width: 30px; height: 30px; border: 0; border-radius: var(--radius-sm); background: var(--color-surface-card); cursor: pointer; color: var(--color-text-muted);
         display: flex; align-items: center; justify-content: center; &:hover { background: var(--color-surface-hover); } }
-    &__today-btn { margin-left: auto; height: 30px; padding: 0 12px; border: 1px solid var(--color-surface-border); border-radius: var(--radius-sm); background: var(--color-surface-card); font-size: 12px; cursor: pointer; color: var(--color-text-main); &:hover { background: var(--color-surface-hover); } }
+    &__today-btn { margin-left: auto; height: 30px; padding: 0 12px; border: 0; border-radius: var(--radius-sm); background: var(--color-surface-card); font-size: 12px; cursor: pointer; color: var(--color-text-main); &:hover { background: var(--color-surface-hover); } }
     &__weekdays { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin-bottom: 4px;
         span { font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--color-text-subtle); text-align: center; } }
     &__grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
-    &__day { min-height: 92px; border: 1px solid var(--color-surface-border); border-radius: var(--radius-sm); padding: 4px; display: flex; flex-direction: column; gap: 2px; background: var(--color-surface-card);
+    &__day { min-height: 92px; border: 0; border-radius: var(--radius-sm); padding: 4px; display: flex; flex-direction: column; gap: 2px; background: var(--color-surface-card);
         &.is-muted { background: var(--color-surface-bg); opacity: 0.6; }
         &.is-today { border-color: var(--color-primary); }
     }
@@ -1586,7 +1579,7 @@ html:not(.dark) .po-board {
         align-items: center;
         gap: 22px;
         padding: 14px 18px;
-        border: 1px solid var(--color-surface-border);
+        border: 0;
         border-radius: var(--radius-lg);
         background: var(--color-surface-card);
         flex-wrap: wrap;
@@ -1605,7 +1598,7 @@ html:not(.dark) .po-board {
     &__active { display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 14px; }
     &__cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; }
     &__col {
-        border: 1px solid var(--color-surface-border);
+        border: 0;
         border-radius: var(--radius-lg);
         background: var(--color-surface-card);
         padding: 14px;
@@ -1624,7 +1617,7 @@ html:not(.dark) .po-board {
 }
 
 .po-sprint {
-    border: 1px solid var(--color-surface-border);
+    border: 0;
     border-radius: var(--radius-lg);
     background: var(--color-surface-card);
     padding: 16px;
@@ -1703,7 +1696,7 @@ html:not(.dark) .po-board {
         align-items: center;
         gap: 22px;
         padding: 14px 18px;
-        border: 1px solid var(--color-surface-border);
+        border: 0;
         border-radius: var(--radius-lg);
         background: var(--color-surface-card);
         flex-wrap: wrap;
@@ -1759,7 +1752,7 @@ html:not(.dark) .po-board {
     }
 
     &__card {
-        border: 1px solid var(--color-surface-border);
+        border: 0;
         border-left: 3px solid var(--st, var(--color-surface-border));
         border-radius: var(--radius-md);
         background: var(--color-surface-card);
@@ -1873,8 +1866,8 @@ html:not(.dark) .po-board {
         .material-symbols-outlined { font-size: 16px; }
     }
     &__clear { border: none; background: none; color: var(--color-text-muted); &:hover { color: var(--color-text-main); } }
-    &__new { border: 1px solid var(--color-surface-border); background: var(--color-surface-card); color: var(--color-text-main);
-        &:hover { background: var(--color-surface-hover); } }
+    &__new { border: 0; background: var(--color-surface-hover); color: var(--color-text-main);
+        &:hover { background: var(--field-bg-hover); } }
 
     &__list { display: flex; flex-direction: column; max-height: 320px; overflow-y: auto; border-top: 1px solid var(--color-surface-border); }
 
@@ -1924,7 +1917,7 @@ html:not(.dark) .po-board {
         position: absolute; top: calc(100% + 6px); right: 0; z-index: 30;
         display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px;
         padding: 8px; background: var(--color-surface-card);
-        border: 1px solid var(--color-surface-border); border-radius: var(--radius-md); box-shadow: var(--shadow-lg);
+        border: 0; border-radius: var(--radius-md); box-shadow: var(--shadow-lg);
     }
     &__swatch { width: 20px; height: 20px; border-radius: 50%; border: 2px solid transparent; cursor: pointer;
         &.is-active { border-color: transparent; box-shadow: 0 0 0 1.5px var(--color-surface-card), 0 0 0 3px var(--color-text-main); }

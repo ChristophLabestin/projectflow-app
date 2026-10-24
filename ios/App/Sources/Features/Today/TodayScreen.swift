@@ -204,13 +204,17 @@ private struct TodayFirstRun: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: PFSpace.l) {
-            TodayDateRow(now: now)
             if TodayGettingStarted.isActive(model: model) {
                 // New accounts: the getting-started list instead of an empty card (same steps as the web dashboard).
-                PFEditorialHeadline(before: L10n.t("today.firstRun.headline.before"), value: L10n.t("today.firstRun.headline.value"),
-                                    after: L10n.t("today.firstRun.headline.after"))
+                // Date and headline sit as close as on the regular day view.
+                VStack(alignment: .leading, spacing: 4) {
+                    TodayDateRow(now: now)
+                    PFEditorialHeadline(before: L10n.t("today.firstRun.headline.before"), value: L10n.t("today.firstRun.headline.value"),
+                                        after: L10n.t("today.firstRun.headline.after"))
+                }
                 TodayGettingStarted()
             } else {
+                TodayDateRow(now: now)
                 PFEmptyState(
                     systemImage: "sun.horizon", title: L10n.t("today.empty.title"), message: L10n.t("today.empty.message"),
                     actionTitle: L10n.t("today.empty.capture")

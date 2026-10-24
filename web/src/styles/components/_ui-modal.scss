@@ -49,7 +49,7 @@
         max-height: 90vh;
         overflow: hidden;
         border-radius: var(--radius-surface);
-        border: 1px solid color-mix(in srgb, var(--color-surface-border) 60%, transparent);
+        border: 0;
         background: var(--color-surface-card);
         box-shadow: var(--shadow-lg);
         animation: pf-modal-in var(--motion-duration-slow) var(--motion-ease-out) both;
@@ -130,7 +130,7 @@
 }
 
 .pf-menu-field {
-    border: 1px solid color-mix(in srgb, var(--color-surface-border) 60%, transparent);
+    border: 0;
     background: rgba(var(--color-surface-card-rgb), 0.5);
 
     &:hover,

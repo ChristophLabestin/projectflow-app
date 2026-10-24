@@ -76,9 +76,9 @@
         gap: 8px;
         min-height: 40px;
         padding: 8px 12px;
-        border: 1px solid var(--color-surface-border);
+        border: 0;
         border-radius: var(--radius-control);
-        background: var(--color-surface-card);
+        background: var(--color-surface-hover);
         color: var(--color-text-muted);
         font-size: 13px;
         font-weight: 600;
@@ -86,7 +86,7 @@
         cursor: pointer;
 
         .material-symbols-outlined { font-size: 18px; }
-        &:hover { background: var(--color-surface-hover); color: var(--color-text-main); }
+        &:hover { background: var(--field-bg-hover); color: var(--color-text-main); }
         &.is-active { color: var(--color-text-main); @include tokens.selected; }
     }
 
@@ -184,7 +184,7 @@
         flex: 1 1 160px;
         min-height: 38px;
         padding: 8px 12px;
-        border: 1px solid var(--color-surface-border);
+        border: 0;
         border-radius: var(--radius-control);
         background: var(--color-surface-input);
         color: var(--color-text-main);

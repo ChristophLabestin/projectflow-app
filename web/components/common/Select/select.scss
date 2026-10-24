@@ -23,7 +23,7 @@
         justify-content: space-between;
         width: 100%;
         padding: 8px 14px;
-        background-color: var(--color-surface-hover);
+        background-color: var(--control-bg, var(--color-surface-hover));
         border: none !important;
         border-radius: var(--radius-control);
         box-shadow: none;
@@ -34,7 +34,7 @@
         height: 42px;
 
         &:hover {
-            background-color: var(--field-bg-hover);
+            background-color: var(--control-bg-hover, var(--field-bg-hover));
         }
 
         // Focused or open: sunken (tokens.sunken), no ring, no border.
@@ -51,7 +51,7 @@
         }
 
         &--disabled {
-            background-color: var(--color-surface-bg);
+            background-color: var(--control-bg, var(--color-surface-hover));
             opacity: 0.6;
             cursor: not-allowed;
             pointer-events: none;

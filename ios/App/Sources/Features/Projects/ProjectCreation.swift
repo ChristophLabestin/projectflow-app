@@ -401,16 +401,20 @@ struct ProjectCreateSheet: View {
                     .font(.system(size: 16, weight: .medium))
                     .foregroundStyle(selected ? PFColor.onPrimary : PFColor.textMuted)
                     .frame(width: 36, height: 36)
-                    .background(selected ? PFColor.primary : PFColor.raised, in: .rect(cornerRadius: PFRadius.control, style: .continuous))
+                    // Icon tile turns translucent primary-text inside the inverted row.
+                    .background(selected ? PFColor.onPrimary.opacity(0.14) : PFColor.raised, in: .rect(cornerRadius: PFRadius.control, style: .continuous))
                 VStack(alignment: .leading, spacing: 1) {
-                    Text(L10n.t(template.labelKey)).pfText(.rowTitle).foregroundStyle(PFColor.textMain)
-                    Text(L10n.t(template.descriptionKey)).pfText(.meta).foregroundStyle(PFColor.textMuted).lineLimit(1)
+                    Text(L10n.t(template.labelKey)).pfText(.rowTitle).foregroundStyle(selected ? PFColor.onPrimary : PFColor.textMain)
+                    Text(L10n.t(template.descriptionKey)).pfText(.meta)
+                        .foregroundStyle(selected ? PFColor.onPrimary.opacity(0.75) : PFColor.textMuted).lineLimit(1)
                 }
                 Spacer(minLength: 0)
-                if selected { Image(systemName: "checkmark").font(.system(size: 13, weight: .bold)).foregroundStyle(PFColor.textMain) }
+                if selected { Image(systemName: "checkmark").font(.system(size: 13, weight: .bold)).foregroundStyle(PFColor.onPrimary) }
             }
             .padding(.horizontal, PFSpace.s)
             .frame(minHeight: 58)
+            // Template choice: the chosen one is inverted (web "selected").
+            .background(selected ? PFColor.primary : Color.clear, in: .rect(cornerRadius: PFRadius.card, style: .continuous))
             .contentShape(.rect)
         }
         .buttonStyle(.pfPressable)

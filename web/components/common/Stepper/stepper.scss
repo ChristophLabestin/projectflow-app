@@ -22,8 +22,8 @@
         padding: 12px;
         border: 0;
         border-radius: var(--radius-control);
-        background: var(--color-surface-card);
-        box-shadow: var(--shadow-sm);
+        background: var(--nested-bg, var(--color-surface-card)); // L1 on the canvas, L2 in a shell (§5.2)
+        box-shadow: var(--nested-shadow, var(--shadow-sm));
         color: var(--color-text-main);
         font: inherit;
         text-align: left;
@@ -35,7 +35,7 @@
 
         &:hover,
         &:focus-visible {
-            background: var(--color-surface-hover);
+            background: var(--nested-bg-hover, var(--color-surface-hover));
             outline: none;
         }
     }
@@ -49,7 +49,7 @@
     height: 28px;
     flex: 0 0 auto;
     border-radius: var(--radius-full);
-    background: var(--color-surface-hover);
+    background: var(--nested-inner-bg, var(--color-surface-hover)); // one level above its step
     color: var(--color-text-muted);
     font-size: 0.8rem;
     font-weight: 800;
@@ -86,7 +86,7 @@
 .stepper__item--current {
     > div,
     > button {
-        background: var(--color-surface-hover);
+        @include tokens.sunken;
     }
 
     .stepper__marker {

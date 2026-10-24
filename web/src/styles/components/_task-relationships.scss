@@ -122,7 +122,7 @@
     gap: 8px;
     min-width: 0;
     border-radius: var(--radius-md);
-    background: var(--color-surface-bg);
+    background: color-mix(in srgb, var(--color-surface-hover) 50%, var(--color-surface-card));
 }
 
 .task-relationships__row {
@@ -178,7 +178,9 @@
     gap: 8px;
     padding: 8px;
     border-radius: var(--radius-md);
-    background: var(--color-surface-bg);
+    background: var(--color-surface-hover);
+    --control-bg: color-mix(in srgb, var(--color-surface-hover) 50%, var(--color-surface-card));
+    --control-bg-hover: var(--color-surface-card);
 
     .text-input-group {
         width: 100%;
@@ -201,7 +203,7 @@
     transition: background-color var(--transition-fast), transform var(--transition-fast);
 
     &:hover {
-        background: var(--color-surface-hover);
+        background: var(--color-surface-card);
     }
 
     &:active {

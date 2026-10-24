@@ -7,8 +7,10 @@
     width: 100%;
     padding: 14px;
     border-radius: var(--radius-lg);
-    background: var(--color-surface-card);
-    box-shadow: var(--shadow-sm);
+    // Own Level 1 frame on the canvas; inside a shell the frame disappears and the
+    // controls sit directly on the card at Level 2 (§5.2).
+    background: var(--nested-frame-bg, var(--color-surface-card));
+    box-shadow: var(--nested-shadow, var(--shadow-sm));
 }
 
 .list-toolbar__header {
@@ -50,13 +52,16 @@
     min-height: 42px;
     padding: 0 12px;
     border-radius: var(--radius-lg);
-    background: rgba(var(--color-surface-hover-rgb), 0.5);
+    background: var(--control-bg, var(--color-surface-hover));
     color: var(--color-text-muted);
     transition: background-color var(--transition-fast), box-shadow var(--transition-fast);
 
-    &:focus-within {
-        background: var(--color-surface-bg);
+    &:hover {
+        background: var(--control-bg-hover, var(--field-bg-hover));
     }
+
+    // Focus sinks in (STYLING.md §1.10).
+    @include tokens.sunken-field;
 
     .material-symbols-outlined {
         flex: 0 0 auto;

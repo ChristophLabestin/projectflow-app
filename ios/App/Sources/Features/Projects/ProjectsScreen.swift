@@ -4,19 +4,17 @@ import PFDesign
 import PFDomain
 import PFModel
 
-/// Projects tab: "Wo hinschauen" carousel (attention ranking), then the portfolio grouped like the web list.
+/// Projects tab: headline with +, focus cards for the projects that need attention, filter chips, compact list.
 struct ProjectsScreen: View {
     @Environment(AppModel.self) private var model
     @Environment(PFPresenter.self) private var presenter
     @State private var portfolio = ProjectsPortfolio()
-    @State private var collapsed: Set<PortfolioGroup> = Set(ProjectsScreen.storedCollapsed())
+    /// nil = all open projects (focus cards + list); a group = only that group.
+    @State private var filter: PortfolioGroup?
+    @Environment(\.pfSideRegionWidth) private var sideRegion
 
-    private static let collapsedKey = "pf.projects.collapsedGroups"
-
-    private static func storedCollapsed() -> [PortfolioGroup] {
-        guard let raw = UserDefaults.standard.array(forKey: collapsedKey) as? [String] else { return [.closed] }
-        return raw.compactMap(PortfolioGroup.init(rawValue:))
-    }
+    /// iPhone Duo closed: narrow column next to the rail — denser cards and rows.
+    private var compact: Bool { sideRegion > 0 }
 
     private var workspace: WorkspaceStore? { model.workspace }
     private var projects: [Project] { workspace?.projects ?? [] }
@@ -54,11 +52,21 @@ struct ProjectsScreen: View {
 
     // MARK: Header
 
+    /// No page title and no eyebrow: the attention headline ("2 von 2 Projekten …") shares its line with +.
+    /// Without attention entries (or projects) the line just reads "Projekte".
     private var header: some View {
-        HStack(alignment: .center) {
-            Text(L10n.t("projects.portfolio.title")).pfText(.display).foregroundStyle(PFColor.textMain)
-                .accessibilityAddTraits(.isHeader)
-            Spacer()
+        let result = workspace?.loaded.contains(.projects) == true && !projects.isEmpty
+            ? portfolio.attention(projects: projects, health: health) : nil
+        return HStack(alignment: .top, spacing: PFSpace.s) {
+            Group {
+                if let result, !result.entries.isEmpty {
+                    statement(result.statement)
+                } else {
+                    Text(L10n.t("projects.portfolio.title")).pfText(compact ? .section : .title).foregroundStyle(PFColor.textMain)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .accessibilityAddTraits(.isHeader)
             if canCreate {
                 PFRootActions {
                     PFIconButton("plus", label: L10n.t("projects.new.title"), style: .glass) {
@@ -68,80 +76,115 @@ struct ProjectsScreen: View {
             }
         }
         .padding(.horizontal, PFSpace.page)
-        .padding(.top, PFSpace.xs)
-        .padding(.bottom, PFSpace.xs)
+        .padding(.top, PFSpace.s)
     }
 
     // MARK: Content
+    //
+    // Redesign (2026-10-24): one source per project, no duplicates.
+    //   1. Focus — the projects that need attention (max 3) as full-width cards: health, reasons, progress, people.
+    //   2. Filter chips — Alle · Aktiv · In Planung · Pausiert · Abgeschlossen (counts; selected inverted).
+    //   3. Compact list — every other project once, grouped by status; closed projects only behind their chip.
+    // iPhone Duo closed (side region): denser cards and rows, ring without percent text.
 
     @ViewBuilder
     private var content: some View {
         let result = portfolio.attention(projects: projects, health: health)
         let rows = portfolio.rows(projects: projects, health: health)
-        if !result.entries.isEmpty {
-            attentionSection(result)
-        }
-        ForEach(PortfolioGroup.allCases, id: \.self) { group in
-            if let groupRows = rows[group], !groupRows.isEmpty {
-                groupSection(group, rows: groupRows)
-            }
-        }
-    }
-
-    private func attentionSection(_ result: AttentionResult) -> some View {
-        VStack(alignment: .leading, spacing: PFSpace.s) {
-            VStack(alignment: .leading, spacing: 6) {
-                PFEyebrow(L10n.t("projects.attention.eyebrow"))
-                statement(result.statement)
+        let byId = Dictionary(rows.values.flatMap { $0 }.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+        let focusIds = filter == nil ? result.attention : []
+        if !focusIds.isEmpty {
+            VStack(spacing: PFSpace.s) {
+                ForEach(focusIds, id: \.self) { id in
+                    if let entry = result.entry(id), let row = byId[id] { focusCard(entry, row: row) }
+                }
             }
             .padding(.horizontal, PFSpace.page)
-
-            if result.attention.isEmpty {
-                Text(L10n.t("dashboard.pulse.attention.empty"))
-                    .pfText(.meta)
-                    .foregroundStyle(PFColor.textMuted)
-                    .padding(.horizontal, PFSpace.page)
-            } else {
-                ScrollView(.horizontal) {
-                    HStack(spacing: PFSpace.s) {
-                        ForEach(result.attention, id: \.self) { id in
-                            if let entry = result.entry(id), let project = workspace?.project(id) {
-                                attentionCard(entry, project: project)
-                            }
-                        }
+            .padding(.top, PFSpace.m)
+        }
+        filterChips(rows)
+            // Duo: a horizontal scroll view draws into the side region; the chips fade out before the rail instead of
+            // ending on a hard cut.
+            .mask {
+                if compact {
+                    HStack(spacing: 0) {
+                        Color.black
+                        LinearGradient(colors: [.black, .black.opacity(0)], startPoint: .leading, endPoint: .trailing).frame(width: 56)
                     }
-                    .scrollTargetLayout()
-                    .padding(.horizontal, PFSpace.page)
-                    .padding(.vertical, 6)
-                }
-                .scrollIndicators(.hidden)
-                .scrollTargetBehavior(.viewAligned)
-                if result.quietCount > 0 {
-                    Text(L10n.plural("dashboard.pulse.attention.quiet", result.quietCount))
-                        .pfText(.meta)
-                        .foregroundStyle(PFColor.textMuted)
-                        .padding(.horizontal, PFSpace.page)
+                } else {
+                    Rectangle().ignoresSafeArea()
                 }
             }
+            .padding(.top, focusIds.isEmpty ? PFSpace.m : PFSpace.l)
+        let groups = filter.map { [$0] } ?? PortfolioGroup.allCases.filter { $0 != .closed }
+        let hidden = Set(focusIds)
+        VStack(alignment: .leading, spacing: PFSpace.l) {
+            ForEach(groups, id: \.self) { group in
+                let groupRows = (rows[group] ?? []).filter { !hidden.contains($0.id) }
+                if !groupRows.isEmpty { listSection(group, rows: groupRows, titled: filter == nil) }
+            }
+            if filter == nil, let closed = rows[.closed], !closed.isEmpty {
+                closedLink(closed.count)
+            }
+            if filter != nil, (rows[filter!] ?? []).isEmpty {
+                Text(L10n.t("projects.filter.empty")).pfText(.meta).foregroundStyle(PFColor.textMuted)
+                    .padding(.horizontal, PFSpace.page)
+            }
         }
-        .padding(.top, PFSpace.s)
+        .padding(.top, PFSpace.m)
+        .animation(PFMotion.respecting(PFMotion.snappy), value: filter)
     }
 
-    private func attentionCard(_ entry: AttentionEntry, project: Project) -> some View {
+    // MARK: Focus cards
+
+    private func focusCard(_ entry: AttentionEntry, row: ProjectsPortfolio.Row) -> some View {
+        let project = row.project
         let snapshot = health[project.id]
-        let reasons = entry.chips.map { chip in
-            PFHealthCard.Reason(id: chip.key.rawValue, text: L10n.t(chip.labelKey, chip.params), tone: tone(chip.tone))
+        let people = project.memberIds.prefix(4).compactMap { uid in
+            workspace?.people[uid].map { (id: uid, name: $0.displayName, url: $0.photoURL) }
         }
-        return PFHealthCard(
-            title: project.title,
-            subtitle: L10n.plural("projects.summary.open", entry.openCount),
-            score: snapshot?.score,
-            trend: PFTrend(raw: snapshot?.trend),
-            reasons: reasons,
-            action: { model.router.push(.project(tenantId: project.tenantId, projectId: project.id)) }
-        ) {
-            PFProjectGlyph(title: project.title, imageURL: project.squareIcon, size: snapshot?.score == nil ? 46 : 30)
+        return Button {
+            model.router.push(.project(tenantId: project.tenantId, projectId: project.id))
+        } label: {
+            VStack(alignment: .leading, spacing: compact ? 10 : PFSpace.s) {
+                HStack(alignment: .center, spacing: PFSpace.s) {
+                    PFProjectGlyph(title: project.title, imageURL: project.squareIcon, size: compact ? 36 : 42)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(project.title).pfText(.section).foregroundStyle(PFColor.textMain).lineLimit(1)
+                        Text(focusMeta(entry, project: project)).pfText(.meta).foregroundStyle(PFColor.textMuted).lineLimit(1)
+                    }
+                    Spacer(minLength: 0)
+                    if let score = snapshot?.score {
+                        PFHealthRing(score: score, size: compact ? 36 : 42, lineWidth: 4)
+                    }
+                }
+                if !entry.chips.isEmpty {
+                    HStack(spacing: 6) {
+                        ForEach(entry.chips.prefix(compact ? 2 : 3), id: \.key) { chip in
+                            PFPill(L10n.t(chip.labelKey, chip.params), tone: tone(chip.tone), compact: true)
+                        }
+                    }
+                }
+                HStack(spacing: PFSpace.s) {
+                    PFProgressBar(value: row.progress, height: 5)
+                    Text(ProjectsFormat.percent(row.progress)).pfText(.number).foregroundStyle(PFColor.textMuted)
+                        .monospacedDigit()
+                    if !people.isEmpty && !compact { PFAvatarStack(people: Array(people), size: 22, limit: 3) }
+                }
+            }
+            .padding(compact ? PFSpace.m - 2 : PFSpace.m)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .pfCard()
+            .contentShape(.rect)
         }
+        .buttonStyle(.pfPressable)
+        .accessibilityElement(children: .combine)
+    }
+
+    private func focusMeta(_ entry: AttentionEntry, project: Project) -> String {
+        var parts = [L10n.plural("projects.summary.open", entry.openCount)]
+        if let due = project.dueDate { parts.append(L10n.t("projects.focus.due", ["date": Formatting.shortDate(due)])) }
+        return parts.joined(separator: " · ")
     }
 
     private func tone(_ tone: AttentionChip.Tone) -> PFPill.Tone {
@@ -162,36 +205,58 @@ struct ProjectsScreen: View {
         for part in parts.dropFirst() {
             text = text + Text(value).foregroundStyle(PFColor.textMain) + Text(part).foregroundStyle(PFColor.textMuted)
         }
-        return text.pfText(.title).fixedSize(horizontal: false, vertical: true)
+        return text.pfText(compact ? .section : .title).fixedSize(horizontal: false, vertical: true)
     }
 
-    // MARK: Groups
+    // MARK: Filter and list
 
-    private func groupSection(_ group: PortfolioGroup, rows: [ProjectsPortfolio.Row]) -> some View {
-        let isCollapsed = collapsed.contains(group)
-        let count = rows.reduce(0) { $0 + 1 + $1.children.count }
-        return VStack(alignment: .leading, spacing: 0) {
-            GroupHeader(title: L10n.t("projects.portfolio.group.\(group.rawValue)"), color: dot(group), count: count, collapsed: isCollapsed) {
-                withAnimation(PFMotion.respecting(PFMotion.snappy)) { toggle(group) }
-            }
-            .padding(.horizontal, PFSpace.page)
-            if !isCollapsed {
-                VStack(spacing: 0) {
-                    ForEach(Array(rows.enumerated()), id: \.element.id) { index, row in
-                        if index > 0 { PFRowDivider(leadingInset: 72) }
-                        ProjectRowView(row: row, indent: false)
-                        ForEach(row.children) { child in
-                            PFRowDivider(leadingInset: 72)
-                            ProjectRowView(row: portfolio.childRow(child), indent: true)
-                        }
-                    }
+    private func filterChips(_ rows: [PortfolioGroup: [ProjectsPortfolio.Row]]) -> some View {
+        let count: (PortfolioGroup) -> Int = { group in (rows[group] ?? []).reduce(0) { $0 + 1 + $1.children.count } }
+        let open = PortfolioGroup.allCases.filter { $0 != .closed }.reduce(0) { $0 + count($1) }
+        return PFChipRow {
+            PFChip("\(L10n.t("projects.filter.all")) \(open)", isSet: filter == nil) { filter = nil }
+            ForEach(PortfolioGroup.allCases.filter { count($0) > 0 }, id: \.self) { group in
+                PFChip("\(L10n.t("projects.portfolio.group.\(group.rawValue)")) \(count(group))", isSet: filter == group) {
+                    filter = filter == group ? nil : group
                 }
-                .clipShape(.rect(cornerRadius: PFRadius.card, style: .continuous))
-                .pfCard()
-                .padding(.horizontal, PFSpace.page)
-                .transition(.opacity.combined(with: .move(edge: .top)))
             }
         }
+    }
+
+    private func listSection(_ group: PortfolioGroup, rows: [ProjectsPortfolio.Row], titled: Bool) -> some View {
+        VStack(alignment: .leading, spacing: PFSpace.xs) {
+            if titled {
+                HStack(spacing: 6) {
+                    Circle().fill(dot(group)).frame(width: 7, height: 7)
+                    PFEyebrow(L10n.t("projects.portfolio.group.\(group.rawValue)"))
+                }
+                .padding(.horizontal, PFSpace.page)
+            }
+            PFCardList {
+                ForEach(rows) { row in
+                    ProjectRowView(row: row, indent: false, compact: compact)
+                    ForEach(row.children) { child in
+                        ProjectRowView(row: portfolio.childRow(child), indent: true, compact: compact)
+                    }
+                }
+            }
+            .padding(.horizontal, PFSpace.page)
+        }
+    }
+
+    private func closedLink(_ count: Int) -> some View {
+        Button { filter = .closed } label: {
+            HStack(spacing: 6) {
+                Image(systemName: "archivebox").font(.system(size: 13, weight: .medium))
+                Text(L10n.plural("projects.filter.closedLink", count)).pfText(.metaStrong)
+                Image(systemName: "chevron.right").font(.system(size: 10, weight: .bold))
+            }
+            .foregroundStyle(PFColor.textMuted)
+            .frame(minHeight: 44)
+            .contentShape(.rect)
+        }
+        .buttonStyle(.pfPressable)
+        .padding(.horizontal, PFSpace.page)
     }
 
     private func dot(_ group: PortfolioGroup) -> Color {
@@ -202,11 +267,6 @@ struct ProjectsScreen: View {
         case .paused: PFColor.warning
         case .closed: PFColor.textSubtle
         }
-    }
-
-    private func toggle(_ group: PortfolioGroup) {
-        if collapsed.contains(group) { collapsed.remove(group) } else { collapsed.insert(group) }
-        UserDefaults.standard.set(collapsed.map(\.rawValue), forKey: Self.collapsedKey)
     }
 
     // MARK: States
@@ -221,12 +281,8 @@ struct ProjectsScreen: View {
 
     private var skeleton: some View {
         VStack(alignment: .leading, spacing: PFSpace.m) {
-            PFSkeleton(height: 14, radius: 4).frame(width: 120)
-            PFSkeleton(height: 28, radius: 6)
-            HStack(spacing: PFSpace.s) {
-                PFSkeleton(height: 178, radius: PFRadius.card).frame(width: 236)
-                PFSkeleton(height: 178, radius: PFRadius.card)
-            }
+            PFSkeleton(height: 140, radius: PFRadius.card)
+            PFSkeleton(height: 34, radius: 17).frame(width: 220)
             PFSkeleton(height: 64, radius: PFRadius.card)
             PFSkeleton(height: 64, radius: PFRadius.card)
         }
@@ -239,6 +295,7 @@ struct ProjectsScreen: View {
 struct ProjectRowView: View {
     let row: ProjectsPortfolio.Row
     let indent: Bool
+    var compact = false
     @Environment(AppModel.self) private var model
 
     var body: some View {
@@ -249,23 +306,23 @@ struct ProjectRowView: View {
                 if indent {
                     RoundedRectangle(cornerRadius: 1).fill(PFColor.hairlineStrong).frame(width: 2, height: 30).padding(.leading, 10)
                 }
-                PFProjectGlyph(title: row.project.title, imageURL: row.project.squareIcon, size: indent ? 36 : 44)
+                PFProjectGlyph(title: row.project.title, imageURL: row.project.squareIcon, size: indent || compact ? 34 : 40)
                 VStack(alignment: .leading, spacing: 3) {
                     Text(row.project.title).pfText(.rowTitle).foregroundStyle(PFColor.textMain).lineLimit(1)
                     signals
                 }
                 Spacer(minLength: PFSpace.xs)
+                // Progress as a small ring (percent beside it on iPhone, ring only on the narrow Duo column).
                 if row.project.status.lifecycle != .closed {
-                    VStack(alignment: .trailing, spacing: 5) {
-                        Text(ProjectsFormat.percent(row.progress)).pfText(.number).foregroundStyle(PFColor.textMuted)
-                        PFProgressBar(value: row.progress, height: 4).frame(width: 52)
+                    if !compact {
+                        Text(ProjectsFormat.percent(row.progress)).pfText(.number).foregroundStyle(PFColor.textMuted).monospacedDigit()
                     }
+                    ProgressDot(value: row.progress)
                 }
-                Image(systemName: "chevron.right").font(.system(size: 11, weight: .bold)).foregroundStyle(PFColor.textSubtle)
             }
             .padding(.leading, indent ? 18 : PFSpace.m)
             .padding(.trailing, PFSpace.m)
-            .frame(minHeight: 68)
+            .frame(minHeight: compact ? 58 : 64)
             .contentShape(.rect)
         }
         .buttonStyle(.pfPressable)
@@ -298,5 +355,21 @@ struct ProjectRowView: View {
         if signals.blocked > 0 { result.append((L10n.t("projects.portfolio.blocked", ["count": signals.blocked]), PFColor.dangerText)) }
         if row.dueToday > 0 { result.append((L10n.t("projects.portfolio.dueToday", ["count": row.dueToday]), PFColor.warningText)) }
         return result
+    }
+}
+
+/// Small progress ring for list rows.
+private struct ProgressDot: View {
+    let value: Double
+
+    var body: some View {
+        ZStack {
+            Circle().stroke(PFColor.raised, lineWidth: 3)
+            Circle().trim(from: 0, to: max(0.001, min(1, value)))
+                .stroke(value >= 1 ? PFColor.success : PFColor.textMain, style: StrokeStyle(lineWidth: 3, lineCap: .round))
+                .rotationEffect(.degrees(-90))
+        }
+        .frame(width: 20, height: 20)
+        .accessibilityHidden(true)
     }
 }

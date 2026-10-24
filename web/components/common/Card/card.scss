@@ -1,6 +1,7 @@
 @use '../../../styles/tokens';
 
 .card {
+    @include tokens.depth-shell;
     background-color: var(--color-surface-card);
     border: none;
     border-radius: var(--radius-lg);

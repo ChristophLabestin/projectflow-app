@@ -42,9 +42,10 @@
 }
 
 .modal {
+    @include tokens.depth-shell;
     background-color: var(--color-surface-card);
     border-radius: var(--radius-xl);
-    border: 1px solid color-mix(in srgb, var(--color-surface-border) 60%, transparent);
+    border: 0;
     box-shadow: var(--shadow-soft); // Deep soft shadow for elevation
     display: flex;
     flex-direction: column;

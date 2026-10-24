@@ -1,4 +1,5 @@
 @use '../src/styles/mixins';
+@use '../styles/tokens';
 
 // /files and /project/:id/files (FilesPage + FilesBrowser).
 .files-page {
@@ -44,7 +45,7 @@
         height: 6px;
         overflow: hidden;
         border-radius: var(--radius-full);
-        background: var(--color-surface-hover);
+        background: var(--color-surface-card); // quota bar on the canvas: Level 1
     }
 
     &__bar {
@@ -66,6 +67,7 @@
     min-height: 240px;
 
     &__toolbar {
+        @include tokens.depth-canvas;
         display: flex;
         flex-wrap: wrap;
         align-items: center;
@@ -82,8 +84,7 @@
         height: 38px;
         padding: 0 12px;
         border-radius: var(--radius-full);
-        background: var(--color-surface-card);
-        box-shadow: var(--shadow-sm);
+        background: var(--control-bg, var(--color-surface-hover));
         color: var(--color-text-muted);
 
         input {
@@ -97,7 +98,7 @@
             font-size: 0.875rem;
         }
 
-        &:focus-within { box-shadow: var(--shadow-md); }
+        @include tokens.sunken-field;
     }
 
     &__toolbar-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
@@ -106,7 +107,7 @@
         display: inline-flex;
         padding: 3px;
         border-radius: var(--radius-full);
-        background: var(--color-surface-hover);
+        background: var(--control-bg, var(--color-surface-hover));
 
         button {
             display: inline-flex;
@@ -121,7 +122,7 @@
             cursor: pointer;
 
             .material-symbols-outlined { font-size: 19px; }
-            &.is-active { background: var(--color-surface-card); color: var(--color-text-main); }
+            &.is-active { @include tokens.selected; }
         }
     }
 
@@ -155,7 +156,7 @@
         &:disabled { opacity: 0.6; cursor: default; }
     }
 
-    &__filters { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+    &__filters { @include tokens.depth-canvas; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 
     &__reset {
         height: 30px;

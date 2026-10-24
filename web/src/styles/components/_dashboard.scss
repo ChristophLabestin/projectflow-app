@@ -54,7 +54,7 @@
     justify-content: center;
     width: 44px;
     height: 44px;
-    border: 1px solid var(--color-surface-border);
+    border: 0;
     border-radius: 999px;
     background: var(--color-surface-card);
     color: var(--color-text-main);
@@ -165,12 +165,12 @@
 }
 
 .dashboard-band__seg--waiting {
-    border: 1px solid var(--color-surface-border);
+    border: 0;
     background: transparent;
 }
 
 .dashboard-band__seg--rest {
-    background: rgba(var(--color-surface-hover-rgb), 0.55);
+    background: var(--color-surface-card);
 }
 
 .dashboard-band__caption {
@@ -256,7 +256,7 @@
     align-items: center;
     min-height: 30px;
     padding: 0 12px 0 9px;
-    border: 1px solid var(--color-surface-border);
+    border: 0;
     border-radius: 999px;
     background: transparent;
     color: var(--color-text-muted);
@@ -406,7 +406,7 @@
     justify-content: center;
     width: 30px;
     height: 30px;
-    border: 1px solid var(--color-surface-border);
+    border: 0;
     border-radius: 8px;
     background: transparent;
     color: var(--color-text-muted);
@@ -959,7 +959,7 @@
     display: block;
     height: 5px;
     border-radius: 999px;
-    background: rgba(var(--color-surface-hover-rgb), 0.7);
+    background: var(--color-surface-card);
 
     i {
         display: block;

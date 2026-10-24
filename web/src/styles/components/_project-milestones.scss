@@ -1,3 +1,5 @@
+@use '../../../styles/tokens';
+
 @use '../mixins';
 
 .project-milestones {
@@ -28,6 +30,7 @@
 }
 
 .project-milestones__header {
+    @include tokens.depth-canvas; // badges/controls on the canvas: Level 1
     display: flex;
     flex-direction: column;
     gap: 1.5rem;
@@ -106,10 +109,11 @@
 }
 
 .project-milestones__progress-track {
+    // on the canvas: Level 1
     width: 100%;
     height: 0.4rem;
     border-radius: var(--radius-full);
-    background-color: var(--color-surface-hover);
+    background-color: var(--color-surface-card);
     overflow: hidden;
 }
 
@@ -263,7 +267,6 @@
     align-items: center;
     justify-content: center;
     gap: 0.15rem;
-    box-shadow: var(--shadow-sm);
 }
 
 .project-milestones__date-badge[data-tone="next"] {
@@ -497,7 +500,6 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    box-shadow: var(--shadow-inner);
 }
 
 .project-milestones__empty-icon span {
@@ -528,7 +530,6 @@
 .milestone-modal__select .select-input__trigger {
     background-color: var(--color-surface-hover);
     border: 0;
-    box-shadow: var(--shadow-sm);
 }
 
 .milestone-modal__tasks {
@@ -556,8 +557,7 @@
     overflow-y: auto;
     padding: 0.75rem;
     border-radius: var(--radius-lg);
-    background-color: var(--color-surface-bg);
-    box-shadow: var(--shadow-inner);
+    background-color: var(--color-surface-hover);
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
@@ -686,8 +686,7 @@
     gap: 1rem;
     padding: 0.75rem 1rem;
     border-radius: var(--radius-lg);
-    background-color: var(--color-surface-card);
-    box-shadow: var(--shadow-sm);
+    background-color: var(--color-surface-hover);
 }
 
 .milestone-detail__task-info {
@@ -701,12 +700,11 @@
     width: 1.4rem;
     height: 1.4rem;
     border-radius: var(--radius-md);
-    background-color: var(--color-surface-hover);
+    background-color: color-mix(in srgb, var(--color-surface-hover) 50%, var(--color-surface-card));
     display: inline-flex;
     align-items: center;
     justify-content: center;
     color: transparent;
-    box-shadow: var(--shadow-inner);
 }
 
 .milestone-detail__task-status[data-complete="true"] {
@@ -735,7 +733,7 @@
 .milestone-detail__task-subtasks {
     font-size: 0.7rem;
     color: var(--color-text-muted);
-    background-color: var(--color-surface-hover);
+    background-color: color-mix(in srgb, var(--color-surface-hover) 50%, var(--color-surface-card));
     padding: 0.2rem 0.6rem;
     border-radius: var(--radius-full);
     font-weight: 600;

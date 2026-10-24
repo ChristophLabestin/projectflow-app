@@ -70,17 +70,20 @@ struct TodayDateRow: View {
     @Environment(\.pfSideRegionWidth) private var sideRegion
 
     var body: some View {
+        // The row is only as tall as the date; ✦/+ hang centred on it without pushing the headline down.
         HStack(spacing: PFSpace.xs) {
             Button {
                 withAnimation(PFMotion.respecting(PFMotion.snappy)) { model.router.isSidebarOpen = true }
             } label: {
                 PFEyebrow(Formatting.longToday(now))
-                    .frame(minHeight: 44, alignment: .leading)
+                    .padding(.vertical, 6)
                     .contentShape(.rect)
             }
             .buttonStyle(.pfPressable)
             .accessibilityHint(L10n.t("sidebar.open"))
             Spacer(minLength: 0)
+        }
+        .overlay(alignment: .trailing) {
             if sideRegion == 0 {
                 HStack(spacing: PFSpace.xs) { TodayActions() }
             }

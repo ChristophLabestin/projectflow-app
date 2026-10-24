@@ -161,7 +161,7 @@ extension TeamPersonRow where Trailing == EmptyView {
     }
 }
 
-/// Selectable row used in pickers (checkmark when selected).
+/// Selectable row used in pickers: the chosen one is inverted (primary fill, check flips to primary-text).
 struct TeamChoiceRow: View {
     let title: String
     var subtitle: String?
@@ -177,22 +177,26 @@ struct TeamChoiceRow: View {
             HStack(spacing: PFSpace.s) {
                 if let leading { leading }
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(title).pfText(.rowTitle).foregroundStyle(PFColor.textMain).multilineTextAlignment(.leading)
+                    Text(title).pfText(.rowTitle).foregroundStyle(isSelected ? PFColor.onPrimary : PFColor.textMain)
+                        .multilineTextAlignment(.leading)
                     if let subtitle {
-                        Text(subtitle).pfText(.meta).foregroundStyle(PFColor.textMuted).multilineTextAlignment(.leading)
+                        Text(subtitle).pfText(.meta).foregroundStyle(isSelected ? PFColor.onPrimary.opacity(0.75) : PFColor.textMuted)
+                            .multilineTextAlignment(.leading)
                     }
                 }
                 Spacer(minLength: 0)
                 Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
                     .font(.system(size: 20, weight: .regular))
-                    .foregroundStyle(isSelected ? PFColor.textMain : PFColor.textSubtle)
+                    .foregroundStyle(isSelected ? PFColor.onPrimary : PFColor.textSubtle)
             }
             .padding(.horizontal, PFSpace.m)
             .frame(minHeight: 56)
+            // Choice rule (web "selected"): the chosen role/project/person is inverted, glyphs flip with it.
+            .background(isSelected ? PFColor.primary : Color.clear, in: .rect(cornerRadius: PFRadius.card, style: .continuous))
             .contentShape(.rect)
         }
         .buttonStyle(.pfPressable)
-        .accessibilityAddTraits(isSelected ? .isSelected : [])
+        .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
     }
 }
 
