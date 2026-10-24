@@ -10,6 +10,7 @@ cd "$ROOT"
 
 git fetch -q origin main
 git merge -q --no-edit origin/main
+npm --prefix web install --silent --no-audit --no-fund
 npm --prefix web run -s build
 bash scripts/predeploy-smoke.sh
 firebase deploy --only hosting --project projectflow-labestin --non-interactive
