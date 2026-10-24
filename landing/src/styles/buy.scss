@@ -1058,3 +1058,214 @@
         color: var(--color-status-done-text);
     }
 }
+
+// ---------------------------------------------------------------- plan step
+.ck-intro {
+    display: flex;
+    flex-direction: column;
+}
+
+.ck-intro__foot {
+    margin: auto 0 0;
+    padding-top: 24px;
+    max-width: 460px;
+    border-top: 1px solid var(--ck-line);
+    color: var(--color-text-muted);
+    font-size: var(--text-sm);
+
+    .ck-recap:not([hidden]) + & {
+        margin-top: 32px;
+    }
+}
+
+.ck-option--plan {
+    padding: 20px 22px;
+}
+
+.ck-option__radio {
+    flex: none;
+    width: 24px;
+    height: 24px;
+    border: 1.5px solid var(--color-surface-border-hover);
+    border-radius: 50%;
+    transition: border-color var(--dur-1) var(--ease-out), box-shadow var(--dur-1) var(--ease-out);
+
+    input:checked + & {
+        border-color: var(--color-text-main);
+        box-shadow: inset 0 0 0 5px var(--color-surface-card), inset 0 0 0 12px var(--color-text-main);
+    }
+}
+
+.ck-option--plan .ck-option__icon {
+    width: 56px;
+    height: 56px;
+    border-radius: 10px;
+
+    .icon {
+        width: 24px;
+        height: 24px;
+    }
+}
+
+.ck-option--plan .ck-option__body b {
+    font-size: 1.1rem;
+}
+
+.ck-option--plan .ck-option__price {
+    color: var(--color-text-muted);
+    font-size: 1rem;
+
+    b {
+        color: var(--color-text-main);
+        font-size: 1.3rem;
+        font-weight: 700;
+        letter-spacing: -0.02em;
+    }
+}
+
+.ck-seats {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    margin-top: -6px;
+    padding: 16px 22px;
+    border: 1px solid var(--ck-line);
+    border-radius: 10px;
+    background: var(--color-surface-card);
+}
+
+.ck-seats__text {
+    display: grid;
+    gap: 2px;
+
+    label {
+        font-weight: 600;
+    }
+
+    small {
+        color: var(--color-text-muted);
+        font-size: var(--text-xs);
+        line-height: 1.45;
+    }
+}
+
+.ck-counter {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    border: 1px solid var(--ck-line);
+    border-radius: var(--ck-radius);
+
+    button {
+        display: grid;
+        place-items: center;
+        width: 42px;
+        height: 42px;
+        border: 0;
+        background: none;
+        color: var(--color-text-main);
+        font: inherit;
+        font-size: 1.25rem;
+        cursor: pointer;
+
+        &:hover:not(:disabled) {
+            background: rgba(var(--color-text-main-rgb), 0.05);
+        }
+
+        &:disabled {
+            color: var(--color-text-subtle);
+            cursor: not-allowed;
+        }
+    }
+
+    input {
+        width: 52px;
+        height: 42px;
+        border: 0;
+        border-inline: 1px solid var(--ck-line);
+        background: none;
+        color: var(--color-text-main);
+        font: inherit;
+        font-size: 1rem;
+        font-weight: 600;
+        text-align: center;
+        -moz-appearance: textfield;
+
+        &::-webkit-inner-spin-button,
+        &::-webkit-outer-spin-button {
+            margin: 0;
+            -webkit-appearance: none;
+        }
+    }
+}
+
+.ck-interval {
+    display: grid;
+    gap: 10px;
+    margin-top: 8px;
+}
+
+.ck-label {
+    margin: 0;
+    font-size: var(--text-sm);
+    font-weight: 500;
+}
+
+.ck-plan-sum {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px 16px;
+    margin-top: 6px;
+    padding-top: 22px;
+    border-top: 1px solid var(--ck-line);
+
+    > b {
+        font-size: 1.05rem;
+        font-weight: 600;
+    }
+
+    > span {
+        font-size: 1.05rem;
+        font-weight: 600;
+
+        b {
+            font-size: 1.5rem;
+            font-weight: 800;
+            letter-spacing: -0.03em;
+        }
+    }
+}
+
+@media (max-width: 899px) {
+    // Base .ck-intro above is flex; on small screens it dissolves into the column again (see mobile block above).
+    .ck-intro {
+        display: contents;
+    }
+
+    .ck-intro__foot {
+        order: 3;
+        margin-top: 32px;
+    }
+
+    .ck-option--plan {
+        flex-wrap: wrap;
+        padding: 16px;
+    }
+
+    .ck-option--plan .ck-option__icon {
+        display: none;
+    }
+
+    .ck-option--plan .ck-option__price {
+        width: 100%;
+        padding-left: 40px;
+        text-align: left;
+    }
+
+    .ck-seats {
+        padding: 14px 16px;
+    }
+}
