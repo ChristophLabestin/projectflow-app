@@ -2,7 +2,7 @@
 enum ProjectsCockpitStrings {
     static let de: [String: String] = [
         "projects.tab.overview": "Überblick", "projects.tab.tasks": "Aufgaben", "projects.tab.plan": "Plan", "projects.tab.team": "Team",
-        "projects.settings.open": "Projekteinstellungen",
+        "projects.settings.open": "Projekteinstellungen", "projects.section.pick": "Bereich wählen",
         "projects.situation.empty": "Noch keine Aufgaben — leg die erste an.",
         "projects.situation.main": "Zu **{percent}** geschafft — {rest}.",
         "projects.situation.allDone": "**Alles erledigt** — {total} Aufgaben abgeschlossen.",
@@ -38,7 +38,7 @@ enum ProjectsCockpitStrings {
 
     static let en: [String: String] = [
         "projects.tab.overview": "Overview", "projects.tab.tasks": "Tasks", "projects.tab.plan": "Plan", "projects.tab.team": "Team",
-        "projects.settings.open": "Project settings",
+        "projects.settings.open": "Project settings", "projects.section.pick": "Choose section",
         "projects.situation.empty": "No tasks yet — add the first one.",
         "projects.situation.main": "**{percent}** done — {rest}.",
         "projects.situation.allDone": "**All done** — {total} tasks completed.",

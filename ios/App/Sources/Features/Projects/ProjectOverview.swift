@@ -258,6 +258,7 @@ struct ProjectOverviewView: View {
                     .padding(.vertical, PFSpace.s)
                 }
                 .scrollIndicators(.hidden)
+                .pfSideFade()
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .pfCard()
             }
