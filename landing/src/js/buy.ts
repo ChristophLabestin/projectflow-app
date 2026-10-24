@@ -89,10 +89,18 @@ function start(root: HTMLElement, c: any) {
     });
 
     /* ---------------------------------------------------------------- recap (left) */
-    const planLine = () => {
-        const unit = c.prices[state.plan][state.interval] * 100;
-        const price = c.plan[state.plan].price.replace('{p}', money(unit));
-        return state.interval === 'year' ? `${price} · ${c.plan.yearly}` : price;
+    /** Recap of the plan as it will be billed: total per billing period, then how it adds up. */
+    const planLines = () => {
+        const yearly = state.interval === 'year';
+        const months = yearly ? 12 : 1;
+        const seats = state.plan === 'team' ? state.seats : 1;
+        const perSeat = c.prices[state.plan][state.interval] * months * 100;
+        const total = c.recap.total.replace('{amount}', money(perSeat * seats)).replace('{unit}', yearly ? c.plan.perYearShort : c.plan.perMonthShort);
+        const billed = yearly ? c.recap.billedYearly : c.recap.billedMonthly;
+        const detail = state.plan === 'team'
+            ? c.recap.seatsDetail.replace('{n}', String(seats)).replace('{p}', price(perSeat)).replace('{billed}', billed)
+            : yearly ? c.recap.personalYear.replace('{m}', price(c.prices.personal.year * 100)).replace('{billed}', billed) : billed;
+        return [total, detail];
     };
     const renderRecap = () => {
         const idx = ORDER.indexOf(state.current);
@@ -108,7 +116,7 @@ function start(root: HTMLElement, c: any) {
             parts.push(item('plan', c.recap.plan, `
                 <div class="ck-recap__plan"><span class="ck-recap__tile">${svg(state.plan === 'team' ? 'users' : 'user')}</span>
                 <div><b>${esc(c.plan[state.plan].name)}${state.plan === 'team' ? ` · ${esc(seatText(state.seats))}` : ''}</b>
-                <span>${esc(planLine())}</span><span>${esc(c.plan[state.plan].text)}</span></div></div>`));
+                ${planLines().map((l) => `<span>${esc(l)}</span>`).join('')}</div></div>`));
         }
         if (idx > 1 && state.user) parts.push(item('account', c.recap.account, `<p class="ck-recap__line">${svg('mail')}${esc(state.user.email ?? '')}</p>`));
         if (idx > 2) parts.push(item('workspace', c.recap.workspace, `<p class="ck-recap__line">${svg('users')}${esc(ws?.workspaceType === 'personal' ? c.workspace.personalName : ws?.name ?? '')}</p>`));
