@@ -54,11 +54,18 @@ struct ProjectsScreen: View {
 
     // MARK: Header
 
+    /// No page title: the eyebrow line ("Wo hinschauen", or "Projekte" when nothing needs attention) carries the
+    /// + on the same line, like Today's date line; the attention statement follows right below.
     private var header: some View {
-        HStack(alignment: .center) {
-            Text(L10n.t("projects.portfolio.title")).pfText(.display).foregroundStyle(PFColor.textMain)
+        let hasAttention = workspace?.loaded.contains(.projects) == true && !projects.isEmpty
+            && !portfolio.attention(projects: projects, health: health).entries.isEmpty
+        return HStack {
+            PFEyebrow(L10n.t(hasAttention ? "projects.attention.eyebrow" : "projects.portfolio.title"))
+                .padding(.vertical, 6)
                 .accessibilityAddTraits(.isHeader)
-            Spacer()
+            Spacer(minLength: 0)
+        }
+        .overlay(alignment: .trailing) {
             if canCreate {
                 PFRootActions {
                     PFIconButton("plus", label: L10n.t("projects.new.title"), style: .glass) {
@@ -68,8 +75,7 @@ struct ProjectsScreen: View {
             }
         }
         .padding(.horizontal, PFSpace.page)
-        .padding(.top, PFSpace.xs)
-        .padding(.bottom, PFSpace.xs)
+        .padding(.top, PFSpace.s)
     }
 
     // MARK: Content
@@ -90,11 +96,10 @@ struct ProjectsScreen: View {
 
     private func attentionSection(_ result: AttentionResult) -> some View {
         VStack(alignment: .leading, spacing: PFSpace.s) {
-            VStack(alignment: .leading, spacing: 6) {
-                PFEyebrow(L10n.t("projects.attention.eyebrow"))
-                statement(result.statement)
-            }
-            .padding(.horizontal, PFSpace.page)
+            // The eyebrow sits in the header line (with +); the statement follows directly.
+            statement(result.statement)
+                .padding(.horizontal, PFSpace.page)
+                .padding(.top, 4)
 
             if result.attention.isEmpty {
                 Text(L10n.t("dashboard.pulse.attention.empty"))
