@@ -13,7 +13,7 @@ import { createCipheriv, createDecipheriv, createHash, randomBytes } from 'crypt
 import { db } from './init';
 import { ALLOWED_ORIGINS } from './corsConfig';
 import {
-    AI_ADDON_LOOKUP_KEYS, PERSONAL_LOOKUP_KEYS, PRICE_LOOKUP_KEYS, TEAM_MEMBER_LIMIT, storageFor, aiEnabledFor,
+    AI_ADDON_LOOKUP_KEYS, PLAN_LIMITS, PERSONAL_LOOKUP_KEYS, PRICE_LOOKUP_KEYS, TEAM_MEMBER_LIMIT, TRIAL_DAYS, storageFor, aiEnabledFor,
     aiIncludedForStatus, initialEntitlement, isAiAddonLookupKey, isPersonalLookupKey, isTestKey, limitsFor, limitsForType,
     mapStripeStatus, paidPlanFor, personalWorkspaceId, planForType,
     memberLimitAllows, periodExpired, projectsToLock, seatQuantity,
@@ -237,6 +237,36 @@ export const onProjectCountBilling = functions.region(REGION).firestore
         { merge: true });
     });
 
+const pendingWorkspaceRef = (uid: string) => db.doc(`billing_pending_workspaces/${uid}`);
+
+/** Creates the workspace bought on the purchase page (tenant, Owner, Team entitlement) — once, transactionally. */
+const createPurchasedWorkspace = async (tenantId: string, subscription: Stripe.Subscription) => {
+    const ownerUid = String(subscription.metadata?.ownerUid || '');
+    if (!ownerUid) return;
+    const user = await admin.auth().getUser(ownerUid);
+    const email = String(user.email || '').toLowerCase();
+    const tenantRef = db.doc(`tenants/${tenantId}`);
+    await db.runTransaction(async (tx) => {
+        if ((await tx.get(tenantRef)).exists) return;
+        const now = FieldValue.serverTimestamp();
+        tx.set(tenantRef, {
+            tenantId, name: String(subscription.metadata?.pendingWorkspaceName || 'Workspace').slice(0, 80),
+            ownerId: ownerUid, createdBy: ownerUid, createdAt: now, updatedAt: now,
+        });
+        tx.set(tenantRef.collection('members').doc(ownerUid), {
+            uid: ownerUid, role: 'Owner', roleIds: [], joinedAt: now,
+            displayName: user.displayName || email.split('@')[0] || 'User', email, photoURL: user.photoURL || '',
+        });
+        // Written with the tenant so onTenantCreatedBilling does not start a separate in-app trial;
+        // syncSubscription fills in the Stripe state right after.
+        tx.set(entRef(tenantId), {
+            plan: 'team', status: 'trialing', workspaceType: 'team', stripeSubscriptionId: subscription.id,
+            ...PLAN_LIMITS.team, projectCount: 0, lockedProjectIds: [], aiMemberIds: [], aiAddonSeats: 0, updatedAt: now,
+        });
+    });
+    await pendingWorkspaceRef(ownerUid).delete().catch(() => undefined);
+};
+
 /** Purchase-page subscription not yet confirmed: unpaid, or a trial without a saved card (SetupIntent not done). */
 export const isPendingPurchase = (subscription: Stripe.Subscription) =>
     subscription.status === 'incomplete'
@@ -286,6 +316,17 @@ export const syncSubscription = async (subscription: Stripe.Subscription, tenant
     if (!tenantId) {
         console.warn('[billing] subscription without tenant', subscription.id);
         return;
+    }
+    // Checkout with a new workspace (contract §8): the tenant only comes into existence once the card is saved
+    // or the first payment succeeded; until then (or if abandoned) nothing exists in ProjectFlow.
+    if (!(await db.doc(`tenants/${tenantId}`).get()).exists) {
+        if (!subscription.metadata?.pendingWorkspaceName || isPendingPurchase(subscription) || !LIVE_STATUSES.includes(subscription.status)) {
+            if (subscription.metadata?.ownerUid && !LIVE_STATUSES.includes(subscription.status) && subscription.status !== 'incomplete') {
+                await pendingWorkspaceRef(String(subscription.metadata.ownerUid)).delete().catch(() => undefined);
+            }
+            return;
+        }
+        await createPurchasedWorkspace(tenantId, subscription);
     }
     const items = subscription.items.data;
     const addonItem = items.find((entry) => isAiAddonLookupKey(entry.price?.lookup_key));
@@ -436,13 +477,13 @@ const INVOICE_FOOTER = 'ProjectFlow · Christoph Labestin · Frühlingsstraße 8
 const invoicePrefixFor = (tenantId: string) =>
     `PF${createHash('sha256').update(tenantId).digest('hex').slice(0, 6).toUpperCase()}`;
 
-const ensureCustomer = async (stripe: Stripe, tenantId: string, uid: string) => {
+const ensureCustomer = async (stripe: Stripe, tenantId: string, uid: string, nameOverride?: string) => {
     const existing = (await customerRef(tenantId).get()).data();
     if (existing?.customerId) return String(existing.customerId);
     const [user, tenant] = await Promise.all([admin.auth().getUser(uid), db.doc(`tenants/${tenantId}`).get()]);
     const customer = await stripe.customers.create({
         email: user.email || undefined,
-        name: String(tenant.data()?.name || 'ProjectFlow workspace'),
+        name: String(nameOverride || tenant.data()?.name || 'ProjectFlow workspace'),
         metadata: { tenantId, ownerUid: uid },
         // Invoice prefix/footer via API: the dashboard does not save them before account activation.
         invoice_prefix: invoicePrefixFor(tenantId),
@@ -717,8 +758,66 @@ export const previewSubscription = functions.region(REGION).runWith({ secrets: S
  * client secret with the Payment Element; the webhook activates the plan. Reuses an identical pending
  * subscription (idempotent), cancels a different pending one.
  */
+/**
+ * Purchase page with a NEW team workspace: reserve a tenant id, start a trial subscription (card via SetupIntent);
+ * the workspace is created by the webhook only once the card is saved. Same values again reuse the pending one.
+ */
+const createNewWorkspaceIntent = async (data: any, context: functions.https.CallableContext) => {
+    const uid = context.auth?.uid;
+    if (!uid) throw new functions.https.HttpsError('unauthenticated', 'Authentication required.');
+    if (data?.plan && data.plan !== 'team') throw new functions.https.HttpsError('failed-precondition', 'plan-workspace-type-mismatch');
+    const name = typeof data?.newWorkspace?.name === 'string' && data.newWorkspace.name.trim()
+        ? data.newWorkspace.name.trim().slice(0, 80) : 'Workspace';
+    const language = data?.newWorkspace?.language === 'en' ? 'en' : 'de';
+    const interval: BillingInterval = data?.interval === 'month' ? 'month' : 'year';
+    const seats = Math.min(TEAM_MEMBER_LIMIT, Math.max(1, Math.floor(Number(data?.seats) || 1)));
+    const stripe = getStripe();
+    const expand = ['latest_invoice.confirmation_secret', 'pending_setup_intent'];
+    const result = (subscription: Stripe.Subscription, tenantId: string) => {
+        const invoice = subscription.latest_invoice as Stripe.Invoice | null;
+        const setup = subscription.pending_setup_intent as Stripe.SetupIntent | null;
+        const summary = invoiceSummary(invoice, subscription.trial_end ?? null);
+        return {
+            tenantId, subscriptionId: subscription.id, intentType: setup ? 'setup' : 'payment',
+            clientSecret: setup?.client_secret || invoice?.confirmation_secret?.client_secret || null,
+            change: false, trialEnd: subscription.trial_end ?? null, invoice: summary, summary,
+        };
+    };
+
+    const pending = (await pendingWorkspaceRef(uid).get()).data();
+    if (pending?.subscriptionId) {
+        const existing = await stripe.subscriptions.retrieve(String(pending.subscriptionId), { expand }).catch(() => null);
+        const same = existing && isPendingPurchase(existing) && pending.name === name && pending.interval === interval && pending.seats === seats;
+        if (existing && same) return result(existing, String(pending.tenantId));
+        if (existing && isPendingPurchase(existing)) await stripe.subscriptions.cancel(existing.id).catch(() => undefined);
+    }
+
+    const tenantId = db.collection('tenants').doc().id; // reserved, not created
+    const [customer, prices] = await Promise.all([
+        ensureCustomer(stripe, tenantId, uid, name),
+        stripe.prices.list({ lookup_keys: [PRICE_LOOKUP_KEYS[interval]], active: true, limit: 1 }),
+    ]);
+    if (!prices.data[0]) throw new functions.https.HttpsError('failed-precondition', 'billing-price-missing');
+    const subscription = await stripe.subscriptions.create({
+        customer,
+        items: [{ price: prices.data[0].id, quantity: seats }],
+        payment_behavior: 'default_incomplete',
+        payment_settings: { save_default_payment_method: 'on_subscription' },
+        trial_period_days: TRIAL_DAYS,
+        trial_settings: { end_behavior: { missing_payment_method: 'cancel' } },
+        metadata: { tenantId, ownerUid: uid, pendingWorkspaceName: name, language, source: 'purchase-page' },
+        expand,
+    });
+    await Promise.all([
+        pendingWorkspaceRef(uid).set({ tenantId, name, interval, seats, subscriptionId: subscription.id, createdAt: FieldValue.serverTimestamp() }),
+        customerRef(tenantId).set({ pendingSubscriptionId: subscription.id, updatedAt: FieldValue.serverTimestamp() }, { merge: true }),
+    ]);
+    return result(subscription, tenantId);
+};
+
 export const createSubscriptionIntent = functions.region(REGION).runWith({ secrets: STRIPE_SECRETS })
     .https.onCall(async (data, context) => {
+        if (data?.newWorkspace) return createNewWorkspaceIntent(data, context);
         const input = await resolvePurchase(data, context);
         const stripe = getStripe();
         const ent = (await entRef(input.tenantId).get()).data() || {};
@@ -869,6 +968,12 @@ export const createTeamWorkspace = functions.region(REGION).https.onCall(async (
 
 /** Polled by the success page until the webhook has applied the purchase. */
 export const getSubscriptionStatus = functions.region(REGION).https.onCall(async (data, context) => {
+    // New workspace from the purchase page that does not exist yet (card not saved / webhook not through).
+    if (context.auth?.uid && typeof data?.tenantId === 'string' && !(await db.doc(`tenants/${data.tenantId}`).get()).exists) {
+        const pending = (await pendingWorkspaceRef(context.auth.uid).get()).data();
+        if (pending && pending.tenantId === data.tenantId) return { status: 'pending', plan: 'team', interval: pending.interval, aiAddonSeats: 0, active: false };
+        throw new functions.https.HttpsError('not-found', 'Workspace not found.');
+    }
     const { tenantId } = await requireOwner(data?.personal === true && context.auth?.uid ? personalWorkspaceId(context.auth.uid) : data?.tenantId, context);
     const e = (await entRef(tenantId).get()).data() || {};
     return {
