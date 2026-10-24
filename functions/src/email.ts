@@ -374,7 +374,7 @@ export const sendEmail = async (to: string, subject: string, html: string, optio
   const mail = { to: recipient, subject, html, text: options.text || stripHtml(html), replyTo: options.replyTo || replyToDefault(), headers, type, tags: options.tags };
 
   // Emulator without any transport configured: mails land in dev_outbox (E2E tests read links from there).
-  if (process.env.FUNCTIONS_EMULATOR === 'true' && !getSesClient() && !env('SMTP_HOST')) {
+  if (process.env.FUNCTIONS_EMULATOR === 'true' && !getSesClient() && !env('SMTP_PASS')) {
     const ref = await db.collection('dev_outbox').add({ ...mail, tags: mail.tags || {}, createdAt: new Date() });
     return { transport: 'emulator', messageId: ref.id };
   }
