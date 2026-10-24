@@ -37,6 +37,9 @@ public enum PFLayout {
 
     /// Gap that puts a rail-wide column in the side region with equal space to the screen edge (right,
     /// bottom) and to the content's page gutter (left), so it sits concentric in the rounded corner.
+    /// Height of the Duo's status block (camera, time, connection icons) at the top of the side region.
+    public static let sideStatusClearance: CGFloat = 160
+
     public static func sideGap(_ side: CGFloat) -> CGFloat {
         ((side + PFSpace.page - PFDock.railWidth) / 2).rounded()
     }

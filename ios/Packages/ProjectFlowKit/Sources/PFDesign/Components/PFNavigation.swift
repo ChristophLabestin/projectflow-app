@@ -168,8 +168,9 @@ public struct PFDock: View {
 
     private static let searchId = "__search"
     private static let accessoryId = "__accessory"
-    /// Outer width of the vertical rail (58 pt items + 6 pt frost padding each side).
-    public static let railWidth: CGFloat = 70
+    /// Outer width of the vertical rail (54 pt items + 4 pt frost padding each side). The rail is its own,
+    /// lighter variant (iPhone Duo): shorter items, regular icons, medium labels — the iPhone dock is unchanged.
+    public static let railWidth: CGFloat = 62
 
     /// `axis: .vertical` turns the dock into a side rail (iPhone Duo opened); `accessory` adds one extra
     /// toggle after search (the rail's list-column switch).
@@ -225,8 +226,8 @@ public struct PFDock: View {
                 }
             }
         }
-        .padding(6)
-        .pfFrost(in: RoundedRectangle(cornerRadius: 26, style: .continuous))
+        .padding(vertical ? 4 : 6)
+        .pfFrost(in: RoundedRectangle(cornerRadius: vertical ? 22 : 26, style: .continuous))
         .padding(.horizontal, vertical ? 0 : PFSpace.m)
         .animation(reduceMotion ? .easeInOut(duration: 0.15) : PFMotion.snappy, value: activeId)
     }
@@ -239,11 +240,11 @@ public struct PFDock: View {
             PFHaptics.selection()
             action()
         } label: {
-            VStack(spacing: 3) {
+            VStack(spacing: vertical ? 2 : 3) {
                 Image(systemName: systemImage)
-                    .font(.system(size: 18, weight: selected ? .semibold : .regular))
+                    .font(.system(size: vertical ? 16 : 18, weight: vertical ? (selected ? .medium : .regular) : (selected ? .semibold : .regular)))
                     .symbolVariant(selected && id != Self.searchId ? .fill : .none)
-                    .frame(width: 28, height: 24)
+                    .frame(width: 28, height: vertical ? 22 : 24)
                     .overlay(alignment: .topTrailing) {
                         if badge > 0 {
                             Text(badge > 99 ? "99+" : "\(badge)")
@@ -257,21 +258,21 @@ public struct PFDock: View {
                         }
                     }
                 Text(title)
-                    .pfText(.tab)
+                    .pfText(vertical ? .tabRail : .tab)
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
             }
             .foregroundStyle(selected || isOn ? PFColor.textMain : PFColor.textMuted)
-            .frame(width: vertical ? 58 : nil, height: vertical ? 56 : nil)
+            .frame(width: vertical ? 54 : nil, height: vertical ? 48 : nil)
             .frame(maxWidth: vertical ? nil : (compact ? 64 : .infinity), minHeight: vertical ? nil : 54)
             .background {
                 if selected {
-                    RoundedRectangle(cornerRadius: 19, style: .continuous)
+                    RoundedRectangle(cornerRadius: vertical ? 17 : 19, style: .continuous)
                         .fill(PFColor.raised)
                         .overlay(alignment: .top) {
                             Capsule()
                                 .fill(PFColor.primary)
-                                .frame(width: 18, height: 3)
+                                .frame(width: vertical ? 14 : 18, height: vertical ? 2.5 : 3)
                                 .shadow(color: PFColor.primary.opacity(0.45), radius: 5, y: 1)
                                 .offset(y: -1)
                         }

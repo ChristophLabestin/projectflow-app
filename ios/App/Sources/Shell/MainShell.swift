@@ -83,12 +83,15 @@ struct MainShell: View {
             if let side = sideRegionWidth, !router.isFocusRoomOpen, !router.isDeep {
                 let gap = PFLayout.sideGap(side)
                 VStack(spacing: 10) {
-                    // The visible tab's header actions (PFRootActions) stack above the tabs.
+                    // The visible tab's header actions (PFRootActions) sit at the top, under the status icons;
+                    // the tabs stay at the bottom — free space between them.
                     if let rootActions {
                         rootActions.frame(width: PFDock.railWidth)
                     }
+                    Spacer(minLength: 0)
                     dock(axis: .vertical, listToggle: false, showsFocus: true)
                 }
+                .padding(.top, PFLayout.sideStatusClearance)
                 .padding(.trailing, gap)
                 .padding(.bottom, gap)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
