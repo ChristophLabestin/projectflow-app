@@ -18,7 +18,7 @@ import { isClientProject } from '../config/projectTemplates';
 import { getDesktopBridge } from '../services/desktop';
 import { PlatformAnnouncement } from './platform/PlatformAnnouncement';
 import { AiPanelProvider } from '../context/AiPanelContext';
-import { AiPanel } from './ai/AiPanel';
+import { AiCommandBar } from './ai/AiCommandBar';
 import { PlanLimitDialog } from './billing/PlanLimitDialog';
 import { useActivePlan } from '../hooks/useEntitlements';
 
@@ -325,8 +325,8 @@ export const AppLayout = () => {
                 </Suspense>
             )}
 
-            {/* In-app AI assistant (⌘J) */}
-            <AiPanel />
+            {/* In-app AI command bar (⌘J) */}
+            <AiCommandBar />
         </div>
         </AiPanelProvider>
     );

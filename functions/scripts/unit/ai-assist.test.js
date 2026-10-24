@@ -57,6 +57,8 @@ test('write requests: known actions only, field data delimited, limits per field
     assert.equal(buildWriteRequest({ action: 'rephrase', field: 'title', text: 'x' }, 'en').maxOutputTokens, 120);
     const custom = buildWriteRequest({ action: 'custom', text: 'abc', instruction: 'y'.repeat(1000) }, 'en');
     assert.ok(custom.input.length < 600);
+    const withContext = buildWriteRequest({ action: 'rephrase', text: 'mittlerer Satz', before: 'Anfang.', after: 'Ende.' }, 'de');
+    assert.match(withContext.input, /Text before \(context only[^]*Anfang\.[^]*Current text:\nmittlerer Satz[^]*Text after[^]*Ende\./);
     for (const action of WRITE_ACTIONS) {
         assert.ok(buildWriteRequest({ action, text: 'Hallo Welt', instruction: 'kürzer' }, 'de').instructions.length > 50, action);
     }

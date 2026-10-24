@@ -29,6 +29,9 @@ export interface AiWriteInput {
     instruction?: string;
     itemTitle?: string;
     projectTitle?: string;
+    /** Text around the target (context only): before/after the caret or the selection. */
+    before?: string;
+    after?: string;
 }
 
 export interface AiContextEnvelope {
