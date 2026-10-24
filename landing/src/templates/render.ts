@@ -5,6 +5,8 @@ import { icon } from './icons';
 import { urlFor, type PageDef } from './pages';
 import { legalBody } from './legal';
 import { docsMcpBody } from './docs';
+import { buyBody } from './buy';
+import { buyCopy } from '../content/buy';
 import { docsMcp } from '../content/docs-mcp';
 
 const notFoundBody = (): string => {
@@ -43,6 +45,16 @@ export function renderPage(page: PageDef): string {
                 body: docsMcpBody(page.lang),
                 scripts: ['/src/js/main.ts', '/src/js/docs.ts'],
                 bodyClass: 'page-docs',
+            });
+        case 'buy':
+            return layout({
+                page,
+                title: `${buyCopy[page.lang].meta.title} · ProjectFlow`,
+                description: buyCopy[page.lang].meta.description,
+                body: buyBody(page.lang),
+                scripts: ['/src/js/main.ts', '/src/js/buy.ts'],
+                bodyClass: 'page-buy',
+                noindex: true,
             });
         case 'notFound':
             return layout({
