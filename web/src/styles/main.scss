@@ -1,4 +1,3 @@
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap');
 @import 'tokens';
 @import 'themes';
 @import 'mixins';
@@ -28,7 +27,7 @@
 
 body {
     margin: 0;
-    font-family: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
     background-color: var(--color-surface-bg);
     color: var(--color-text-main);
     -webkit-font-smoothing: antialiased;

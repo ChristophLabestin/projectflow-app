@@ -4,6 +4,8 @@ import App from './App';
 import { AppProviders } from './AppProviders';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { initErrorReporting, installGlobalErrorHandlers } from './services/errorReporting';
+import '@fontsource-variable/plus-jakarta-sans';
+import 'material-symbols/outlined.css';
 import './styles/tailwind-base.css';
 import './styles/index.scss';
 
