@@ -7,6 +7,7 @@ import { useAiAccess } from '../../hooks/useAiAccess';
 import { AiPlanHint } from '../billing/AiPlanHint';
 import { AiActionCard } from './AiActionCard';
 import { AiMessageText } from './AiMessageText';
+import { AiWorking } from './AiWorking';
 import { useAiConversation } from './core/useAiConversation';
 import './ai-ds.scss';
 import './ai-family.scss';
@@ -68,7 +69,7 @@ export const AiCommandBar: React.FC = () => {
 
     return createPortal(
         <div className="ai-bar-scrim" onMouseDown={(event) => { if (event.target === event.currentTarget) closePanel(); }}>
-            <div className="ai-bar" role="dialog" aria-label={t('ai.panel.title')}>
+            <div className="ai-bar" role="dialog" aria-label={t('ai.panel.title')} data-generating={running ? 'true' : 'false'}>
                 <form className="ai-bar__input" onSubmit={(event) => { event.preventDefault(); submit(input); }}>
                     <span className="ai-bar__mark" aria-hidden="true">✦</span>
                     <input ref={inputRef} value={input} onChange={(event) => setInput(event.target.value)} maxLength={4000}
@@ -85,7 +86,7 @@ export const AiCommandBar: React.FC = () => {
                     <div className="ai-bar__body" aria-live="polite">
                         {blocked && <AiPlanHint status={access.status} />}
                         {!blocked && question && messages.length > 2 && <p className="ai-bar__question">{question.content}</p>}
-                        {!blocked && running && !last?.content && <p className="ai-bar__working">{stepLabel}</p>}
+                        {!blocked && running && !last?.content && <AiWorking label={stepLabel} className="ai-bar__working" />}
                         {!blocked && last?.content && <div className="ai-message"><AiMessageText text={last.content} streaming={running} /></div>}
                         {!blocked && last?.proposals?.map((proposal) => <AiActionCard key={proposal.id} proposal={proposal} />)}
                         {error && (planStatus ? <AiPlanHint status={planStatus} /> : <p className="ai-bar__error" role="alert">{error}</p>)}

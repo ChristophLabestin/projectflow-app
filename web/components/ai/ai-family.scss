@@ -234,14 +234,6 @@ $float-shadow: var(--ai-hairline), var(--shadow-md);
 
     &__error { color: var(--color-error); white-space: normal; max-width: 260px; }
 
-    &__working {
-        padding-right: 4px;
-        color: transparent;
-        background: linear-gradient(90deg, var(--color-text-muted) 40%, var(--color-text-main) 50%, var(--color-text-muted) 60%) 100% 0 / 250% 100%;
-        -webkit-background-clip: text;
-        background-clip: text;
-        animation: ai-family-shimmer 1.6s linear infinite;
-    }
 }
 
 // ---------------------------------------------------------------- command bar (⌘J)
@@ -336,13 +328,7 @@ $float-shadow: var(--ai-hairline), var(--shadow-md);
     }
 
     &__working {
-        margin: 0;
         font-size: 0.8125rem;
-        color: transparent;
-        background: linear-gradient(90deg, var(--color-text-muted) 40%, var(--color-text-main) 50%, var(--color-text-muted) 60%) 100% 0 / 250% 100%;
-        -webkit-background-clip: text;
-        background-clip: text;
-        animation: ai-family-shimmer 1.6s linear infinite;
     }
 
     &__rows {
@@ -392,8 +378,82 @@ $float-shadow: var(--ai-hairline), var(--shadow-md);
 @keyframes ai-family-shimmer { to { background-position: -150% 0; } }
 
 @media (prefers-reduced-motion: reduce) {
-    .ai-caret-chip, .ai-mini, .ai-tools, .ai-hint, .ai-undo, .ai-bar-scrim, .ai-field__ghost-new,
-    .ai-hint__working, .ai-bar__working { animation: none; }
+    .ai-caret-chip, .ai-mini, .ai-tools, .ai-hint, .ai-undo, .ai-bar-scrim, .ai-field__ghost-new { animation: none; }
+}
 
-    .ai-hint__working, .ai-bar__working { color: var(--color-text-muted); }
+// ---------------------------------------------------------------- shared working line
+.ai-working {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+
+    &__dots { display: none !important; }
+
+    &__label {
+        color: transparent;
+        background: linear-gradient(90deg, var(--color-text-muted) 40%, var(--color-text-main) 50%, var(--color-text-muted) 60%) 100% 0 / 250% 100%;
+        -webkit-background-clip: text;
+        background-clip: text;
+        animation: ai-family-shimmer 1.6s linear infinite;
+    }
+}
+
+// ---------------------------------------------------------------- brand accent (opt-in, STYLING §1.9)
+// Small, targeted uses of the four brand hues; active only below [data-ai-accent='brand'].
+[data-ai-accent='brand'] {
+    // 1 · working: four dots wave instead of the text shimmer
+    .ai-working__dots { display: inline-flex !important; }
+
+    .ai-working__label {
+        color: var(--color-text-muted);
+        background: none;
+        animation: none;
+    }
+
+    // 2 · caret ✦: neutral at rest, one short colour pass on hover/open (≤ 400 ms)
+    .ai-caret-chip button:hover,
+    .ai-caret-chip button:focus-visible,
+    .ai-caret-chip button[aria-expanded='true'] {
+        background-image: var(--brand-gradient-linear);
+        background-size: 300% 100%;
+        -webkit-background-clip: text;
+        background-clip: text;
+        animation: ai-brand-flash 380ms ease-out forwards;
+    }
+
+    // 4 · command bar: hairline in the four hues along the top edge, only while generating
+    .ai-bar { position: relative; }
+
+    .ai-bar[data-generating='true']::before {
+        content: '';
+        position: absolute;
+        inset: 0 0 auto;
+        height: 1px;
+        background: var(--brand-gradient-linear);
+        background-size: 200% 100%;
+        animation: ai-brand-line 1.4s linear infinite;
+    }
+}
+
+@keyframes ai-brand-flash {
+    0% { color: transparent; background-position: 0% 0; }
+    85% { color: transparent; background-position: 100% 0; }
+    100% { color: var(--color-text-main); background-position: 100% 0; }
+}
+
+@keyframes ai-brand-line {
+    from { background-position: 0% 0; }
+    to { background-position: -200% 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .ai-working__label { animation: none; color: var(--color-text-muted); }
+
+    [data-ai-accent='brand'] {
+        .ai-caret-chip button:hover,
+        .ai-caret-chip button:focus-visible,
+        .ai-caret-chip button[aria-expanded='true'] { animation: none; color: var(--color-text-main); background-image: none; }
+
+        .ai-bar[data-generating='true']::before { animation: none; }
+    }
 }
