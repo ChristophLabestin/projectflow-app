@@ -235,7 +235,11 @@ function start(root: HTMLElement, c: any) {
         state.user = user;
         state.workspaces = [];
         workspacesReq = null;
-        if (user) void loadWorkspaces().catch(() => { /* shown when the step opens */ });
+        // Signed in: warm up the workspace list and Stripe while the visitor is still on the account step.
+        if (user) {
+            void loadWorkspaces().catch(() => { /* shown when the step opens */ });
+            void prepareStripe().catch(() => { /* retried on the payment step */ });
+        }
         // The first callback is the restored session: just refresh the visible pane, don't jump ahead.
         if (firstAuth) {
             firstAuth = false;
@@ -590,8 +594,6 @@ function start(root: HTMLElement, c: any) {
 
     /* ---------------------------------------------------------------- boot */
     renderPlan();
-    // Warm up Stripe while the visitor is still signing in.
-    if (params.get('step') !== 'done') window.setTimeout(() => void prepareStripe().catch(() => { /* retried on the payment step */ }), 600);
     if (params.get('step') === 'done' && params.get('tenant')) {
         const status = params.get('redirect_status');
         void showDone(params.get('tenant')!, status === 'failed' ? 'failed' : status);

@@ -3,13 +3,8 @@
  * `?mock=1` swaps everything for an in-memory demo (no account, no payment) – shown with a banner.
  * Callable contract: see brain/plans/landing-purchase.md (agreed with the billing session).
  */
-import { initializeApp, type FirebaseApp } from 'firebase/app';
-import {
-    browserLocalPersistence, createUserWithEmailAndPassword, getAuth, GithubAuthProvider, GoogleAuthProvider, OAuthProvider, onAuthStateChanged,
-    sendPasswordResetEmail, setPersistence, signInWithEmailAndPassword, signInWithPopup, signOut, updateProfile,
-    type Auth,
-} from 'firebase/auth';
-import { getFunctions, httpsCallable, type Functions } from 'firebase/functions';
+import type { Auth, User } from 'firebase/auth';
+import type { Functions } from 'firebase/functions';
 
 // Public web config of the Firebase project (the same values ship in the app bundle).
 const firebaseConfig = {
@@ -70,34 +65,51 @@ export interface BuyApi {
 const toUser = (u: { uid: string; email: string | null; displayName: string | null } | null): BuyUser | null =>
     (u ? { uid: u.uid, email: u.email, name: u.displayName } : null);
 
+/**
+ * Firebase is loaded after the page has rendered (it is ~200 kB): the plan step needs none of it, and by the time
+ * someone signs in it is ready. Every method waits for the same load.
+ */
 function firebaseApi(): BuyApi {
-    const app: FirebaseApp = initializeApp(firebaseConfig);
-    const auth: Auth = getAuth(app);
-    void setPersistence(auth, browserLocalPersistence);
-    const fns: Functions = getFunctions(app, 'europe-west3');
-    const call = async <T>(name: string, data: unknown = {}) => (await httpsCallable(fns, name)(data)).data as T;
+    const load = (async () => {
+        await new Promise<void>((resolve) => {
+            if (document.readyState === 'complete') resolve();
+            else window.addEventListener('load', () => resolve(), { once: true });
+        });
+        const [appMod, authMod, fnMod] = await Promise.all([import('firebase/app'), import('firebase/auth'), import('firebase/functions')]);
+        const app = appMod.initializeApp(firebaseConfig);
+        const auth: Auth = authMod.getAuth(app);
+        void authMod.setPersistence(auth, authMod.browserLocalPersistence);
+        const fns: Functions = fnMod.getFunctions(app, 'europe-west3');
+        return { auth, fns, a: authMod, f: fnMod };
+    })();
+    const call = async <T>(name: string, data: unknown = {}) => {
+        const { fns, f } = await load;
+        return (await f.httpsCallable(fns, name)(data)).data as T;
+    };
     return {
         mock: false,
-        onUser: (cb) => onAuthStateChanged(auth, (u) => cb(toUser(u))),
-        signIn: async (email, password) => { await signInWithEmailAndPassword(auth, email, password); },
+        onUser: (cb) => { void load.then(({ auth, a }) => a.onAuthStateChanged(auth, (u: User | null) => cb(toUser(u)))); },
+        signIn: async (email, password) => { const { auth, a } = await load; await a.signInWithEmailAndPassword(auth, email, password); },
         register: async (name, email, password) => {
-            const cred = await createUserWithEmailAndPassword(auth, email, password);
-            if (name) await updateProfile(cred.user, { displayName: name });
+            const { auth, a } = await load;
+            const cred = await a.createUserWithEmailAndPassword(auth, email, password);
+            if (name) await a.updateProfile(cred.user, { displayName: name });
         },
         // Same providers as the app (Firebase Auth → Sign-in method): Google, Apple, GitHub.
         oauth: async (kind) => {
-            let provider: GoogleAuthProvider | GithubAuthProvider | OAuthProvider;
-            if (kind === 'google') provider = new GoogleAuthProvider();
-            else if (kind === 'github') provider = new GithubAuthProvider();
+            const { auth, a } = await load;
+            let provider: InstanceType<typeof a.GoogleAuthProvider> | InstanceType<typeof a.GithubAuthProvider> | InstanceType<typeof a.OAuthProvider>;
+            if (kind === 'google') provider = new a.GoogleAuthProvider();
+            else if (kind === 'github') provider = new a.GithubAuthProvider();
             else {
-                provider = new OAuthProvider('apple.com');
+                provider = new a.OAuthProvider('apple.com');
                 provider.addScope('email');
                 provider.addScope('name');
             }
-            await signInWithPopup(auth, provider);
+            await a.signInWithPopup(auth, provider);
         },
-        reset: (email) => sendPasswordResetEmail(auth, email),
-        signOut: () => signOut(auth),
+        reset: async (email) => { const { auth, a } = await load; await a.sendPasswordResetEmail(auth, email); },
+        signOut: async () => { const { auth, a } = await load; await a.signOut(auth); },
         publishableKey: async () => (await call<{ publishableKey: string }>('getBillingConfig')).publishableKey,
         workspaces: async (language) => {
             const res = await call<Workspace[] | { workspaces: Workspace[] }>('listBillingWorkspaces', { language });
