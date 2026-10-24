@@ -49,7 +49,7 @@ export const mcpConsoleHandlers: HandlerMap = {
             if (!client || client.status === 'revoked') throw new AdminInputError('Client ist widerrufen');
             if (client.status !== 'approved') {
                 if (params?.approveClient !== true) throw new AdminInputError('Client muss zuerst freigegeben werden');
-                await clientRef.set({ status: 'approved', approvedAt: FieldValue.serverTimestamp(), approvedBy: ctx.uid }, { merge: true });
+                await clientRef.set({ status: 'approved', approvedAt: FieldValue.serverTimestamp(), approvedBy: ctx.uid, expireAt: FieldValue.delete() }, { merge: true });
             }
             const requested = parseAdminScopes(d.scopes);
             const scopes = parseAdminScopes(params?.scopes).filter((s) => requested.includes(s));
@@ -120,7 +120,7 @@ export const mcpConsoleHandlers: HandlerMap = {
             if (!clientId || !['approved', 'revoked'].includes(status)) throw new AdminInputError('clientId/status ungültig');
             const ref = col.clients().doc(clientId);
             if (!(await ref.get()).exists) throw new AdminInputError('Client nicht gefunden');
-            await ref.set({ status, [`${status}At`]: FieldValue.serverTimestamp(), [`${status}By`]: uid }, { merge: true });
+            await ref.set({ status, [`${status}At`]: FieldValue.serverTimestamp(), [`${status}By`]: uid, expireAt: FieldValue.delete() }, { merge: true });
             if (status === 'revoked') {
                 const grants = await col.grants().where('clientId', '==', clientId).get();
                 for (const g of grants.docs) if (!g.get('revokedAt')) await revokeGrantTokens(g.id, 'client-revoked');

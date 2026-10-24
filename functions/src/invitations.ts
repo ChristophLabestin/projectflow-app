@@ -1,4 +1,5 @@
 import * as functions from 'firebase-functions/v1';
+import { FAST_START } from './runtime-options';
 import * as admin from 'firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
 import { EMAIL_SECRETS, sendEmail, getSystemEmailTemplate } from './email';
@@ -68,7 +69,7 @@ const resolveAppOrigin = (requested?: unknown) => {
     return process.env.APP_URL || 'https://app.getprojectflow.com';
 };
 
-export const sendInvitation = functions.region(REGION).runWith({ secrets: EMAIL_SECRETS }).https.onCall(async (data, context) => {
+export const sendInvitation = functions.region(REGION).runWith(FAST_START).runWith({ secrets: EMAIL_SECRETS }).https.onCall(async (data, context) => {
     if (!context.auth) {
         throw new functions.https.HttpsError('unauthenticated', 'User must be logged in to send invites.');
     }
@@ -105,7 +106,7 @@ export const sendInvitation = functions.region(REGION).runWith({ secrets: EMAIL_
     return { success: true };
 });
 
-export const acceptWorkspaceInvite = functions.region(REGION).https.onCall(async (data, context) => {
+export const acceptWorkspaceInvite = functions.region(REGION).runWith(FAST_START).https.onCall(async (data, context) => {
     if (!context.auth) {
         throw new functions.https.HttpsError('unauthenticated', 'Sign in to accept the invitation.');
     }

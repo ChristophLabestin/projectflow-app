@@ -70,6 +70,19 @@ await check('Claude Code registers as pending client', async () => {
     clientId = (await r.json()).client_id;
     assert.equal((await db.doc(`admin_mcp_clients/${clientId}`).get()).get('status'), 'pending');
 });
+await check('DCR flood guard: pending cap, then stale pending clients expire', async () => {
+    const reg = () => oauth('/oauth/register', { method: 'POST', headers: { 'content-type': 'application/json', 'x-forwarded-for': `10.0.0.${Math.floor(Math.random() * 250)}` }, body: JSON.stringify({ client_name: 'Flood', redirect_uris: [REDIRECT], token_endpoint_auth_method: 'none' }) });
+    const statuses = [];
+    for (let i = 0; i < 6; i++) statuses.push((await reg()).status);
+    assert.ok(statuses.includes(429), `spoofed IPs must not bypass the cap: ${statuses}`);
+    const pending = (await db.collection('admin_mcp_clients').where('status', '==', 'pending').count().get()).data().count;
+    assert.ok(pending <= 5, `pending=${pending}`);
+    const old = await db.collection('admin_mcp_clients').where('status', '==', 'pending').get();
+    for (const d of old.docs) if (d.id !== clientId) await d.ref.update({ expireAt: admin.firestore.Timestamp.fromMillis(Date.now() - 1000) });
+    assert.equal((await reg()).status, 201, 'stale pending clients are cleaned up');
+    const left = (await db.collection('admin_mcp_clients').where('status', '==', 'pending').count().get()).data().count;
+    assert.ok(left <= 2, `left=${left}`);
+});
 const authorize = (redirect = REDIRECT, extra = {}) => oauth(`/oauth/authorize?${new URLSearchParams({ client_id: clientId, redirect_uri: redirect, response_type: 'code', code_challenge: challenge, code_challenge_method: 'S256', state: 's1', scope: 'admin:read admin:write', ...extra })}`);
 await check('authorize with unregistered redirect is refused', async () => assert.equal((await authorize('http://evil.example/cb')).status, 400));
 await check('authorize without PKCE is refused', async () => {
