@@ -8,6 +8,7 @@ import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 import { db } from './init';
 import { generateServerText } from './ai-service';
 import { computeInsights, insightsDigest, InsightsSnapshot, InsightTask, toInsightTask } from './insights-logic';
+import { memberRef } from './tenant-id';
 
 const REGION = 'europe-west3';
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -72,7 +73,7 @@ const requireFullMember = async (tenantId: unknown, context: functions.https.Cal
     if (typeof tenantId !== 'string' || !tenantId.trim()) {
         throw new functions.https.HttpsError('invalid-argument', 'tenantId is required.');
     }
-    const member = await db.doc(`tenants/${tenantId.trim()}/members/${uid}`).get();
+    const member = await memberRef(tenantId.trim(), uid).get();
     const role = member.exists ? String(member.data()?.role || 'Member') : '';
     if (!['Owner', 'Admin', 'Member'].includes(role)) {
         throw new functions.https.HttpsError('permission-denied', 'Insights are available to workspace members.');

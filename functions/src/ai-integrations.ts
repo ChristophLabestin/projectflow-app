@@ -9,6 +9,7 @@ import { FieldValue } from 'firebase-admin/firestore';
 import { type AiPolicy, normalizeAiPolicy } from './ai-access';
 import { aiPolicyRef, forgetAiPolicy, loadAiPolicy } from './ai-store';
 import { db } from './init';
+import { memberRef } from './tenant-id';
 
 const REGION = 'europe-west3';
 const POLICY_KEYS: (keyof AiPolicy)[] = ['enabled', 'allowGuests', 'allowDeleteScopes', 'allowPersonalTokens', 'inAppEnabled', 'inAppAi'];
@@ -19,7 +20,7 @@ const requireRole = async (tenantId: unknown, context: functions.https.CallableC
     if (typeof tenantId !== 'string' || !tenantId.trim()) {
         throw new functions.https.HttpsError('invalid-argument', 'tenantId is required.');
     }
-    const member = await db.doc(`tenants/${tenantId}/members/${uid}`).get();
+    const member = await memberRef(tenantId, uid).get();
     const role = member.exists ? String(member.data()?.role || 'Member') : '';
     if (!roles.includes(role)) throw new functions.https.HttpsError('permission-denied', 'Insufficient workspace role.');
     return { uid, tenantId: tenantId.trim(), role };

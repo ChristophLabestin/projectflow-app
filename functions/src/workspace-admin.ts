@@ -6,6 +6,7 @@ import { hashToken, type ApiPermission } from './authUtils';
 import { db } from './init';
 import { PLATFORM_ADMIN_PERMISSIONS } from './platform-admin';
 import { FieldValue, Timestamp } from 'firebase-admin/firestore';
+import { memberRef } from './tenant-id';
 
 const REGION = 'europe-west3';
 const SMTP_SECRET_ID = 'smtp';
@@ -43,7 +44,7 @@ const requireWorkspaceOwner = async (tenantId: string, context: functions.https.
         throw new functions.https.HttpsError('invalid-argument', 'tenantId is required.');
     }
 
-    const membership = await db.collection('tenants').doc(tenantId).collection('members').doc(uid).get();
+    const membership = await memberRef(tenantId, uid).get();
     if (membership.exists && membership.data()?.role === 'Owner') {
         return uid;
     }
@@ -59,7 +60,7 @@ const requireWorkspaceAccess = async (tenantId: string, context: functions.https
         throw new functions.https.HttpsError('invalid-argument', 'tenantId is required.');
     }
 
-    const membership = await db.collection('tenants').doc(tenantId).collection('members').doc(uid).get();
+    const membership = await memberRef(tenantId, uid).get();
     if (membership.exists) {
         return uid;
     }

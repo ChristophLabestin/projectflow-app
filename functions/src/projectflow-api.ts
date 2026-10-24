@@ -17,6 +17,7 @@ const PLAN_BLOCK_MESSAGES = {
     'plan-project-locked': 'This project is read-only on the Free plan. Upgrade to Team to edit it again.',
 } as const;
 import { FieldValue, Timestamp } from 'firebase-admin/firestore';
+import { isValidTenantId } from './tenant-id';
 
 type ApiContext = {
     tenantId: string;
@@ -213,7 +214,9 @@ const serializeValue = (value: any): any => {
 const parseTenantId = (req: any, fallbackTenantId?: string): string => {
     const fromQuery = getString(req.query?.tenantId);
     const fromBody = getString(req.body?.tenantId);
-    return fallbackTenantId || fromQuery || fromBody;
+    const tenantId = fallbackTenantId || fromQuery || fromBody;
+    // One plain id segment only (path injection, see tenant-id.ts).
+    return isValidTenantId(tenantId) ? tenantId : '';
 };
 
 const projectRef = (tenantId: string, projectId: string) =>

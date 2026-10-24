@@ -15,6 +15,7 @@ import { type PrincipalKind, shouldTouchLastUsed } from './ai-access';
 import { db } from './init';
 import { ACCESS_TOKEN_TTL_S, randomToken, REFRESH_TOKEN_TTL_S, sha256Hex } from './oauth-core';
 import { checkMachineLegalConsent } from './legal-machine-access';
+import { memberRef } from './tenant-id';
 
 export const AI_TOKEN_PREFIXES = ['pfo_', 'pfp_'] as const;
 export const isAiToken = (token: string) => AI_TOKEN_PREFIXES.some((prefix) => token.startsWith(prefix));
@@ -54,7 +55,7 @@ export const resolveAiToken = async (token: string): Promise<ResolvedAiToken | {
     const grant = grantSnap.data();
     if (!grant || grant.revokedAt) return { error: 'Connection was revoked' };
 
-    const member = await db.doc(`tenants/${grant.tenantId}/members/${grant.uid}`).get();
+    const member = await memberRef(grant.tenantId, grant.uid).get();
     if (!member.exists) return { error: 'You are no longer a member of this workspace.' };
     if (await isTenantSuspended(String(grant.tenantId))) return { error: SUSPENDED_MESSAGE, status: 403 };
 
