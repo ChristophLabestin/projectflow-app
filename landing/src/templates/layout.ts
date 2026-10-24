@@ -1,3 +1,4 @@
+import { GA_MEASUREMENT_ID } from '../content/analytics';
 import { site, type SiteCopy } from '../content/site';
 import { icon, logo } from './icons';
 import { APP_URL, SITE_URL, legalUrl, urlFor, type Lang, type PageDef } from './pages';
@@ -42,6 +43,8 @@ const structuredData = (t: SiteCopy, lang: Lang): string => JSON.stringify({
             name: 'ProjectFlow',
             url: SITE_URL,
             logo: `${SITE_URL}/icon-512.png`,
+            email: 'hello@getprojectflow.com',
+            address: { '@type': 'PostalAddress', addressCountry: 'DE' },
         },
         {
             '@type': 'WebSite',
@@ -59,6 +62,21 @@ const structuredData = (t: SiteCopy, lang: Lang): string => JSON.stringify({
             url: SITE_URL + urlFor('home', lang),
             description: t.meta.description,
             publisher: { '@id': `${SITE_URL}/#org` },
+            offers: t.pricing.plans.filter((plan) => plan.key !== 'org').map((plan) => ({
+                '@type': 'Offer',
+                name: plan.name,
+                price: String(plan.monthly),
+                priceCurrency: 'EUR',
+                url: `${SITE_URL}${urlFor('home', lang) === '/' ? '' : urlFor('home', lang)}/#pricing`,
+            })),
+        },
+        {
+            '@type': 'FAQPage',
+            mainEntity: t.faq.items.map((item) => ({
+                '@type': 'Question',
+                name: item.q,
+                acceptedAnswer: { '@type': 'Answer', text: item.a },
+            })),
         },
     ],
 });
@@ -102,6 +120,17 @@ const header = (page: PageDef, t: SiteCopy): string => {
 </header>`;
 };
 
+/** Consent dialog for Google Analytics; only rendered when a measurement ID is configured (src/js/consent.ts). */
+const consentBanner = (page: PageDef, t: SiteCopy): string => (GA_MEASUREMENT_ID ? `
+    <section class="consent" data-consent data-ga="${esc(GA_MEASUREMENT_ID)}" role="dialog" aria-labelledby="consent-title" aria-describedby="consent-text" hidden>
+        <h2 class="consent__title" id="consent-title">${esc(t.consent.title)}</h2>
+        <p class="consent__text" id="consent-text">${esc(t.consent.text)} <a href="${legalUrl('privacy', page.lang)}">${esc(t.consent.privacy)}</a></p>
+        <div class="consent__actions">
+            <button type="button" class="btn btn--ghost" data-consent-choice="denied">${esc(t.consent.decline)}</button>
+            <button type="button" class="btn btn--primary" data-consent-choice="granted">${esc(t.consent.accept)}</button>
+        </div>
+    </section>` : '');
+
 const footer = (page: PageDef, t: SiteCopy): string => {
     const home = urlFor('home', page.lang);
     const base = page.kind === 'home' ? '' : home === '/' ? '' : home;
@@ -125,7 +154,10 @@ const footer = (page: PageDef, t: SiteCopy): string => {
     </div>
     <div class="container site-footer__bottom">
         <p>© ${new Date().getFullYear()} ProjectFlow. ${esc(t.footer.rights)} ${esc(t.footer.madeIn)}</p>
-        <a class="lang-switch lang-switch--text" href="${alternateOf(page, other)}" hreflang="${other}" lang="${other}" data-lang="${other}">${icon('globe')}${other === 'en' ? 'English' : 'Deutsch'}</a>
+        <div class="site-footer__meta">
+            ${GA_MEASUREMENT_ID ? `<button type="button" class="site-footer__cookies" data-consent-open>${esc(t.consent.settings)}</button>` : ''}
+            <a class="lang-switch lang-switch--text" href="${alternateOf(page, other)}" hreflang="${other}" lang="${other}" data-lang="${other}">${icon('globe')}${other === 'en' ? 'English' : 'Deutsch'}</a>
+        </div>
     </div>
 </footer>`;
 };
@@ -175,6 +207,7 @@ export function layout({ page, title, description, body, scripts, bodyClass = ''
 ${body}
     </main>
     ${chrome === 'site' ? footer(page, t) : ''}
+    ${consentBanner(page, t)}
 </body>
 </html>
 `;

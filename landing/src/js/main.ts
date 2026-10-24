@@ -1,4 +1,5 @@
 import '../styles/base.scss';
+import './consent';
 import { finePointer, prefersMotion } from './motion';
 
 const header = document.querySelector<HTMLElement>('[data-header]');

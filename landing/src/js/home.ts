@@ -73,14 +73,28 @@ function storyScene(mobile: boolean) {
             const copyH = Math.max(...acts.slice(1).map((a) => a.offsetHeight));
             x0 = 16; x1 = W - 16; y0 = HEADER + 24; y1 = H - copyH - 72;
         } else {
-            x0 = Math.max(W * 0.37, 420); x1 = W - Math.max(72, (W - 1240) / 2 + 40); y0 = HEADER + 76; y1 = H - 40;
+            // Board lives between the act copy (left) and the chapter nav (right), measured from the real layout,
+            // so cards never run under the text or the "Ordnen / Fokus …" labels at any width.
+            const sr = stage.getBoundingClientRect();
+            // Ink of the act copy (text line boxes and buttons), not the block width of the paragraphs.
+            const ink = (el: HTMLElement) => {
+                if (el.matches('.btn')) return [el.getBoundingClientRect()];
+                const range = document.createRange();
+                range.selectNodeContents(el);
+                return Array.from(range.getClientRects());
+            };
+            const copyRight = Math.max(0, ...acts.slice(1).flatMap((a) => $$('h2, p, li, .btn', a).flatMap(ink))
+                .filter((r) => r.width > 0).map((r) => r.right - sr.left));
+            const navRect = $('.story__nav', stage)?.getBoundingClientRect();
+            const navLeft = navRect && navRect.width > 0 ? navRect.left - sr.left : W - 72;
+            x0 = Math.max(copyRight + 48, W * 0.3); x1 = navLeft - 32; y0 = HEADER + 76; y1 = H - 40;
         }
         const cw = Math.min(260, (x1 - x0 - gap * (cols - 1)) / cols);
         geoCache = { W, H, x0, y0, x1, y1, cw, gap, cols };
         stage.style.setProperty('--cw', `${cw}px`);
         return geoCache;
     };
-    const resetGeo = () => { geoCache = null; };
+    const resetGeo = () => { geoCache = null; poseCache.clear(); };
     ScrollTrigger.addEventListener('refreshInit', resetGeo);
 
     const boardW = (g: Geo) => g.cols * g.cw + (g.cols - 1) * g.gap;
@@ -119,8 +133,14 @@ function storyScene(mobile: boolean) {
         }));
     };
 
-    /** Pose of every visible card in act k. */
+    /** Pose of every visible card in act k – computed once per layout (cleared on refresh with the geometry). */
+    const poseCache = new Map<number, Pose[]>();
     const poses = (k: number): Pose[] => {
+        let cached = poseCache.get(k);
+        if (!cached) { cached = computePoses(k); poseCache.set(k, cached); }
+        return cached;
+    };
+    const computePoses = (k: number): Pose[] => {
         const g = geo();
         if (k === 0) {
             const pts = mobile ? NOISE_MOBILE : NOISE_DESKTOP;
@@ -265,10 +285,11 @@ function storyScene(mobile: boolean) {
         const pw = phone.offsetWidth;
         const ph = phone.offsetHeight;
         const top = boardY(g) + 36 + counts[col] * (CARD_H + 8) + 16;
-        const sc = Math.min(1, (g.cw + g.gap) / pw);
+        // Uniform scale only (keeps the device proportions); fits the column width and the space below the cards.
+        const sc = Math.min(1, (g.cw + g.gap) / pw, Math.max(0.5, (g.H - top - 32) / ph));
         return {
             x: boardX(g) + col * (g.cw + g.gap) + (g.cw - pw) / 2,
-            y: Math.min(top, g.H - ph * sc - 12),
+            y: Math.min(top, g.H - ph * sc - 28),
             s: sc,
         };
     };
