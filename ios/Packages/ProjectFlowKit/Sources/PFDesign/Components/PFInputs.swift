@@ -151,10 +151,20 @@ public struct PFTextField: View {
     let axis: Axis
     let submitLabel: SubmitLabel
     let onSubmit: () -> Void
+    let size: Size
+    let autoFocus: Bool
+    let isFocused: Binding<Bool>?
     @FocusState private var focused: Bool
 
+    /// `.large`: 56 pt, emphasized text — for the one field a screen is about (e.g. the name in onboarding).
+    public enum Size: Sendable { case regular, large }
+
     public init(_ placeholder: String, text: Binding<String>, systemImage: String? = nil, axis: Axis = .horizontal,
-                submitLabel: SubmitLabel = .done, onSubmit: @escaping () -> Void = {}) {
+                submitLabel: SubmitLabel = .done, size: Size = .regular, autoFocus: Bool = false,
+                isFocused: Binding<Bool>? = nil, onSubmit: @escaping () -> Void = {}) {
+        self.size = size
+        self.autoFocus = autoFocus
+        self.isFocused = isFocused
         self.placeholder = placeholder
         self._text = text
         self.systemImage = systemImage
@@ -166,11 +176,12 @@ public struct PFTextField: View {
     public var body: some View {
         HStack(spacing: 10) {
             if let systemImage {
-                Image(systemName: systemImage).font(.system(size: 15, weight: .medium)).foregroundStyle(PFColor.textMuted)
+                Image(systemName: systemImage).font(.system(size: size == .large ? 17 : 15, weight: .medium))
+                    .foregroundStyle(focused ? PFColor.textMain : PFColor.textMuted)
             }
             TextField("", text: $text, prompt: Text(placeholder).foregroundStyle(PFColor.textSubtle), axis: axis)
                 .textFieldStyle(.plain)
-                .pfText(.body)
+                .pfText(size == .large ? .bodyEmphasis : .body)
                 .foregroundStyle(PFColor.textMain)
                 .focused($focused)
                 .submitLabel(submitLabel)
@@ -183,8 +194,8 @@ public struct PFTextField: View {
                 .accessibilityLabel(Text("Clear"))
             }
         }
-        .padding(.horizontal, 14)
-        .frame(minHeight: 46)
+        .padding(.horizontal, size == .large ? 16 : 14)
+        .frame(minHeight: size == .large ? 56 : 46)
         // Card surface + hairline ring: readable on the grey canvas and inside white cards alike.
         .background(PFColor.card, in: .rect(cornerRadius: PFRadius.control, style: .continuous))
         .overlay {
@@ -195,6 +206,8 @@ public struct PFTextField: View {
         .animation(PFMotion.fast, value: focused)
         .contentShape(.rect)
         .onTapGesture { focused = true }
+        .onChange(of: focused) { _, value in isFocused?.wrappedValue = value }
+        .onAppear { if autoFocus { focused = true } }
     }
 }
 

@@ -4,9 +4,9 @@ enum OnboardingStrings {
         // Welcome onboarding (first sign-in)
         "welcome.step": "Schritt {n} von {total}", "welcome.back": "Zurück",
         "welcome.name.title": "Wie heißt du?", "welcome.name.subtitle": "So sehen dich andere in Projekten und Kommentaren.",
-        "welcome.name.placeholder": "Dein Name",
+        "welcome.name.placeholder": "Vor- und Nachname",
         "welcome.photo.label": "Profilbild", "welcome.photo.add": "Foto hinzufügen",
-        "welcome.optional": "Optional", "welcome.photo.tapAdd": "Tippen, um ein Foto zu wählen", "welcome.photo.tapChange": "Tippen, um es zu ändern",
+        "welcome.optional": "Optional", "welcome.name.label": "Dein Name", "welcome.photo.tapAdd": "Tippen, um ein Foto zu wählen", "welcome.photo.tapChange": "Tippen, um es zu ändern",
         "welcome.workspace.title": "Dein Arbeitsbereich", "welcome.workspace.subtitle": "Gib ihm einen Namen und sag, wie du arbeitest.",
         "welcome.workspace.name": "Name des Arbeitsbereichs",
         "welcome.mode.solo": "Allein", "welcome.mode.team": "Mit Team",
@@ -112,9 +112,9 @@ enum OnboardingStrings {
         // Welcome onboarding (first sign-in)
         "welcome.step": "Step {n} of {total}", "welcome.back": "Back",
         "welcome.name.title": "What's your name?", "welcome.name.subtitle": "This is how others see you in projects and comments.",
-        "welcome.name.placeholder": "Your name",
+        "welcome.name.placeholder": "First and last name",
         "welcome.photo.label": "Profile photo", "welcome.photo.add": "Add photo",
-        "welcome.optional": "Optional", "welcome.photo.tapAdd": "Tap to choose a photo", "welcome.photo.tapChange": "Tap to change it",
+        "welcome.optional": "Optional", "welcome.name.label": "Your name", "welcome.photo.tapAdd": "Tap to choose a photo", "welcome.photo.tapChange": "Tap to change it",
         "welcome.workspace.title": "Your workspace", "welcome.workspace.subtitle": "Give it a name and tell us how you work.",
         "welcome.workspace.name": "Workspace name",
         "welcome.mode.solo": "Solo", "welcome.mode.team": "With a team",
