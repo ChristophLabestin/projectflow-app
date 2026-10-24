@@ -92,6 +92,9 @@ struct ProjectScreen: View {
 
     private var topBar: some View {
         PFTopBar(title: isPinned || tab == .board ? project?.title : nil, backLabel: L10n.t("common.back"), onBack: { model.router.pop() }) {
+            if project != nil, model.showsInAppAi {
+                AiSparkButton { AiAsk.present(model: model, context: AiAskContext(surface: "project", projectId: projectId, entity: .project(id: projectId))) }
+            }
             if project != nil {
                 PFIconButton("gearshape", label: L10n.t("projects.settings.open"), style: .glass) {
                     model.router.push(.projectSettings(tenantId: tenantId, projectId: projectId))

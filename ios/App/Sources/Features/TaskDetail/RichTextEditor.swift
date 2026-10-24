@@ -2,6 +2,7 @@ import SwiftUI
 import UIKit
 import Observation
 import PFDesign
+import PFData
 
 // Description editor: a UITextView (text input, not a UI control) with basic formatting — bold,
 // italic, heading, bullet and numbered lists, links — that writes simple Tiptap-compatible HTML back.
@@ -34,6 +35,8 @@ final class RichEditorController {
     /// Bumped on every edit so the SwiftUI wrapper re-measures its height.
     private(set) var revision = 0
     @ObservationIgnored fileprivate var isNormalizing = false
+    /// In-app AI: set by the screen while ✦ is available; the edit menu then offers rewrites of a selection.
+    @ObservationIgnored var aiRewrite: ((AiWriteAction, NSRange) -> Void)?
 
     // MARK: Attributes
 
@@ -397,6 +400,56 @@ final class RichEditorController {
         return textView.textStorage.attribute(.link, at: location, effectiveRange: nil) as? URL
     }
 
+    /// Plain text of the whole document (AI context).
+    var plainText: String { textView?.text ?? "" }
+
+    /// The selection and up to 600 characters around it (AI context only).
+    func aiContext(_ range: NSRange) -> (selection: String, before: String, after: String) {
+        let text = (textView?.text ?? "") as NSString
+        guard range.location != NSNotFound, NSMaxRange(range) <= text.length else { return ("", "", "") }
+        let start = max(0, range.location - 600)
+        let end = min(text.length, NSMaxRange(range) + 600)
+        return (text.substring(with: range),
+                text.substring(with: NSRange(location: start, length: range.location - start)),
+                text.substring(with: NSRange(location: NSMaxRange(range), length: end - NSMaxRange(range))))
+    }
+
+    /// Replaces a range with plain text in the surrounding style; undoable (shake / the toast's undo).
+    func replace(_ range: NSRange, with text: String) {
+        guard let textView else { return }
+        let storage = textView.textStorage
+        guard range.location != NSNotFound, NSMaxRange(range) <= storage.length else { return }
+        let previous = storage.attributedSubstring(from: range)
+        let attributes = storage.length > 0 ? storage.attributes(at: min(range.location, storage.length - 1), effectiveRange: nil)
+            : textView.typingAttributes
+        let replacement = NSAttributedString(string: text, attributes: attributes)
+        storage.replaceCharacters(in: range, with: replacement)
+        let inserted = NSRange(location: range.location, length: replacement.length)
+        textView.undoManager?.registerUndo(withTarget: self) { controller in
+            controller.restore(inserted, with: previous)
+        }
+        textView.selectedRange = NSRange(location: NSMaxRange(inserted), length: 0)
+        normalize()
+        didEdit()
+        refreshState()
+    }
+
+    private func restore(_ range: NSRange, with previous: NSAttributedString) {
+        guard let textView, NSMaxRange(range) <= textView.textStorage.length else { return }
+        textView.textStorage.replaceCharacters(in: range, with: previous)
+        textView.selectedRange = NSRange(location: range.location, length: previous.length)
+        normalize()
+        didEdit()
+        refreshState()
+    }
+
+    /// Replaces the whole document (field assist "Übernehmen").
+    func replaceAll(with text: String) {
+        replace(NSRange(location: 0, length: textView?.textStorage.length ?? 0), with: text)
+    }
+
+    func undo() { textView?.undoManager?.undo() }
+
     var selectedText: String {
         guard let textView, textView.selectedRange.length > 0 else { return "" }
         return (textView.text as NSString).substring(with: textView.selectedRange)
@@ -586,6 +639,16 @@ struct RichTextEditorView: UIViewRepresentable {
         }
 
         func textViewDidBeginEditing(_ textView: UITextView) { controller.setFocused(true) }
+
+        /// "✦ KI" next to the system actions (Apple's Writing Tools stay) when text is selected and AI is available.
+        func textView(_ textView: UITextView, editMenuForTextIn range: NSRange, suggestedActions: [UIMenuElement]) -> UIMenu? {
+            guard range.length > 0, let rewrite = controller.aiRewrite else { return nil }
+            let actions: [AiWriteAction] = [.rephrase, .shorten, .friendlier, .bullets, .fix, .translate]
+            let children = actions.map { action in
+                UIAction(title: L10n.t("ai.action.\(action.rawValue)")) { _ in rewrite(action, range) }
+            }
+            return UIMenu(children: suggestedActions + [UIMenu(title: L10n.t("ai.badge"), children: children)])
+        }
 
         func textViewDidEndEditing(_ textView: UITextView) { controller.setFocused(false) }
 

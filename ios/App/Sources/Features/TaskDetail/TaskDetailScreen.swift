@@ -143,6 +143,10 @@ struct TaskDetailScreen: View {
 
     private var topBar: some View {
         PFTopBar(backLabel: L10n.t("common.back"), onBack: { model.router.pop() }) {
+            if model.showsInAppAi {
+                AiSparkButton { AiAsk.present(model: model, context: AiAskContext(surface: "task", projectId: ref.projectId,
+                                                                                  entity: .task(id: ref.taskId, projectId: ref.projectId))) }
+            }
             if let item {
                 PFIconButton(isPinned ? "pin.fill" : "pin", label: isPinned ? L10n.t("common.unpin") : L10n.t("common.pin"), style: .glass) {
                     PFHaptics.selection()
@@ -226,7 +230,9 @@ struct TaskDetailScreen: View {
     @ViewBuilder
     private var floating: some View {
         if isEditingDescription {
-            DescriptionToolbar(controller: editor, onLink: presentLinkSheet)
+            DescriptionToolbar(controller: editor, onLink: presentLinkSheet,
+                               onAi: model.showsInAppAi ? { AiEditorBridge.presentFieldAssist(editor, model: model, itemTitle: task?.title, projectTitle: projectModel?.title) } : nil)
+                .onAppear { AiEditorBridge.attach(editor, model: model, itemTitle: task?.title) }
         } else if canEdit, !keyboardVisible, sideRegion == 0, let task {
             if task.isCompleted {
                 PFButton(L10n.t("common.reopen"), systemImage: "arrow.uturn.backward", kind: .secondary, size: .large, fullWidth: true) {
