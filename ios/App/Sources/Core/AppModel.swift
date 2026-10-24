@@ -23,6 +23,8 @@ final class AppModel {
     private(set) var workspace: WorkspaceStore?
     /// Live plan entitlements of the active workspace (billing contract).
     private(set) var plan: PlanStore?
+    /// `ai_config/policy`: in-app AI switched on for the active workspace (loaded per workspace).
+    private(set) var aiInAppEnabled = false
     /// Bumped when the workspace store is replaced, so views can restart their tasks.
     private(set) var workspaceGeneration = 0
 
@@ -32,6 +34,9 @@ final class AppModel {
         if ProcessInfo.processInfo.arguments.contains("-pfSignedOut") { auth.signOut() }
         #endif
         presenter.closeLabel = L10n.t("common.close")
+        #if DEBUG
+        AiFake.install()
+        #endif
         auth.start()
         network.start()
     }
@@ -81,6 +86,11 @@ final class AppModel {
         let planStore = PlanStore(tenantId: tenantId)
         planStore.start()
         plan = planStore
+        aiInAppEnabled = false
+        Task { [weak self] in
+            let enabled = await AiAssist.inAppEnabled(tenantId: tenantId)
+            if self?.workspace?.tenantId == tenantId { self?.aiInAppEnabled = enabled }
+        }
         workspaceGeneration += 1
         SystemSync.workspaceBound(model: self)
         if let pending = router.pendingURL {

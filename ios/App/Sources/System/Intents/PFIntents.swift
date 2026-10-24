@@ -187,6 +187,25 @@ struct WhatsNextIntent: AppIntent {
     }
 }
 
+// MARK: - Ask (in-app AI)
+
+/// "Frag ProjectFlow": opens the app with the question in the ✦ sheet (same `aiAssist` endpoint as in the app).
+struct AskProjectFlowIntent: AppIntent {
+    static let title: LocalizedStringResource = "Frag ProjectFlow"
+    static let description = IntentDescription("Stellt ProjectFlow eine Frage zu deinen Projekten und Aufgaben.")
+    static let openAppWhenRun = true
+
+    @Parameter(title: "Frage", requestValueDialog: "Was möchtest du wissen?") var question: String
+
+    @MainActor
+    func perform() async throws -> some IntentResult {
+        var components = URLComponents(string: "projectflow://ask")!
+        components.queryItems = [URLQueryItem(name: "q", value: question)]
+        if let url = components.url { await AppIntentBridge.shared.open(url: url) }
+        return .result()
+    }
+}
+
 // MARK: - Open
 
 struct OpenProjectIntent: OpenIntent {
