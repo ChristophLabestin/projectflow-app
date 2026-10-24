@@ -266,3 +266,17 @@ test('flow quota per plan (billing entitlements)', () => {
     assert.equal(flowQuotaFor({ plan: 'team', status: 'exempt', flowsQuota: 'seat', seats: 0 }, {}).runsPerMonth, 2000, 'exempt without seats = one seat');
     assert.equal(flowQuotaFor({ plan: 'free', flowsQuota: 'free' }, { limits: { automations: { runsPerMonth: 999 } } }).runsPerMonth, 999, 'admin override wins');
 });
+
+test('security review M5/M6: runtime owner check and locked projects', () => {
+    const { ownerMayRun, lockedProjectsOf } = require('../../lib/automation-logic');
+    const project = { ownerId: 'po' };
+    assert.equal(ownerMayRun({ role: 'Admin', uid: 'a', scope: 'workspace', project: null, allowMemberFlows: true }), true);
+    assert.equal(ownerMayRun({ role: 'Member', uid: 'm', scope: 'workspace', project: null, allowMemberFlows: true }), false, 'demoted admin: workspace flow');
+    assert.equal(ownerMayRun({ role: 'Member', uid: 'm', scope: 'project', project, allowMemberFlows: true }), true);
+    assert.equal(ownerMayRun({ role: 'Member', uid: 'm', scope: 'project', project, allowMemberFlows: false }), false, 'member policy switched off');
+    assert.equal(ownerMayRun({ role: 'Member', uid: 'po', scope: 'project', project, allowMemberFlows: false }), true, 'project owner keeps it');
+    assert.equal(ownerMayRun({ role: 'Admin', uid: 'a', scope: 'project', project: null, allowMemberFlows: true }), false, 'project deleted');
+    assert.equal(ownerMayRun({ role: 'Guest', uid: 'g', scope: 'project', project, allowMemberFlows: true }), false);
+    assert.deepEqual([...lockedProjectsOf({ lockedProjectIds: ['p4', 7, 'p5'] })], ['p4', 'p5']);
+    assert.equal(lockedProjectsOf(null).size, 0);
+});
