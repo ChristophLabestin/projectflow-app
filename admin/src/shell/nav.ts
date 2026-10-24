@@ -1,4 +1,4 @@
-import { Activity, BarChart3, Bot, Bug, Building2, FileText, Gauge, KeyRound, Mail, Newspaper, ScrollText, Settings2, Users } from 'lucide-react';
+import { Activity, BarChart3, Bot, Bug, Building2, FileText, Gauge, KeyRound, Mail, MailWarning, Newspaper, ScrollText, Settings2, Users } from 'lucide-react';
 
 export type NavItem = { to: string; label: string; icon: typeof Gauge; key: string; group: string; keywords?: string };
 
@@ -10,6 +10,7 @@ export const NAV: NavItem[] = [
     { to: '/onboarding', label: 'Onboarding', icon: BarChart3, key: 'b', group: 'Plattform', keywords: 'insights survey umfrage' },
     { to: '/crashes', label: 'Crashes', icon: Bug, key: 'c', group: 'Betrieb', keywords: 'errors fehler stacktrace' },
     { to: '/ai', label: 'KI & MCP', icon: Bot, key: 'k', group: 'Betrieb', keywords: 'ai usage kosten oauth mcp' },
+    { to: '/email', label: 'E-Mail', icon: MailWarning, key: 'e', group: 'Betrieb', keywords: 'ses bounce suppression zustellung' },
     { to: '/system', label: 'System', icon: Settings2, key: 's', group: 'Betrieb', keywords: 'flags banner ankündigung scheduler' },
     { to: '/legal', label: 'Rechtsdokumente', icon: FileText, key: 'l', group: 'Inhalte', keywords: 'agb datenschutz impressum zustimmung' },
     { to: '/blog', label: 'Blog', icon: Newspaper, key: 'p', group: 'Inhalte', keywords: 'posts beiträge kategorien' },

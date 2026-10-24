@@ -140,8 +140,8 @@ Backend-Callables (europe-west3, Firebase-Auth nötig → Landing nutzt Firebase
 | `createTeamWorkspace` | `{name, language?}` | `{tenantId}` (Team-Test startet per Trigger) |
 | `getSubscriptionStatus` | `{tenantId \| personal: true}` | `{status, plan, interval, aiAddonSeats, active}` (Erfolgsseite pollt) |
 
-- `summary` (= `invoice`) = `{currency, subtotal, discount, tax, total, amountDue, trialEnd, lines: [{label, quantity, unitAmount, amount}]}` in Cent, netto; `tax` ist bis zur
-  USt-Entscheidung 0 (Platzhalter).
+- `summary` (= `invoice`) = `{currency, subtotal, discount, tax, total, amountDue, trialEnd, lines: [{label, quantity, unitAmount, amount}]}` in Cent, netto; `tax` ist 0
+  (Kleinunternehmerregelung § 19 UStG; Hinweis steht auf jeder Rechnung).
 - Nur der Owner. `personal: true` = eigener persönlicher Workspace. `plan` optional; passt er nicht zum Workspace-Typ →
   `plan-workspace-type-mismatch`. Plätze wählt niemand: Team = Zahl der Vollmitglieder (Gäste frei), Personal = 1.
   `aiAddonSeats`: 0 … Mitglieder (Personal 0 … 1); gekaufte KI-Plätze gehen zuerst an den Owner, den Rest weist der Owner im

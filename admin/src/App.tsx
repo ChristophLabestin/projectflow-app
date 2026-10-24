@@ -21,6 +21,7 @@ const UsersScreen = named(() => import('./screens/Users'), 'UsersScreen');
 const WorkspacesScreen = named(() => import('./screens/Workspaces'), 'WorkspacesScreen');
 const AiScreen = named(() => import('./screens/Ai'), 'AiScreen');
 const SystemScreen = named(() => import('./screens/System'), 'SystemScreen');
+const EmailScreen = named(() => import('./screens/Email'), 'EmailScreen');
 const McpAccess = named(() => import('./screens/McpAccess'), 'McpAccess');
 const McpConsent = named(() => import('./screens/McpConsent'), 'McpConsent');
 
@@ -42,6 +43,7 @@ const Gate: React.FC = () => {
                     <Route path="workspaces" element={<WorkspacesScreen />} />
                     <Route path="ai" element={<AiScreen />} />
                     <Route path="system" element={<SystemScreen />} />
+                    <Route path="email" element={<EmailScreen />} />
                     <Route path="mcp-access" element={<McpAccess />} />
                     <Route path="oauth/consent" element={<McpConsent />} />
                     <Route path="audit" element={<AuditLog />} />
