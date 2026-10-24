@@ -623,6 +623,12 @@ function reveals() {
 
 const selectRole = roleTabs();
 
+/** Closing band: the gliding task rows only animate while the band is visible. */
+const ctaBand = $('.cta');
+if (ctaBand && 'IntersectionObserver' in window) {
+    new IntersectionObserver(([entry]) => ctaBand.classList.toggle('is-visible', entry.isIntersecting)).observe(ctaBand);
+}
+
 /** FAQ: one answer open at a time. Browsers with exclusive <details name> do this natively; this covers the rest. */
 $$<HTMLDetailsElement>('details[data-faq]').forEach((d, _, all) => d.addEventListener('toggle', () => {
     if (d.open) all.forEach((other) => { if (other !== d) other.open = false; });

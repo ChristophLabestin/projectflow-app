@@ -1978,6 +1978,11 @@ html:not(.is-ready) {
     padding: 0;
     list-style: none;
     animation: cta-glide 70s linear infinite;
+    animation-play-state: paused; // runs only while the band is on screen (home.ts)
+
+    .cta.is-visible & {
+        animation-play-state: running;
+    }
 
     .cta-row--r & {
         animation-direction: reverse;
