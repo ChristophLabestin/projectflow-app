@@ -18,7 +18,7 @@ import { FileRow } from './files/FileRow';
 import { useFileDrop, useThumbnailUrls } from './files/fileHooks';
 import { useFileActions } from './files/useFileActions';
 import { useUploadFeedback } from './files/FileAttachments';
-import { AiTextAssist } from './ai/AiTextAssist';
+import { AiFieldAssist } from './ai/AiFieldAssist';
 
 // Simple time formatter if date-fns is not available or to reduce deps
 const timeAgo = (date: any, t: (key: string) => string) => {
@@ -436,7 +436,7 @@ export const CommentSection: React.FC<CommentSectionProps> = ({
                     {...composerDrop.dropProps}
                     onPaste={composerDrop.onPaste}
                 >
-                    <AiTextAssist textareaRef={textareaRef} value={newComment} onApply={setNewComment} field="comment" itemTitle={targetTitle !== 'item' ? targetTitle : undefined} className="ai-text-assist--compact">
+                    <AiFieldAssist textareaRef={textareaRef} value={newComment} onApply={setNewComment} field="comment" itemTitle={targetTitle !== 'item' ? targetTitle : undefined}>
                         <textarea
                             ref={textareaRef}
                             value={newComment}
@@ -446,7 +446,7 @@ export const CommentSection: React.FC<CommentSectionProps> = ({
                             rows={1}
                             onKeyDown={handleKeyDown}
                         />
-                    </AiTextAssist>
+                    </AiFieldAssist>
                     {pendingFiles.length > 0 && (
                         <div className="comment-composer__pending">
                             {pendingFiles.map((file, index) => (

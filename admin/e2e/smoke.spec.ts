@@ -19,6 +19,7 @@ const PAGES = [
     { path: '/blog', title: 'Blog' },
     { path: '/newsletter', title: 'Leads & Newsletter' },
     { path: '/audit', title: 'Audit-Log' },
+    { path: '/mcp-access', title: 'Admin-MCP' },
 ];
 
 const watchErrors = (page: Page) => {

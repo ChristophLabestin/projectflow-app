@@ -32,7 +32,7 @@ export const useAiWrite = (target: AiWriteTarget) => {
     useEffect(() => () => abortRef.current?.abort(), []);
 
     /** `value` is the full field value; `range` limits the action to a selection. */
-    const run = useCallback(async (action: AiWriteAction, value: string, options: { range?: { start: number; end: number } | null; instruction?: string } = {}) => {
+    const run = useCallback(async (action: AiWriteAction, value: string, options: { range?: { start: number; end: number } | null; instruction?: string; before?: string; after?: string } = {}) => {
         if (!tenantId) return;
         const range = options.range && options.range.end > options.range.start ? options.range : null;
         const text = range ? value.slice(range.start, range.end) : value;
@@ -48,7 +48,7 @@ export const useAiWrite = (target: AiWriteTarget) => {
             const result = await streamAiAssist({
                 capability: 'write',
                 tenantId,
-                input: { action, field: target.field, text, instruction: options.instruction, itemTitle: target.itemTitle, projectTitle: target.projectTitle }
+                input: { action, field: target.field, text, instruction: options.instruction, itemTitle: target.itemTitle, projectTitle: target.projectTitle, before: options.before, after: options.after }
             }, { signal: controller.signal, onDelta: (delta) => setSuggestion((current) => current + delta) });
             if (controller.signal.aborted) return;
             setSuggestion(result.text.trim());

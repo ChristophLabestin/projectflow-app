@@ -10,7 +10,7 @@ import { getSharedProjects, getUserProjects } from '../services/domain/projectsS
 import { auth } from '../services/firebase';
 import { readRecentProjectAccess } from '../utils/recentProjects';
 import { IdeaGroup, Project, Task, TaskCategory, TaskStatus } from '../types';
-import { AiTextAssist } from './ai/AiTextAssist';
+import { AiFieldAssist } from './ai/AiFieldAssist';
 import { Button } from './common/Button/Button';
 import { Select } from './common/Select/Select';
 import { Badge } from './common/Badge/Badge';
@@ -416,7 +416,7 @@ export const TaskCreateModal: React.FC<Props> = ({ projectId, tenantId, allowPro
 
                     {/* Description */}
                     <div className="description-section">
-                        <AiTextAssist
+                        <AiFieldAssist
                             textareaRef={descriptionRef}
                             value={description}
                             onApply={setDescription}
@@ -433,7 +433,7 @@ export const TaskCreateModal: React.FC<Props> = ({ projectId, tenantId, allowPro
                                 aria-label={t('taskCreate.description.placeholder')}
                                 className="task-create__description-input"
                             />
-                        </AiTextAssist>
+                        </AiFieldAssist>
                     </div>
 
                     {/* Subtasks Section */}

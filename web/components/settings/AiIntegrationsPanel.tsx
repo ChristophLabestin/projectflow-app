@@ -1,4 +1,5 @@
 import { forgetInAppAi } from '../../hooks/useInAppAi';
+import { useAiPrefs } from '../../hooks/useAiPrefs';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { useLanguage } from '../../context/LanguageContext';
@@ -141,6 +142,7 @@ export const AiIntegrationsPanel: React.FC<AiIntegrationsPanelProps> = ({ tenant
         return t('aiSettings.scopes.read');
     };
 
+    const { caretSpark, setCaretSpark } = useAiPrefs();
     const deleteAllowed = Boolean(policy?.allowDeleteScopes);
     const presets = useMemo(() => (['read', 'write', ...(deleteAllowed ? ['delete'] : [])] as TokenPreset[]), [deleteAllowed]);
 
@@ -293,6 +295,21 @@ export const AiIntegrationsPanel: React.FC<AiIntegrationsPanelProps> = ({ tenant
                     </div>
                 )}
             </section>
+
+            {/* Personal in-app AI preference (this device) */}
+            {policy?.inAppAi && policy.inAppEnabled && (
+                <section className="ai-settings__card">
+                    <ul className="ai-settings__policy">
+                        <li>
+                            <div>
+                                <strong>{t('aiSettings.personal.caretSpark')}</strong>
+                                <span>{t('aiSettings.personal.caretSpark.hint')}</span>
+                            </div>
+                            <SettingsSwitch checked={caretSpark} onChange={(on) => setCaretSpark(on)} label={t('aiSettings.personal.caretSpark')} />
+                        </li>
+                    </ul>
+                </section>
+            )}
 
             {/* Workspace policy */}
             {policy && (

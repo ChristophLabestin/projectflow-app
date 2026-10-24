@@ -201,5 +201,7 @@ auth chain and modules: `brain/plans/admin-console-concept.md`. All data via the
 - `/blog`, `/blog/:id` (`new`) — platform blog `blog_posts` + categories
 - `/newsletter` — leads: newsletter subscribers/pending/legacy, waitlist, contact form (audited read, delete)
 - `/audit` — admin audit log
+- `/mcp-access` — Admin-MCP: kill switch, URL + connect guide, pending confirmation codes, connections, clients, MCP audit
+- `/oauth/consent?request=` — Admin-MCP consent (re-auth with TOTP); `/mcp`, `/oauth/*`, `/.well-known/oauth-*` are Hosting rewrites to `adminMcp`/`adminOAuth`
 - Shell: ⌘K palette (pages, actions, user search), `g <key>` navigation, j/k + Enter in tables, ⇧D theme.
 
