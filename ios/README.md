@@ -51,6 +51,9 @@ open `/admin/crashes`. Release = `MARKETING_VERSION`, build = `CURRENT_PROJECT_V
 
 ## Rules
 
+- Borderless like the web: inputs are a tinted fill (`PFColor.field`, `pfFieldSurface`), focus and selected choices sink in
+  (`PFColor.sunken` + inner shadow, `pfSunken`) — no borders, rings or outlines. Onboarding name uses the capture title field.
+
 - **Native mechanics, custom look.** Sheets (`PFPresenter.present`, backed by SwiftUI `.sheet` + detents) and
   page navigation (`PFNavigator`, backed by `NavigationStack`, system bar hidden) are native SwiftUI so
   dragging, swipe-back and transitions feel like iOS. Everything visible (navigation bar/dock, headers,

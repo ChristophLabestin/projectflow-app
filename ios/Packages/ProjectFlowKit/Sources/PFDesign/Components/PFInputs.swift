@@ -143,7 +143,7 @@ public struct PFSwitch: View {
 
 // MARK: - Text field
 
-/// Filled input (42 pt, radius 10). Focus is shown by a fill change, not a ring (web rule).
+/// Borderless filled input (46 pt, radius control). Focus sinks the surface in — no border, no ring (web rule).
 public struct PFTextField: View {
     let placeholder: String
     @Binding var text: String
@@ -196,13 +196,8 @@ public struct PFTextField: View {
         }
         .padding(.horizontal, size == .large ? 16 : 14)
         .frame(minHeight: size == .large ? 56 : 46)
-        // Card surface + hairline ring: readable on the grey canvas and inside white cards alike.
-        .background(PFColor.card, in: .rect(cornerRadius: PFRadius.control, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: PFRadius.control, style: .continuous)
-                .strokeBorder(focused ? PFColor.textMuted.opacity(0.55) : PFColor.hairlineStrong, lineWidth: 1)
-        }
-        .shadow(color: .black.opacity(0.04), radius: 2, y: 1)
+        // Borderless like the web: a tinted field that sinks in on focus, no ring.
+        .pfFieldSurface(focused: focused)
         .animation(PFMotion.fast, value: focused)
         .contentShape(.rect)
         .onTapGesture { focused = true }

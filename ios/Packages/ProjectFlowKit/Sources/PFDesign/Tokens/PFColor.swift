@@ -51,6 +51,16 @@ public enum PFColor {
     public static let sheetSurface = Color(uiColor: UIColor { @Sendable traits in traits.userInterfaceStyle == .dark
         ? UIColor(hex: 0x0B0D11, alpha: 0.86) : UIColor(white: 1, alpha: 0.86) })
 
+    /// Input surface at rest (web `--color-surface-input`): a translucent tint, no border, readable on canvas,
+    /// cards and sheets alike.
+    public static let field = Color(uiColor: UIColor { @Sendable traits in traits.userInterfaceStyle == .dark
+        ? UIColor(white: 1, alpha: 0.06) : UIColor(white: 0, alpha: 0.045) })
+
+    /// Focus and selection (web `--color-surface-sunken`): the surface sinks in a little instead of getting a
+    /// ring or outline. Used with an inner shadow (`pfSunken`).
+    public static let sunken = Color(uiColor: UIColor { @Sendable traits in traits.userInterfaceStyle == .dark
+        ? UIColor(white: 0, alpha: 0.32) : UIColor(white: 0, alpha: 0.075) })
+
     public static let scrim = Color(uiColor: UIColor(white: 0, alpha: 0.35))
 
     // Status: base hue (fills at 12 %) and AA text tone (C10).

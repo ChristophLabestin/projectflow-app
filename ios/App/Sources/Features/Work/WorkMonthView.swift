@@ -203,11 +203,8 @@ struct WorkMonthView<Header: View>: View {
                 .frame(height: 6)
             }
             .frame(maxWidth: .infinity, minHeight: 50)
-            .background(hovered ? PFColor.raised : (isSelected ? PFColor.raisedSoft : Color.clear), in: .rect(cornerRadius: 10, style: .continuous))
-            .overlay {
-                RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .strokeBorder(hovered ? PFColor.primary.opacity(0.6) : (isSelected ? PFColor.hairlineStrong : .clear), lineWidth: hovered ? 1.5 : 1)
-            }
+            // Drop target and selected day sink in; no outlines.
+            .pfSunken(hovered || isSelected, in: .rect(cornerRadius: 10, style: .continuous))
             .contentShape(.rect)
         }
         .buttonStyle(.plain)
