@@ -1,6 +1,18 @@
 # Handoff
 
-Last updated: 2026-10-23
+Last updated: 2026-10-24
+
+## Orchestrator-Stand 2026-10-24 (Nacht)
+
+Neu live seit dem 23.10. abends (Details in den jeweiligen Plänen):
+- **Workspace-Features:** Aktivität & Insights (`plans/activity-events-contract.md`), Dateien (`plans/files-concept.md`), Wiki (`plans/wiki-concept.md`), Flows inkl. KI-Bedingung (Decisions API) und Kontingenten pro Plan (`plans/flows-concept.md`).
+- **Billing:** Free, Personal (5/4 €), Team, KI-Paket, Workspace `billingExempt` (Owner, Mossandl, App Review), persönlicher Workspace für jeden Nutzer (`ensurePersonalWorkspace`, Backfill gelaufen), Speicher Free 1 GB, Personal 25 GB, Team 10 GB/Platz. Stripe wartet auf `STRIPE_SECRET_KEY` (sk_test) vom Owner. Vertrag: `plans/billing-entitlements-contract.md`.
+- **Admin-Konsole** `projectflow-admin.web.app` (TOTP, Allowlist, Audit): Crashes, Legal, Onboarding, Blog, Workspace-Sperre, Banner, KI-Policy, Flows, Billing, Speicher. Domain `admin.getprojectflow.com` richtet der Owner ein (`operations/domains-setup.md` D).
+- **In-App-KI:** Fundament (OpenAI, Tiers, Credits, BYOK), Structured Outputs + Decisions API als Standard, CORA komplett entfernt (inkl. Prod-Function). Oberfläche: Owner wählt eine von drei Richtungen (`/ui#ai`, Screenshots `v3-drei-richtungen`), bis dahin nichts eingebaut, Flag `inAppAi` aus.
+- **Qualität:** Pflicht-Smoke vor jedem App-Hosting-Deploy (`scripts/predeploy-smoke.sh`), Admin-Variante `scripts/predeploy-smoke-admin.sh`. Anlass waren zwei Prod-Ausfälle am 23.10.
+- **iOS:** TestFlight Build 5 hochgeladen (24.10.), nächster Build 6. **Desktop:** v0.1.4 veröffentlicht; ⌃⌘J-Hotkey kommt mit dem nächsten Release.
+
+Wartet auf den Owner: KI-Richtung wählen, Stripe-Testkey, Domains (admin, mcp, getprojectflow.com → Landing live), Rechtstexte unter Admin → Legal veröffentlichen (v1-Frist für Tokens 06.11.), Review-Konto in App Store Connect eintragen, MCP-Test in claude.ai.
 
 ## Orchestrator-Stand 2026-10-23
 

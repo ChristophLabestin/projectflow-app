@@ -1,11 +1,29 @@
 // One-time Stripe TEST-mode setup for ProjectFlow billing (brain/plans/billing-implementation.md).
-// Usage: STRIPE_SECRET_KEY=sk_test_… node functions/scripts/stripe-setup.mjs
-// Idempotent: product/prices are found by lookup key, the webhook endpoint by URL.
+// Usage (repo root): node functions/scripts/stripe-setup.mjs
+// The secret key is read from Secret Manager (STRIPE_SECRET_KEY, set by the owner via
+// `firebase functions:secrets:set`), never from the command line; the webhook signing secret is written to
+// Secret Manager (STRIPE_WEBHOOK_SECRET) without being printed. Idempotent: products/prices by lookup key,
+// portal configurations by metadata.plan, the webhook endpoint by URL.
+import { execFileSync } from 'node:child_process';
 import Stripe from 'stripe';
 
-const key = process.env.STRIPE_SECRET_KEY || '';
+const PROJECT = process.env.GCLOUD_PROJECT || 'projectflow-labestin';
+const readSecret = (name) => {
+    try {
+        return execFileSync('gcloud', ['secrets', 'versions', 'access', 'latest', `--secret=${name}`, `--project=${PROJECT}`],
+            { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
+    } catch {
+        return '';
+    }
+};
+const writeFirebaseSecret = (name, value) => {
+    execFileSync('firebase', ['functions:secrets:set', name, '--data-file=-', `--project=${PROJECT}`, '--force'],
+        { input: value, stdio: ['pipe', 'ignore', 'inherit'] });
+};
+
+const key = readSecret('STRIPE_SECRET_KEY');
 if (!/^(sk|rk)_test_/.test(key)) {
-    console.error('Refusing to run: STRIPE_SECRET_KEY must be a test key (sk_test_…).');
+    console.error('Refusing to run: Secret Manager STRIPE_SECRET_KEY is missing or not a test key (sk_test_…).');
     process.exit(1);
 }
 const stripe = new Stripe(key);
@@ -108,14 +126,29 @@ for (const plan of ['team', 'personal']) {
 }
 
 const endpoints = await stripe.webhookEndpoints.list({ limit: 100 });
-const endpoint = endpoints.data.find((e) => e.url === WEBHOOK_URL);
+let endpoint = endpoints.data.find((e) => e.url === WEBHOOK_URL);
+// The signing secret is only returned on creation: without a stored secret, recreate the endpoint.
+if (endpoint && !readSecret('STRIPE_WEBHOOK_SECRET')) {
+    await stripe.webhookEndpoints.del(endpoint.id);
+    console.log('Deleted webhook endpoint without stored secret', endpoint.id);
+    endpoint = undefined;
+}
 if (endpoint) {
     await stripe.webhookEndpoints.update(endpoint.id, { enabled_events: EVENTS });
-    console.log('Webhook endpoint exists', endpoint.id, '(secret unchanged; roll it in the dashboard if lost)');
+    console.log('Webhook endpoint exists', endpoint.id, '(secret already in Secret Manager)');
 } else {
     const created = await stripe.webhookEndpoints.create({ url: WEBHOOK_URL, enabled_events: EVENTS, description: 'ProjectFlow billing' });
-    console.log('Created webhook endpoint', created.id);
-    console.log('\nSet the signing secret (not printed to logs elsewhere):');
-    console.log(`  printf %s '${created.secret}' | firebase functions:secrets:set STRIPE_WEBHOOK_SECRET --data-file=-`);
+    writeFirebaseSecret('STRIPE_WEBHOOK_SECRET', created.secret);
+    console.log('Created webhook endpoint', created.id, '- signing secret stored as STRIPE_WEBHOOK_SECRET');
+}
+
+// Organization: product only (draft, inactive) until the owner decides the price.
+const orgExisting = await stripe.products.search({ query: "metadata['plan']:'organization'" }).catch(() => ({ data: [] }));
+if (!orgExisting.data.length) {
+    const org = await stripe.products.create({
+        name: 'ProjectFlow Organization', active: false, metadata: { plan: 'organization' },
+        description: 'Draft — price not decided (proposal from 18 €/seat/month billed yearly).',
+    });
+    console.log('Created draft product organization', org.id);
 }
 console.log('\nPrices:', prices);

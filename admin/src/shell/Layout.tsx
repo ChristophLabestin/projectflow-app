@@ -94,7 +94,7 @@ export const Layout: React.FC = () => {
             </aside>
             <div className="ac-main">
                 <header className="ac-topbar">
-                    <div className="ac-topbar__crumbs">Admin<ChevronRight size={13} /><b>{current?.label ?? 'Seite'}</b></div>
+                    <div className="ac-topbar__crumbs">Admin<ChevronRight size={13} /><b>{current?.label ?? (location.pathname.startsWith('/oauth') ? 'Admin-MCP-Freigabe' : 'Seite')}</b></div>
                     <span className="ac-topbar__spacer" />
                     <SessionPill />
                 </header>

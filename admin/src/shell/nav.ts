@@ -1,4 +1,4 @@
-import { Activity, BarChart3, Bot, Bug, Building2, FileText, Gauge, Mail, Newspaper, ScrollText, Settings2, Users } from 'lucide-react';
+import { Activity, BarChart3, Bot, Bug, Building2, FileText, Gauge, KeyRound, Mail, Newspaper, ScrollText, Settings2, Users } from 'lucide-react';
 
 export type NavItem = { to: string; label: string; icon: typeof Gauge; key: string; group: string; keywords?: string };
 
@@ -15,6 +15,7 @@ export const NAV: NavItem[] = [
     { to: '/blog', label: 'Blog', icon: Newspaper, key: 'p', group: 'Inhalte', keywords: 'posts beiträge kategorien' },
     { to: '/newsletter', label: 'Leads & Newsletter', icon: Mail, key: 'n', group: 'Inhalte', keywords: 'abonnenten subscribers warteliste kontakt' },
     { to: '/audit', label: 'Audit-Log', icon: ScrollText, key: 'a', group: 'Sicherheit', keywords: 'protokoll log' },
+    { to: '/mcp-access', label: 'Admin-MCP', icon: KeyRound, key: 'm', group: 'Sicherheit', keywords: 'mcp claude ki zugriff oauth' },
 ];
 
 export const ActivityIcon = Activity;

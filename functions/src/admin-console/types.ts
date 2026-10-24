@@ -7,6 +7,10 @@ export type AdminContext = {
     db: Firestore;
     ip: string;
     userAgent: string;
+    /** Firebase auth_time (s) of the caller's ID token; consent needs a fresh re-authentication. */
+    authTimeS?: number;
+    /** 'console' (adminApi) or 'mcp' (admin MCP server). */
+    channel?: 'console' | 'mcp';
 };
 
 /**

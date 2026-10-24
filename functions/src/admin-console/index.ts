@@ -4,7 +4,8 @@ import { randomUUID } from 'crypto';
 import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 
 import { db } from '../init';
-import { auditHandlers, writeAudit } from './audit';
+import { writeAudit } from './audit';
+import { featureHandlers } from './registry';
 import { checkAdminGate, GateDeps, GateToken, SESSION_IDLE_MS } from './gate';
 import { AdminContext, AdminInputError, HandlerMap, toMs } from './types';
 
@@ -15,8 +16,7 @@ import { AdminContext, AdminInputError, HandlerMap, toMs } from './types';
  */
 
 const REGION = 'europe-west3';
-// No Stripe secret binding: STRIPE_SECRET_KEY does not exist yet (billing not live). Once it exists, add
-// `secrets: ['STRIPE_SECRET_KEY']` so billing.setExempt removal can re-sync a real subscription instead of falling back to Free.
+// STRIPE_SECRET_KEY lets billing.setExempt removal re-sync a real subscription instead of falling back to Free.
 const isEmulator = process.env.FUNCTIONS_EMULATOR === 'true';
 
 const sessionRef = (uid: string) => db.collection('admin_sessions').doc(uid);
@@ -55,14 +55,8 @@ const sessionHandlers: HandlerMap = {
     },
 };
 
-const loadHandlers = (): HandlerMap => ({
-    ...sessionHandlers,
-    ...auditHandlers,
-    ...require('./handlers').handlers,
-});
-
 let handlerCache: HandlerMap | null = null;
-const handlers = () => (handlerCache ??= loadHandlers());
+const handlers = () => (handlerCache ??= { ...sessionHandlers, ...featureHandlers() });
 
 const rawTokenOf = (context: functions.https.CallableContext) => {
     const header = String(context.rawRequest?.headers?.authorization || '');
@@ -74,7 +68,7 @@ const requestMeta = (context: functions.https.CallableContext) => ({
     userAgent: String(context.rawRequest?.headers?.['user-agent'] || '').slice(0, 200),
 });
 
-export const adminApi = functions.region(REGION).runWith({ memory: '512MB', timeoutSeconds: 120 }).https.onCall(async (data, context) => {
+export const adminApi = functions.region(REGION).runWith({ memory: '512MB', timeoutSeconds: 120, secrets: ['STRIPE_SECRET_KEY'] }).https.onCall(async (data, context) => {
     const action = typeof data?.action === 'string' ? data.action.slice(0, 80) : '';
     const params = data?.params ?? {};
     const token = context.auth?.token as GateToken | undefined;
@@ -110,7 +104,7 @@ export const adminApi = functions.region(REGION).runWith({ memory: '512MB', time
     if (!handler) throw new functions.https.HttpsError('not-found', `Unknown action ${action}`);
 
     const sessionId = String(data.sessionId);
-    const ctx: AdminContext = { uid: gate.uid, email: gate.email, sessionId, db, ...meta };
+    const ctx: AdminContext = { uid: gate.uid, email: gate.email, sessionId, db, ...meta, authTimeS: token?.auth_time, channel: 'console' };
     await sessionRef(gate.uid).update({ lastSeenAt: Timestamp.now() });
 
     const target = handler.target ? safe(() => handler.target!(params)) : null;

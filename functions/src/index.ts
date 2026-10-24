@@ -145,6 +145,8 @@ export { transferWorkspaceOwnership, deleteWorkspace } from './workspace-lifecyc
 export { exportMyData, deleteMyAccount } from './account-data';
 export { deleteProject } from './project-delete';
 export { adminApi } from './admin-console';
+export { adminOAuth } from './admin-console/mcp/oauth';
+export { adminMcp } from './admin-console/mcp/server';
 export {
     acceptLegalDocuments,
     declineLegalDocuments,
@@ -167,5 +169,6 @@ export { onUserFocusChanged } from './live-activity';
 // Billing (Stripe test mode, plan entitlements): brain/plans/billing-implementation.md
 export {
     createBillingCheckout, createBillingPortal, stripeWebhook, personalAiKey, setAiAddonMembers, ensurePersonalWorkspace,
+    previewSubscription, createSubscriptionIntent,
     onTenantCreatedBilling, onProjectCountBilling, onMemberWrittenBilling, billingSweep
 } from './billing';
