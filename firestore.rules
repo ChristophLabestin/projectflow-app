@@ -69,9 +69,10 @@ service cloud.firestore {
         projectId in get(planPath(tenantId)).data.get('lockedProjectIds', []);
     }
 
+    // Missing entitlement doc = Free (safe default, security review 2026-10-24): no invitations.
     function planAllowsInvites(tenantId) {
-      return !exists(planPath(tenantId)) ||
-        get(planPath(tenantId)).data.get('invitesAllowed', true) == true;
+      return exists(planPath(tenantId)) &&
+        get(planPath(tenantId)).data.get('invitesAllowed', false) == true;
     }
 
     // Kept for readability at call sites: full workspace access.
@@ -333,11 +334,14 @@ service cloud.firestore {
 
       match /members/{userId} {
         allow read: if isTenantMemberAnyState(tenantId);
-        allow create: if isOwnerBootstrap(tenantId, userId) ||
-          (request.resource.data.uid == userId && canManageMemberRole(tenantId, 'Member', request.resource.data.role) &&
-            planAllowsInvites(tenantId));
+        // New members only via acceptWorkspaceInvite / functions (seat + plan checks in a transaction);
+        // clients may only bootstrap the owner of a workspace they just created (security review M4).
+        allow create: if isOwnerBootstrap(tenantId, userId);
+        // Guest → full member is a seat change: only via setWorkspaceMemberRole (callable, seat check).
         allow update: if canSelfUpdateMembership(userId) ||
-          (request.resource.data.uid == resource.data.uid && canManageMemberRole(tenantId, resource.data.role, request.resource.data.role));
+          (request.resource.data.uid == resource.data.uid &&
+            canManageMemberRole(tenantId, resource.data.role, request.resource.data.role) &&
+            !(resource.data.role == 'Guest' && request.resource.data.role != 'Guest'));
         allow delete: if canManageMemberRole(tenantId, resource.data.role, 'Member') ||
           (authed() && request.auth.uid == userId && resource.data.role != 'Owner');
       }

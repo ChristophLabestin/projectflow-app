@@ -117,27 +117,11 @@ export const listMyWorkspaces = async (): Promise<WorkspaceSummary[]> => {
 };
 
 export const createWorkspace = async (name: string): Promise<string> => {
-    const user = requireUser();
+    requireUser();
     await ensureTenantAndUser();
-    const newTenant = doc(collection(db, TENANTS));
-    const batch = writeBatch(db);
-    batch.set(newTenant, {
-        tenantId: newTenant.id,
-        name: name.trim() || 'Workspace',
-        ownerId: user.uid,
-        createdBy: user.uid,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp()
-    });
-    batch.set(memberRef(newTenant.id, user.uid), {
-        uid: user.uid,
-        role: 'Owner',
-        roleIds: [],
-        joinedAt: serverTimestamp(),
-        ...memberProfile(user)
-    });
-    await batch.commit();
-    return newTenant.id;
+    // Server-side: tenant, owner membership and the trial entitlement in one batch (no window without a plan doc).
+    const call = httpsCallable<{ name: string }, { tenantId: string }>(functions, 'createTeamWorkspace');
+    return (await call({ name: name.trim() || 'Workspace' })).data.tenantId;
 };
 
 export const renameWorkspace = async (tenantId: string, name: string) => {

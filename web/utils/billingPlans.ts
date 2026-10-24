@@ -54,9 +54,11 @@ const toDate = (value: unknown): Date | null => {
 
 /** A missing entitlement doc is a legacy workspace in grace (= Team), exactly like the rules. */
 export const parseEntitlements = (data: Record<string, unknown> | undefined): Entitlements => {
-    const plan: PlanId = data?.plan === 'free' || data?.plan === 'organization' || data?.plan === 'personal' ? data.plan : 'team';
+    // Missing doc = Free without AI (safe default, same as functions/src/billing-logic.ts limitsFor).
+    const plan: PlanId = !data?.plan ? 'free'
+        : data.plan === 'free' || data.plan === 'organization' || data.plan === 'personal' ? data.plan : 'team';
     const workspaceType: WorkspaceType = data?.workspaceType === 'personal' ? 'personal' : 'team';
-    const status = (typeof data?.status === 'string' ? data.status : 'grace') as BillingStatus;
+    const status = (typeof data?.status === 'string' ? data.status : 'free') as BillingStatus;
     return {
         plan,
         workspaceType,
@@ -67,11 +69,10 @@ export const parseEntitlements = (data: Record<string, unknown> | undefined): En
         graceEndsAt: toDate(data?.graceEndsAt),
         currentPeriodEnd: toDate(data?.currentPeriodEnd),
         cancelAtPeriodEnd: Boolean(data?.cancelAtPeriodEnd),
-        memberLimit: data && 'memberLimit' in data ? (data.memberLimit as number | null) : TEAM_MEMBER_LIMIT,
+        memberLimit: data && 'memberLimit' in data ? (data.memberLimit as number | null) : (data ? TEAM_MEMBER_LIMIT : 1),
         projectLimit: plan === 'free' ? Number(data?.projectLimit ?? FREE_PROJECT_LIMIT) : null,
-        invitesAllowed: data?.invitesAllowed !== false,
-        // Missing doc = legacy grace: AI for everyone (same as functions/src/billing-logic.ts).
-        aiIncluded: data ? plan !== 'free' && (status === 'trialing' || status === 'grace' || status === 'exempt') : true,
+        invitesAllowed: data ? data.invitesAllowed !== false : false,
+        aiIncluded: plan !== 'free' && (status === 'trialing' || status === 'grace' || status === 'exempt'),
         aiAddonAvailable: plan !== 'free',
         aiAddonSeats: Number(data?.aiAddonSeats || 0),
         aiMemberIds: Array.isArray(data?.aiMemberIds) ? (data.aiMemberIds as string[]) : [],

@@ -197,6 +197,15 @@ async function main() {
     const LUIS_WS = 'ws-romero-labs';
     batch.set(db.doc(`tenants/${LUIS_WS}`), { tenantId: LUIS_WS, name: 'Romero Labs', ownerId: 'demo-luis', createdBy: 'demo-luis', createdAt: ts(-20), updatedAt: ts(-2) });
     batch.set(db.doc(`tenants/${LUIS_WS}/members/demo-luis`), { uid: 'demo-luis', email: 'luis@projectflow.test', displayName: 'Luis Romero', photoURL: '', role: 'Owner', roleIds: [], joinedAt: ts(-20) });
+    // Plan entitlements (a missing doc means Free without AI): seeded workspaces are internal Team workspaces.
+    for (const tenantId of [TID, AGENCY, LUIS_WS]) {
+        batch.set(db.doc(`tenants/${tenantId}/entitlements/plan`), {
+            plan: 'team', status: 'exempt', billingExempt: true, workspaceType: 'team', memberLimit: 50, projectLimit: null,
+            invitesAllowed: true, aiIncluded: true, aiAddonAvailable: true, seats: 0, billingInterval: null, projectCount: 0,
+            lockedProjectIds: [], aiMemberIds: [], aiAddonSeats: 0, storageQuotaBytes: 25 * 1024 ** 3, maxFileBytes: 250 * 1024 ** 2,
+            flowsQuota: 'seat',
+        });
+    }
     batch.set(db.doc(`tenants/${LUIS_WS}/invitations/inv-demo-romero`), {
         tenantId: LUIS_WS, tenantName: 'Romero Labs', kind: 'email', email: OWNER.email, role: 'Member', projectIds: [],
         status: 'pending', invitedBy: 'demo-luis', invitedByName: 'Luis Romero', createdAt: ts(-1),

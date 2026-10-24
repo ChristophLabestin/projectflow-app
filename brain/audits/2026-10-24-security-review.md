@@ -41,7 +41,7 @@ Test: `functions/scripts/unit/tenant-id.test.js`.
 | M1 | Dateien | Legacy-Upload (`module != 'files'`) ohne Quota, Typ-Blockliste, Plan-Maximalgröße; `projectId` ohne Projektprüfung | `file-storage.ts` (Upload-Session/Finalize Legacy-Pfad) | Checks des Managed-Pfads für alle Module |
 | M2 | Dateien | Signed PUT-URL ohne `x-goog-content-length-range`; Quota nur bei Session, nicht bei Finalize (parallele Sessions) | `file-storage.ts` (Upload-Target, Finalize) | Längenbereich signieren, Quota im Finalize transaktional |
 | M3 | Storage | `tenants/{t}/{segment}/**` für jedes Vollmitglied les-/schreibbar, ohne Quota und ohne Sperr-Check | `storage.rules` | Segmente allowlisten, `suspendedAt` prüfen |
-| M4 | Billing | Admin/Owner kann `members/{uid}` direkt anlegen bzw. Gast→Member hochstufen → Plätze/Member-Limit umgangen; Seat-Check im Invite außerhalb der Transaktion | `firestore.rules` members, `invitations.ts` | Member-Create nur serverseitig, Seat-Check in der Transaktion |
+| M4 ✅ | Billing | Admin/Owner kann `members/{uid}` direkt anlegen bzw. Gast→Member hochstufen → Plätze/Member-Limit umgangen; Seat-Check im Invite außerhalb der Transaktion | `firestore.rules` members, `invitations.ts` | Member-Create nur serverseitig, Seat-Check in der Transaktion  **Gefixt 2026-10-24:** Member-Create nur noch Owner-Bootstrap (Rules), Gast→Mitglied nur über Callable `setWorkspaceMemberRole`, Seat-/Plan-Check in der Transaktion (`seatCheckInTx`, `acceptWorkspaceInvite`), Rules-Tests. |
 | M5 | Flows | Flows ignorieren gesperrte Projekte (Free über Limit) | `automations.ts` (Task-Patch/Create/Move/Comment) | `lockedProjectIds` prüfen |
 | M6 | Flows | Rechte des Flow-Owners werden zur Laufzeit nicht neu bewertet (Herabstufung, `allowMemberFlows` aus); `ownerCanReachProject` toter Code | `automations.ts` `executeRun` | `canManageAutomation` bei jedem Lauf |
 | M7 | KI | Aktionskarte zeigt 400 Zeichen, angewendet wird der volle Text (bis 8000) | `ai-actions.ts` `clipValue` | Volltext zeigen oder ablehnen |
@@ -82,3 +82,5 @@ SubscribeURL); Legal: Zustimmung nur serverseitig schreibbar, Token-Nutzung prü
 
 By design: Das Consent-Gate ist UI-seitig (Regeln/Callables prüfen keine Zustimmung), maschinelle
 Zugriffe (`/api`, `/mcp`, PAT/OAuth) prüfen sie mit 14 Tagen Grace.
+
+**Nachtrag 2026-10-24 (Billing):** Fehlende Entitlement-Doc gilt nicht mehr als Legacy-Grace (Team/KI für alle), sondern als Free ohne KI (Functions `limitsFor`, Web `parseEntitlements`, Rules `planAllowsInvites`). Vorher geprüft: alle 13 Prod-Workspaces haben eine Entitlement-Doc; neue Team-Workspaces bekommen sie atomar in `createTeamWorkspace`.
