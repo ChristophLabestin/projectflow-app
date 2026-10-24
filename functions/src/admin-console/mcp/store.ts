@@ -65,7 +65,7 @@ export const adminFacts = async (uid: string) => {
 export const notifyAdmin = async (email: string, subject: string, body: string) => {
     if (!email || isEmulator) return;
     try {
-        await sendEmail(email, `[ProjectFlow Admin-MCP] ${subject}`, getSystemEmailTemplate(subject, body, 'https://admin.getprojectflow.com/mcp-access', 'Admin-MCP öffnen', 'de'));
+        await sendEmail(email, `[ProjectFlow Admin-MCP] ${subject}`, getSystemEmailTemplate(subject, body, 'https://admin.getprojectflow.com/mcp-access', 'Admin-MCP öffnen', 'de'), { type: 'admin' });
     } catch (error) {
         console.warn('admin MCP notify failed', (error as Error).message);
     }

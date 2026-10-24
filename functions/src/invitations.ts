@@ -1,7 +1,7 @@
 import * as functions from 'firebase-functions/v1';
 import * as admin from 'firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
-import { sendEmail, getSystemEmailTemplate } from './email';
+import { EMAIL_SECRETS, sendEmail, getSystemEmailTemplate } from './email';
 import { EMAIL_CONTENT, getLocale } from './email-locales';
 import { ALLOWED_ORIGINS } from './corsConfig';
 import { assertCanAddMember, loadPlanLimits } from './billing';
@@ -67,7 +67,7 @@ const resolveAppOrigin = (requested?: unknown) => {
     return process.env.APP_URL || 'https://app.getprojectflow.com';
 };
 
-export const sendInvitation = functions.region(REGION).https.onCall(async (data, context) => {
+export const sendInvitation = functions.region(REGION).runWith({ secrets: EMAIL_SECRETS }).https.onCall(async (data, context) => {
     if (!context.auth) {
         throw new functions.https.HttpsError('unauthenticated', 'User must be logged in to send invites.');
     }
@@ -100,7 +100,7 @@ export const sendInvitation = functions.region(REGION).https.onCall(async (data,
     const bodyHtml = `${content.bodyPrefix} <strong>${workspaceName}</strong> ${content.rolePrefix} <strong>${escapeHtml(String(invite.role))}</strong>. ${content.bodySuffix}`;
     const html = getSystemEmailTemplate(content.title, bodyHtml, inviteUrl, content.button, locale);
 
-    await sendEmail(invite.email, content.subject, html, { tenantId });
+    await sendEmail(invite.email, content.subject, html, { tenantId, type: 'invitation' });
     return { success: true };
 });
 

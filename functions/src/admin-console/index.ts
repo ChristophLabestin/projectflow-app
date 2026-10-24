@@ -8,6 +8,7 @@ import { writeAudit } from './audit';
 import { featureHandlers } from './registry';
 import { checkAdminGate, GateDeps, GateToken, SESSION_IDLE_MS } from './gate';
 import { AdminContext, AdminInputError, HandlerMap, toMs } from './types';
+import { EMAIL_SECRETS } from '../email-logic';
 
 /**
  * `adminApi` — the only entry point of the admin console (admin/). Every call runs the gate
@@ -68,7 +69,7 @@ const requestMeta = (context: functions.https.CallableContext) => ({
     userAgent: String(context.rawRequest?.headers?.['user-agent'] || '').slice(0, 200),
 });
 
-export const adminApi = functions.region(REGION).runWith({ memory: '512MB', timeoutSeconds: 120, secrets: ['STRIPE_SECRET_KEY'] }).https.onCall(async (data, context) => {
+export const adminApi = functions.region(REGION).runWith({ memory: '512MB', timeoutSeconds: 120, secrets: ['STRIPE_SECRET_KEY', ...EMAIL_SECRETS] }).https.onCall(async (data, context) => {
     const action = typeof data?.action === 'string' ? data.action.slice(0, 80) : '';
     const params = data?.params ?? {};
     const token = context.auth?.token as GateToken | undefined;

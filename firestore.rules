@@ -213,6 +213,9 @@ service cloud.firestore {
     match /admin_config/{docId} {
       allow read, write: if false;
     }
+    // Mail delivery (functions/src/email-events.ts): SES suppression list + daily counters, server-only.
+    match /email_suppressions/{id} { allow read, write: if false; }
+    match /email_stats/{day} { allow read, write: if false; }
     // Admin MCP (functions/src/admin-console/mcp): clients, requests, codes, grants, tokens, pending confirmations.
     match /admin_mcp_clients/{id} { allow read, write: if false; }
     match /admin_mcp_requests/{id} { allow read, write: if false; }

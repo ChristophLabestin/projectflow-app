@@ -1,4 +1,5 @@
 import { onRequest } from 'firebase-functions/v2/https';
+import { EMAIL_SECRETS } from '../../email-logic';
 import { toNodeHandler } from '@modelcontextprotocol/node';
 import { createMcpHandler, McpServer } from '@modelcontextprotocol/server';
 import { FieldValue, Timestamp } from 'firebase-admin/firestore';
@@ -198,4 +199,4 @@ export const handleAdminMcp = async (req: any, res: any) => {
     }
 };
 
-export const adminMcp = onRequest({ region: REGION, memory: '512MiB', timeoutSeconds: 120, concurrency: 40, secrets: ['STRIPE_SECRET_KEY'] }, handleAdminMcp);
+export const adminMcp = onRequest({ region: REGION, memory: '512MiB', timeoutSeconds: 120, concurrency: 40, secrets: ['STRIPE_SECRET_KEY', ...EMAIL_SECRETS] }, handleAdminMcp);
