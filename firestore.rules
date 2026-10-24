@@ -577,7 +577,7 @@ service cloud.firestore {
         // Guests may read/update docs addressed to them.
         allow read, update: if isTenantMember(tenantId) &&
           ('userId' in resource.data) && resource.data.userId == request.auth.uid &&
-          !(subcollection.matches('finance_.*') || subcollection in ['secrets', 'api_tokens', 'ai_audit', 'ai_config', 'ai_usage', 'ai_credits', 'file_upload_drafts', 'notifications', 'notificationDeliveryLogs', 'activity', 'insights_daily', 'insights_reports', 'automations', 'automation_runs', 'automation_usage', 'automation_throttle', 'suspension_log']);
+          !(subcollection.matches('finance_.*') || subcollection in ['secrets', 'api_tokens', 'ai_audit', 'ai_config', 'ai_usage', 'ai_credits', 'file_upload_drafts', 'notifications', 'notificationDeliveryLogs', 'activity', 'insights_daily', 'insights_reports', 'automations', 'automation_runs', 'automation_usage', 'automation_throttle', 'suspension_log', 'billing_log']);
         allow read, write: if canAccessTenant(tenantId) &&
           !(
             subcollection.matches('finance_.*') ||
@@ -596,6 +596,7 @@ service cloud.firestore {
               'ai_usage',
               'ai_credits',
               'suspension_log',
+              'billing_log',
               'files',
               'file_upload_drafts',
               'notifications',

@@ -159,3 +159,25 @@ Backend-Callables (europe-west3, Firebase-Auth nötig → Landing nutzt Firebase
   `node functions/scripts/billing-config.mjs --publishable-key pk_test_…`.
 - Rechnungen: Präfix `PF` + 6 Zeichen je Kunde, Fußzeile mit Anschrift (per API gesetzt).
 
+## 9. Plätze verwalten (Owner 2026-10-24)
+- **Plätze sind gekaufte Kapazität** (`entitlements/plan.seats` = Stripe-Menge). Mitglieder kommen und gehen, ohne die Menge zu
+  ändern; **nie automatische Erhöhung**. Bei laufendem Abo dürfen Vollmitglieder ≤ `seats` sein (Gäste frei) →
+  `acceptWorkspaceInvite` lehnt mit `plan-seat-limit` ab. Ohne Abo (Test, Grace, exempt) gibt es keine Platzgrenze außer `memberLimit`.
+- `memberCount` (Vollmitglieder) pflegt `onMemberWrittenBilling`; Team-Speicher = 10 GB × max(Mitglieder, Plätze), mind. 25 GB.
+- **Abrechnungsanker = Kaufdatum** (Stripe-Standard). **Mehr** Plätze/KI-Plätze: sofort anteilig berechnet und abgebucht
+  (`always_invoice`, `pending_if_incomplete`), erst nach Zahlung aktiv; schlägt sie fehl → `status: 'payment-required'` mit
+  `hostedInvoiceUrl`, Plätze bleiben unverändert. **Weniger**: zum Periodenende per Subscription Schedule, ohne Rückerstattung,
+  bis dahin nutzbar; nie unter Mitglieder (`plan-seats-below-members`) bzw. zugewiesene KI-Plätze (`ai-addon-seats-below-assigned`).
+  Dieselbe Menge wie heute bei geplanter Reduzierung = Reduzierung aufheben. Gemischte Änderungen → `billing-mixed-seat-change`.
+- `entitlements/plan.scheduledChange` = `{seats, aiAddonSeats, effectiveAt}` oder `null`.
+- KI-Zuweisung (`setAiAddonMembers`) nur innerhalb gekaufter KI-Plätze (`ai-addon-no-free-seat`); sie ändert die Stripe-Menge nicht mehr.
+
+| Callable (Owner) | Eingabe | Ausgabe |
+|---|---|---|
+| `previewSeatChange` | `{tenantId, seats?, aiAddonSeats?}` | `{kind, seats{from,to}, aiAddonSeats{from,to}, currency, interval, amountToday, nextAmount, currentAmount, nextBillingDate, effectiveAt, hasScheduledChange}` |
+| `changeSeats` | wie oben | `{status: 'applied', amountPaid}` · `{status: 'scheduled', effectiveAt}` · `{status: 'payment-required', hostedInvoiceUrl, amountDue}` · `{status: 'scheduled-change-cancelled' \| 'unchanged'}` |
+| `getBillingOverview` | `{tenantId}` | `{seats, memberCount, aiAddonSeats, aiAssigned, scheduledChange, currency, nextBillingDate, nextAmount, invoices[]}` |
+
+UI: Billing-Tab → „Plätze“ (`BillingSeats`), Einladen-Dialog → `SeatUpsell` („1 Platz dazubuchen – heute anteilig X €“ bzw. „Owner fragen“).
+Getestet mit Stripe Test-Clocks: `node functions/scripts/seat-test-clock.mjs` (11/11).
+

@@ -156,3 +156,94 @@
     padding: 0;
     list-style: none;
 }
+
+/* Seat management (BillingSeats). */
+.billing-seats {
+    &__row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+
+        > div:first-child {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            font-size: 14px;
+            color: var(--color-text-main);
+        }
+    }
+
+    &__stepper {
+        display: inline-flex;
+        align-items: center;
+        border: 1px solid var(--color-surface-border);
+        border-radius: var(--radius-control);
+        overflow: hidden;
+
+        button {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 36px;
+            height: 36px;
+            border: none;
+            background: var(--color-surface-card);
+            color: var(--color-text-main);
+            cursor: pointer;
+
+            &:disabled { color: var(--color-text-subtle); cursor: not-allowed; }
+            &:not(:disabled):hover { background: var(--color-surface-hover); }
+            .material-symbols-outlined { font-size: 18px; }
+        }
+
+        output {
+            min-width: 44px;
+            text-align: center;
+            font-weight: 700;
+            font-variant-numeric: tabular-nums;
+            color: var(--color-text-main);
+        }
+    }
+
+    &__preview {
+        margin: 0;
+        padding: 10px 14px;
+        border-radius: var(--radius-control);
+        background: var(--color-surface-hover);
+        font-size: 13px;
+        color: var(--color-text-main);
+    }
+
+    &__invoices {
+        h4 { margin: 4px 0 8px; font-size: 13px; font-weight: 700; color: var(--color-text-main); }
+
+        ul { display: flex; flex-direction: column; gap: 6px; margin: 0; padding: 0; list-style: none; }
+
+        li {
+            display: grid;
+            grid-template-columns: 1.2fr 1fr 0.8fr 0.8fr auto;
+            gap: 8px;
+            align-items: center;
+            font-size: 13px;
+            color: var(--color-text-main);
+            font-variant-numeric: tabular-nums;
+        }
+
+        a { color: var(--color-text-main); font-weight: 600; }
+    }
+}
+
+/* Invite dialog: buy one seat when all seats are taken. */
+.seat-upsell {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 12px 14px;
+    border-radius: var(--radius-control);
+    background: rgba(var(--color-warning-rgb), 0.12);
+    font-size: 13px;
+    color: var(--color-text-main);
+
+    &__actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+}

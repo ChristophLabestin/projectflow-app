@@ -42,7 +42,8 @@ export const personalAiKey = async (action: 'get' | 'set' | 'clear', key?: strin
 /** Contract error codes (brain/plans/billing-entitlements-contract.md §3); each has `billing.errors.<code>`. */
 export const BILLING_ERROR_CODES = [
     'plan-project-limit', 'plan-project-locked', 'plan-invites-disabled', 'plan-member-limit', 'plan-workspace-type-mismatch',
-    'plan-storage-limit', 'plan-file-too-large',
+    'plan-storage-limit', 'plan-file-too-large', 'plan-seat-limit', 'plan-seats-below-members', 'ai-addon-seats-below-assigned',
+    'ai-addon-seats-above-seats', 'ai-addon-no-free-seat', 'billing-mixed-seat-change', 'billing-no-subscription', 'billing-invalid-seats',
     'ai-not-enabled', 'ai-addon-required', 'ai-plan-required',
     'ai-addon-unavailable', 'ai-addon-needs-subscription', 'ai-addon-invalid-member',
     'billing-not-configured', 'billing-already-subscribed', 'billing-price-missing', 'billing-no-customer',
@@ -87,3 +88,42 @@ export const planErrorMessage = (error: unknown, t: (key: string) => string): st
     const key = billingErrorKey(error);
     return key ? t(key) : null;
 };
+
+// --- Seat management (contract §9) ---
+
+export type SeatPreview = {
+    kind: 'increase' | 'decrease' | 'none';
+    seats: { from: number; to: number };
+    aiAddonSeats: { from: number; to: number };
+    currency: string;
+    interval: BillingInterval;
+    amountToday: number;
+    nextAmount: number;
+    currentAmount: number;
+    nextBillingDate: number | null;
+    effectiveAt: number | null;
+    hasScheduledChange: boolean;
+};
+export type SeatChangeResult =
+    | { status: 'applied'; amountPaid: number }
+    | { status: 'scheduled'; effectiveAt: number }
+    | { status: 'payment-required'; hostedInvoiceUrl: string | null; amountDue: number | null }
+    | { status: 'scheduled-change-cancelled' | 'unchanged' };
+export type BillingOverview = {
+    seats: number; memberCount: number; aiAddonSeats: number; aiAssigned: number;
+    scheduledChange: { seats: number; aiAddonSeats: number; effectiveAt: number | null } | null;
+    currency: string; nextBillingDate: number | null; nextAmount: number | null;
+    invoices: { id: string; number: string | null; created: number; total: number; currency: string; status: string | null; hostedInvoiceUrl: string | null; pdf: string | null }[];
+};
+type SeatInput = { tenantId: string; seats?: number; aiAddonSeats?: number };
+
+export const previewSeatChange = async (input: SeatInput) =>
+    (await httpsCallable<SeatInput, SeatPreview>(functions, 'previewSeatChange')(input)).data;
+/** Applies a confirmed change: more seats are charged now (prorated), fewer seats apply at the period end. */
+export const changeSeats = async (input: SeatInput) =>
+    (await httpsCallable<SeatInput, SeatChangeResult>(functions, 'changeSeats')(input)).data;
+export const getBillingOverview = async (tenantId: string) =>
+    (await httpsCallable<{ tenantId: string }, BillingOverview>(functions, 'getBillingOverview')({ tenantId })).data;
+
+export const formatMoney = (cents: number, currency: string, language: string) =>
+    new Intl.NumberFormat(language === 'de' ? 'de-DE' : 'en-US', { style: 'currency', currency: currency.toUpperCase() }).format(cents / 100);
