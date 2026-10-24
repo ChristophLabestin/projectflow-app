@@ -1,6 +1,6 @@
 # Privacy Policy
 
-_Last updated: October 23, 2026_
+_Last updated: October 24, 2026_
 
 This privacy policy applies to the website getprojectflow.com, the web app at app.getprojectflow.com, the iOS app and the desktop app (macOS/Windows) of ProjectFlow.
 
@@ -8,8 +8,9 @@ This privacy policy applies to the website getprojectflow.com, the web app at ap
 
 The controller within the meaning of the GDPR is:
 
-Christoph Labestin  
-Frühlingsstraße 8  
+Labestin Digital  
+Owner: Christoph Labestin  
+Ödwieser Weg 7  
 84082 Laberweinting  
 Germany  
 Email: [hello@getprojectflow.com](mailto:hello@getprojectflow.com)

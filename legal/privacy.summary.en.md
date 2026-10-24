@@ -1,5 +1,2 @@
-- One privacy policy for the website, web app, iOS app and desktop app.
-- Newly described: passkey sign-in, push notifications (iOS/desktop), Live Activities, the desktop app with automatic updates, the optional onboarding survey and error reports.
-- AI features: the provider is OpenAI (previously named Google Gemini by mistake).
-- The website no longer uses cookies or tracking; Google Analytics and the cookie banner are gone.
-- Removed: social media integrations (Facebook, Instagram, TikTok, YouTube) and the former marketing suite.
+- Provider details corrected: Labestin Digital (owner Christoph Labestin), Ödwieser Weg 7, 84082 Laberweinting.
+- Nothing else has changed.

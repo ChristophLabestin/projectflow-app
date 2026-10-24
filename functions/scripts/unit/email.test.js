@@ -136,7 +136,8 @@ test('retry only throttling, network and 5xx errors', () => {
 test('system template shows the real imprint, not the old San Francisco footer', () => {
     const html = tpl.getSystemEmailTemplate('Join us', 'Body', 'https://app.getprojectflow.com/invite/1', 'Accept', 'de');
     assert.ok(html.includes(tpl.EMAIL_IMPRINT));
-    assert.ok(html.includes('Frühlingsstraße 8 · 84082 Laberweinting'));
+    assert.ok(html.includes('Ödwieser Weg 7 · 84082 Laberweinting'));
+    assert.ok(html.includes('Labestin Digital'));
     assert.ok(!/San Francisco|Project Flow Inc/.test(html));
     assert.ok(html.includes('oder Link einfügen') || html.includes('Link'));
     assert.ok(html.includes('href="https://app.getprojectflow.com/invite/1"'));
