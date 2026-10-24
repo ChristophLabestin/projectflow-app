@@ -113,6 +113,28 @@ kbd {
     .ai-caret-chip__tip { transform: none; }
 }
 
+// ---------------------------------------------------------------- section action „✦ …“ (AiAskButton)
+.ai-ask-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 28px;
+    padding: 0 10px;
+    border: 0;
+    border-radius: var(--radius-full);
+    background: transparent;
+    color: var(--color-text-muted);
+    font-size: 0.8125rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background var(--motion-duration-fast), color var(--motion-duration-fast);
+
+    &:hover,
+    &:focus-visible { outline: none; background: var(--color-surface-hover); color: var(--color-text-main); }
+}
+
+.ai-ask-button__mark { font-size: 0.8125rem; }
+
 // ---------------------------------------------------------------- write menu
 .ai-menu {
     width: 312px;
@@ -556,6 +578,28 @@ kbd {
         letter-spacing: 0.03em;
         text-transform: uppercase;
         color: var(--color-text-muted);
+    }
+
+    &__section--spaced { margin-top: 10px; }
+
+    &__rows--recent button { gap: 10px; }
+
+    &__recent-question {
+        flex: 1;
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    &__recent-meta {
+        flex: none;
+        max-width: 45%;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        color: var(--color-text-muted);
+        font-size: 0.75rem;
     }
 
     &__icon {

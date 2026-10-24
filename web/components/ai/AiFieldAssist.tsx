@@ -28,7 +28,8 @@ const CONTEXT_CHARS = 600;
 
 export interface AiFieldAssistProps {
     children: React.ReactNode;
-    textareaRef?: React.RefObject<HTMLTextAreaElement | null>;
+    /** The field (multi-line or single-line); default: the first textarea / text input inside. */
+    textareaRef?: React.RefObject<HTMLTextAreaElement | HTMLInputElement | null>;
     value: string;
     /** Receives the full new field value. */
     onApply: (next: string) => void;
@@ -67,7 +68,7 @@ export const AiFieldAssist: React.FC<AiFieldAssistProps> = ({
     const { caretSpark } = useAiPrefs();
     const blocked = access.status === 'addon-required' || access.status === 'plan-required';
     const rootRef = useRef<HTMLDivElement>(null);
-    const [el, setEl] = useState<HTMLTextAreaElement | null>(null);
+    const [el, setEl] = useState<HTMLTextAreaElement | HTMLInputElement | null>(null);
     const [mode, setMode] = useState<Mode>('idle');
     const [focused, setFocused] = useState(false);
     const [chipAt, setChipAt] = useState<Point | null>(null);
@@ -84,7 +85,7 @@ export const AiFieldAssist: React.FC<AiFieldAssistProps> = ({
     const active = writer.enabled && !disabled;
 
     useLayoutEffect(() => {
-        setEl(textareaRef?.current || rootRef.current?.querySelector('textarea') || null);
+        setEl(textareaRef?.current || rootRef.current?.querySelector<HTMLTextAreaElement | HTMLInputElement>('textarea, input[type="text"], input:not([type])') || null);
     });
 
     const below = (rect: CaretRect | null, gap = 3): Point | null => (rect ? { left: rect.left - 2, top: rect.bottom + gap } : null);

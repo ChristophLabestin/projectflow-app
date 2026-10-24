@@ -19,6 +19,8 @@ struct ProjectScreen: View {
     @Environment(PFPresenter.self) private var presenter
     @State private var store: ProjectStore
     @State private var tab: ProjectTab = .overview
+    /// iPhone section picker: our own popover under the select button (not a sheet, not a system menu).
+    @State private var sectionsOpen = false
     @State private var grouping: TaskGrouping
     @State private var newTaskTitle = ""
     @State private var topInset: CGFloat = 0
@@ -70,7 +72,9 @@ struct ProjectScreen: View {
                 loading
             }
             if project == nil || tab == .board { topBar }
+            if sectionsOpen { sectionPopover }
         }
+        .animation(PFMotion.respecting(PFMotion.snappy), value: sectionsOpen)
         .onGeometryChange(for: CGFloat.self) { $0.safeAreaInsets.top } action: { topInset = $0 }
         .task {
             store.start()
@@ -117,11 +121,12 @@ struct ProjectScreen: View {
     /// iPhone: the current section as a glass capsule with a chevron; opens the list of sections.
     private var sectionPicker: some View {
         let current = tabOptions.first { $0.value == tab }
-        return Button { presentSections() } label: {
+        return Button { PFHaptics.selection(); sectionsOpen.toggle() } label: {
             HStack(spacing: 6) {
                 Image(systemName: Self.symbol(tab)).font(.system(size: 13, weight: .semibold))
                 Text(current?.label ?? "").pfText(.buttonSmall).lineLimit(1)
                 Image(systemName: "chevron.down").font(.system(size: 10, weight: .bold)).opacity(0.6)
+                    .rotationEffect(.degrees(sectionsOpen ? 180 : 0))
             }
             .foregroundStyle(PFColor.textMain)
             .padding(.horizontal, 14)
@@ -134,17 +139,50 @@ struct ProjectScreen: View {
         .accessibilityValue(current?.label ?? "")
     }
 
-    private func presentSections() {
-        let options = tabOptions
-        presenter.present(detents: [.fit]) {
-            OptionSheet(title: L10n.t("projects.section.pick"), options: options.map { option in
-                OptionSheet.Option(id: option.label, label: (option.badge ?? 0) > 0 ? "\(option.label) · \(option.badge!)" : option.label,
-                                   isSelected: option.value == tab) {
-                    Image(systemName: Self.symbol(option.value)).font(.system(size: 15, weight: .medium)).foregroundStyle(PFColor.textMuted)
+    /// Milky glass panel anchored under the select button (top right); options sink in, the current one gets
+    /// bar + check (menu rule). Tapping outside closes it.
+    private var sectionPopover: some View {
+        ZStack(alignment: .topTrailing) {
+            Color.black.opacity(0.001)
+                .ignoresSafeArea()
+                .onTapGesture { sectionsOpen = false }
+                .accessibilityLabel(L10n.t("common.close"))
+            VStack(spacing: 2) {
+                ForEach(tabOptions, id: \.value) { option in
+                    let selected = option.value == tab
+                    Button {
+                        sectionsOpen = false
+                        selectTab(option.value)
+                    } label: {
+                        HStack(spacing: PFSpace.s) {
+                            Image(systemName: Self.symbol(option.value)).font(.system(size: 14, weight: .medium))
+                                .foregroundStyle(selected ? PFColor.textMain : PFColor.textMuted).frame(width: 22)
+                            Text(option.label).pfText(.rowTitle).foregroundStyle(PFColor.textMain)
+                            if let badge = option.badge, badge > 0 {
+                                Text("\(badge)").pfText(.caption).foregroundStyle(PFColor.textMuted).monospacedDigit()
+                            }
+                            Spacer(minLength: PFSpace.s)
+                            if selected {
+                                Image(systemName: "checkmark").font(.system(size: 12, weight: .bold)).foregroundStyle(PFColor.textMain)
+                            }
+                        }
+                        .padding(.leading, 14)
+                        .padding(.trailing, 12)
+                        .frame(minHeight: 44)
+                        .pfMenuOption(selected: selected, cornerRadius: 12)
+                        .contentShape(.rect)
+                    }
+                    .buttonStyle(.pfPressable)
+                    .accessibilityAddTraits(selected ? [.isButton, .isSelected] : .isButton)
                 }
-            }) { id in
-                if let option = options.first(where: { $0.label == id }) { selectTab(option.value) }
             }
+            .padding(6)
+            .frame(width: 236)
+            .pfGlassPanel(in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+            // Just under the select button (bar: 4 pt top padding + 44 pt button + 8 pt gap).
+            .padding(.top, 56)
+            .padding(.trailing, PFSpace.page)
+            .transition(.scale(scale: 0.9, anchor: .topTrailing).combined(with: .opacity))
         }
     }
 
@@ -204,6 +242,7 @@ struct ProjectScreen: View {
                     .background(alignment: .top) { topFade }
             }
             .onChange(of: tab) { _, _ in
+                sectionsOpen = false
                 // Switching sections far down jumps to the start of the new section (header scrolled away).
                 if isScrolledPastHeader {
                     var transaction = Transaction()

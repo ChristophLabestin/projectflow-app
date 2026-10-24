@@ -15,6 +15,9 @@ import { useWorkspace } from '../context/WorkspaceContext';
 import { Button } from '../components/common/Button/Button';
 import { TextInput } from '../components/common/Input/TextInput';
 import { EditTaskModal } from '../components/EditTaskModal';
+import { AiAskButton } from '../components/ai/AiAskButton';
+import { AiFieldAssist } from '../components/ai/AiFieldAssist';
+import '../components/ai/ai-family.scss';
 import { MultiAssigneeSelector } from '../components/MultiAssigneeSelector';
 import { TaskRelationshipsPanel } from '../components/TaskRelationshipsPanel';
 import { LinkedDocsPanel } from '../components/wiki/LinkedDocsPanel';
@@ -762,6 +765,10 @@ export const ProjectTaskDetail = () => {
                                 <span className="material-symbols-outlined">description</span>
                                 {t('taskDetail.description.label')}
                             </h3>
+                            <AiAskButton
+                                label={task.description ? t('ai.section.improveDescription') : t('ai.section.draftDescription')}
+                                prompt={(task.description ? t('ai.section.improveDescriptionPrompt') : t('ai.section.draftDescriptionPrompt')).replace('{title}', task.title)}
+                            />
                         </div>
                         {task.description ? (
                             <AdvancedEditorRuntime initialContent={task.description} editable={false} />
@@ -778,18 +785,23 @@ export const ProjectTaskDetail = () => {
                                 <span className="material-symbols-outlined">checklist</span>
                                 {t('taskDetail.subtasks.label')}
                             </h3>
-                            {totalCount > 0 && <span style={{ color: 'var(--color-text-muted)', fontSize: '13px', fontWeight: 600 }}>{doneCount}/{totalCount} ({progressPct}%)</span>}
+                            <span className="task-detail__section-actions">
+                                {totalCount > 0 && <span style={{ color: 'var(--color-text-muted)', fontSize: '13px', fontWeight: 600 }}>{doneCount}/{totalCount} ({progressPct}%)</span>}
+                                <AiAskButton label={t('ai.section.suggestSubtasks')} prompt={t('ai.section.suggestSubtasksPrompt').replace('{title}', task.title)} />
+                            </span>
                         </div>
 
                         <form onSubmit={handleAddSubTask} className="task-detail__subtask-form-row">
-                            <TextInput
-                                value={newSubTitle}
-                                onChange={(event) => setNewSubTitle(event.target.value)}
-                                placeholder={t('taskDetail.subtasks.addPlaceholder')}
-                                className="task-detail__subtask-input"
-                                leftElement={<span className="material-symbols-outlined">add</span>}
-                                disabled={adding}
-                            />
+                            <AiFieldAssist value={newSubTitle} onApply={setNewSubTitle} field="title" itemTitle={task.title} disabled={adding}>
+                                <TextInput
+                                    value={newSubTitle}
+                                    onChange={(event) => setNewSubTitle(event.target.value)}
+                                    placeholder={t('taskDetail.subtasks.addPlaceholder')}
+                                    className="task-detail__subtask-input"
+                                    leftElement={<span className="material-symbols-outlined">add</span>}
+                                    disabled={adding}
+                                />
+                            </AiFieldAssist>
                             <Button type="submit" size="sm" variant="secondary" disabled={!newSubTitle.trim() || adding} isLoading={adding}>
                                 {t('common.add')}
                             </Button>

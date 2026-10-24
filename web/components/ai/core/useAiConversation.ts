@@ -39,7 +39,11 @@ export const useAiConversation = ({ active, getContext, screenKey }: UseAiConver
     const [error, setError] = useState('');
     const [planStatus, setPlanStatus] = useState<AiAccessStatus | null>(null);
     const [chips, setChips] = useState<AiContextChip[]>([]);
+    const chipsRef = useRef<AiContextChip[]>([]);
+    chipsRef.current = chips;
     const [context, setContext] = useState<AiContextEnvelope>({ surface: 'other' });
+    /** The object's saved thread is loaded: sending now cannot be overwritten by the load. */
+    const [threadReady, setThreadReady] = useState(false);
     const abortRef = useRef<AbortController | null>(null);
     const keyRef = useRef('');
 
@@ -58,16 +62,24 @@ export const useAiConversation = ({ active, getContext, screenKey }: UseAiConver
         setMessages([]);
         setSteps([]);
         setError('');
-        void loadThread(user.uid, key).then((loaded) => { if (keyRef.current === key) setMessages(loaded); });
+        setThreadReady(false);
+        void loadThread(user.uid, key).then((loaded) => {
+            if (keyRef.current !== key) return;
+            setMessages(loaded);
+            setThreadReady(true);
+        });
     }, [active, screenKey, getContext, user, tenantId, t]);
 
     useEffect(() => () => abortRef.current?.abort(), []);
 
-    const send = useCallback(async (text: string) => {
+    /** `standalone`: a self-contained request (section actions) — the model does not see the earlier turns. */
+    const send = useCallback(async (text: string, options: { standalone?: boolean } = {}) => {
         const content = text.trim();
         if (!content || running || !tenantId || !user) return;
         const key = keyRef.current;
-        const history: AiChatMessage[] = [...messages.filter((message) => !message.image && !message.snap && message.content).map(({ role, content: body }) => ({ role, content: body })), { role: 'user', content }];
+        const earlierTurns: AiChatMessage[] = messages.filter((message) => !message.image && !message.snap && message.content).map(({ role, content: body }) => ({ role, content: body }));
+        const history: AiChatMessage[] = [...earlierTurns, { role: 'user', content }];
+        const modelHistory: AiChatMessage[] = options.standalone ? [{ role: 'user', content }] : history;
         const earlier: AiConversationMessage[] = [...messages, { role: 'user', content }];
         let proposals: AiProposalPreview[] = [];
         let answer = '';
@@ -80,7 +92,7 @@ export const useAiConversation = ({ active, getContext, screenKey }: UseAiConver
         const controller = new AbortController();
         abortRef.current = controller;
         try {
-            await streamAiAssist({ capability: 'assist', tenantId, messages: history, context }, {
+            await streamAiAssist({ capability: 'assist', tenantId, messages: modelHistory, context }, {
                 signal: controller.signal,
                 onDelta: (delta) => { answer += delta; show(); },
                 onProposal: (proposal) => { proposals = [...proposals, proposal]; show(); },
@@ -95,7 +107,10 @@ export const useAiConversation = ({ active, getContext, screenKey }: UseAiConver
             });
             answer = answer.trim() || (proposals.length ? t('ai.panel.proposed') : t('ai.panel.empty'));
             show();
-            if (keyRef.current === key) void saveThread(user.uid, key, tenantId, [...history, { role: 'assistant', content: answer }]).catch(() => undefined);
+            if (keyRef.current === key) {
+                const label = chipsRef.current.find((chip) => chip.kind === 'task')?.label || chipsRef.current.find((chip) => chip.kind === 'project')?.label || chipsRef.current[0]?.label;
+                void saveThread(user.uid, key, tenantId, [...history, { role: 'assistant', content: answer }], { route: screenKey, label }).catch(() => undefined);
+            }
         } catch (caught) {
             if (!controller.signal.aborted) {
                 const code = caught instanceof AiAssistError ? caught.code : 'internal';
@@ -107,7 +122,7 @@ export const useAiConversation = ({ active, getContext, screenKey }: UseAiConver
             setRunning(false);
             setSteps([]);
         }
-    }, [messages, running, tenantId, user, context, t]);
+    }, [messages, running, tenantId, user, context, screenKey, t]);
 
     /** Snap: image (+ optional note) → recognized kind, short summary and task proposals. Not saved to the thread. */
     const snap = useCallback(async (file: File, note: string) => {
@@ -155,5 +170,5 @@ export const useAiConversation = ({ active, getContext, screenKey }: UseAiConver
         if (user && keyRef.current) void clearThread(user.uid, keyRef.current).catch(() => undefined);
     }, [user]);
 
-    return { messages, running, steps, error, planStatus, chips, context, send, snap, stop, reset };
+    return { messages, running, steps, error, planStatus, chips, context, threadReady, send, snap, stop, reset };
 };
