@@ -50,13 +50,16 @@
     min-height: 42px;
     padding: 0 12px;
     border-radius: var(--radius-lg);
-    background: rgba(var(--color-surface-hover-rgb), 0.5);
+    background: var(--control-bg, var(--color-surface-hover));
     color: var(--color-text-muted);
     transition: background-color var(--transition-fast), box-shadow var(--transition-fast);
 
-    &:focus-within {
-        background: var(--color-surface-bg);
+    &:hover {
+        background: var(--control-bg-hover, var(--field-bg-hover));
     }
+
+    // Focus sinks in (STYLING.md §1.10).
+    @include tokens.sunken-field;
 
     .material-symbols-outlined {
         flex: 0 0 auto;

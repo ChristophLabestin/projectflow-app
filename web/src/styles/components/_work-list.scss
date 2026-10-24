@@ -123,7 +123,9 @@
 
 // ---- Toolbar ------------------------------------------------------------------
 
+// Toolbar sits on the canvas (Level 0): its controls are Level 1 (STYLING.md §5.2).
 .work-toolbar {
+    @include tokens.depth-canvas;
     display: flex;
     flex-wrap: wrap;
     align-items: center;
@@ -138,8 +140,13 @@
         padding: 0 12px;
         height: 36px;
         border-radius: var(--radius-full);
-        background: var(--color-surface-hover);
+        background: var(--control-bg, var(--color-surface-hover));
         color: var(--color-text-subtle);
+        transition: background-color var(--transition-fast), box-shadow var(--transition-fast);
+
+        &:hover {
+            background: var(--control-bg-hover, var(--field-bg-hover));
+        }
 
         .material-symbols-outlined {
             font-size: 18px;
@@ -158,10 +165,7 @@
             outline: none;
         }
 
-        &:focus-within {
-            background: var(--color-surface-card);
-            box-shadow: var(--shadow-sm);
-        }
+        @include tokens.sunken-field;
     }
 
     &__select {
@@ -174,7 +178,7 @@
         padding: 3px;
         margin-left: auto;
         border-radius: var(--radius-full);
-        background: var(--color-surface-hover);
+        background: var(--control-bg, var(--color-surface-hover));
     }
 
     &__view {
@@ -190,10 +194,12 @@
             font-size: 18px;
         }
 
+        &:focus-visible {
+            @include tokens.focus-ring;
+        }
+
         &.is-active {
-            background: var(--color-surface-card);
-            color: var(--color-text-main);
-            box-shadow: var(--shadow-sm);
+            @include tokens.selected;
         }
     }
 }
@@ -205,20 +211,27 @@
     height: 36px;
     padding: 0 12px;
     border-radius: var(--radius-full);
-    background: var(--color-surface-hover);
+    background: var(--control-bg, var(--color-surface-hover));
     font-size: 13px;
     font-weight: 600;
     color: var(--color-text-muted);
     transition: background var(--transition-fast), color var(--transition-fast);
+
+    &:hover {
+        background: var(--control-bg-hover, var(--field-bg-hover));
+        color: var(--color-text-main);
+    }
+
+    &:focus-visible {
+        @include tokens.focus-ring;
+    }
 
     .material-symbols-outlined {
         font-size: 17px;
     }
 
     &.is-active {
-        background: var(--color-surface-card);
-        color: var(--color-text-main);
-        box-shadow: var(--shadow-sm);
+        @include tokens.selected;
     }
 
     // Menu chip (e.g. "Group by: Due date ▾"): the value reads strongest.
@@ -228,7 +241,7 @@
         color: var(--color-text-main);
 
         &:hover {
-            background: var(--color-surface-active);
+            background: var(--control-bg-hover, var(--field-bg-hover));
         }
     }
 
@@ -255,6 +268,11 @@
 }
 
 // ---- Groups -------------------------------------------------------------------
+
+// Group headers of work lists sit on the canvas: their count badge is Level 1.
+.work-groups .work-group__count {
+    background: var(--color-surface-card);
+}
 
 .work-groups {
     display: flex;
@@ -340,7 +358,7 @@
         min-width: 20px;
         padding: 1px 7px;
         border-radius: var(--radius-full);
-        background: var(--color-surface-hover);
+        background: var(--color-surface-hover); // inside cards (people board, timeline, roadmap): Level 2
         font-size: 11px;
         font-weight: 700;
         color: var(--color-text-muted);

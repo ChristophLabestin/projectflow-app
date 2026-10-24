@@ -33,7 +33,7 @@
 
         &:hover:not(:disabled) {
             transform: translateY(-1px);
-            background: var(--color-surface-hover-light);
+            background: var(--field-bg-hover);
         }
 
         &:focus-visible {

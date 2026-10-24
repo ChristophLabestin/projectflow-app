@@ -86,7 +86,7 @@
 .stepper__item--current {
     > div,
     > button {
-        background: var(--color-surface-hover);
+        @include tokens.sunken;
     }
 
     .stepper__marker {

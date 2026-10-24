@@ -177,7 +177,7 @@ The app is borderless: focus and selection never draw a border, outline or hard 
 - `tokens.sunken` — **current / list selection and navigation** (sidebar dock, list rows, calendar cells,
   roles list, priority group, tree items): slightly recessed surface.
 - `tokens.sunken-field` — text fields and search wrappers on `:focus` / `:focus-within` (TextInput, TextArea,
-  Select trigger focused/open, quick project form). Field states: rest `--color-surface-hover` (no hairline),
+  Select trigger focused/open, quick project form). Field states: rest `--control-bg` (L2 hover tone in shells, card tone on the canvas — §5.2; no hairline),
   hover `--field-bg-hover` (a touch darker), focus sunken.
 - `tokens.focus-ring` / `focus-ring(true)` — keyboard focus (`:focus-visible`) on non-text controls.
   Never remove keyboard focus without it.
@@ -347,15 +347,46 @@ Use named categories instead of one-off widths where possible.
 
 ### 5.2) Level Of Depth
 
-The `/ui` style guide now defines a ProjectFlow depth ladder:
+The `/ui` style guide defines a ProjectFlow depth ladder:
 
 - Level 0 Canvas: `--color-surface-bg`; open page background, no wrapper card by default.
 - Level 1 Surface shell: `--color-surface-card`; default cards, panels, modal shells, and page sections that need a surface.
 - Level 2 Child controls: `--color-surface-hover`; inputs, selectable rows, grouped controls, and child surfaces inside a Level 1 shell.
-- Level 3 Tonal focus: a subtle mix of hover/card surfaces for rare nested focus rows.
-- Overlay layer: `--shadow-lg` or stronger only for dropdowns, popovers, and transient floating UI.
+- Level 3 Tonal focus: `color-mix(in srgb, var(--color-surface-hover) 50%, var(--color-surface-card))` for rare nested blocks inside a Level 2 tile.
+- Overlay layer: `--shadow-lg` / `--shadow-soft` / glass (§1.11) only for modals, drawers, dropdowns, popovers and floating bars.
 
-Depth is relative to the direct parent surface. Prefer tonal contrast for nested UI and reserve stronger shadows for true overlays.
+**Depth is relative to the direct parent surface (2026-10-24 audit):** a child is always exactly one level above
+the surface it sits on.
+
+| Element sits on… | Its fill | Example |
+|---|---|---|
+| Canvas (L0) | L1 `--color-surface-card` | page toolbar search, filter chips, view segment track, group count badge on the page |
+| Card / modal / panel (L1) | L2 `--color-surface-hover` | form fields, chips, tiles, nested blocks inside a card or modal |
+| L2 tile | L3 tonal mix | rare nested row inside a tile |
+
+Wrong (fixed in the audit, don't reintroduce): L2 hover tone directly on the canvas (level skipped, near-invisible in
+light mode); card-on-card (L1 inside L1, often with a shadow); `--color-surface-bg` as a fill inside a card/modal/popover
+(an L0 "hole", almost black in dark mode); `--shadow-sm/md` on L2 children; raised active states (card tone + shadow on a
+hover track) — use `tokens.selected` (choices) / `tokens.sunken` (current) / `tokens.sunken-field` (focus) from §1.10.
+
+**Depth-relative controls** (`web/styles/_tokens.scss`, "Depth ladder"): controls read
+`var(--control-bg, var(--color-surface-hover))` at rest and `var(--control-bg-hover, var(--field-bg-hover))` on hover
+(or `@include tokens.control-surface`). The fallback is the in-shell value (L2), so controls are correct inside cards
+and modals without any setup. A container whose controls sit on the canvas declares it:
+
+```scss
+// Toolbar row directly on the page canvas: its controls become Level 1.
+.work-toolbar {
+    @include tokens.depth-canvas;   // --control-bg: card, --control-bg-hover: card/hover mix
+}
+// Same controls inside a card: nothing to do (default L2). Shells reset explicitly:
+.card, .modal, .ui-card, glass menus { @include tokens.depth-shell; }
+```
+
+Scope `depth-canvas` to the toolbar / filter row itself, never to a whole page (cards further down must keep L2).
+Shared consumers: `TextInput`, `TextArea`, `Select` trigger (incl. disabled), `PrioritySelect` group options,
+`ListToolbar` search, `.work-toolbar` search / view track, `.work-chip`. Focus stays `tokens.sunken-field`, selected
+chips/segments stay `tokens.selected` — those don't depend on depth.
 
 ### 5.3) UI Library Standardization Primitives
 

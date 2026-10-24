@@ -42,6 +42,7 @@
 }
 
 .modal {
+    @include tokens.depth-shell;
     background-color: var(--color-surface-card);
     border-radius: var(--radius-xl);
     border: 1px solid color-mix(in srgb, var(--color-surface-border) 60%, transparent);

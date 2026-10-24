@@ -10,7 +10,7 @@
     padding: 8px 10px 8px 12px;
     border: 0;
     border-radius: var(--radius-lg);
-    background: rgba(var(--color-surface-hover-rgb), 0.5);
+    background: color-mix(in srgb, var(--control-bg, var(--color-surface-hover)) 50%, transparent);
     color: var(--color-text-main);
     font: inherit;
     text-align: left;
@@ -19,7 +19,7 @@
 
     &:hover:not(:disabled),
     &:focus-visible {
-        background: var(--color-surface-hover-light);
+        background: var(--control-bg-hover, var(--field-bg-hover));
     }
 
     &:focus-visible {
