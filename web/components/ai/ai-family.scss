@@ -194,37 +194,33 @@ kbd {
     display: flex;
     align-items: center;
     gap: 2px;
-    height: 34px;
-    padding: 3px;
+    height: 42px;
+    padding: 4px;
     border-radius: var(--radius-lg);
     background: var(--color-surface-card);
     box-shadow: $float-shadow;
 
+    // Only the actions (no label/mark); menu-size text (`.text-sm`, 0.875rem) like regular menu entries.
     > button {
         display: inline-flex;
         align-items: center;
-        gap: 5px;
-        height: 28px;
-        padding: 0 9px;
+        gap: 6px;
+        height: 34px;
+        padding: 0 12px;
         border: 0;
         border-radius: var(--radius-md);
         background: transparent;
         color: var(--color-text-main);
-        font-size: 0.8125rem;
+        font-size: 0.875rem;
+        line-height: 1.4;
         white-space: nowrap;
         cursor: pointer;
 
-        .material-symbols-outlined { font-size: 1rem; color: var(--color-text-muted); }
+        .material-symbols-outlined { font-size: 1.125rem; color: var(--color-text-muted); }
 
         &:hover,
         &:focus-visible,
         &.is-open { outline: none; background: var(--color-surface-hover); }
-    }
-
-    &__mark {
-        padding: 0 6px 0 8px;
-        font-size: 0.75rem;
-        color: var(--color-text-muted);
     }
 
     &__more {
@@ -233,7 +229,7 @@ kbd {
         right: 0;
         display: flex;
         flex-direction: column;
-        width: 220px;
+        width: 240px;
         padding: 6px;
         border-radius: var(--radius-lg);
         background: var(--color-surface-card);
@@ -243,17 +239,17 @@ kbd {
             display: flex;
             align-items: center;
             gap: 10px;
-            height: 32px;
-            padding: 0 8px;
+            height: 36px;
+            padding: 0 10px;
             border: 0;
             border-radius: var(--radius-md);
             background: transparent;
             color: var(--color-text-main);
-            font-size: 0.8125rem;
+            font-size: 0.875rem;
             text-align: left;
             cursor: pointer;
 
-            .material-symbols-outlined { font-size: 1.05rem; color: var(--color-text-muted); }
+            .material-symbols-outlined { font-size: 1.125rem; color: var(--color-text-muted); }
 
             &:hover,
             &:focus-visible { outline: none; background: var(--color-surface-hover); }
@@ -560,24 +556,6 @@ kbd {
         letter-spacing: 0.03em;
         text-transform: uppercase;
         color: var(--color-text-muted);
-    }
-
-    &__context {
-        display: inline-flex;
-        align-items: center;
-        gap: 4px;
-        max-width: 200px;
-        height: 22px;
-        padding: 0 8px 0 6px;
-        border-radius: var(--radius-full);
-        background: var(--color-surface-hover);
-        color: var(--color-text-muted);
-        font-size: 0.75rem;
-
-        .material-symbols-outlined { font-size: 0.875rem; }
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
     }
 
     &__icon {

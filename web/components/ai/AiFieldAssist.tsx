@@ -23,7 +23,7 @@ import './ai-family.scss';
 export const CARET_SPARK_DELAY_MS = 800;
 const UNDO_VISIBLE_MS = 8000;
 const MIN_SELECTION = 3;
-const TOOLBAR_HEIGHT = 34;
+const TOOLBAR_HEIGHT = 42;
 const CONTEXT_CHARS = 600;
 
 export interface AiFieldAssistProps {
@@ -165,7 +165,9 @@ export const AiFieldAssist: React.FC<AiFieldAssistProps> = ({
             else scheduleChip();
         };
         const onKeyUp = (event: KeyboardEvent) => {
-            if (event.shiftKey && event.key.startsWith('Arrow')) {
+            // Keyboard selections: Shift+Arrow/Home/End/PageUp/Down, ⌘A / Ctrl+A.
+            const selecting = (event.shiftKey && /^(Arrow|Home|End|Page)/.test(event.key)) || ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'a');
+            if (selecting) {
                 const range = selectionRange();
                 if (range) openTools(range);
             } else if (event.key.startsWith('Arrow') || event.key === 'Home' || event.key === 'End') {
@@ -348,7 +350,6 @@ export const AiFieldAssist: React.FC<AiFieldAssistProps> = ({
                 <Floating at={menuAt} className="ai-toolbar" label={t('ai.spark.menuLabel')}>
                     {blocked ? <AiPlanHint status={access.status} compact /> : (
                         <>
-                            <span className="ai-toolbar__mark" aria-hidden="true">✦</span>
                             {TOOLS_PRIMARY.map(([action, icon]) => (
                                 <button key={action} type="button" onClick={() => runSelection(action)}>
                                     <span className="material-symbols-outlined" aria-hidden="true">{icon}</span>{t(`ai.action.${action}`)}

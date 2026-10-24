@@ -46,7 +46,7 @@ export const AiCommandBar: React.FC<AiCommandBarProps> = ({ variant = 'overlay',
     const { tenantId } = useInAppAi();
     const access = useAiAccess();
     const blocked = access.status === 'addon-required' || access.status === 'plan-required';
-    const { messages, running, steps, error, planStatus, chips, context, send, snap, stop, reset } =
+    const { messages, running, steps, error, planStatus, context, send, snap, stop, reset } =
         useAiConversation({ active: open, getContext, screenKey: location.pathname });
     const [input, setInput] = useState('');
     const [image, setImage] = useState<File | null>(null);
@@ -113,7 +113,6 @@ export const AiCommandBar: React.FC<AiCommandBarProps> = ({ variant = 'overlay',
     const question = [...messages].reverse().find((message) => message.role === 'user');
     const snapSource = question?.image ? question : undefined;
     const suggestions = SUGGESTIONS[context.surface] || SUGGESTIONS.other;
-    const contextLabel = chips.find((chip) => chip.kind === 'task')?.label || chips.find((chip) => chip.kind === 'project')?.label || chips[0]?.label;
     const stepKey = steps.length ? `ai.step.${steps[steps.length - 1]}` : '';
     const stepLabel = stepKey && t(stepKey) !== stepKey ? t(stepKey) : t('ai.step.default');
 
@@ -142,7 +141,6 @@ export const AiCommandBar: React.FC<AiCommandBarProps> = ({ variant = 'overlay',
                     <input ref={inputRef} value={input} onChange={(event) => setInput(event.target.value)} maxLength={4000}
                         onPaste={(event) => { const file = snapImageFromClipboard(event.clipboardData); if (file) { event.preventDefault(); pickImage(file); } }}
                         placeholder={image ? t('ai.snap.placeholder') : messages.length ? t('ai.bar.followUp') : t('ai.bar.placeholder')} aria-label={t('ai.bar.placeholder')} disabled={blocked} />
-                    {contextLabel && <span className="ai-bar__context" title={contextLabel}><span className="material-symbols-outlined" aria-hidden="true">{chips.some((chip) => chip.kind === 'task') ? 'task_alt' : 'folder'}</span>{contextLabel}</span>}
                     {!image && !blocked && onCaptureScreen && (
                         <button type="button" className="ai-bar__icon" onClick={() => void captureScreen()} disabled={capturing} aria-label={t('ai.snap.screen')} title={t('ai.snap.screen')}>
                             <span className="material-symbols-outlined" aria-hidden="true">screenshot_monitor</span>

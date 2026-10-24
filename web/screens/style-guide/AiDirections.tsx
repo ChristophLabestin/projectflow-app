@@ -183,7 +183,6 @@ const CommandBar: React.FC = () => {
                         <form className="ai-dir__bar-input" onSubmit={(event) => { event.preventDefault(); if (query.trim()) submit(query); }}>
                             <span className="ai-dir__bar-mark" aria-hidden="true">✦</span>
                             <input autoFocus value={query} onChange={(event) => { setQuery(event.target.value); setAsked(false); }} placeholder={t('styleGuide.ai.dir2.placeholder')} aria-label={t('styleGuide.ai.dir2.placeholder')} />
-                            <span className="ai-dir__bar-context">Mobile App v2</span>
                         </form>
                         {!asked && (
                             <ul className="ai-dir__rows">
@@ -268,7 +267,6 @@ const SelectionTools: React.FC = () => {
                 onBlur={() => window.setTimeout(() => setMenu(null), 150)} />
             {menu && (
                 <Floating left={menu.left} top={menu.top} className="ai-dir__tools" onPointerDown={(event) => event.preventDefault()}>
-                    <div className="ai-dir__tools-head"><span aria-hidden="true">✦</span>{t('ai.label')}</div>
                     {TOOLS.map(([icon, key]) => (
                         <button key={key} type="button" onClick={() => replace(key === 'ai.action.shorten' ? 'Two offline devices overwrite each other — I’ll look into it tomorrow.' : 'Hi team, I looked into the sync issue last night. The problem seems to be that two devices editing offline overwrite each other — I’ll check tomorrow.')}>
                             <span className="material-symbols-outlined" aria-hidden="true">{icon}</span>{t(key)}
