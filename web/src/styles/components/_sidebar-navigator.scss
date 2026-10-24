@@ -933,3 +933,23 @@
 
     &:hover { color: var(--color-text-main); }
 }
+
+// ---- Context panels (areas with their own navigation, e.g. the wiki tree) ----
+// SidebarPanelContext: the area portals its navigation into .snav-panel-slot; the layer scrolls.
+.snav-avatar--icon {
+    background: rgba(var(--color-primary-rgb), 0.12);
+    color: var(--color-primary);
+}
+
+a.snav-context-head__title {
+    text-decoration: none;
+
+    &:hover { color: var(--color-primary); }
+}
+
+.snav-panel-slot {
+    display: flex;
+    flex: 1 0 auto;
+    flex-direction: column;
+    min-height: 0;
+}

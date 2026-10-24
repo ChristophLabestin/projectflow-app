@@ -23,6 +23,7 @@ import './ai-family.scss';
 export const CARET_SPARK_DELAY_MS = 800;
 const UNDO_VISIBLE_MS = 8000;
 const MIN_SELECTION = 3;
+const TOOLBAR_HEIGHT = 34;
 const CONTEXT_CHARS = 600;
 
 export interface AiFieldAssistProps {
@@ -43,9 +44,9 @@ type Range = { start: number; end: number };
 type Point = { left: number; top: number };
 
 const QUICK: Array<[AiWriteAction, string]> = [['expand', 'notes'], ['shorten', 'short_text'], ['rephrase', 'autorenew'], ['fix', 'spellcheck']];
-const TOOLS: Array<[AiWriteAction, string]> = [
-    ['rephrase', 'autorenew'], ['shorten', 'short_text'], ['expand', 'notes'], ['friendlier', 'sentiment_satisfied'],
-    ['formal', 'work'], ['bullets', 'format_list_bulleted'], ['fix', 'spellcheck'], ['translate', 'translate']
+const TOOLS_PRIMARY: Array<[AiWriteAction, string]> = [['rephrase', 'autorenew'], ['shorten', 'short_text'], ['fix', 'spellcheck']];
+const TOOLS_MORE: Array<[AiWriteAction, string]> = [
+    ['expand', 'notes'], ['friendlier', 'sentiment_satisfied'], ['formal', 'work'], ['bullets', 'format_list_bulleted'], ['translate', 'translate']
 ];
 
 const Floating: React.FC<{ at: Point; className: string; children: React.ReactNode; label?: string }> = ({ at, className, children, label }) =>
@@ -73,6 +74,7 @@ export const AiFieldAssist: React.FC<AiFieldAssistProps> = ({
     const [menuAt, setMenuAt] = useState<Point | null>(null);
     const [selection, setSelection] = useState<Range | null>(null);
     const [instruction, setInstruction] = useState('');
+    const [toolsMore, setToolsMore] = useState(false);
     const [undo, setUndo] = useState<{ previous: string; applied: string; at: Point } | null>(null);
     const timer = useRef<number | null>(null);
     const original = useRef('');
@@ -85,6 +87,14 @@ export const AiFieldAssist: React.FC<AiFieldAssistProps> = ({
     });
 
     const below = (rect: CaretRect | null, gap = 3): Point | null => (rect ? { left: rect.left - 2, top: rect.bottom + gap } : null);
+    /** Selection toolbar sits above the first selected line (below it when there is no room). */
+    const aboveSelection = (range: Range): Point | null => {
+        if (!el) return null;
+        const start = getCaretRect(el, range.start);
+        if (!start) return null;
+        const top = start.top - TOOLBAR_HEIGHT - 6;
+        return top > 8 ? { left: start.left - 4, top } : below(getCaretRect(el, range.end), 6);
+    };
     const fieldBottom = (): Point | null => {
         if (!el) return null;
         const box = el.getBoundingClientRect();
@@ -129,7 +139,8 @@ export const AiFieldAssist: React.FC<AiFieldAssistProps> = ({
         clearTimer();
         setChipAt(null);
         setSelection(range);
-        setMenuAt(below(getCaretRect(el, range.end), 6));
+        setToolsMore(false);
+        setMenuAt(aboveSelection(range));
         setMode('tools');
     }, [el]);
 
@@ -139,7 +150,7 @@ export const AiFieldAssist: React.FC<AiFieldAssistProps> = ({
         const selectionRange = () => (el.selectionEnd - el.selectionStart >= MIN_SELECTION ? { start: el.selectionStart, end: el.selectionEnd } : null);
         const onFocus = () => { setFocused(true); scheduleChip(); };
         const onBlur = () => window.setTimeout(() => {
-            if (document.activeElement !== el && !document.activeElement?.closest('.ai-mini, .ai-tools')) {
+            if (document.activeElement !== el && !document.activeElement?.closest('.ai-menu, .ai-toolbar, .ai-suggestion-card')) {
                 setFocused(false);
                 clearTimer();
                 setChipAt(null);
@@ -184,7 +195,7 @@ export const AiFieldAssist: React.FC<AiFieldAssistProps> = ({
         if (!el || mode === 'idle') return undefined;
         const reposition = () => {
             if (mode === 'mini') setMenuAt(below(getCaretRect(el), 4));
-            if (mode === 'tools' && selection) setMenuAt(below(getCaretRect(el, selection.end), 6));
+            if (mode === 'tools' && selection) setMenuAt(aboveSelection(selection));
         };
         window.addEventListener('scroll', reposition, true);
         window.addEventListener('resize', reposition);
@@ -282,71 +293,47 @@ export const AiFieldAssist: React.FC<AiFieldAssistProps> = ({
         return () => window.clearTimeout(timeout);
     }, [undo]);
 
-    // Ghost preview overlay matches the textarea's box and type.
-    const ghostStyle = (): React.CSSProperties => {
-        if (!el) return {};
-        const style = window.getComputedStyle(el);
-        return {
-            padding: style.padding, font: style.font, lineHeight: style.lineHeight, letterSpacing: style.letterSpacing,
-            borderRadius: style.borderRadius
-        };
-    };
-
     if (!active) return <>{children}</>;
 
-    const previewing = mode === 'preview';
-    const ghostText = writer.phase === 'running' || writer.phase === 'done' ? writer.suggestion : '';
     const empty = !value.trim();
+    const box = el?.getBoundingClientRect();
 
     return (
-        <div ref={rootRef} className={`ai-field${previewing && writer.phase !== 'error' ? ' is-previewing' : ''}`}>
+        <div ref={rootRef} className="ai-field">
             {children}
-
-            {previewing && writer.phase !== 'error' && (
-                <div className="ai-field__preview">
-                    <div className="ai-field__ghost" style={ghostStyle()} aria-live="polite">
-                        <span className="ai-field__ghost-old">{original.current}</span>
-                        {ghostText && <span className="ai-field__ghost-new">{ghostText}</span>}
-                    </div>
-                    <div className="ai-field__bar">
-                        {writer.phase === 'running' ? (
-                            <>
-                                <AiWorking label={t('ai.spark.writing')} />
-                                <button type="button" onMouseDown={(event) => event.preventDefault()} onClick={closeAll}>{t('ai.spark.stop')} <kbd>Esc</kbd></button>
-                            </>
-                        ) : (
-                            <>
-                                <button type="button" className="ai-hint__primary" onMouseDown={(event) => event.preventDefault()} onClick={applyPreview}><kbd>⏎</kbd> {t('ai.spark.apply')}</button>
-                                <button type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => writer.retry()} aria-label={t('ai.spark.retry')}>
-                                    <span className="material-symbols-outlined" aria-hidden="true">refresh</span>
-                                </button>
-                                <button type="button" onMouseDown={(event) => event.preventDefault()} onClick={closeAll}><kbd>Esc</kbd> {t('ai.spark.discard')}</button>
-                            </>
-                        )}
-                    </div>
-                </div>
-            )}
 
             {focused && chipAt && mode === 'idle' && !undo && (
                 <Floating at={chipAt} className="ai-caret-chip">
-                    <button type="button" onClick={openMini} aria-label={t('ai.spark.open')} aria-expanded={false} title={`${t('ai.spark.open')} (⌘J)`}>✦</button>
+                    <button type="button" onClick={openMini} aria-expanded={false} title={`${t('ai.spark.open')} (⌘J)`}>
+                        <span className="ai-caret-chip__mark" aria-hidden="true">✦</span>{t('ai.label')}
+                    </button>
                 </Floating>
             )}
 
             {mode === 'mini' && menuAt && (
-                <Floating at={menuAt} className="ai-mini" label={t('ai.spark.menuLabel')}>
-                    {blocked ? <AiPlanHint status={access.status} compact /> : (
+                <Floating at={menuAt} className="ai-menu" label={t('ai.spark.menuLabel')}>
+                    <div className="ai-menu__head">
+                        <span><span aria-hidden="true">✦ </span>{t('ai.label')}</span>
+                        <span className="ai-menu__scope">{empty ? t('ai.spark.scope.empty') : t('ai.spark.scope.all')}</span>
+                    </div>
+                    {blocked ? <div className="ai-menu__hint"><AiPlanHint status={access.status} compact /></div> : (
                         <>
-                            <form onSubmit={(event) => { event.preventDefault(); if (instruction.trim()) runWhole('custom', instruction.trim()); }}>
-                                <span aria-hidden="true">✦</span>
+                            <form className="ai-menu__ask" onSubmit={(event) => { event.preventDefault(); if (instruction.trim()) runWhole('custom', instruction.trim()); }}>
                                 <input autoFocus value={instruction} onChange={(event) => setInstruction(event.target.value)} maxLength={300}
                                     placeholder={t('ai.spark.customPlaceholder')} aria-label={t('ai.spark.customPlaceholder')}
-                                    onKeyDown={(event) => { if (event.key === 'Escape') { event.preventDefault(); closeAll(); el?.focus(); } }} />
+                                    onKeyDown={(event) => {
+                                        if (event.key === 'Escape') { event.preventDefault(); closeAll(); el?.focus(); return; }
+                                        const quick = empty ? [] : QUICK;
+                                        const index = Number(event.key) - 1;
+                                        if (!instruction && index >= 0 && index < quick.length) { event.preventDefault(); runWhole(quick[index][0]); }
+                                    }} />
                             </form>
-                            <div className="ai-mini__actions" role="menu">
-                                {(empty ? [['draft', 'edit_note'] as [AiWriteAction, string]] : QUICK).map(([action, icon]) => (
+                            <div className="ai-menu__list" role="menu">
+                                {(empty ? [['draft', 'edit_note'] as [AiWriteAction, string]] : QUICK).map(([action, icon], index) => (
                                     <button key={action} type="button" role="menuitem" onClick={() => runWhole(action)}>
-                                        <span className="material-symbols-outlined" aria-hidden="true">{icon}</span>{t(`ai.action.${action}`)}
+                                        <span className="material-symbols-outlined" aria-hidden="true">{icon}</span>
+                                        <span className="ai-menu__label">{t(`ai.action.${action}`)}</span>
+                                        {!empty && <kbd>{index + 1}</kbd>}
                                     </button>
                                 ))}
                             </div>
@@ -356,46 +343,67 @@ export const AiFieldAssist: React.FC<AiFieldAssistProps> = ({
             )}
 
             {mode === 'tools' && menuAt && (
-                <Floating at={menuAt} className="ai-tools" label={t('ai.spark.menuLabel')}>
-                    <div className="ai-tools__head"><span aria-hidden="true">✦</span>{t('ai.label')}</div>
-                    {blocked ? <AiPlanHint status={access.status} compact /> : TOOLS.map(([action, icon]) => (
-                        <button key={action} type="button" role="menuitem" onClick={() => runSelection(action)}>
-                            <span className="material-symbols-outlined" aria-hidden="true">{icon}</span>{t(`ai.action.${action}`)}
-                        </button>
-                    ))}
-                </Floating>
-            )}
-
-            {(mode === 'preview' || mode === 'replacing') && writer.phase === 'error' && fieldBottom() && (
-                <Floating at={fieldBottom() as Point} className="ai-hint">
-                    {writer.phase === 'error' ? (
-                        writer.planStatus ? <AiPlanHint status={writer.planStatus} compact /> : (
-                            <>
-                                <span className="ai-hint__error">{writer.error}</span>
-                                <button type="button" onClick={() => writer.retry()}>{t('ai.spark.retry')}</button>
-                                <button type="button" onClick={closeAll}>{t('ai.spark.discard')}</button>
-                            </>
-                        )
-                    ) : writer.phase === 'running' ? (
+                <Floating at={menuAt} className="ai-toolbar" label={t('ai.spark.menuLabel')}>
+                    {blocked ? <AiPlanHint status={access.status} compact /> : (
                         <>
-                            <span className="ai-hint__working">{t('ai.spark.writing')}</span>
-                            <button type="button" onClick={closeAll}>{t('ai.spark.stop')} <kbd>Esc</kbd></button>
-                        </>
-                    ) : (
-                        <>
-                            <button type="button" className="ai-hint__primary" onClick={applyPreview}><kbd>⏎</kbd> {t('ai.spark.apply')}</button>
-                            <button type="button" onClick={() => writer.retry()} aria-label={t('ai.spark.retry')}>
-                                <span className="material-symbols-outlined" aria-hidden="true">refresh</span>
+                            <span className="ai-toolbar__mark" aria-hidden="true">✦</span>
+                            {TOOLS_PRIMARY.map(([action, icon]) => (
+                                <button key={action} type="button" onClick={() => runSelection(action)}>
+                                    <span className="material-symbols-outlined" aria-hidden="true">{icon}</span>{t(`ai.action.${action}`)}
+                                </button>
+                            ))}
+                            <button type="button" className={toolsMore ? 'is-open' : ''} aria-expanded={toolsMore} onClick={() => setToolsMore((value) => !value)}>
+                                {t('ai.spark.more')}<span className="material-symbols-outlined" aria-hidden="true">expand_more</span>
                             </button>
-                            <button type="button" onClick={closeAll}><kbd>Esc</kbd> {t('ai.spark.discard')}</button>
+                            {toolsMore && (
+                                <div className="ai-toolbar__more" role="menu">
+                                    {TOOLS_MORE.map(([action, icon]) => (
+                                        <button key={action} type="button" role="menuitem" onClick={() => runSelection(action)}>
+                                            <span className="material-symbols-outlined" aria-hidden="true">{icon}</span>{t(`ai.action.${action}`)}
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
                         </>
                     )}
                 </Floating>
             )}
 
+            {(mode === 'preview' || (mode === 'replacing' && writer.phase === 'error')) && box && (
+                <Floating at={{ left: box.left, top: box.bottom + 6 }} className="ai-suggestion-card" label={t('ai.spark.suggestion')}>
+                    <div className="ai-suggestion-card__inner" style={{ width: Math.max(320, Math.min(box.width, 640)) }}>
+                        <div className="ai-suggestion-card__head">
+                            <span><span aria-hidden="true">✦ </span>{t('ai.spark.suggestion')}</span>
+                        </div>
+                        {writer.phase === 'error' ? (
+                            writer.planStatus ? <AiPlanHint status={writer.planStatus} compact /> : <p className="ai-suggestion-card__error" role="alert">{writer.error}</p>
+                        ) : writer.suggestion ? (
+                            <p className="ai-suggestion-card__text">{writer.suggestion}</p>
+                        ) : (
+                            <AiWorking label={t('ai.spark.writing')} />
+                        )}
+                        <div className="ai-suggestion-card__actions">
+                            {writer.phase === 'done' && (
+                                <button type="button" className="ai-btn-primary" onMouseDown={(event) => event.preventDefault()} onClick={applyPreview}>
+                                    {t('ai.spark.apply')} <kbd>⏎</kbd>
+                                </button>
+                            )}
+                            {(writer.phase === 'done' || writer.phase === 'error') && (
+                                <button type="button" className="ai-btn-secondary" onMouseDown={(event) => event.preventDefault()} onClick={() => writer.retry()}>
+                                    <span className="material-symbols-outlined" aria-hidden="true">refresh</span>{t('ai.spark.retry')}
+                                </button>
+                            )}
+                            <button type="button" className="ai-btn-ghost" onMouseDown={(event) => event.preventDefault()} onClick={closeAll}>
+                                {writer.phase === 'running' ? t('ai.spark.stop') : t('ai.spark.discard')} <kbd>Esc</kbd>
+                            </button>
+                        </div>
+                    </div>
+                </Floating>
+            )}
+
             {undo && (
                 <Floating at={undo.at} className="ai-undo">
-                    <span aria-hidden="true">✦</span>{t('ai.field.changed')}
+                    <span className="ai-undo__text"><span aria-hidden="true">✦ </span>{t('ai.field.changed')}</span>
                     <button type="button" onClick={() => { onApply(undo.previous); setUndo(null); el?.focus(); }}>{t('ai.card.undo')} <kbd>⌘Z</kbd></button>
                 </Floating>
             )}

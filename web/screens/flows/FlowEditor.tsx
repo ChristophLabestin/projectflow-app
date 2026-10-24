@@ -1,42 +1,41 @@
-// Flow editor (/flows/new, /flows/:flowId): vertical step builder Wenn → Falls → Dann, preview,
-// dry run and (package 3) run log. Concept: brain/plans/flows-concept.md §4.
-import { planErrorMessage } from '../../services/billingService';
+// Flow editor (/flows/:flowId, /flows/new/edit) inside the Flows shell: tabs Aufbau / Testen / Protokoll,
+// collapsible steps Wenn → Falls → Dann with tile pickers. Concept: brain/plans/flows-concept.md §4.
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { Link, Navigate, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 
 import { useLanguage } from '../../context/LanguageContext';
 import { useConfirm, useToast } from '../../context/UIContext';
 import { Button } from '../../components/common/Button/Button';
 import { Select } from '../../components/common/Select/Select';
 import { TextInput } from '../../components/common/Input/TextInput';
-import { TextArea } from '../../components/common/Input/TextArea';
 import { Checkbox } from '../../components/common/Checkbox/Checkbox';
 import { EmptyState } from '../../components/common/EmptyState/EmptyState';
 import { Skeleton } from '../../components/common/Skeleton/Skeleton';
 import { SettingsSwitch } from '../../components/settings/SettingsSwitch';
 import {
     ActionEditor,
+    ActionPicker,
     ConditionsEditor,
     TriggerEditor,
-    availableActions,
     defaultActionConfig,
     type FlowEditorOptions,
 } from '../../components/flows/FlowStepEditors';
 import { FlowPreviewPanel } from '../../components/flows/FlowPreviewPanel';
-import { FlowTemplateGallery } from '../../components/flows/FlowTemplateGallery';
 import { FlowRunLog } from '../../components/flows/FlowRunLog';
 import {
     ACTION_ICONS,
     TASKLESS_TRIGGERS,
+    TASK_ACTIONS,
     TRIGGER_ICONS,
     actionSentence,
     triggerSentence,
+    validateAction,
     validateFlow,
 } from '../../components/flows/flowText';
 import { getFlowTemplate } from '../../config/flowTemplates';
+import { planErrorMessage } from '../../services/billingService';
 import {
     deleteFlow,
-    draftFlowFromText,
     flowErrorMessage,
     runFlow,
     saveFlow,
@@ -44,10 +43,12 @@ import {
     subscribeFlow,
     type Flow,
     type FlowAction,
+    type FlowActionType,
     type FlowDefinition,
 } from '../../services/domain/automationsService';
-import { useFlowContext } from './useFlowContext';
-import './flows.scss';
+import { useFlowsOutlet } from './FlowsLayout';
+
+type Tab = 'build' | 'test' | 'log';
 
 const emptyDraft = (projectId: string | null): FlowDefinition => ({
     name: '',
@@ -82,71 +83,80 @@ const nextActionId = (actions: FlowAction[]) => {
     return `a${index}`;
 };
 
+/** Collapsible step: the header reads as a sentence; click to edit. */
 const StepCard: React.FC<{
     kind: 'when' | 'if' | 'then';
     icon: string;
     title: string;
     summary: string;
+    open: boolean;
+    onToggle: () => void;
     t: (key: string) => string;
-    actions?: React.ReactNode;
+    tools?: React.ReactNode;
+    incomplete?: boolean;
     children: React.ReactNode;
-}> = ({ kind, icon, title, summary, t, actions, children }) => (
-    <section className={`flow-step flow-step--${kind}`}>
+}> = ({ kind, icon, title, summary, open, onToggle, t, tools, incomplete, children }) => (
+    <section className={`flow-step flow-step--${kind} ${open ? 'is-open' : ''} ${incomplete ? 'is-incomplete' : ''}`.trim()}>
         <header className="flow-step__header">
-            <span className="flow-step__kind">{t(`flows.step.${kind}`)}</span>
-            <span className="flow-step__icon material-symbols-outlined" aria-hidden="true">{icon}</span>
-            <div className="flow-step__titles">
-                <h3>{title}</h3>
-                <p>{summary}</p>
-            </div>
-            {actions && <div className="flow-step__actions">{actions}</div>}
+            <button type="button" className="flow-step__toggle" aria-expanded={open} onClick={onToggle}>
+                <span className="flow-step__kind">{t(`flows.step.${kind}`)}</span>
+                <span className="flow-step__icon material-symbols-outlined" aria-hidden="true">{icon}</span>
+                <span className="flow-step__titles">
+                    <span className="flow-step__title">{title}</span>
+                    <span className="flow-step__summary">{summary}</span>
+                </span>
+                {incomplete && <span className="flow-step__badge">{t('flows.step.incomplete')}</span>}
+                <span className="flow-step__chevron material-symbols-outlined" aria-hidden="true">{open ? 'expand_less' : 'expand_more'}</span>
+            </button>
+            {tools && <div className="flow-step__actions">{tools}</div>}
         </header>
-        <div className="flow-step__body">{children}</div>
+        {open && <div className="flow-step__body">{children}</div>}
     </section>
 );
 
 const FlowEditorView = () => {
     const { t } = useLanguage();
     const navigate = useNavigate();
+    const location = useLocation();
     const confirm = useConfirm();
     const { showError, showSuccess } = useToast();
     const { flowId } = useParams<{ flowId: string }>();
     const [searchParams] = useSearchParams();
     const isNew = !flowId;
-    const ctx = useFlowContext();
+    const { ctx, flows } = useFlowsOutlet();
     const { tenantId, names, projects, members, canManage, isAdmin } = ctx;
+    const navState = (location.state || null) as { draft?: FlowDefinition; warnings?: string[] } | null;
 
-    const [flow, setFlow] = useState<Flow | null | undefined>(isNew ? null : undefined);
-    const [draft, setDraft] = useState<FlowDefinition | null>(null);
-    const [dirty, setDirty] = useState(false);
-    const [saving, setSaving] = useState(false);
-    const [running, setRunning] = useState(false);
-    const [error, setError] = useState<string | null>(null);
-    const [sideTab, setSideTab] = useState<'preview' | 'log'>(searchParams.get('tab') === 'log' ? 'log' : 'preview');
-    const [pickedTemplate, setPickedTemplate] = useState(Boolean(searchParams.get('template')) || searchParams.get('blank') === '1');
-    const [sentence, setSentence] = useState('');
-    const [drafting, setDrafting] = useState(false);
-    const [fromText, setFromText] = useState<string[] | null>(null);
-
-    // New flow: from template (?template=…&projectId=…) or blank.
-    useEffect(() => {
-        if (!isNew || draft) return;
+    const initialNewDraft = useMemo((): FlowDefinition | null => {
+        if (!isNew) return null;
+        if (navState?.draft) return navState.draft;
         const projectId = searchParams.get('projectId');
         const template = getFlowTemplate(searchParams.get('template'));
-        if (!pickedTemplate) return;
         if (template) {
-            setDraft({
+            return {
                 ...template.build(projectId, t),
                 name: t(`flows.templates.${template.id}.title`),
                 description: t(`flows.templates.${template.id}.description`),
                 templateId: template.id,
-            });
-        } else {
-            setDraft(emptyDraft(projectId));
+            };
         }
-    }, [isNew, draft, searchParams, pickedTemplate, t]);
+        return searchParams.get('blank') === '1' ? emptyDraft(projectId) : null;
+        // Only on mount: later edits live in `draft`.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
-    // Existing flow: live doc; the draft is taken once (and again after saving).
+    const [flow, setFlow] = useState<Flow | null | undefined>(isNew ? null : undefined);
+    const [draft, setDraft] = useState<FlowDefinition | null>(initialNewDraft);
+    const [dirty, setDirty] = useState(isNew);
+    const [saving, setSaving] = useState(false);
+    const [running, setRunning] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const [tab, setTab] = useState<Tab>((['build', 'test', 'log'].includes(searchParams.get('tab') || '') ? searchParams.get('tab') : 'build') as Tab);
+    // Which step is open: 'trigger' | 'conditions' | action id. New blank flows start at the trigger.
+    const [open, setOpen] = useState<string | null>(isNew && !initialNewDraft?.actions.length ? 'trigger' : null);
+    const [pickerAt, setPickerAt] = useState<number | null>(null);
+    const fromTextWarnings = isNew ? navState?.warnings || null : null;
+
     useEffect(() => {
         if (isNew || !tenantId || !flowId) return undefined;
         return subscribeFlow(tenantId, flowId, (next) => {
@@ -161,8 +171,6 @@ const FlowEditorView = () => {
         setError(null);
     }, []);
 
-    const backTo = searchParams.get('back') || (draft?.scope === 'project' && draft.projectId ? `/project/${draft.projectId}/flows` : '/flows');
-
     const opts: FlowEditorOptions = useMemo(() => ({
         t,
         members,
@@ -172,85 +180,16 @@ const FlowEditorView = () => {
 
     const validate = useCallback(() => (draft ? validateFlow(draft) : 'flows.error.name'), [draft]);
 
-    if (ctx.isGuest) {
-        return <EmptyState title={t('flows.noAccess')} icon={<span className="material-symbols-outlined">lock</span>} />;
-    }
-    if (!tenantId || flow === undefined || (!isNew && !draft && flow)) {
-        return <div className="flows-page"><Skeleton className="flows-skeleton" /></div>;
-    }
+    if (isNew && !draft) return <Navigate to={`/flows/new${location.search}`} replace />;
+    if (!tenantId || flow === undefined || (!isNew && !draft && flow)) return <Skeleton className="flows-skeleton" />;
     if (!isNew && flow === null) {
         return (
-            <div className="flows-page">
-                <EmptyState title={t('flows.notFound')} icon={<span className="material-symbols-outlined">search_off</span>}
-                    actions={<Link to="/flows"><Button variant="secondary">{t('flows.backToList')}</Button></Link>} />
-            </div>
+            <EmptyState title={t('flows.notFound')} icon={<span className="material-symbols-outlined">search_off</span>}
+                actions={<Link to="/flows"><Button variant="secondary">{t('flows.backToList')}</Button></Link>} />
         );
     }
-
-    const draftFromSentence = async () => {
-        if (!tenantId || sentence.trim().length < 8) {
-            setError(t('flows.fromText.tooShort'));
-            return;
-        }
-        setDrafting(true);
-        setError(null);
-        try {
-            const result = await draftFlowFromText(tenantId, sentence.trim(), searchParams.get('projectId'));
-            setDraft({ ...result.draft, enabled: false });
-            setFromText(result.warnings);
-            setDirty(true);
-            setPickedTemplate(true);
-        } catch (err) {
-            setError(planErrorMessage(err, t) || flowErrorMessage(err) || t('flows.fromText.failed'));
-        } finally {
-            setDrafting(false);
-        }
-    };
-
-    if (isNew && !draft) {
-        return (
-            <div className="flows-page">
-                <div className="flows-page__content">
-                    <header className="flows-page__header">
-                        <div>
-                            <Link to={backTo} className="flows-back"><span className="material-symbols-outlined">arrow_back</span>{t('flows.backToList')}</Link>
-                            <h1>{t('flows.new')}</h1>
-                            <p>{t('flows.templates.subtitle')}</p>
-                        </div>
-                    </header>
-                    <section className="flow-from-text" aria-label={t('flows.fromText.title')}>
-                        <div className="flow-from-text__head">
-                            <span className="material-symbols-outlined" aria-hidden="true">auto_awesome</span>
-                            <div>
-                                <h2>{t('flows.fromText.title')}</h2>
-                                <p>{t('flows.fromText.hint')}</p>
-                            </div>
-                        </div>
-                        <TextArea rows={2} value={sentence} placeholder={t('flows.fromText.placeholder')} aria-label={t('flows.fromText.title')}
-                            onChange={(e) => setSentence(e.target.value)}
-                            onKeyDown={(e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) void draftFromSentence(); }} />
-                        {error && <p className="flow-panel__error" role="alert">{error}</p>}
-                        <div className="flow-from-text__actions">
-                            <Button onClick={() => void draftFromSentence()} isLoading={drafting} disabled={sentence.trim().length < 8}
-                                icon={<span className="material-symbols-outlined">auto_awesome</span>}>
-                                {t('flows.fromText.create')}
-                            </Button>
-                        </div>
-                    </section>
-                    <h2 className="flows-section-title">{t('flows.templates.title')}</h2>
-                    <FlowTemplateGallery t={t} onPick={(templateId) => {
-                        const params = new URLSearchParams(searchParams);
-                        if (templateId) params.set('template', templateId);
-                        else params.set('blank', '1');
-                        navigate(`/flows/new?${params.toString()}`, { replace: true });
-                        setPickedTemplate(true);
-                    }} />
-                </div>
-            </div>
-        );
-    }
-
     if (!draft) return null;
+
     const editable = canManage(draft.scope);
     const taskless = TASKLESS_TRIGGERS.has(draft.trigger.type);
 
@@ -292,7 +231,7 @@ const FlowEditorView = () => {
         if (!ok) return;
         try {
             await deleteFlow(tenantId, flowId);
-            navigate(backTo, { replace: true });
+            navigate('/flows', { replace: true });
         } catch (err) {
             showError(planErrorMessage(err, t) || flowErrorMessage(err) || t('flows.error.delete'));
         }
@@ -305,7 +244,7 @@ const FlowEditorView = () => {
             const result = await runFlow(tenantId, flowId, target);
             if (result.status === 'failed') showError(t('flows.run.failed'));
             else showSuccess(t('flows.run.done'));
-            setSideTab('log');
+            setTab('log');
         } catch (err) {
             showError(planErrorMessage(err, t) || flowErrorMessage(err) || t('flows.run.failed'));
         } finally {
@@ -325,11 +264,13 @@ const FlowEditorView = () => {
         actions.splice(index + delta, 0, item);
         update({ actions });
     };
-    const addAction = (at: number) => {
-        const type = availableActions(draft.trigger.type)[0];
+    const insertAction = (at: number, type: FlowActionType) => {
         const actions = draft.actions.slice();
-        actions.splice(at, 0, { id: nextActionId(actions), type, config: defaultActionConfig(type, null, t) });
+        const id = nextActionId(actions);
+        actions.splice(at, 0, { id, type, config: defaultActionConfig(type, null, t) });
         update({ actions });
+        setPickerAt(null);
+        setOpen(id);
     };
 
     const scopeOptions = [
@@ -337,168 +278,184 @@ const FlowEditorView = () => {
         ...projects.map((project) => ({ value: project.id, label: project.title })),
     ];
     const conditionCount = draft.conditions.groups.reduce((sum, group) => sum + group.rules.length, 0);
-    const canRunWithoutTask = !draft.actions.some((a) => ['set_field', 'assign', 'set_status', 'comment', 'add_label', 'remove_label', 'move', 'ai'].includes(a.type) || a.config?.asSubtask);
+    const canRunWithoutTask = !draft.actions.some((a) => TASK_ACTIONS.has(a.type) || a.config?.asSubtask);
+    const actionProblem = (action: FlowAction) => validateAction(action, draft) !== null;
+    const toggle = (key: string) => setOpen((current) => (current === key ? null : key));
+    const sameNameCount = (flows || []).filter((f) => f.id !== flowId && f.name.trim().toLowerCase() === draft.name.trim().toLowerCase()).length;
+
+    const picker = (at: number) => (
+        <ActionPicker t={t} triggerType={draft.trigger.type} onPick={(type) => insertAction(at, type)} onCancel={() => setPickerAt(null)} />
+    );
 
     return (
-        <div className="flows-page flows-page--editor">
-            <div className="flow-editor">
-                <header className="flow-editor__header">
-                    <Link to={backTo} className="flows-back"><span className="material-symbols-outlined">arrow_back</span>{t('flows.backToList')}</Link>
-                    <div className="flow-editor__title-row">
-                        <input
-                            className="flow-editor__name"
-                            value={draft.name}
-                            placeholder={t('flows.namePlaceholder')}
-                            aria-label={t('flows.name')}
-                            disabled={!editable}
-                            onChange={(e) => update({ name: e.target.value })}
-                        />
-                        <div className="flow-editor__toolbar">
-                            <label className="flow-editor__switch">
-                                <SettingsSwitch checked={draft.enabled} label={t('flows.enabled')} disabled={!editable} onChange={(v) => void toggleEnabled(v)} />
-                                <span>{draft.enabled ? t('flows.state.active') : t('flows.state.off')}</span>
-                            </label>
-                            {!isNew && editable && canRunWithoutTask && (
-                                <Button size="sm" variant="secondary" isLoading={running} onClick={() => void runNow()} disabled={dirty}
-                                    icon={<span className="material-symbols-outlined">play_arrow</span>}>
-                                    {t('flows.run.now')}
-                                </Button>
-                            )}
-                            {!isNew && editable && (
-                                <Button size="sm" variant="ghost" onClick={() => void remove()} aria-label={t('flows.delete.title')}
-                                    icon={<span className="material-symbols-outlined">delete</span>} />
-                            )}
-                            {editable && (
-                                <Button size="sm" onClick={() => void save()} isLoading={saving} disabled={!dirty && !isNew}>
-                                    {isNew ? t('flows.create') : t('flows.save')}
-                                </Button>
-                            )}
-                        </div>
+        <div className="flow-editor">
+            <header className="flow-editor__header">
+                <div className="flow-editor__crumbs">
+                    <Link to={draft.scope === 'project' && draft.projectId ? `/project/${draft.projectId}/flows` : '/flows'}>{t('nav.flows')}</Link>
+                    <span aria-hidden="true">/</span>
+                    <span>{draft.scope === 'project' && draft.projectId ? names.project(draft.projectId) : t('flows.scope.workspace')}</span>
+                </div>
+                <div className="flow-editor__title-row">
+                    <input
+                        className="flow-editor__name"
+                        value={draft.name}
+                        placeholder={t('flows.namePlaceholder')}
+                        aria-label={t('flows.name')}
+                        disabled={!editable}
+                        autoFocus={isNew && !draft.name}
+                        onChange={(e) => update({ name: e.target.value })}
+                    />
+                    <div className="flow-editor__toolbar">
+                        <label className={`flow-editor__switch ${draft.enabled ? 'is-on' : ''}`.trim()}>
+                            <SettingsSwitch checked={draft.enabled} label={t('flows.enabled')} disabled={!editable} onChange={(v) => void toggleEnabled(v)} />
+                            <span>{draft.enabled ? t('flows.state.active') : t('flows.state.off')}</span>
+                        </label>
+                        {!isNew && editable && canRunWithoutTask && (
+                            <Button size="sm" variant="secondary" isLoading={running} onClick={() => void runNow()} disabled={dirty}
+                                icon={<span className="material-symbols-outlined">play_arrow</span>}>
+                                {t('flows.run.now')}
+                            </Button>
+                        )}
+                        {!isNew && editable && (
+                            <Button size="sm" variant="ghost" onClick={() => void remove()} aria-label={t('flows.delete.title')} title={t('flows.delete.title')}
+                                icon={<span className="material-symbols-outlined">delete</span>} />
+                        )}
+                        {editable && (
+                            <Button size="sm" onClick={() => void save()} isLoading={saving} disabled={!dirty}>
+                                {isNew ? t('flows.create') : dirty ? t('flows.save') : t('flows.savedState')}
+                            </Button>
+                        )}
                     </div>
-                    {flow?.pausedReason && (
-                        <div className="flow-banner flow-banner--warning" role="status">
-                            <span className="material-symbols-outlined">pause_circle</span>
-                            <span>{t(`flows.paused.${flow.pausedReason}`)}{flow.stats.lastError ? ` – ${flow.stats.lastError}` : ''}</span>
-                        </div>
-                    )}
-                    {!editable && <div className="flow-banner" role="status">{t('flows.readOnly')}</div>}
-                    {fromText && (
-                        <div className="flow-banner flow-banner--ai" role="status">
-                            <span className="material-symbols-outlined">auto_awesome</span>
-                            <span>
-                                {t('flows.fromText.review')}
-                                {fromText.length > 0 && ` ${fromText.map((warning) => t(`flows.fromText.warning.${warning}`)).join(' ')}`}
-                            </span>
-                        </div>
-                    )}
-                    {error && <div className="flow-banner flow-banner--error" role="alert">{error}</div>}
-                </header>
+                </div>
+                {flow?.pausedReason && (
+                    <div className="flow-banner flow-banner--warning" role="status">
+                        <span className="material-symbols-outlined">pause_circle</span>
+                        <span>{t(`flows.paused.${flow.pausedReason}`)}{flow.stats.lastError ? ` – ${flow.stats.lastError}` : ''}</span>
+                    </div>
+                )}
+                {fromTextWarnings && (
+                    <div className="flow-banner flow-banner--ai" role="status">
+                        <span className="material-symbols-outlined">auto_awesome</span>
+                        <span>
+                            {t('flows.fromText.review')}
+                            {fromTextWarnings.length > 0 && ` ${fromTextWarnings.map((warning) => t(`flows.fromText.warning.${warning}`)).join(' ')}`}
+                        </span>
+                    </div>
+                )}
+                {!editable && <div className="flow-banner" role="status">{t('flows.readOnly')}</div>}
+                {sameNameCount > 0 && <div className="flow-banner" role="status">{t('flows.duplicateName')}</div>}
+                {error && <div className="flow-banner flow-banner--error" role="alert">{error}</div>}
+                <div className="flow-tabs" role="tablist">
+                    {(['build', 'test', 'log'] as Tab[]).filter((key) => key !== 'log' || !isNew).map((key) => (
+                        <button key={key} type="button" role="tab" aria-selected={tab === key}
+                            className={`flow-tabs__tab ${tab === key ? 'is-active' : ''}`.trim()} onClick={() => setTab(key)}>
+                            <span className="material-symbols-outlined" aria-hidden="true">{key === 'build' ? 'account_tree' : key === 'test' ? 'science' : 'history'}</span>
+                            {t(`flows.tab.${key}`)}
+                            {key === 'log' && flow?.stats.lastStatus === 'failed' && <span className="flow-tabs__alert" aria-hidden="true" />}
+                        </button>
+                    ))}
+                </div>
+            </header>
 
-                <div className="flow-editor__layout">
-                    <div className={`flow-editor__steps ${editable ? '' : 'is-readonly'}`.trim()}>
-                        <div className="flow-scope">
-                            <span className="material-symbols-outlined" aria-hidden="true">{draft.scope === 'project' ? 'folder' : 'workspaces'}</span>
-                            <Select
-                                value={draft.projectId || ''}
-                                options={scopeOptions}
-                                placeholder={t('flows.project.pick')}
-                                disabled={!editable}
-                                onChange={(v) => update({ scope: v ? 'project' : 'workspace', projectId: v ? String(v) : null })}
-                                className="flow-scope__select"
-                            />
-                            <span className="flow-hint">{t(draft.scope === 'project' ? 'flows.scope.projectHint' : 'flows.scope.workspaceHint')}</span>
-                        </div>
+            {tab === 'build' && (
+                <div className={`flow-editor__steps ${editable ? '' : 'is-readonly'}`.trim()}>
+                    <div className="flow-scope">
+                        <span className="flow-scope__label">{t('flows.scope.appliesTo')}</span>
+                        <Select
+                            value={draft.projectId || ''}
+                            options={scopeOptions}
+                            placeholder={t('flows.project.pick')}
+                            disabled={!editable}
+                            onChange={(v) => update({ scope: v ? 'project' : 'workspace', projectId: v ? String(v) : null })}
+                            className="flow-scope__select"
+                        />
+                        <span className="flow-hint">{t(draft.scope === 'project' ? 'flows.scope.projectHint' : 'flows.scope.workspaceHint')}</span>
+                    </div>
 
-                        <StepCard kind="when" t={t} icon={TRIGGER_ICONS[draft.trigger.type] || 'bolt'} title={t('flows.step.whenTitle')}
-                            summary={triggerSentence(draft.trigger, t, names)}>
-                            <TriggerEditor opts={opts} trigger={draft.trigger} onChange={(trigger) => update({ trigger })} />
-                        </StepCard>
+                    <StepCard kind="when" t={t} icon={TRIGGER_ICONS[draft.trigger.type] || 'bolt'} title={t('flows.step.whenTitle')}
+                        summary={triggerSentence(draft.trigger, t, names)} open={open === 'trigger'} onToggle={() => toggle('trigger')}>
+                        <TriggerEditor opts={opts} trigger={draft.trigger} onChange={(trigger) => update({ trigger })} />
+                    </StepCard>
 
-                        <div className="flow-connector" aria-hidden="true" />
+                    <div className="flow-connector" aria-hidden="true" />
 
-                        <StepCard kind="if" t={t} icon="filter_alt" title={t('flows.step.ifTitle')}
-                            summary={conditionCount ? t('flows.condition.count').replace('{count}', String(conditionCount)) : t('flows.condition.always')}>
-                            <ConditionsEditor opts={opts} conditions={draft.conditions} taskless={taskless}
-                                commentTrigger={draft.trigger.type === 'comment.created'} onChange={(conditions) => update({ conditions })} />
-                        </StepCard>
+                    <StepCard kind="if" t={t} icon="filter_alt" title={t('flows.step.ifTitle')}
+                        summary={conditionCount ? t('flows.condition.count').replace('{count}', String(conditionCount)) : t('flows.condition.always')}
+                        open={open === 'conditions'} onToggle={() => toggle('conditions')}>
+                        <ConditionsEditor opts={opts} conditions={draft.conditions} taskless={taskless}
+                            commentTrigger={draft.trigger.type === 'comment.created'} onChange={(conditions) => update({ conditions })} />
+                    </StepCard>
 
-                        {draft.actions.map((action, index) => (
-                            <React.Fragment key={action.id}>
-                                <div className="flow-connector" aria-hidden="true">
-                                    {editable && (
-                                        <button type="button" className="flow-connector__add" onClick={() => addAction(index)} aria-label={t('flows.step.insert')}>
-                                            <span className="material-symbols-outlined">add</span>
+                    {draft.actions.map((action, index) => (
+                        <React.Fragment key={action.id}>
+                            <div className="flow-connector" aria-hidden={pickerAt !== index}>
+                                {editable && pickerAt !== index && draft.actions.length < 10 && (
+                                    <button type="button" className="flow-connector__add" onClick={() => setPickerAt(index)} aria-label={t('flows.step.insert')}>
+                                        <span className="material-symbols-outlined">add</span>
+                                    </button>
+                                )}
+                            </div>
+                            {pickerAt === index && <>{picker(index)}<div className="flow-connector" aria-hidden="true" /></>}
+                            <StepCard kind="then" t={t} icon={ACTION_ICONS[action.type] || 'bolt'}
+                                title={`${t('flows.step.thenTitle')} ${index + 1} · ${t(`flows.action.${action.type}`)}`}
+                                summary={actionSentence(action, t, names)} open={open === action.id} onToggle={() => toggle(action.id)}
+                                incomplete={actionProblem(action)}
+                                tools={editable ? (
+                                    <>
+                                        <button type="button" className="flow-icon-button" disabled={index === 0} onClick={() => moveAction(index, -1)} aria-label={t('flows.step.up')}>
+                                            <span className="material-symbols-outlined">arrow_upward</span>
                                         </button>
-                                    )}
-                                </div>
-                                <StepCard kind="then" t={t} icon={ACTION_ICONS[action.type] || 'bolt'} title={`${t('flows.step.thenTitle')} ${index + 1}`}
-                                    summary={actionSentence(action, t, names)}
-                                    actions={editable ? (
-                                        <>
-                                            <button type="button" className="flow-icon-button" disabled={index === 0} onClick={() => moveAction(index, -1)} aria-label={t('flows.step.up')}>
-                                                <span className="material-symbols-outlined">arrow_upward</span>
-                                            </button>
-                                            <button type="button" className="flow-icon-button" disabled={index === draft.actions.length - 1} onClick={() => moveAction(index, 1)} aria-label={t('flows.step.down')}>
-                                                <span className="material-symbols-outlined">arrow_downward</span>
-                                            </button>
-                                            <button type="button" className="flow-icon-button" onClick={() => setAction(index, null)} aria-label={t('flows.step.remove')}>
-                                                <span className="material-symbols-outlined">delete</span>
-                                            </button>
-                                        </>
-                                    ) : undefined}>
-                                    <ActionEditor opts={opts} action={action} triggerType={draft.trigger.type} onChange={(next) => setAction(index, next)} />
-                                </StepCard>
-                            </React.Fragment>
+                                        <button type="button" className="flow-icon-button" disabled={index === draft.actions.length - 1} onClick={() => moveAction(index, 1)} aria-label={t('flows.step.down')}>
+                                            <span className="material-symbols-outlined">arrow_downward</span>
+                                        </button>
+                                        <button type="button" className="flow-icon-button" onClick={() => setAction(index, null)} aria-label={t('flows.step.remove')}>
+                                            <span className="material-symbols-outlined">delete</span>
+                                        </button>
+                                    </>
+                                ) : undefined}>
+                                <ActionEditor opts={opts} action={action} triggerType={draft.trigger.type} onChange={(next) => setAction(index, next)} />
+                            </StepCard>
+                        </React.Fragment>
+                    ))}
+
+                    <div className="flow-connector" aria-hidden="true" />
+                    {editable && draft.actions.length < 10 && (pickerAt === draft.actions.length || draft.actions.length === 0
+                        ? picker(draft.actions.length)
+                        : (
+                            <button type="button" className="flow-add-step" onClick={() => setPickerAt(draft.actions.length)}>
+                                <span className="material-symbols-outlined">add</span>
+                                {t('flows.step.add')}
+                            </button>
                         ))}
 
-                        <div className="flow-connector" aria-hidden="true" />
-                        {editable && (
-                            <button type="button" className="flow-add-step" onClick={() => addAction(draft.actions.length)}
-                                disabled={draft.actions.length >= 10}>
-                                <span className="material-symbols-outlined">add</span>
-                                {draft.actions.length ? t('flows.step.add') : t('flows.step.addFirst')}
-                            </button>
-                        )}
-
-                        <details className="flow-advanced">
-                            <summary>{t('flows.advanced.title')}</summary>
-                            <div className="flow-fields">
-                                <div className="flow-field flow-field--wide">
-                                    <TextInput label={t('flows.advanced.description')} value={draft.description}
-                                        onChange={(e) => update({ description: e.target.value })} />
-                                </div>
-                                <Checkbox label={t('flows.advanced.chain')} checked={draft.allowAutomationTrigger}
-                                    onChange={(e) => update({ allowAutomationTrigger: e.target.checked })} />
-                                <p className="flow-hint">{t('flows.advanced.chainHint')}</p>
+                    <details className="flow-advanced">
+                        <summary>{t('flows.advanced.title')}</summary>
+                        <div className="flow-fields">
+                            <div className="flow-field flow-field--wide">
+                                <TextInput label={t('flows.advanced.description')} value={draft.description}
+                                    onChange={(e) => update({ description: e.target.value })} />
                             </div>
-                        </details>
-                    </div>
-
-                    <aside className="flow-editor__side">
-                        {!isNew && (
-                            <div className="flow-tabs" role="tablist">
-                                {(['preview', 'log'] as const).map((tab) => (
-                                    <button key={tab} type="button" role="tab" aria-selected={sideTab === tab}
-                                        className={`flow-tabs__tab ${sideTab === tab ? 'is-active' : ''}`.trim()} onClick={() => setSideTab(tab)}>
-                                        {t(`flows.tab.${tab}`)}
-                                    </button>
-                                ))}
-                            </div>
-                        )}
-                        {sideTab === 'log' && flowId && flow ? (
-                            <FlowRunLog t={t} tenantId={tenantId} flow={flow} names={names} canRetry={editable} />
-                        ) : (
-                            <FlowPreviewPanel t={t} tenantId={tenantId} draft={draft} names={names} validate={validate}
-                                onRunOnTask={!isNew && editable && !dirty ? (target) => void runNow(target) : undefined} />
-                        )}
-                    </aside>
+                            <Checkbox label={t('flows.advanced.chain')} checked={draft.allowAutomationTrigger}
+                                onChange={(e) => update({ allowAutomationTrigger: e.target.checked })} />
+                            <p className="flow-hint">{t('flows.advanced.chainHint')}</p>
+                        </div>
+                    </details>
                 </div>
-            </div>
+            )}
+
+            {tab === 'test' && (
+                <FlowPreviewPanel t={t} tenantId={tenantId} draft={draft} names={names} validate={validate}
+                    onRunOnTask={!isNew && editable && !dirty ? (target) => void runNow(target) : undefined} />
+            )}
+
+            {tab === 'log' && flowId && flow && (
+                <FlowRunLog t={t} tenantId={tenantId} flow={flow} names={names} canRetry={editable} />
+            )}
         </div>
     );
 };
 
-/** Keyed by flow id so switching between flows starts with a fresh draft. */
+/** Keyed by flow id so switching flows in the sidebar starts with a fresh draft. */
 export const FlowEditor = () => {
     const { flowId } = useParams<{ flowId: string }>();
     return <FlowEditorView key={flowId || 'new'} />;

@@ -2,9 +2,13 @@
 // (`flows.templates.<id>.title|description`). Concept: brain/plans/flows-concept.md §4.
 import type { FlowAction, FlowDefinition } from '../services/domain/automationsService';
 
+export type FlowTemplateCategory = 'notify' | 'assign' | 'organize' | 'schedule' | 'ai';
+export const FLOW_TEMPLATE_CATEGORIES: FlowTemplateCategory[] = ['notify', 'assign', 'organize', 'schedule', 'ai'];
+
 export interface FlowTemplate {
     id: string;
     icon: string;
+    category: FlowTemplateCategory;
     /** Draft without name/description (filled from i18n). `t` localises default texts. */
     build: (projectId: string | null, t: (key: string) => string) => Omit<FlowDefinition, 'name' | 'description'>;
 }
@@ -24,6 +28,7 @@ const timezone = () => Intl.DateTimeFormat().resolvedOptions().timeZone || 'Euro
 export const FLOW_TEMPLATES: FlowTemplate[] = [
     {
         id: 'done_notify_creator',
+        category: 'notify',
         icon: 'task_alt',
         build: (projectId, t) => ({
             ...base(projectId),
@@ -35,6 +40,7 @@ export const FLOW_TEMPLATES: FlowTemplate[] = [
     },
     {
         id: 'unassigned_to_owner',
+        category: 'assign',
         icon: 'person_add',
         build: (projectId, t) => ({
             ...base(projectId),
@@ -45,6 +51,7 @@ export const FLOW_TEMPLATES: FlowTemplate[] = [
     },
     {
         id: 'overdue_remind',
+        category: 'notify',
         icon: 'alarm',
         build: (projectId, t) => ({
             ...base(projectId),
@@ -56,6 +63,7 @@ export const FLOW_TEMPLATES: FlowTemplate[] = [
     },
     {
         id: 'urgent_label_admins',
+        category: 'organize',
         icon: 'priority_high',
         build: (projectId, t) => ({
             ...base(projectId),
@@ -69,6 +77,7 @@ export const FLOW_TEMPLATES: FlowTemplate[] = [
     },
     {
         id: 'review_assign_comment',
+        category: 'assign',
         icon: 'rate_review',
         build: (projectId, t) => ({
             ...base(projectId),
@@ -81,6 +90,7 @@ export const FLOW_TEMPLATES: FlowTemplate[] = [
     },
     {
         id: 'weekly_planning',
+        category: 'schedule',
         icon: 'event_repeat',
         build: (projectId, t) => ({
             ...base(projectId),
@@ -92,6 +102,7 @@ export const FLOW_TEMPLATES: FlowTemplate[] = [
     },
     {
         id: 'member_onboarding',
+        category: 'assign',
         icon: 'waving_hand',
         build: (projectId, t) => ({
             ...base(projectId),
@@ -103,6 +114,7 @@ export const FLOW_TEMPLATES: FlowTemplate[] = [
     },
     {
         id: 'ai_triage',
+        category: 'ai',
         icon: 'auto_awesome',
         build: (projectId, t) => ({
             ...base(projectId),
@@ -112,6 +124,7 @@ export const FLOW_TEMPLATES: FlowTemplate[] = [
     },
     {
         id: 'blocked_comment',
+        category: 'organize',
         icon: 'block',
         build: (projectId, t) => ({
             ...base(projectId),
@@ -128,6 +141,7 @@ export const FLOW_TEMPLATES: FlowTemplate[] = [
     },
     {
         id: 'due_today_morning',
+        category: 'notify',
         icon: 'today',
         build: (projectId, t) => ({
             ...base(projectId),
@@ -139,6 +153,7 @@ export const FLOW_TEMPLATES: FlowTemplate[] = [
     },
     {
         id: 'subtask_done_comment',
+        category: 'organize',
         icon: 'checklist_rtl',
         build: (projectId, t) => ({
             ...base(projectId),

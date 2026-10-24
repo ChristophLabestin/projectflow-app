@@ -338,6 +338,9 @@ Concept: `brain/plans/help-center-rework.md`.
 - `CrashReports.tsx` / `CrashIssueDetail.tsx` (+ `crashFormat.ts`, `admin.scss`): crash issue list and detail on `services/crashReportsService.ts`.
 - Web crash capture lives in `services/errorReporting.ts` (`reportError`, global handlers, `isCrashReportingEnabled`/`setCrashReportingEnabled`); the ErrorBoundary reports render crashes through it.
 
+## Sidebar context panels (`web/context/SidebarPanelContext.tsx`, 2026-10-24)
+- `SidebarPanelProvider` (AppLayout), `useSidebarPanel(def)` (page claims the sidebar context layer, returns a portal slot or null), `useSidebarPanelHost()` (SidebarNavigator). Rules in STYLING.md §5.10. Used by the workspace wiki (`WikiSidebar embedded`).
+
 ## Wiki & Docs (`web/screens/wiki/`, `web/components/wiki/`, 2026-10-23)
 - `WikiScreen` (route container: tree + home/page/trash), `WikiSidebar` (tree, native drag & drop before/inside/after, favorites, search), `WikiPage` (autosave 1.5 s, `bodyRev` conflict guard, presence, rail: TOC/linked tasks/backlinks), `WikiDialogs` (`IconPicker`, `WikiVersionsDrawer`, `WikiLinkTaskDialog`, `WikiAiDialog`, `WikiTemplatePicker`), `WikiMenu` (portaled origin-aware action menu).
 - Editor `screens/wiki/editor/WikiEditor` on Tiptap 3 (same library as the blog editor) + `extension-table`/`-mention`/`-details`: slash menu, `@`-mentions (`wikiMention` live chips), `wikiCallout`, `wikiTaskList` (filtered live task list), `wikiFile` (file block, provider `screens/wiki/wikiFiles.ts`), `wikiToc`, bubble menus (format/table). Host contract `editor/host.ts`.
@@ -350,11 +353,11 @@ Concept: `brain/plans/help-center-rework.md`.
 - `FileRow` (row/card), `FileThumb`, `useFileDrop`, `useThumbnailUrls` (`fileHooks.tsx`), `FilePreviewModal` (image/PDF/video/audio/text + versions), `useFileActions` (menu options + rename/move/version/trash/purge modals; purge uses the shared confirm dialog), `FileEmbed` (render a stored `fileId`).
 - Data: `web/services/filesService.ts` (subscriptions, `uploadFiles`, `getFileUrls`, commands). Styles: `src/styles/components/_files.scss`, `screens/files-page.scss`.
 
-## Flows (`web/screens/flows/`, `web/components/flows/`, 2026-10-23)
-- `FlowsScreen` (list + `FlowTemplateGallery`), `FlowEditor` (keyed by flow id), shared data hook `useFlowContext` (members, projects, role, name lookups).
-- `FlowStepEditors.tsx`: `TriggerEditor`, `ConditionsEditor` (AND/OR groups, per-field operators), `ActionEditor`, `PeoplePicker` (dynamic roles + members), `VariableChips` (`{{task.title}}` …).
-- `FlowPreviewPanel` (callable `previewAutomation`: matches + dry run, optional real run per task), `FlowRunLog` (runs, step details, retry), `flowText.ts` (sentences, icons, client validation with i18n keys).
-- Templates: `web/config/flowTemplates.ts` (11; texts via `flows.templates.<id>.*`). Service: `web/services/domain/automationsService.ts` (reads via listeners, writes only via callables).
+## Flows (`web/screens/flows/`, `web/components/flows/`, 2026-10-24 UI rework)
+- Shell `FlowsLayout`: on `/flows/*` the `FlowsSidebar` is portaled into the app sidebar's context layer (`useSidebarPanel`, key `flows`, action „Neuer Flow“; `embedded` variant without card/header); collapsed sidebar, closed mobile drawer and `/project/:id/flows` render it inline in the wiki-style grid (sticky `FlowsSidebar`: grouped list with status dots, search, filters Alle/Aktiv/Aus/Probleme, "Neuer Flow", monthly usage meter) passes `{flows, quota, usage, ctx, routeProjectId}` via `useFlowsOutlet()`.
+- `FlowsHome` (intro Wenn/Falls/Dann, stats, needs attention, `FlowFromText`, recent runs, popular templates), `FlowNew` (start cards: describe / template with category chips / empty), `FlowEditor` (keyed by flow id; tabs Aufbau/Testen/Protokoll; collapsible `StepCard`s with "Unvollständig" badge from `validateAction`).
+- `FlowStepEditors.tsx`: `TriggerPicker` / `ActionPicker` (tile grids with hints), `TriggerEditor`, `ConditionsEditor` (incl. KI-Bedingung), `ActionEditor`, `PeoplePicker`, `VariableChips`. `FlowPreviewPanel`, `FlowRunLog`, `FlowTemplateGallery` (`category`, `limit`, `showBlank`), `flowText.ts` (sentences, icons, validation).
+- Templates `web/config/flowTemplates.ts` (11, categories notify/assign/organize/schedule/ai). Service `web/services/domain/automationsService.ts` (listeners + callables, `flowQuotaFor` mirror).
 
 ## Notes for future components
 - When adding a reusable component, update this file and ensure it uses tokens from `brain/reference/app/STYLING.md`.
@@ -387,3 +390,4 @@ Three surfaces, one family (decision 2026-10-24; STYLING §1.9, styles `ai-famil
 `BarList`, `Meter`; plain SVG, no chart library), `primitives.tsx` (`Badge`, `Card`, `Stat`, `Segmented`, `Tabs`, `PageHead`).
 Shell: `shell/Layout.tsx` (sidebar from `shell/nav.ts`, `g <key>` shortcuts, ⇧D theme), `shell/CommandPalette.tsx` (⌘K, user search).
 
+- `AppUpdateWatcher` (`web/components/AppUpdateWatcher.tsx`, 2026-10-24): mounted in `RootLayout` (also desktop utility windows). Polls `/version.json` (emitted by `vite.config.ts`, `{ build: __PF_BUILD__ }`, served no-cache) every 5 min and on focus/visibility; a newer build reloads silently when the window is in the background and idle (no dialog, no text in the focused field), at most once per build (`pf_update_reloaded_to`), else shows a bottom pill with Reload. Chunk 404s after a deploy reload once (`vite:preloadError` in `index.tsx`, `ErrorPage` fallback).

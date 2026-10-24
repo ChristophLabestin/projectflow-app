@@ -1,0 +1,62 @@
+// New-version hint (AppUpdateWatcher): small pill at the bottom centre, above page content.
+.app-update-hint {
+    position: fixed;
+    left: 50%;
+    bottom: 20px;
+    z-index: 1200;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 6px 6px 12px;
+    transform: translateX(-50%);
+    border: 1px solid var(--color-surface-border);
+    border-radius: var(--radius-full);
+    background: var(--color-surface-card);
+    box-shadow: var(--shadow-lg);
+    color: var(--color-text-main);
+    font-size: 0.82rem;
+    font-weight: 500;
+
+    > .material-symbols-outlined {
+        font-size: 17px;
+        color: var(--color-text-subtle);
+    }
+}
+
+.app-update-hint__action {
+    height: 28px;
+    padding: 0 12px;
+    border: 0;
+    border-radius: var(--radius-full);
+    background: var(--color-primary);
+    color: var(--color-primary-text);
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+
+    &:hover {
+        filter: brightness(1.06);
+    }
+}
+
+.app-update-hint__close {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border: 0;
+    border-radius: var(--radius-full);
+    background: transparent;
+    color: var(--color-text-subtle);
+    cursor: pointer;
+
+    .material-symbols-outlined {
+        font-size: 17px;
+    }
+
+    &:hover {
+        background: var(--color-surface-hover);
+        color: var(--color-text-main);
+    }
+}

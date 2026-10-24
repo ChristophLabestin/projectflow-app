@@ -48,7 +48,7 @@ export const AiAccentShowcase: React.FC = () => {
                     <div className="ai-accent__stage">
                         <span className="ai-accent__line">login fails after reset<span className="ai-accent__caret" /></span>
                         <span className="ai-caret-chip ai-accent__static">
-                            <button type="button" aria-expanded={chipOpen} aria-label={t('ai.spark.open')}>✦</button>
+                            <button type="button" aria-expanded={chipOpen} aria-label={t('ai.spark.open')}><span className="ai-caret-chip__mark" aria-hidden="true">✦</span>{t('ai.label')}</button>
                         </span>
                     </div>
                     <button type="button" className="ai-accent__replay" onClick={() => { setChipOpen(false); window.requestAnimationFrame(() => setChipOpen(true)); }}>{t('styleGuide.ai.accent.replay')}</button>
@@ -57,11 +57,11 @@ export const AiAccentShowcase: React.FC = () => {
                 <section>
                     <h4>{t('styleGuide.ai.accent.apply')}</h4>
                     <div className="ai-accent__stage">
-                        <div className="ai-field__bar ai-accent__bar">
-                            {applied ? <span>{t('ai.field.changed')}</span> : (
+                        <div className="ai-suggestion-card__actions ai-accent__bar">
+                            {applied ? <span className="ai-accent__text">{t('ai.field.changed')}</span> : (
                                 <>
-                                    <button ref={applyRef} type="button" className="ai-hint__primary" onClick={() => { if (brand) playCompletionBurst(applyRef.current); setApplied(true); }}><kbd>⏎</kbd> {t('ai.spark.apply')}</button>
-                                    <button type="button"><kbd>Esc</kbd> {t('ai.spark.discard')}</button>
+                                    <button ref={applyRef} type="button" className="ai-btn-primary" onClick={() => { if (brand) playCompletionBurst(applyRef.current); setApplied(true); }}>{t('ai.spark.apply')} <kbd>⏎</kbd></button>
+                                    <button type="button" className="ai-btn-ghost">{t('ai.spark.discard')} <kbd>Esc</kbd></button>
                                 </>
                             )}
                         </div>

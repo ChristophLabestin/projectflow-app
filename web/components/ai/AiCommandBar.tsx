@@ -74,7 +74,7 @@ export const AiCommandBar: React.FC = () => {
                     <span className="ai-bar__mark" aria-hidden="true">✦</span>
                     <input ref={inputRef} value={input} onChange={(event) => setInput(event.target.value)} maxLength={4000}
                         placeholder={messages.length ? t('ai.bar.followUp') : t('ai.bar.placeholder')} aria-label={t('ai.bar.placeholder')} disabled={blocked} />
-                    {contextLabel && <span className="ai-bar__context" title={contextLabel}>{contextLabel}</span>}
+                    {contextLabel && <span className="ai-bar__context" title={contextLabel}><span className="material-symbols-outlined" aria-hidden="true">{chips.some((chip) => chip.kind === 'task') ? 'task_alt' : 'folder'}</span>{contextLabel}</span>}
                     {messages.length > 0 && !running && (
                         <button type="button" className="ai-bar__icon" onClick={reset} aria-label={t('ai.panel.reset')} title={t('ai.panel.reset')}>
                             <span className="material-symbols-outlined" aria-hidden="true">restart_alt</span>
@@ -93,6 +93,7 @@ export const AiCommandBar: React.FC = () => {
                     </div>
                 ) : (
                     <div className="ai-bar__body">
+                        <p className="ai-bar__section">{t('ai.bar.suggestions')}</p>
                         <ul className="ai-bar__rows">
                             {suggestions.map((key) => (
                                 <li key={key}>

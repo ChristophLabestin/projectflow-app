@@ -1,4 +1,5 @@
 import { WelcomeDialog } from './onboarding/WelcomeDialog';
+import { SidebarPanelProvider } from '../context/SidebarPanelContext';
 import React, { Suspense, lazy, useEffect, useState, useMemo, useRef } from 'react';
 import { useMotionOnChange } from './motion';
 import { Outlet, useLocation, useParams, useNavigate } from 'react-router-dom';
@@ -218,6 +219,7 @@ export const AppLayout = () => {
     }), [location.pathname, project, companyProject, taskTitle, t]);
 
     return (
+        <SidebarPanelProvider>
         <AiPanelProvider>
         <div className="flex app-viewport-height w-full bg-surface overflow-hidden relative">
             {/* Sidebar Desktop — collapsed, it floats over the content (which
@@ -329,5 +331,6 @@ export const AppLayout = () => {
             <AiCommandBar />
         </div>
         </AiPanelProvider>
+        </SidebarPanelProvider>
     );
 };

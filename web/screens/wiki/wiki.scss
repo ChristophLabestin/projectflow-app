@@ -29,6 +29,10 @@
     }
 }
 
+.wiki--nav-in-sidebar {
+    grid-template-columns: minmax(0, 1fr);
+}
+
 .wiki--blocked {
     display: block;
     max-width: 640px;
@@ -125,6 +129,21 @@
         position: static;
         max-height: 360px;
     }
+}
+
+.wiki-nav--embedded {
+    position: static;
+    flex: 1 0 auto;
+    max-height: none;
+    padding: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+    animation: pf-fade-in var(--motion-duration-base) var(--motion-ease-out) both;
+
+    .wiki-nav__scroll { overflow: visible; padding: 0; }
+    .wiki-nav__search { margin: 0 0 10px; background: var(--color-surface-hover); }
+    .wiki-nav__foot { margin-top: auto; padding-top: 10px; }
 }
 
 .wiki-nav__head {
