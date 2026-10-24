@@ -198,4 +198,4 @@ export const handleAdminMcp = async (req: any, res: any) => {
     }
 };
 
-export const adminMcp = onRequest({ region: REGION, memory: '512MiB', timeoutSeconds: 120, concurrency: 40 }, handleAdminMcp);
+export const adminMcp = onRequest({ region: REGION, memory: '512MiB', timeoutSeconds: 120, concurrency: 40, secrets: ['STRIPE_SECRET_KEY'] }, handleAdminMcp);
