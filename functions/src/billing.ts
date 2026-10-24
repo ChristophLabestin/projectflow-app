@@ -755,7 +755,7 @@ export const createSubscriptionIntent = functions.region(REGION).runWith({ secre
         return toResult(subscription);
     });
 
-// --- Purchase page helpers (landing /kaufen, contract §8) ---
+// --- Purchase page helpers (landing /checkout, contract §8) ---
 
 /** Public: publishable key + availability for the purchase page (billing_public/config, set by script). */
 export const getBillingConfig = functions.region(REGION).https.onCall(async () => {

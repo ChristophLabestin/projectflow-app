@@ -1,5 +1,5 @@
 /**
- * Purchase page copy (/kaufen, /en/buy). Prices mirror brain/plans/pricing-strategy.md and the landing
+ * Purchase page copy (/checkout, /en/checkout). Prices mirror brain/plans/pricing-strategy.md and the landing
  * pricing section; the server (createSubscriptionIntent) returns the authoritative amounts.
  * Legal wording (term, cancellation) must match the published AGB – see brain/plans/landing-purchase.md.
  */
@@ -54,6 +54,7 @@ const de = {
         members: ['Mitglied', 'Mitglieder'],
         trialUntil: 'Test bis {d}',
         subscribed: 'Bereits gebucht',
+        internal: 'Intern',
         none: 'Du besitzt noch keinen Team-Workspace. Lege einfach einen neuen an.',
         loading: 'Workspaces werden geladen …',
     },
@@ -160,6 +161,7 @@ const en: BuyCopy = {
         members: ['member', 'members'],
         trialUntil: 'Trial until {d}',
         subscribed: 'Already subscribed',
+        internal: 'Internal',
         none: 'You don’t own a team workspace yet. Just create a new one.',
         loading: 'Loading workspaces …',
     },

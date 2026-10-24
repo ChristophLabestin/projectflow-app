@@ -209,7 +209,7 @@ function start(root: HTMLElement, c: any) {
                 ${teams.map((w) => `
                     <label class="buy-ws__item${subscribed(w) ? ' is-disabled' : ''}">
                         <input type="radio" name="ws" value="${esc(w.tenantId)}" ${subscribed(w) ? 'disabled' : ''} ${state.tenantId === w.tenantId ? 'checked' : ''}>
-                        <span><b>${esc(w.name)}</b><small>${w.memberCount ?? 1} ${c.workspace.members[(w.memberCount ?? 1) === 1 ? 0 : 1]}${w.status === 'trialing' && w.trialEndsAt ? ` · ${esc(c.workspace.trialUntil.replace('{d}', date(w.trialEndsAt)))}` : ''}${subscribed(w) ? ` · ${esc(c.workspace.subscribed)}` : ''}</small></span>
+                        <span><b>${esc(w.name)}</b><small>${w.memberCount ?? 1} ${c.workspace.members[(w.memberCount ?? 1) === 1 ? 0 : 1]}${w.status === 'trialing' && w.trialEndsAt ? ` · ${esc(c.workspace.trialUntil.replace('{d}', date(w.trialEndsAt)))}` : ''}${subscribed(w) ? ` · ${esc(w.billingExempt ? c.workspace.internal : c.workspace.subscribed)}` : ''}</small></span>
                     </label>`).join('')}
                 <label class="buy-ws__item"><input type="radio" name="ws" value="new" ${state.tenantId === 'new' ? 'checked' : ''}><span><b>${esc(c.workspace.newTeam)}</b></span></label>
                 <label class="buy-field buy-ws__name" data-new-name ${state.tenantId === 'new' ? '' : 'hidden'}><span>${esc(c.workspace.newTeamName)}</span><input name="wsName" placeholder="${esc(c.workspace.newTeamPlaceholder)}" value="${esc(state.newTeamName)}" autocomplete="organization"></label>

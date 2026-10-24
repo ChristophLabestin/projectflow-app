@@ -1,4 +1,4 @@
-# Landing: eigene Kaufseite (`/kaufen`, `/en/buy`)
+# Landing: eigene Kaufseite (`/checkout`, `/en/checkout`)
 
 Stand 2026-10-24. Owner-Wunsch: eigene Kaufseite statt Stripe Checkout. Backend-Vertrag:
 `brain/plans/billing-entitlements-contract.md` §8 (Callables in europe-west3).
@@ -12,12 +12,12 @@ Stand 2026-10-24. Owner-Wunsch: eigene Kaufseite statt Stripe Checkout. Backend-
    (`listBillingWorkspaces`, mit Abo/exempt deaktiviert) oder neuer (`createTeamWorkspace`, Test startet per Trigger).
    Persönlicher Workspace mit Abo → Hinweis + Link in die App (Änderungen laufen nie implizit über die Kaufseite).
 4. Zahlung: `createSubscriptionIntent` → Stripe Payment Element (`js.stripe.com/v3`, Key aus `getBillingConfig`),
-   `confirmPayment` bzw. `confirmSetup` (Team-Test) mit `redirect: 'if_required'`, `return_url=/kaufen?step=done&tenant=&plan=`.
+   `confirmPayment` bzw. `confirmSetup` (Team-Test) mit `redirect: 'if_required'`, `return_url=/checkout?step=done&tenant=&plan=`.
 5. Fertig: pollt `getSubscriptionStatus` (`active`), Link `app.getprojectflow.com/?tenant=…&openSettings=billing`.
 
 Code: `landing/src/templates/buy.ts`, `landing/src/content/buy.ts`, `landing/src/js/buy.ts` (Schritte),
 `landing/src/js/buy-api.ts` (Firebase + Mock), `landing/src/styles/buy.scss`. Preis-CTAs Personal/Team der Startseite
-zeigen auf `/kaufen?plan=…&interval=…` (folgt dem Monat/Jahr-Schalter); Free → App-Registrierung.
+zeigen auf `/checkout?plan=…&interval=…` (folgt dem Monat/Jahr-Schalter); Free → App-Registrierung.
 
 ## Rechtliches (Platzhalter, Owner)
 - „Zahlungspflichtig bestellen“ (§ 312j BGB), Pflicht-Checkbox AGB + Datenschutz, Laufzeit-/Kündigungshinweis, Testhinweis.

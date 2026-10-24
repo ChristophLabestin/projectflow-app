@@ -36,8 +36,8 @@ const allPages: PageDef[] = [
     { kind: 'terms', lang: 'en', url: '/en/terms', file: 'en/terms/index.html' },
     { kind: 'docsMcp', lang: 'de', url: '/docs/mcp', file: 'docs/mcp/index.html' },
     { kind: 'docsMcp', lang: 'en', url: '/en/docs/mcp', file: 'en/docs/mcp/index.html' },
-    { kind: 'buy', lang: 'de', url: '/kaufen', file: 'kaufen/index.html' },
-    { kind: 'buy', lang: 'en', url: '/en/buy', file: 'en/buy/index.html' },
+    { kind: 'buy', lang: 'de', url: '/checkout', file: 'checkout/index.html' },
+    { kind: 'buy', lang: 'en', url: '/en/checkout', file: 'en/checkout/index.html' },
     { kind: 'notFound', lang: 'de', url: '/404', file: '404.html' },
 ];
 
