@@ -171,8 +171,7 @@ plus neutral skeleton lines; streamed text fades in. Motion stops under `prefers
 The app is borderless: focus and selection never draw a border, outline or hard ring. Tokens in
 `web/styles/_tokens.scss` (light + dark): `--sunken-bg`, `--sunken-shadow` (light, soft inset),
 `--field-bg-hover`, `--focus-ring` (2 px card gap + 2 px primary at 50 %). Mixins (`@use '…/styles/tokens'`):
-- `tokens.selected` — **choices** (option cards, chips, segments, picker options, the selected option in a
-  Select dropdown, ModuleSelection, quick-project templates, wizard cards, theme switch): inverted colours
+- `tokens.selected` — **choices** (option cards, chips, segments, picker options, ModuleSelection, quick-project templates, wizard cards, theme switch): inverted colours
   (primary background, primary-text). It remaps the text tokens and, for descendants, swaps primary ↔
   primary-text and makes surface tiles translucent — checks, dots and icon tiles follow without overrides.
 - `tokens.sunken` — **current / list selection and navigation** (sidebar dock, list rows, calendar cells,
@@ -186,6 +185,16 @@ Global guard (`web/styles/index.scss`): focused input/textarea/select get `borde
 `--field-focus-shadow` as box-shadow (`@property`, non-inheriting) — the Tailwind forms focus border/ring can't
 come back. Exempt: checkbox/radio/switch controls, colour swatches (offset ring), tab underlines, error and
 drop-zone states, status/priority markers.
+
+## 1.11 Glass menus — option popovers (2026-10-24)
+
+Every floating menu/dropdown/popover (`web/src/styles/components/_glass.scss` list + `pf-glass` class) uses
+`mixins.glass-surface` → `tokens.glass-panel`: milky glass, borderless — light `--glass-bg` white at 72 %,
+dark card colour at 74 %, `--glass-filter` blur 18 px + saturate 1.6, `--glass-shadow` (light top edge + soft
+drop). Options (Select `select-input__option`, InlineMenu `inline-menu__option`): hover / keyboard highlight
+sink into the glass (`tokens.menu-sunken`: translucent `--menu-sunken-bg` + sunken shadow); the selected option
+stays sunken with a short primary bar on the left, weight 600 and the check (`tokens.menu-option-selected`) —
+no inverted fill inside menus. Options keep ≥ 14 px left padding for the bar.
 
 ## 2) Border Radius
 

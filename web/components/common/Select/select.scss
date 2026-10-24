@@ -89,12 +89,13 @@
         // Position logic handled by inline styles in JS (Portal)
         max-height: 250px;
         overflow-y: auto;
-        background-color: var(--color-surface-card);
-        // border: 1px solid var(--color-surface-border); // Removed as per user request
-        border-radius: var(--radius-md);
-        box-shadow: var(--shadow-lg);
+        // Glass surface comes from components/_glass.scss (global for all popovers).
+        border-radius: var(--radius-lg);
         z-index: 9999;
-        padding: 4px;
+        padding: 6px;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
         // Drops from its trigger (always opens below). Position is set inline, so no transform transition.
         animation: pf-drop-in var(--motion-duration-base) var(--motion-ease-out) both;
         transform-origin: top center;
@@ -104,22 +105,22 @@
         display: flex;
         align-items: center;
         justify-content: space-between;
-        padding: 8px 12px;
+        padding: 8px 12px 8px 14px;
         font-size: 0.95rem;
         color: var(--color-text-main);
-        border-radius: var(--radius-sm);
+        border-radius: var(--radius-md);
         cursor: pointer;
-        transition: background-color var(--motion-duration-instant) var(--motion-ease-out);
+        transition: background-color var(--motion-duration-instant) var(--motion-ease-out),
+            box-shadow var(--motion-duration-instant) var(--motion-ease-out);
 
+        // Options sink into the glass on hover; the selected one stays sunken with a bar.
         &:hover,
         &--highlighted {
-            background-color: var(--color-surface-hover);
+            @include tokens.menu-sunken;
         }
 
-        // Selected option: inverted (tokens.selected).
         &--selected {
-            @include tokens.selected;
-            font-weight: 500;
+            @include tokens.menu-option-selected;
         }
 
         &--disabled {
