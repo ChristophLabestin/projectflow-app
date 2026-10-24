@@ -39,6 +39,7 @@ export const CampaignEditor: React.FC = () => {
     const [testEmails, setTestEmails] = useState('');
     const [at, setAt] = useState('');
     const [busy, setBusy] = useState(false);
+    const [sampleName, setSampleName] = useState('Anna');
 
     useEffect(() => { if (campaign) { setForm(toForm(campaign)); setLang(campaign.defaultLang); setDirty(false); } }, [campaign]);
     const editable = isNew || campaign?.status === 'draft';
@@ -47,12 +48,12 @@ export const CampaignEditor: React.FC = () => {
     const patchAudience = (p: Partial<Audience>) => { setForm((f) => ({ ...f, audience: { ...f.audience, ...p } })); setDirty(true); };
 
     // Live preview (debounced) through the server renderer — the same HTML the mail gets.
-    const previewKey = useMemo(() => JSON.stringify({ v: form.variants[lang], t: form.title, lang }), [form, lang]);
+    const previewKey = useMemo(() => JSON.stringify({ v: form.variants[lang], t: form.title, lang, sampleName }), [form, lang, sampleName]);
     useEffect(() => {
         const v = form.variants[lang];
         if (!v.subject && !v.markdown) { setPreview(null); return; }
         const timer = setTimeout(() => {
-            adminApi<{ subject: string; html: string }>('newsletter.campaigns.preview', { campaign: { ...payload(form), variants: { [lang]: v }, defaultLang: lang }, lang })
+            adminApi<{ subject: string; html: string }>('newsletter.campaigns.preview', { campaign: { ...payload(form), variants: { [lang]: v }, defaultLang: lang }, lang, ...(sampleName.trim() ? { sampleName: sampleName.trim() } : {}) })
                 .then((r) => { setPreview(r); setPreviewError(null); })
                 .catch((err) => setPreviewError(err.message));
         }, 500);
@@ -180,7 +181,7 @@ export const CampaignEditor: React.FC = () => {
                         </Card>
                     ) : null}
                 </div>
-                <Card title="Vorschau" subtitle={preview ? `Betreff: ${preview.subject}` : 'Betreff und Text eingeben'}>
+                <Card title="Vorschau" subtitle={preview ? `Betreff: ${preview.subject}` : 'Betreff und Text eingeben'} actions={<input className="ac-input" style={{ width: 150 }} placeholder="Beispielname (leer = Fallback)" title="Ersetzt {{name}} in der Vorschau" value={sampleName} onChange={(e) => setSampleName(e.target.value)} />}>
                     {previewError && <div className="ac-alert ac-alert--error" style={{ marginBottom: 8 }}>{previewError}</div>}
                     {preview ? <iframe title="Newsletter-Vorschau" sandbox="" srcDoc={preview.html} className="ac-mail-preview" /> : <div className="ac-empty">Noch nichts zu zeigen</div>}
                 </Card>
