@@ -103,7 +103,7 @@ Web-Focus-Pill), den Titel, „seit 14:20" und einen ✓-Button. Tippen zoomt in
 
 ### 3.4 Sekundäre Orte
 
-- **Account-Sheet** (Avatar oben links in Heute): Profil, Workspace-Wechsel,
+- **Account-Sheet** (Avatar-Zeile unten in der Workspace-Seitenleiste): Profil, Workspace-Wechsel,
   Erscheinungsbild, Benachrichtigungen, Sicherheit (Passkeys, 2FA), Daten-Export, Konto löschen,
   Rechtliches, „Workspace-Einstellungen im Web öffnen".
 - **Workspace-Seitenleiste** (seit 2026-10-24, ersetzt den Workspace-Chip in Heute): Wisch vom linken Rand auf Root-Seiten
