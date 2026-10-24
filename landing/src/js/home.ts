@@ -444,6 +444,11 @@ function billingToggle() {
         options.forEach((o) => o.setAttribute('aria-pressed', String(o === btn)));
         placeThumb();
         units.forEach((u) => { u.textContent = u.dataset[mode] ?? ''; });
+        $$<HTMLAnchorElement>('[data-buy-link]').forEach((a) => {
+            const url = new URL(a.href);
+            url.searchParams.set('interval', mode === 'monthly' ? 'month' : 'year');
+            a.href = url.pathname + url.search;
+        });
         prices.forEach((el) => {
             const to = Number(el.dataset[mode]);
             const from = Number.parseFloat(el.textContent ?? '0');

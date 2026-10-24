@@ -15,5 +15,8 @@
     "sass": "^1.97.0",
     "typescript": "~5.8.2",
     "vite": "^6.2.0"
+  },
+  "dependencies": {
+    "firebase": "^11.10.0"
   }
 }
