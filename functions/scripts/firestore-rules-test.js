@@ -235,6 +235,14 @@ const run = async () => {
         await check('guest cannot take over project ownerId', 'deny', () => guest.doc(PROJECT).update({ ownerId: 'guestA' }));
         await check('guest cannot change project memberIds', 'deny', () =>
             guest.doc(PROJECT).update({ memberIds: ['ownerA', 'guestA', 'outsiderA'] }));
+        // Audit 2026-10-24 C1: no forging ground for path-injected ids.
+        await check('member writes own personal task', 'allow', () => member.doc(`${T}/users/memberA/personalTasks/p1`).set({ title: 'x' }));
+        await check('member writes own project nav prefs', 'allow', () => member.doc(`${T}/users/memberA/projectNavPrefs/projectA`).set({ tab: 'tasks' }));
+        await check('member cannot forge members below own user doc', 'deny', () => member.doc(`${T}/users/memberA/members/memberA`).set({ role: 'Owner' }));
+        await check('member cannot write ai_config below own user doc', 'deny', () => member.doc(`${T}/users/memberA/ai_config/policy`).set({ inAppAi: true }));
+        await check('guest writes a subtask in their project', 'allow', () => guest.doc(`${PROJECT}/tasks/taskA/subtasks/s-e2e`).set({ title: 'x' }));
+        await check('guest cannot forge members below project content', 'deny', () => guest.doc(`${PROJECT}/tasks/taskA/members/guestA`).set({ role: 'Owner' }));
+        await check('guest cannot write three levels deep', 'deny', () => guest.doc(`${PROJECT}/tasks/taskA/subtasks/s1/x/y`).set({ a: 1 }));
         // Audit 2026-10-24 H4: the flows quota override is platform-admin only.
         await check('workspace admin cannot raise tenant limits', 'deny', () => admin.doc(T).update({ limits: { automations: { runsPerMonth: 1e9 } } }));
         await check('owner cannot set isReviewAccount', 'deny', () => owner.doc(T).update({ isReviewAccount: true }));
