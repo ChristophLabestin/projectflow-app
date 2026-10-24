@@ -74,6 +74,9 @@ function start(root: HTMLElement, c: any) {
         $('[data-headline]').textContent = intro.headline;
         $('[data-lead]').textContent = intro.lead;
         question.textContent = intro.question;
+        const back = $<HTMLButtonElement>('[data-back]');
+        back.hidden = idx === 0;
+        back.dataset.target = ORDER[Math.max(0, idx - 1)];
         renderRecap();
         if (push) history.pushState({ step: id }, '', location.href);
         if (id === 'plan') renderPlan();
@@ -83,6 +86,7 @@ function start(root: HTMLElement, c: any) {
         window.scrollTo({ top: 0, behavior: reduced ? 'auto' : 'smooth' });
         question.focus({ preventScroll: true });
     };
+    $('[data-back]').addEventListener('click', (e) => go((e.currentTarget as HTMLElement).dataset.target as StepId));
     window.addEventListener('popstate', (e) => {
         const step = (e.state?.step ?? 'plan') as StepId;
         if (ORDER.includes(step) && $('[data-done]').hidden) go(step, false);
@@ -521,6 +525,7 @@ function start(root: HTMLElement, c: any) {
         root.classList.add('is-finished');
         form.hidden = true;
         question.hidden = true;
+        $('[data-back]').hidden = true;
         $('[data-recap]').hidden = true;
         ORDER.forEach((s) => { const it = $(`[data-stepper="${s}"]`); it.classList.add('is-done'); it.classList.remove('is-active'); it.removeAttribute('aria-current'); });
         const done = $('[data-done]');
