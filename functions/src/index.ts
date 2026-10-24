@@ -172,7 +172,7 @@ export { onUserFocusChanged } from './live-activity';
 // Billing (Stripe test mode, plan entitlements): brain/plans/billing-implementation.md
 export {
     createBillingCheckout, createBillingPortal, stripeWebhook, personalAiKey, setAiAddonMembers, ensurePersonalWorkspace,
-    previewSubscription, createSubscriptionIntent, getBillingConfig, listBillingWorkspaces, createTeamWorkspace,
+    previewSubscription, createSubscriptionIntent, getBillingConfig, listBillingWorkspaces, createTeamWorkspace, setWorkspaceMemberRole,
     getSubscriptionStatus,
     onTenantCreatedBilling, onProjectCountBilling, onMemberWrittenBilling, billingSweep
 } from './billing';

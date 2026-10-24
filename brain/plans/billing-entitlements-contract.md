@@ -5,7 +5,9 @@ Stand: 2026-10-23 · Owner: Billing-Session · Umsetzung: [billing-implementatio
 
 ## 1. Datenquelle
 `tenants/{tenantId}/entitlements/plan` — alle Mitglieder lesen, nur Functions schreiben. **Fehlt das Dokument**, gilt
-ein Bestandsworkspace in Grace (= Team, KI für alle, keine Limits). Clients dürfen nichts davon schreiben.
+der Workspace als **Free ohne KI** (sicherer Standard seit 2026-10-24; jeder Workspace bekommt die Doc bei der Anlage).
+Clients dürfen nichts davon schreiben. Neue Vollmitglieder entstehen nur serverseitig (Einladung annehmen,
+`setWorkspaceMemberRole` für Gast→Mitglied) mit Seat-Prüfung in der Transaktion.
 
 | Feld | Typ | Bedeutung |
 |---|---|---|

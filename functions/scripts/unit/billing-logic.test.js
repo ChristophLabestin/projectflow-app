@@ -3,14 +3,14 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const billing = require('../../lib/billing-logic');
 
-test('missing entitlement doc is treated as Team (legacy grace)', () => {
-    assert.deepEqual(billing.limitsFor(undefined), { ...billing.PLAN_LIMITS.team, aiIncluded: true });
+test('missing entitlement doc is treated as Free without AI (safe default)', () => {
+    assert.deepEqual(billing.limitsFor(undefined), { ...billing.PLAN_LIMITS.free, aiIncluded: false });
     assert.equal(billing.limitsFor({ plan: 'free' }).projectLimit, 3);
     assert.equal(billing.limitsFor({ plan: 'free' }).aiIncluded, false);
 });
 
 test('AI: trial/grace for everyone, paid Team only via the per-user add-on, never on Free', () => {
-    assert.equal(billing.aiEnabledFor(undefined, 'u1'), true);
+    assert.equal(billing.aiEnabledFor(undefined, 'u1'), false);
     assert.equal(billing.aiEnabledFor({ plan: 'team', status: 'trialing' }, 'u1'), true);
     assert.equal(billing.aiEnabledFor({ plan: 'team', status: 'grace' }, 'u1'), true);
     assert.equal(billing.aiEnabledFor({ plan: 'team', status: 'active', aiMemberIds: ['u2'] }, 'u1'), false);
