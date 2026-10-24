@@ -283,3 +283,6 @@ Entscheidungen (User, 2026-10-23): bei **OpenAI** bleiben (Abstraktion in `ai-mo
 - **UI-unabhängiger Kern** für den Umbau nach der Richtungswahl: `web/components/ai/core/useAiConversation.ts` (Kontext, Verlauf je Objekt, Streaming, Tool-Schritte, Vorschläge, Abbrechen), `core/useAiWrite.ts` (Schreibaktion auf Text oder Auswahl, Streaming, `applyTo`), `core/aiErrors.ts`, `caret.ts` (Caret-Position). Die bisherigen Oberflächen (Panel, Funke) nutzen nur noch diese Hooks.
 - **Design:** drei Richtungen als Prototypen auf `/ui#ai` (Inline am Cursor, Befehlszeile, Auswahl-Werkzeuge). Die Wahl des Users steht aus. Bis dahin wird nichts davon eingebaut.
 - **Decisions API:** `aiDecide` steht bereit (Flows). Der Einsatz als Router im ⌘J-Popover und für Snap-Einordnung folgt mit dem Einbau.
+
+### Umsetzung der Richtungswahl (User, 2026-10-24)
+Alle drei Richtungen, je nach Situation: ✦ am Cursor (ohne Auswahl; beim Tippen ausgeblendet, nach 800 ms Pause wieder da; Kontext = ganzer Feldtext + Objekt), Auswahl-Werkzeuge (mit Auswahl; Ersetzen an Ort und Stelle, Rückgängig), Befehlszeile (⌘J). Das Seitenpanel und der Vorschlag unter dem Feld sind entfernt. Komponenten: `AiFieldAssist`, `AiCommandBar` (siehe COMPONENTS.md). Persönlicher Schalter für den Cursor-✦ in Einstellungen → KI & Integrationen.

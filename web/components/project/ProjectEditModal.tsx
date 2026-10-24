@@ -23,7 +23,7 @@ import { auth } from '../../services/firebase';
 import { getAllWorkspaceProjects, linkWithGithub, getUserProjectNavPrefs, setUserProjectNavPrefs } from '../../services/dataService';
 import { getGithubToken, setGithubToken as saveGithubToken } from '../../services/domain/usersService';
 import { fetchUserRepositories, GithubRepo } from '../../services/githubService';
-import { AiTextAssist } from '../ai/AiTextAssist';
+import { AiFieldAssist } from '../ai/AiFieldAssist';
 
 interface ProjectEditModalProps {
     isOpen: boolean;
@@ -581,22 +581,22 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
                         <h3 className="project-edit-modal__section-heading">{t('projectSettings.brief.deliveryTitle')}</h3>
                     </div>
                 </div>
-                <AiTextAssist value={successCriteria} onApply={setSuccessCriteria} field="freeText" projectTitle={title}>
+                <AiFieldAssist value={successCriteria} onApply={setSuccessCriteria} field="freeText" projectTitle={title}>
                     <TextArea
                         label={t('projectSettings.brief.successCriteria.label')}
                         value={successCriteria}
                         onChange={(e) => setSuccessCriteria(e.target.value)}
                         rows={3}
                     />
-                </AiTextAssist>
-                <AiTextAssist value={scope} onApply={setScope} field="freeText" projectTitle={title}>
+                </AiFieldAssist>
+                <AiFieldAssist value={scope} onApply={setScope} field="freeText" projectTitle={title}>
                     <TextArea
                         label={t('projectSettings.brief.scope.label')}
                         value={scope}
                         onChange={(e) => setScope(e.target.value)}
                         rows={3}
                     />
-                </AiTextAssist>
+                </AiFieldAssist>
                 <div className="project-edit-modal__grid project-edit-modal__grid--two">
                     <TextInput
                         label={t('projectSettings.brief.decisionOwner.label')}
@@ -609,14 +609,14 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
                         onChange={(e) => setPrimaryRisk(e.target.value)}
                     />
                 </div>
-                <AiTextAssist value={riskMitigation} onApply={setRiskMitigation} field="freeText" projectTitle={title}>
+                <AiFieldAssist value={riskMitigation} onApply={setRiskMitigation} field="freeText" projectTitle={title}>
                     <TextArea
                         label={t('projectSettings.brief.riskMitigation.label')}
                         value={riskMitigation}
                         onChange={(e) => setRiskMitigation(e.target.value)}
                         rows={3}
                     />
-                </AiTextAssist>
+                </AiFieldAssist>
             </section>
         </div>
     );
@@ -635,14 +635,14 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
                                 value={title}
                                 onChange={(e) => setTitle(e.target.value)}
                             />
-                            <AiTextAssist value={description} onApply={setDescription} field="description" projectTitle={title}>
+                            <AiFieldAssist value={description} onApply={setDescription} field="description" projectTitle={title}>
                                 <TextArea
                                     label={t('projectSettings.general.fields.description')}
                                     value={description}
                                     onChange={(e) => setDescription(e.target.value)}
                                     rows={5}
                                 />
-                            </AiTextAssist>
+                            </AiFieldAssist>
                         </div>
                         <div className="project-edit-modal__grid project-edit-modal__grid--two">
                             <Select
