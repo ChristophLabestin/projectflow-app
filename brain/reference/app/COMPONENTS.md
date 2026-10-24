@@ -387,3 +387,4 @@ Three surfaces, one family (decision 2026-10-24; STYLING §1.9, styles `ai-famil
 `BarList`, `Meter`; plain SVG, no chart library), `primitives.tsx` (`Badge`, `Card`, `Stat`, `Segmented`, `Tabs`, `PageHead`).
 Shell: `shell/Layout.tsx` (sidebar from `shell/nav.ts`, `g <key>` shortcuts, ⇧D theme), `shell/CommandPalette.tsx` (⌘K, user search).
 
+- `AppUpdateWatcher` (`web/components/AppUpdateWatcher.tsx`, 2026-10-24): mounted in `RootLayout` (also desktop utility windows). Polls `/version.json` (emitted by `vite.config.ts`, `{ build: __PF_BUILD__ }`, served no-cache) every 5 min and on focus/visibility; a newer build reloads silently when the window is in the background and idle (no dialog, no text in the focused field), at most once per build (`pf_update_reloaded_to`), else shows a bottom pill with Reload. Chunk 404s after a deploy reload once (`vite:preloadError` in `index.tsx`, `ErrorPage` fallback).

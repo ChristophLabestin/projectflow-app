@@ -1272,6 +1272,8 @@ const de = {
 
 
     'common.cancel': 'Abbrechen',
+    'app.update.available': 'Eine neue Version von ProjectFlow ist da',
+    'app.update.reload': 'Neu laden',
     'common.close': 'Schließen',
     'common.done': 'Fertig',
     'common.saveChanges': 'Änderungen speichern',

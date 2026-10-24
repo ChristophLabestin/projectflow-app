@@ -1270,6 +1270,8 @@ const en = {
 
 
     'common.cancel': 'Cancel',
+    'app.update.available': 'A new version of ProjectFlow is available',
+    'app.update.reload': 'Reload',
     'common.close': 'Close',
     'common.done': 'Done',
     'common.saveChanges': 'Save Changes',
