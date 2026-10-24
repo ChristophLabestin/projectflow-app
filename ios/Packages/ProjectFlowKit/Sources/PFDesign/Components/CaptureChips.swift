@@ -38,8 +38,9 @@ public struct CaptureChip: View {
             .padding(.horizontal, 13)
             .frame(minHeight: 38)
             .foregroundStyle(isSet ? PFColor.onPrimary : PFColor.textMain)
+            // The chip whose picker is open sinks in (no outline); a set value is inverted.
+            .background { if isActive && !isSet { PFSunkenFill(Capsule()) } }
             .pfPillSurface(selected: isSet)
-            .overlay { Capsule().strokeBorder(PFColor.textMain.opacity(isActive ? 0.9 : 0), lineWidth: 1.5) }
             .contentShape(.capsule)
             .animation(PFMotion.fast, value: isActive)
         }

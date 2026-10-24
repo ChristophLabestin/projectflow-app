@@ -166,6 +166,43 @@ Variants (`data-variant`, pending the user's choice): **a** neutral, **b** neutr
 primary actions are the app's primary buttons. Working state = a status line with a soft text shimmer
 plus neutral skeleton lines; streamed text fades in. Motion stops under `prefers-reduced-motion`.
 
+## 1.10 Sunken & selected states — borderless focus & selection (2026-10-24)
+
+The app is borderless: focus and selection never draw a border, outline or hard ring. Tokens in
+`web/styles/_tokens.scss` (light + dark): `--sunken-bg`, `--sunken-shadow` (light, soft inset),
+`--field-bg-hover`, `--focus-ring` (2 px card gap + 2 px primary at 50 %). Mixins (`@use '…/styles/tokens'`):
+- `tokens.selected` — **choices** (option cards, chips, segments, picker options, ModuleSelection, quick-project templates, wizard cards, theme switch): inverted colours
+  (primary background, primary-text). It remaps the text tokens and, for descendants, swaps primary ↔
+  primary-text and makes surface tiles translucent — checks, dots and icon tiles follow without overrides.
+- `tokens.sunken` — **current / list selection and navigation** (sidebar dock, list rows, calendar cells,
+  roles list, priority group, tree items): slightly recessed surface.
+- `tokens.sunken-field` — text fields and search wrappers on `:focus` / `:focus-within` (TextInput, TextArea,
+  Select trigger focused/open, quick project form). Field states: rest `--control-bg` (L2 hover tone in shells, card tone on the canvas — §5.2; no hairline),
+  hover `--field-bg-hover` (a touch darker), focus sunken.
+- `tokens.focus-ring` / `focus-ring(true)` — keyboard focus (`:focus-visible`) on non-text controls.
+  Never remove keyboard focus without it.
+Global guard (`web/styles/index.scss`): focused input/textarea/select get `border-color: transparent` and only
+`--field-focus-shadow` as box-shadow (`@property`, non-inheriting) — the Tailwind forms focus border/ring can't
+come back. Exempt: checkbox/radio/switch controls, colour swatches (offset ring), tab underlines, error and
+drop-zone states, status/priority markers.
+**No decorative borders (sweep 2026-10-24):** cards, modals, panels, popovers, chips, buttons, kbd caps and
+tinted action buttons carry no `border: 1px solid …` or `inset 0 0 0 1px` hairline. Edges come from tonal
+contrast (§5.2) and, on Level 1 cards on the canvas, `--shadow-sm`. Kept on purpose: checkbox/radio/switch boxes,
+colour swatches, tab underlines, dashed add/drop-zone affordances, error and success/warning alert states,
+status/priority/label markers (`currentColor` borders), the calendar "today" marker, ring gaps around avatars
+and presence dots, the brand mark ring, and side dividers (`border-top/bottom` separators). Legacy Tailwind
+`border` utility classes in TSX are being phased out — don't add new ones.
+
+## 1.11 Glass menus — option popovers (2026-10-24)
+
+Every floating menu/dropdown/popover (`web/src/styles/components/_glass.scss` list + `pf-glass` class) uses
+`mixins.glass-surface` → `tokens.glass-panel`: milky glass, borderless — light `--glass-bg` white at 86 %,
+dark card colour at 86 %, `--glass-filter` blur 24 px + saturate 1.5, `--glass-shadow` (light top edge + soft
+drop). Options (Select `select-input__option`, InlineMenu `inline-menu__option`): hover / keyboard highlight
+sink into the glass (`tokens.menu-sunken`: translucent `--menu-sunken-bg` + sunken shadow); the selected option
+stays sunken with a short primary bar on the left, weight 600 and the check (`tokens.menu-option-selected`) —
+no inverted fill inside menus. Options keep ≥ 14 px left padding for the bar.
+
 ## 2) Border Radius
 
 Border radius tokens define the rounding used across components. Use them consistently (cards, buttons, inputs, modals).
@@ -317,15 +354,58 @@ Use named categories instead of one-off widths where possible.
 
 ### 5.2) Level Of Depth
 
-The `/ui` style guide now defines a ProjectFlow depth ladder:
+The `/ui` style guide defines a ProjectFlow depth ladder:
 
 - Level 0 Canvas: `--color-surface-bg`; open page background, no wrapper card by default.
 - Level 1 Surface shell: `--color-surface-card`; default cards, panels, modal shells, and page sections that need a surface.
 - Level 2 Child controls: `--color-surface-hover`; inputs, selectable rows, grouped controls, and child surfaces inside a Level 1 shell.
-- Level 3 Tonal focus: a subtle mix of hover/card surfaces for rare nested focus rows.
-- Overlay layer: `--shadow-lg` or stronger only for dropdowns, popovers, and transient floating UI.
+- Level 3 Tonal focus: `color-mix(in srgb, var(--color-surface-hover) 50%, var(--color-surface-card))` for rare nested blocks inside a Level 2 tile.
+- Overlay layer: `--shadow-lg` / `--shadow-soft` / glass (§1.11) only for modals, drawers, dropdowns, popovers and floating bars.
 
-Depth is relative to the direct parent surface. Prefer tonal contrast for nested UI and reserve stronger shadows for true overlays.
+**Depth is relative to the direct parent surface (2026-10-24 audit):** a child is always exactly one level above
+the surface it sits on.
+
+| Element sits on… | Its fill | Example |
+|---|---|---|
+| Canvas (L0) | L1 `--color-surface-card` | page toolbar search, filter chips, view segment track, group count badge on the page |
+| Card / modal / panel (L1) | L2 `--color-surface-hover` | form fields, chips, tiles, nested blocks inside a card or modal |
+| L2 tile | L3 tonal mix | rare nested row inside a tile |
+
+Wrong (fixed in the audit, don't reintroduce): L2 hover tone directly on the canvas (level skipped, near-invisible in
+light mode); card-on-card (L1 inside L1, often with a shadow); `--color-surface-bg` as a fill inside a card/modal/popover
+(an L0 "hole", almost black in dark mode); `--shadow-sm/md` on L2 children; raised active states (card tone + shadow on a
+hover track) — use `tokens.selected` (choices) / `tokens.sunken` (current) / `tokens.sunken-field` (focus) from §1.10.
+
+**Depth-relative controls** (`web/styles/_tokens.scss`, "Depth ladder"): controls read
+`var(--control-bg, var(--color-surface-hover))` at rest and `var(--control-bg-hover, var(--field-bg-hover))` on hover
+(or `@include tokens.control-surface`). The fallback is the in-shell value (L2), so controls are correct inside cards
+and modals without any setup. A container whose controls sit on the canvas declares it:
+
+```scss
+// Toolbar row directly on the page canvas: its controls become Level 1.
+.work-toolbar {
+    @include tokens.depth-canvas;   // --control-bg: card, --control-bg-hover: card/hover mix
+}
+// Same controls inside a card: nothing to do (default L2). Shells reset explicitly:
+.card, .modal, .ui-card, glass menus { @include tokens.depth-shell; }
+```
+
+Scope `depth-canvas` to the toolbar / filter row itself, never to a whole page (cards further down must keep L2).
+
+**Nested blocks** (`--nested-bg`, `--nested-bg-hover`, `--nested-shadow`, `--nested-shadow-hover`, `--nested-frame-bg`,
+`--nested-inner-bg`): elements that are their own Level 1 block on the canvas but must step down inside a shell read
+`background: var(--nested-bg, var(--color-surface-card)); box-shadow: var(--nested-shadow, var(--shadow-sm));`.
+Consumers: Button `secondary` (L1 + shadow on the canvas, L2 tonal without shadow or ring in cards/modals/menus),
+`EmptyState`, `SkeletonBlock`, `Stepper` steps; `ListToolbar` uses `--nested-frame-bg` (its frame disappears inside a
+shell); icons/markers/buttons one level deeper use `--nested-inner-bg`. Screen-level card classes that aren't the shared
+Card/Modal/ui-card are registered in `web/styles/_depth.scss` (one list with `tokens.depth-shell`) — add new card
+classes there instead of hardcoding child surfaces.
+
+**Tab indicators** (`.motion-tabs > .motion-indicator`) default to sunken (`--sunken-bg` + `--sunken-shadow`), so the
+active tab reads on any track level; a raised white pill would vanish on a Level 1 track.
+Shared consumers of `--control-bg`: `TextInput`, `TextArea`, `Select` trigger (incl. disabled), `PrioritySelect` group options, `Badge`, `Checkbox`,
+`ListToolbar` search, `.work-toolbar` search / view track, `.work-chip`. Focus stays `tokens.sunken-field`, selected
+chips/segments stay `tokens.selected` — those don't depend on depth.
 
 ### 5.3) UI Library Standardization Primitives
 
@@ -359,6 +439,10 @@ slot; `null` (sidebar collapsed, mobile drawer closed, inside a project) → ren
 Styles: `.snav-panel-slot`, `.snav-avatar--icon` in `_sidebar-navigator.scss`; the area provides an
 `--embedded` variant without card/header. In use: workspace wiki (`/wiki`), workspace flows (`/flows/*`: `FlowsSidebar` `--embedded`, header action „Neuer Flow“; `/project/:id/flows` keeps the list in the page). Apply to new areas and
 existing ones where it fits (Files, Flows, …).
+Lower section (2026-10-24): everything sits on the nav gutter (8 px, same edges as the rows): desktop promo,
+dock (32 px tiles: home, recent/pinned projects, "new"; current one sunken — home only on `/`), footer
+(collapse, theme switch, notifications). The nav layer hides its scrollbar and fades its top/bottom edge
+(mask) so content scrolling under the dock is visible.
 
 ## 6) Interaction Guidelines (UX Patterns)
 

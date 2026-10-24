@@ -7,6 +7,8 @@ import PFDesign
 struct SidebarDrawer<Sidebar: View>: ViewModifier {
     @Binding var isOpen: Bool
     let isEnabled: Bool
+    /// Bumped to let the sidebar peek in a few points and spring back (coach mark, reminder after a long pause).
+    let peek: Int
     @ViewBuilder let sidebar: () -> Sidebar
 
     @State private var drag: CGFloat?
@@ -72,6 +74,17 @@ struct SidebarDrawer<Sidebar: View>: ViewModifier {
                 end(open: !(value.predictedEndTranslation.width < -drawerWidth * 0.35 || (drag ?? 0) < -drawerWidth * 0.5))
             })
         .onChange(of: isEnabled) { _, enabled in if !enabled && isOpen { isOpen = false } }
+        .onChange(of: peek) { _, _ in
+            guard isEnabled, !isOpen, drag == nil else { return }
+            Task { @MainActor in
+                withAnimation(PFMotion.respecting(.spring(duration: 0.35))) { drag = 44 }
+                try? await Task.sleep(for: .milliseconds(420))
+                guard !isOpen else { return }
+                withAnimation(PFMotion.respecting(.spring(duration: 0.45, bounce: 0.3))) { drag = nil }
+            }
+        }
+        // VoiceOver can't do the edge swipe: offer it as an action on every root screen.
+        .accessibilityAction(named: L10n.t("sidebar.open")) { if isEnabled { set(true) } }
         .animation(PFMotion.respecting(PFMotion.snappy), value: isOpen)
     }
 
@@ -114,7 +127,8 @@ private struct EdgePan: UIGestureRecognizerRepresentable {
 }
 
 extension View {
-    func sidebarDrawer<Sidebar: View>(isOpen: Binding<Bool>, isEnabled: Bool, @ViewBuilder sidebar: @escaping () -> Sidebar) -> some View {
-        modifier(SidebarDrawer(isOpen: isOpen, isEnabled: isEnabled, sidebar: sidebar))
+    func sidebarDrawer<Sidebar: View>(isOpen: Binding<Bool>, isEnabled: Bool, peek: Int,
+                                      @ViewBuilder sidebar: @escaping () -> Sidebar) -> some View {
+        modifier(SidebarDrawer(isOpen: isOpen, isEnabled: isEnabled, peek: peek, sidebar: sidebar))
     }
 }

@@ -24,8 +24,7 @@
 
     // Disable native outline and use focus-visible usually, but for now standard focus
     &:focus-visible {
-        outline: 2px solid var(--color-primary);
-        outline-offset: 2px;
+        @include tokens.focus-ring;
     }
 
     &--ghost:active:not(:disabled) {
@@ -89,21 +88,22 @@
         }
     }
 
+    // Depth-relative (STYLING.md §5.2): Level 1 + shadow on the canvas, Level 2 tonal inside a shell.
     &--secondary {
-        background-color: var(--color-surface-card);
+        background-color: var(--nested-bg, var(--color-surface-card));
         color: var(--color-text-main);
         border: none;
-        box-shadow: var(--shadow-sm), inset 0 0 0 1px color-mix(in srgb, var(--color-surface-border) 60%, transparent);
+        box-shadow: var(--nested-shadow, var(--shadow-sm));
 
         &:hover:not(:disabled) {
-            background-color: var(--color-surface-hover);
+            background-color: var(--nested-bg-hover, var(--color-surface-hover));
             transform: translateY(var(--motion-lift));
-            box-shadow: var(--shadow-md), inset 0 0 0 1px color-mix(in srgb, var(--color-surface-border) 100%, transparent);
+            box-shadow: var(--nested-shadow-hover, var(--shadow-md));
         }
 
         &:active:not(:disabled) {
             transform: scale(var(--motion-press-scale));
-            box-shadow: var(--shadow-sm);
+            box-shadow: var(--nested-shadow, var(--shadow-sm));
             transition-duration: var(--motion-duration-instant);
         }
     }

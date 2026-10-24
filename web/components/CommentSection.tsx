@@ -431,7 +431,7 @@ export const CommentSection: React.FC<CommentSectionProps> = ({
                 )}
 
                 <div
-                    className="comment-composer flex flex-col gap-2 p-1.5 border border-[var(--color-surface-border)] rounded-xl bg-[var(--color-surface-bg)] transition-colors focus-within:border-[var(--color-surface-border-hover)] focus-within:bg-[var(--color-surface-card)]"
+                    className="comment-composer flex flex-col gap-2 p-1.5 rounded-xl bg-[var(--color-surface-hover)] transition-colors focus-within:bg-[var(--color-surface-card)]"
                     data-dragging={composerDrop.isDragging ? 'true' : 'false'}
                     {...composerDrop.dropProps}
                     onPaste={composerDrop.onPaste}
@@ -474,7 +474,7 @@ export const CommentSection: React.FC<CommentSectionProps> = ({
                                 h-8 px-4 rounded-md flex items-center justify-center transition-all text-sm font-bold
                                 ${(newComment.trim() || pendingFiles.length) && !sending
                                     ? 'bg-[var(--color-primary)] text-[var(--color-primary-text)] hover:opacity-90 shadow-sm'
-                                    : 'bg-[var(--color-surface-hover)] text-[var(--color-text-muted)] cursor-not-allowed'}
+                                    : 'bg-[var(--color-surface-card)] text-[var(--color-text-muted)] cursor-not-allowed'}
                             `}
                         >
                             {t('common.send')}

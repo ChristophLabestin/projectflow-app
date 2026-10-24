@@ -156,3 +156,81 @@ public struct PFCardList<Content: View>: View {
         .pfCard()
     }
 }
+
+// MARK: - State surfaces (web STYLING §1.10/§1.11)
+//
+// Three states, never a border or ring:
+// • sunken   — focused field, current navigation/list item (dock item, sidebar row, calendar day, tree item)
+// • selected — chosen option in a choice (option card, chip, segment, template/type, theme): inverted primary
+// • glass    — menus/popovers: milky, borderless panel; options sink in, the chosen one gets bar + check
+
+/// Sunken fill: a touch darker than the surroundings with a soft inner shadow from the top edge.
+public struct PFSunkenFill<S: Shape>: View {
+    let shape: S
+    let color: Color
+    public init(_ shape: S, color: Color = PFColor.sunken) { self.shape = shape; self.color = color }
+    public var body: some View {
+        shape.fill(color
+            .shadow(.inner(color: PFColor.sunkenShadow, radius: 1, y: 1))
+            .shadow(.inner(color: PFColor.sunkenShadow, radius: 2, y: 1)))
+    }
+}
+
+public extension View {
+    /// Field background: `field` at rest, sunken while focused. No border.
+    func pfFieldSurface(focused: Bool, cornerRadius: CGFloat = PFRadius.control) -> some View {
+        background {
+            let shape = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+            if focused { PFSunkenFill(shape) } else { shape.fill(PFColor.field) }
+        }
+    }
+
+    /// Current navigation/list item: sinks in (not inverted).
+    func pfSunken<S: Shape>(_ isOn: Bool, in shape: S) -> some View {
+        background { if isOn { PFSunkenFill(shape) } }
+    }
+
+    /// Chosen option in a choice: inverted (primary fill, primary-text content). Inner glyphs flip with
+    /// `PFColor.onPrimary`; unselected options keep `rest` (default card).
+    func pfSelected<S: Shape>(_ isOn: Bool, in shape: S, rest: Color = PFColor.card) -> some View {
+        foregroundStyle(isOn ? PFColor.onPrimary : PFColor.textMain)
+            .background(isOn ? PFColor.primary : rest, in: shape)
+    }
+
+    /// Milky glass panel (menus, popovers, floating option lists): borderless, light top edge, soft drop shadow.
+    func pfGlassPanel<S: Shape>(in shape: S) -> some View {
+        background {
+            ZStack {
+                shape.fill(.regularMaterial)
+                shape.fill(PFColor.glassTint)
+            }
+            .overlay(alignment: .top) {
+                shape.stroke(PFColor.glassEdge, lineWidth: 1).mask(alignment: .top) { Rectangle().frame(height: 1.5) }
+            }
+            .shadow(color: .black.opacity(0.12), radius: 18, y: 8)
+        }
+    }
+
+    /// Option inside a glass menu/sheet list: sinks into the glass while pressed/highlighted; the selected one is
+    /// sunken + semibold with a short primary bar on the left (check is the caller's trailing glyph).
+    func pfMenuOption(selected: Bool, cornerRadius: CGFloat = 12) -> some View {
+        modifier(PFMenuOptionModifier(selected: selected, cornerRadius: cornerRadius))
+    }
+}
+
+struct PFMenuOptionModifier: ViewModifier {
+    let selected: Bool
+    let cornerRadius: CGFloat
+
+    func body(content: Content) -> some View {
+        let shape = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+        content
+            .fontWeight(selected ? .semibold : nil)
+            .background { if selected { PFSunkenFill(shape, color: PFColor.glassSunken) } }
+            .overlay(alignment: .leading) {
+                if selected {
+                    Capsule().fill(PFColor.primary).frame(width: 3, height: 14).padding(.leading, 4)
+                }
+            }
+    }
+}

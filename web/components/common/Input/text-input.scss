@@ -39,9 +39,9 @@
     font-size: 0.9375rem;
     font-family: inherit;
     color: var(--color-text-main);
-    background-color: rgba(var(--color-surface-hover-rgb), 0.5);
+    background-color: var(--control-bg, var(--color-surface-hover));
     border-radius: var(--radius-control);
-    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-surface-border) 60%, transparent);
+    box-shadow: none;
     transition: background-color var(--motion-duration-base) var(--motion-ease-out),
         box-shadow var(--motion-duration-base) var(--motion-ease-out),
         color var(--motion-duration-base) var(--motion-ease-out),
@@ -77,33 +77,12 @@
     // Hover on self OR parent group
     &:hover:not(:disabled),
     .text-input-group:hover &:not(:disabled) {
-        background-color: var(--color-surface-hover-light);
+        background-color: var(--control-bg-hover, var(--field-bg-hover));
     }
 
-    // Light Mode Variant (Distinct "Filled" look)
-    @media (prefers-color-scheme: light) {
-        :root:not(.dark) & {
-            background-color: #f4f4f5; // Explicit light grey for contrast
 
-            &:hover:not(:disabled),
-            .text-input-group:hover &:not(:disabled) {
-                background-color: #e4e4e7; // Darker interaction state
-            }
-
-            &:focus {
-                background-color: #f4f4f5;
-                box-shadow: inset 0 0 0 1px rgba(var(--color-primary-rgb), 0.28), 0 0 0 3px rgba(var(--color-primary-rgb), 0.08);
-            }
-        }
-    }
-
-    &:focus {
-        outline: none;
-        border: none !important;
-        background-color: var(--color-surface-bg);
-        // Soft focus ring that fades in with the background change.
-        box-shadow: inset 0 0 0 1px rgba(var(--color-primary-rgb), 0.28), 0 0 0 3px rgba(var(--color-primary-rgb), 0.08);
-    }
+    // Focus sinks in (tokens.sunken-field); no ring, no border.
+    @include tokens.sunken-field;
 
     // Validation feedback: error ring plus one short nudge when the state appears.
     &--error,
@@ -113,12 +92,12 @@
         animation: pf-nudge 240ms var(--motion-ease-in-out);
 
         &:focus {
-            box-shadow: inset 0 0 0 1px rgba(var(--color-error-rgb), 0.7), 0 0 0 3px rgba(var(--color-error-rgb), 0.1);
+            --field-focus-shadow: var(--sunken-shadow), inset 0 0 0 1px rgba(var(--color-error-rgb), 0.55);
         }
     }
 
     &:disabled {
-        background-color: var(--color-surface-hover);
+        background-color: var(--control-bg, var(--color-surface-hover));
         cursor: not-allowed;
         opacity: 0.7;
     }

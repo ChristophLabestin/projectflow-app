@@ -40,7 +40,7 @@ struct TodayDayClose: View {
         let done = doneToday
         let total = done + rows.filter { !isDone($0) }.count
         VStack(alignment: .leading, spacing: 0) {
-            PFEyebrow(Formatting.longToday(now)).padding(.top, PFSpace.s).pfAppear(0)
+            TodayDateRow(now: now).pfAppear(0)
             Text(L10n.t("today.close.title"))
                 .pfText(.display).foregroundStyle(PFColor.textMain)
                 .padding(.top, 10).pfAppear(1)

@@ -76,7 +76,7 @@ App ankommen (§9.4).
 |---|---|---|
 | **Heute** | *Kuratiert*: die Lage in einem Satz, max. 4 Stopps, „Wartet auf dich", Woche, Über Nacht | `/` Dashboard |
 | **Arbeit** | *Vollständig*: alle meine Aufgaben + persönliche; Liste ⇄ Woche | `/tasks`, `/calendar`, `/personal-tasks` |
-| **Projekte** | „Wo hinschauen" + Portfolio + Projektdetail | `/projects`, `/project/:id/*` |
+| **Projekte** | Aufmerksamkeits-Headline mit +, Fokus-Karten (max. 3, ohne Dopplung), Filter-Chips nach Status, kompakte Liste (Abgeschlossene hinter Chip) + Projektdetail | `/projects`, `/project/:id/*` |
 | **Eingang** | Benachrichtigungen als Triage mit Aktionen, Badge | `/notifications` |
 | **Suche** (Search-Rolle, rechts abgesetzt) | Globale Suche + Befehle | ⌘K-Palette |
 
@@ -103,11 +103,13 @@ Web-Focus-Pill), den Titel, „seit 14:20" und einen ✓-Button. Tippen zoomt in
 
 ### 3.4 Sekundäre Orte
 
-- **Account-Sheet** (Avatar oben links in Heute): Profil, Workspace-Wechsel,
+- **Account-Sheet** (Avatar-Zeile unten in der Workspace-Seitenleiste): Profil, Workspace-Wechsel,
   Erscheinungsbild, Benachrichtigungen, Sicherheit (Passkeys, 2FA), Daten-Export, Konto löschen,
   Rechtliches, „Workspace-Einstellungen im Web öffnen".
 - **Workspace-Seitenleiste** (seit 2026-10-24, ersetzt den Workspace-Chip in Heute): Wisch vom linken Rand auf Root-Seiten
-  oder ☰ in Heute – Bereiche (Aktivität, Insights, Dateien, Wiki, Flows), Workspaces wechseln/anlegen, Workspace-Einstellungen.
+  oder Tipp aufs Datum in Heute – Bereiche (Aktivität, Insights, Dateien, Wiki, Flows), Workspaces wechseln/anlegen,
+  Workspace-Einstellungen, Konto (Avatar unten). Einmaliger Coach-Mark mit Peek, nach 14 Tagen ohne Öffnen nur der Peek.
+  Heute hat keine Kopfleiste mehr: ✦/+ auf der Datumszeile (iPhone) bzw. in der Rail (Duo).
 - Projekt-, Aufgaben- und Initiativdetail: Push-Navigation.
 
 ### 3.5 Umfangs-Matrix

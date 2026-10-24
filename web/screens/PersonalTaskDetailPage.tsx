@@ -381,7 +381,7 @@ export const PersonalTaskDetailPage = () => {
                                     className={`
                                         flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium transition-all
                                         ${task.priority === p
-                                            ? 'bg-surface-hover text-main shadow-sm'
+                                            ? 'bg-surface-hover text-main'
                                             : 'text-muted hover:bg-surface-hover'
                                         }
                                     `}

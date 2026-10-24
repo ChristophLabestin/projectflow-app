@@ -1,0 +1,42 @@
+@use './tokens';
+
+// Depth ladder registry (STYLING.md §5.2).
+// Level 1 shells that sit on the canvas but aren't the shared Card / Modal / ui-card:
+// they reset the depth variables so controls, secondary buttons, empty states and
+// skeletons inside them step down to Level 2 (tonal, no shadow). Add new screen-level
+// card classes here instead of hardcoding child surfaces.
+.snav-card,
+.work-group__rows,
+.activity-feed__events,
+.insights-card,
+.insights-kpi,
+.calendar-sidebar,
+.flow-from-text,
+.flow-gallery__card,
+.flows-nav,
+.wiki-nav,
+.wiki-home__template,
+.people-board__column,
+.po-drawer__panel,
+.po-board__lane-body,
+.tl,
+.rm,
+.workstream-page__metrics,
+.workstream-initiative-card,
+.sprint-hero,
+.sprint-board__column,
+.task-detail__focus-banner,
+.task-detail__section,
+.task-detail__sidebar,
+.team-departments-hint,
+.motion-showcase__tile,
+.ai-dir__card {
+    @include tokens.depth-shell;
+}
+
+// Level 2 blocks that hold their own controls: those step back up to Level 3 / card.
+.ui-card.notifications-diagnostics-card {
+    --control-bg: var(--color-surface-card);
+    --nested-bg: var(--color-surface-card);
+    --nested-bg-hover: var(--field-bg-hover);
+}

@@ -41,7 +41,8 @@ struct TodayScreen: View {
             }
             .scrollIndicators(.hidden)
             .pfScrollOffset { scrollOffset = $0 }
-            .safeAreaInset(edge: .top, spacing: 0) {
+            // Overlay, not an inset: the bar is empty until the headline scrolls away, so it takes no room above it.
+            .overlay(alignment: .top) {
                 TodayTopBar(collapse: collapse, compact: plan.map(TodayText.compactTitle))
                     .background(alignment: .top) { topFade }
             }
@@ -123,7 +124,7 @@ private struct TodayContent: View {
     private var day: some View {
         let statement = TodayText.statement(plan.statement)
         return VStack(alignment: .leading, spacing: 0) {
-            PFEyebrow(Formatting.longToday(now)).padding(.top, PFSpace.s).pfAppear(0)
+            TodayDateRow(now: now).pfAppear(0)
 
             PFEditorialHeadline(before: statement.before, value: statement.value, after: statement.after)
                 .padding(.top, 10)
@@ -203,13 +204,17 @@ private struct TodayFirstRun: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: PFSpace.l) {
-            PFEyebrow(Formatting.longToday(now)).padding(.top, PFSpace.s)
             if TodayGettingStarted.isActive(model: model) {
                 // New accounts: the getting-started list instead of an empty card (same steps as the web dashboard).
-                PFEditorialHeadline(before: L10n.t("today.firstRun.headline.before"), value: L10n.t("today.firstRun.headline.value"),
-                                    after: L10n.t("today.firstRun.headline.after"))
+                // Date and headline sit as close as on the regular day view.
+                VStack(alignment: .leading, spacing: 4) {
+                    TodayDateRow(now: now)
+                    PFEditorialHeadline(before: L10n.t("today.firstRun.headline.before"), value: L10n.t("today.firstRun.headline.value"),
+                                        after: L10n.t("today.firstRun.headline.after"))
+                }
                 TodayGettingStarted()
             } else {
+                TodayDateRow(now: now)
                 PFEmptyState(
                     systemImage: "sun.horizon", title: L10n.t("today.empty.title"), message: L10n.t("today.empty.message"),
                     actionTitle: L10n.t("today.empty.capture")
@@ -229,7 +234,7 @@ private struct TodaySkeleton: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            PFEyebrow(Formatting.longToday(now)).padding(.top, PFSpace.s)
+            TodayDateRow(now: now)
             VStack(alignment: .leading, spacing: 10) {
                 PFSkeleton(height: 30, radius: 8)
                 PFSkeleton(height: 30, radius: 8).padding(.trailing, 60)

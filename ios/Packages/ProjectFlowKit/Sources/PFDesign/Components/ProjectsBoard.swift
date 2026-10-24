@@ -87,7 +87,6 @@ public struct PFBoard<Item: Identifiable, Card: View>: View where Item.ID == Str
                             .padding(.horizontal, 12)
                             .frame(minHeight: 32)
                             .background(selected ? PFColor.primary : PFColor.card, in: .capsule)
-                            .overlay { Capsule().strokeBorder(PFColor.hairline, lineWidth: selected ? 0 : 1) }
                         }
                         .buttonStyle(.pfPressable)
                         .id(column.id)

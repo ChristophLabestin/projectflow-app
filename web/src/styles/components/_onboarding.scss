@@ -1,3 +1,5 @@
+@use '../../../styles/tokens';
+
 /* ============================================================
    First-run experience: welcome dialog + getting-started card.
    ============================================================ */
@@ -97,7 +99,7 @@
         transition: border-color var(--transition-fast), background var(--transition-fast);
 
         &:focus {
-            background: var(--color-surface-card);
+            @include tokens.sunken-field;
         }
 
         &--area {
@@ -126,8 +128,7 @@
         &:hover { background: var(--color-surface-border); }
 
         &.is-active {
-            border-color: var(--color-primary);
-            background: var(--color-surface-card);
+            @include tokens.selected;
             font-weight: 600;
         }
     }
@@ -147,9 +148,9 @@
         align-items: flex-start;
         gap: 4px;
         padding: 14px;
-        border: 1px solid var(--color-surface-border);
+        border: 0;
         border-radius: var(--radius-card);
-        background: var(--color-surface-card);
+        background: var(--color-surface-hover);
         color: var(--color-text-main);
         text-align: left;
         cursor: pointer;
@@ -161,11 +162,10 @@
             font-size: 22px;
         }
 
-        &:hover:not(:disabled) { border-color: var(--color-surface-border-hover); }
+        &:hover:not(:disabled) { background: var(--field-bg-hover); }
 
         &.is-selected {
-            border-color: var(--color-primary);
-            box-shadow: 0 0 0 1px var(--color-primary);
+            @include tokens.selected;
 
             .material-symbols-outlined { color: var(--color-text-main); }
         }
@@ -173,8 +173,7 @@
         &:disabled { cursor: default; opacity: 0.7; }
 
         &:focus-visible {
-            outline: 2px solid var(--color-primary);
-            outline-offset: 2px;
+            @include tokens.focus-ring;
         }
     }
 
@@ -470,7 +469,7 @@
         transition: border-color var(--transition-fast), background var(--transition-fast);
 
         &:focus {
-            background: var(--color-surface-card);
+            @include tokens.sunken-field;
         }
     }
 

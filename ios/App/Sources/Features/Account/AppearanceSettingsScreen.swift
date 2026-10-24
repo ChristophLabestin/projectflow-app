@@ -80,11 +80,9 @@ private struct ThemeSwatch: View {
                 }
                 .frame(height: 96)
                 .clipShape(.rect(cornerRadius: PFRadius.card, style: .continuous))
-                .overlay {
-                    RoundedRectangle(cornerRadius: PFRadius.card, style: .continuous)
-                        .strokeBorder(PFColor.primary, lineWidth: isSelected ? 2.5 : 0)
-                }
-                .overlay { RoundedRectangle(cornerRadius: PFRadius.card, style: .continuous).strokeBorder(PFColor.hairline, lineWidth: isSelected ? 0 : 1) }
+                // Selected theme sits in an inverted well (web "selected"), no outline.
+                .padding(5)
+                .background(isSelected ? PFColor.primary : Color.clear, in: .rect(cornerRadius: PFRadius.card + 5, style: .continuous))
                 Text(title).pfText(.buttonSmall).foregroundStyle(isSelected ? PFColor.textMain : PFColor.textMuted)
             }
             .frame(maxWidth: .infinity)

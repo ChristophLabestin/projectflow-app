@@ -1,5 +1,6 @@
 // Wiki & Docs (brain/plans/wiki-concept.md). Borderless: layers separate by surface + shadow.
 @use '../../styles/motion-mixins' as motion;
+@use '../../styles/tokens';
 
 // Container for the @container rules below (the viewport width ignores the app sidebar).
 .wiki-shell {
@@ -191,7 +192,7 @@
         font-size: 13px;
     }
 
-    &:focus-within { box-shadow: 0 0 0 2px rgba(var(--color-primary-rgb), 0.28); }
+    @include tokens.sunken-field;
 }
 
 .wiki-nav__scroll {
@@ -510,8 +511,7 @@
     width: 32px;
     height: 32px;
     border-radius: var(--radius-md);
-    background: var(--color-surface-card);
-    box-shadow: var(--shadow-sm);
+    background: var(--color-surface-hover);
     color: var(--color-text-muted);
     font-size: 18px;
 }
@@ -1223,7 +1223,7 @@
     color: var(--color-text-main);
     font-size: 14px;
 
-    &:focus { box-shadow: 0 0 0 2px rgba(var(--color-primary-rgb), 0.28); }
+    @include tokens.sunken-field;
 }
 
 .wiki-dialog__list {
@@ -1746,7 +1746,7 @@
     box-shadow: var(--shadow-sm);
     transition: box-shadow var(--motion-duration-fast) var(--motion-ease-out);
 
-    &.is-selected { box-shadow: 0 0 0 2px rgba(var(--color-primary-rgb), 0.45), var(--shadow-sm); }
+    &.is-selected { @include tokens.sunken; }
 }
 
 .wiki-tasks {
@@ -1885,8 +1885,7 @@
     position: absolute;
     top: 8px;
     right: 8px;
-    background: var(--color-surface-paper);
-    box-shadow: var(--shadow-sm);
+    background: var(--color-surface-hover);
     opacity: 0;
 }
 .wiki-file__error { color: var(--color-error); font-size: 12px; }

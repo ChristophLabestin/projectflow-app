@@ -1,5 +1,6 @@
 // Flows (automations): shell with sidebar, home, new-flow page, step editor, preview and run log.
 // Tokens only (brain/reference/app/STYLING.md).
+@use '../../styles/tokens';
 
 .flows-skeleton {
     height: 16rem;
@@ -26,7 +27,7 @@
     align-items: flex-start;
     gap: 0.375rem;
     padding: 1rem;
-    border: 1px solid var(--color-surface-border);
+    border: 0;
     border-radius: var(--radius-card);
     background: var(--color-surface-card);
     color: inherit;
@@ -35,10 +36,13 @@
     cursor: pointer;
     transition: border-color 0.15s ease, box-shadow 0.15s ease;
 
-    &:hover,
-    &:focus-visible {
+    &:hover {
         border-color: var(--color-surface-border-hover);
         box-shadow: var(--shadow-sm);
+    }
+
+    &:focus-visible {
+        @include tokens.focus-ring;
     }
 
     &--blank {
@@ -78,9 +82,10 @@
 .flow-editor__name {
     flex: 1 1 20rem;
     min-width: 0;
-    padding: 0.25rem 0;
+    padding: 0.25rem 0.5rem;
+    margin-left: -0.5rem;
     border: none;
-    border-bottom: 1px solid transparent;
+    border-radius: var(--radius-md);
     background: transparent;
     color: var(--color-text-main);
     font: inherit;
@@ -92,11 +97,11 @@
         color: var(--color-text-subtle);
     }
 
-    &:hover:not(:disabled),
-    &:focus {
-        border-bottom-color: var(--color-surface-border);
-        outline: none;
+    &:hover:not(:disabled) {
+        background: var(--color-surface-hover);
     }
+
+    @include tokens.sunken-field;
 }
 
 .flow-banner {
@@ -105,7 +110,7 @@
     gap: 0.5rem;
     padding: 0.625rem 0.875rem;
     border-radius: var(--radius-md);
-    background: var(--color-surface-hover);
+    background: var(--color-surface-card);
     color: var(--color-text-muted);
     font-size: 0.8125rem;
 
@@ -154,7 +159,7 @@
     width: 1.5rem;
     height: 1.5rem;
     padding: 0;
-    border: 1px solid var(--color-surface-border);
+    border: 0;
     border-radius: var(--radius-full);
     background: var(--color-surface-card);
     color: var(--color-text-muted);
@@ -252,7 +257,7 @@
 .flow-time {
     height: 2.5rem;
     padding: 0 0.75rem;
-    border: 1px solid var(--color-surface-border);
+    border: 0;
     border-radius: var(--radius-control);
     background: var(--color-surface-input);
     color: var(--color-text-main);
@@ -293,7 +298,7 @@
     align-items: center;
     gap: 0.25rem;
     padding: 0.25rem 0.625rem;
-    border: 1px solid var(--color-surface-border);
+    border: 0;
     border-radius: var(--radius-full);
     background: transparent;
     color: var(--color-text-muted);
@@ -694,7 +699,7 @@
     padding: 0.75rem;
     border: 1px dashed var(--color-surface-border-hover);
     border-radius: var(--radius-md);
-    background: var(--color-surface-card);
+    background: var(--color-surface-hover);
 
     &__head {
         display: flex;
@@ -868,9 +873,7 @@
             font-size: 0.8125rem;
         }
 
-        &:focus-within {
-            box-shadow: 0 0 0 2px rgba(var(--color-primary-rgb), 0.28);
-        }
+        @include tokens.sunken-field;
     }
 
     &__filters {
@@ -1378,7 +1381,7 @@
         }
 
         &.is-active {
-            border-color: var(--color-primary);
+            @include tokens.selected;
         }
     }
 
@@ -1492,7 +1495,7 @@
     margin-right: 0.25rem;
     padding: 0.25rem 0.625rem 0.25rem 0.375rem;
     border-radius: var(--radius-full);
-    background: var(--color-surface-hover);
+    background: var(--color-surface-card);
     color: var(--color-text-muted);
     font-size: 0.8125rem;
     font-weight: 600;
@@ -1701,7 +1704,7 @@
         padding: 1rem 1.125rem;
         border: 1px dashed var(--color-surface-border-hover);
         border-radius: var(--radius-card);
-        background: var(--color-surface-card);
+        background: var(--color-surface-hover);
     }
 
     &__head {
@@ -1743,7 +1746,7 @@
     gap: 0.5rem;
     min-height: 2.75rem;
     padding: 0.5rem 0.75rem;
-    border: 1px solid var(--color-surface-border);
+    border: 0;
     border-radius: var(--radius-md);
     background: transparent;
     color: var(--color-text-main);
@@ -1760,9 +1763,8 @@
     }
 
     &.is-active {
-        border-color: var(--color-primary);
-        background: var(--color-primary);
-        color: var(--color-primary-text);
+        @include tokens.selected;
+        color: var(--color-text-main);
 
         .flow-tile__icon {
             color: inherit;

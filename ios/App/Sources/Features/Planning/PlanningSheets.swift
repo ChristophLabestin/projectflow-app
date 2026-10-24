@@ -84,6 +84,7 @@ struct PlanningChoiceSheet: View {
             }
             .padding(.horizontal, PFSpace.m)
             .frame(minHeight: 54)
+            .pfMenuOption(selected: isOn, cornerRadius: PFRadius.card)
             .contentShape(.rect)
         }
         .buttonStyle(.pfPressable)

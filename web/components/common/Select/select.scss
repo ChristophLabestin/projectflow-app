@@ -23,39 +23,26 @@
         justify-content: space-between;
         width: 100%;
         padding: 8px 14px;
-        background-color: rgba(var(--color-surface-hover-rgb), 0.5);
+        background-color: var(--control-bg, var(--color-surface-hover));
         border: none !important;
         border-radius: var(--radius-control);
-        box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-surface-border) 60%, transparent);
+        box-shadow: none;
         font-size: 0.95rem;
         color: var(--color-text-main);
         cursor: pointer;
         transition: all var(--transition-normal);
         height: 42px;
 
-        &:hover,
+        &:hover {
+            background-color: var(--control-bg-hover, var(--field-bg-hover));
+        }
+
+        // Focused or open: sunken (tokens.sunken), no ring, no border.
         &:focus,
+        &:focus-visible,
         &[aria-expanded='true'] {
-            background-color: var(--color-surface-hover-light);
-        }
-
-        &:focus {
             outline: none;
-            border-color: transparent;
-            background-color: var(--color-surface-bg);
-            box-shadow: inset 0 0 0 2px var(--color-primary), 0 4px 12px rgba(0, 0, 0, 0.05);
-        }
-
-        @media (prefers-color-scheme: light) {
-            :root:not(.dark) & {
-                background-color: #f4f4f5;
-
-                &:hover,
-                &:focus,
-                &[aria-expanded='true'] {
-                    background-color: #e4e4e7;
-                }
-            }
+            @include tokens.sunken;
         }
 
         /* Placeholder style when nothing selected */
@@ -64,17 +51,18 @@
         }
 
         &--disabled {
-            background-color: var(--color-surface-bg);
+            background-color: var(--control-bg, var(--color-surface-hover));
             opacity: 0.6;
             cursor: not-allowed;
             pointer-events: none;
         }
 
         &--error {
-            border-color: var(--color-error);
+            box-shadow: inset 0 0 0 1px rgba(var(--color-error-rgb), 0.55);
 
-            &:focus {
-                box-shadow: none;
+            &:focus,
+            &[aria-expanded='true'] {
+                box-shadow: var(--sunken-shadow), inset 0 0 0 1px rgba(var(--color-error-rgb), 0.55);
             }
         }
     }
@@ -101,12 +89,13 @@
         // Position logic handled by inline styles in JS (Portal)
         max-height: 250px;
         overflow-y: auto;
-        background-color: var(--color-surface-card);
-        // border: 1px solid var(--color-surface-border); // Removed as per user request
-        border-radius: var(--radius-md);
-        box-shadow: var(--shadow-lg);
+        // Glass surface comes from components/_glass.scss (global for all popovers).
+        border-radius: var(--radius-lg);
         z-index: 9999;
-        padding: 4px;
+        padding: 6px;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
         // Drops from its trigger (always opens below). Position is set inline, so no transform transition.
         animation: pf-drop-in var(--motion-duration-base) var(--motion-ease-out) both;
         transform-origin: top center;
@@ -116,22 +105,22 @@
         display: flex;
         align-items: center;
         justify-content: space-between;
-        padding: 8px 12px;
+        padding: 8px 12px 8px 14px;
         font-size: 0.95rem;
         color: var(--color-text-main);
-        border-radius: var(--radius-sm);
+        border-radius: var(--radius-md);
         cursor: pointer;
-        transition: background-color var(--motion-duration-instant) var(--motion-ease-out);
+        transition: background-color var(--motion-duration-instant) var(--motion-ease-out),
+            box-shadow var(--motion-duration-instant) var(--motion-ease-out);
 
+        // Options sink into the glass on hover; the selected one stays sunken with a bar.
         &:hover,
         &--highlighted {
-            background-color: var(--color-surface-hover);
+            @include tokens.menu-sunken;
         }
 
         &--selected {
-            background-color: var(--color-surface-hover);
-            font-weight: 500;
-            color: var(--color-primary);
+            @include tokens.menu-option-selected;
         }
 
         &--disabled {

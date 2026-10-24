@@ -18,7 +18,8 @@ struct WelcomeOnboardingView: View {
     @State private var markCenter: CGPoint?
     @State private var name = ""
     @State private var photoURL = ""
-    @SwiftUI.FocusState private var nameFocused: Bool
+    /// The name field has focus (keyboard up).
+    @State private var nameFocused = false
     @State private var isUploadingPhoto = false
     @State private var teamName = ""
     @State private var workMode: WorkMode?
@@ -78,10 +79,11 @@ struct WelcomeOnboardingView: View {
         .safeAreaInset(edge: .bottom, spacing: 0) { footer }
         .overlay { if sideRegion > 0 { sideControls } }
         .onGeometryChange(for: CGFloat.self) { $0.safeAreaInsets.trailing } action: { trailingInset = $0 }
+        .onChange(of: model.profile?.displayName) { _, _ in if name.isEmpty, !nameFocused { name = prefilledName } }
         .task {
             guard !loaded else { return }
             loaded = true
-            name = model.auth.displayName ?? ""
+            if name.isEmpty { name = prefilledName }
             if let uid = model.uid { photoURL = await ProfileDraft(uid: uid).photoURL }
         }
     }
@@ -204,20 +206,42 @@ struct WelcomeOnboardingView: View {
         }
     }
 
-    private var nameStep: some View {
-        VStack(alignment: .leading, spacing: PFSpace.xl) {
-            PFBrandMark(glyph: Image("Glyph"), size: 40)
-                .onGeometryChange(for: CGPoint.self) { proxy in
-                    let frame = proxy.frame(in: .global)
-                    return CGPoint(x: frame.midX, y: frame.midY)
-                } action: { markCenter = $0 }
-            heading(L10n.t("welcome.name.title"), L10n.t("welcome.name.subtitle"))
-            identityCard
+    /// Name given at signup or in the checkout (`updateProfile` → Auth `displayName`, mirrored to `users/{uid}`).
+    /// The bare email prefix the profile falls back to is not a name, so it's not prefilled.
+    private var prefilledName: String {
+        let emailPrefix = model.auth.email?.components(separatedBy: "@").first?.lowercased()
+        for candidate in [model.profile?.displayName, model.auth.displayName] {
+            let value = candidate?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            if !value.isEmpty, value.lowercased() != emailPrefix, value != "User" { return value }
         }
+        return ""
     }
 
-    /// The person as others will see them: big photo target and the name written large, like a task title —
-    /// no form field chrome. Photo is optional (tag, no extra sentence); it uploads and saves right away.
+    private var nameStep: some View {
+        VStack(alignment: .leading, spacing: PFSpace.xl) {
+            // With the keyboard up the mark steps aside, so the step never scrolls under the indicator.
+            if !nameFocused {
+                PFBrandMark(glyph: Image("Glyph"), size: 40)
+                    .onGeometryChange(for: CGPoint.self) { proxy in
+                        let frame = proxy.frame(in: .global)
+                        return CGPoint(x: frame.midX, y: frame.midY)
+                    } action: { markCenter = $0 }
+                    .transition(.scale(scale: 0.6, anchor: .topLeading).combined(with: .opacity))
+            }
+            heading(L10n.t("welcome.name.title"), L10n.t("welcome.name.subtitle"))
+            // The name is written like a task title in the capture sheet: big text, no field chrome.
+            CaptureTextField(text: $name, isFocused: $nameFocused, placeholder: L10n.t("welcome.name.placeholder"),
+                             highlights: [], submitLabel: .continue, onTapHighlight: { _ in }) {
+                if canContinue { primaryAction() }
+            }
+            .accessibilityLabel(L10n.t("welcome.name.label"))
+            .onAppear { if prefilledName.isEmpty && name.isEmpty { nameFocused = true } }
+            identityCard
+        }
+        .animation(PFMotion.respecting(PFMotion.snappy), value: nameFocused)
+    }
+
+    /// Profile photo (optional, uploads and saves right away).
     private var identityCard: some View {
         VStack(alignment: .leading, spacing: PFSpace.l) {
             Button { changePhoto() } label: {
@@ -241,35 +265,11 @@ struct WelcomeOnboardingView: View {
             .disabled(isUploadingPhoto || isBusy)
             .accessibilityLabel(L10n.t(photoURL.isEmpty ? "welcome.photo.add" : "profile.photo.change"))
             .accessibilityHint(L10n.t("welcome.optional"))
-
-            VStack(alignment: .leading, spacing: 6) {
-                TextField("", text: $name, prompt: Text(L10n.t("welcome.name.placeholder")).foregroundStyle(PFColor.textSubtle), axis: .vertical)
-                    .pfText(.displayLarge)
-                    .foregroundStyle(PFColor.textMain)
-                    .textContentType(.name)
-                    .submitLabel(.continue)
-                    .lineLimit(1...2)
-                    .focused($nameFocused)
-                    .onSubmit { if canContinue { primaryAction() } }
-                    .onChange(of: name) { _, value in
-                        // Vertical axis turns Return into a newline; treat it as "continue".
-                        if value.contains("\n") {
-                            name = value.replacingOccurrences(of: "\n", with: "")
-                            if canContinue { primaryAction() }
-                        }
-                    }
-                // A quiet baseline that fills in while typing, instead of a box.
-                Capsule()
-                    .fill(name.trimmingCharacters(in: .whitespaces).isEmpty ? PFColor.hairlineStrong : PFColor.textMain)
-                    .frame(width: nameFocused || !name.isEmpty ? 120 : 48, height: 3)
-                    .animation(PFMotion.respecting(PFMotion.snappy), value: nameFocused)
-            }
         }
         .padding(PFSpace.l)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(PFColor.card, in: .rect(cornerRadius: 24, style: .continuous))
         .pfElevation(.card, radius: 24)
-        .onAppear { if name.isEmpty { nameFocused = true } }
     }
 
     private var photoCircle: some View {
@@ -354,26 +354,23 @@ struct WelcomeOnboardingView: View {
             teamSize = mode == .solo ? "solo" : (teamSize == "solo" ? nil : teamSize)
         } label: {
             HStack(spacing: PFSpace.m) {
-                Image(systemName: icon).font(.system(size: 18, weight: .semibold)).foregroundStyle(PFColor.textMain)
+                Image(systemName: icon).font(.system(size: 18, weight: .semibold)).foregroundStyle(selected ? PFColor.onPrimary : PFColor.textMain)
                     .frame(width: 28)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(title).pfText(.rowTitle).foregroundStyle(PFColor.textMain)
-                    Text(hint).pfText(.meta).foregroundStyle(PFColor.textMuted).fixedSize(horizontal: false, vertical: true)
+                    Text(title).pfText(.rowTitle).foregroundStyle(selected ? PFColor.onPrimary : PFColor.textMain)
+                    Text(hint).pfText(.meta).foregroundStyle(selected ? PFColor.onPrimary.opacity(0.75) : PFColor.textMuted).fixedSize(horizontal: false, vertical: true)
                 }
                 Spacer(minLength: 0)
                 Image(systemName: selected ? "checkmark.circle.fill" : "circle")
                     .font(.system(size: 22, weight: .medium))
-                    .foregroundStyle(selected ? PFColor.textMain : PFColor.hairlineStrong)
+                    .foregroundStyle(selected ? PFColor.onPrimary : PFColor.hairlineStrong)
             }
             .padding(.horizontal, PFSpace.m)
             .padding(.vertical, 12)
             .frame(minHeight: 64)
-            .background(PFColor.card, in: RoundedRectangle(cornerRadius: PFRadius.card, style: .continuous))
-            .overlay {
-                RoundedRectangle(cornerRadius: PFRadius.card, style: .continuous)
-                    .strokeBorder(PFColor.textMain.opacity(selected ? 1 : 0), lineWidth: 2)
-            }
-            .pfElevation(.card, radius: PFRadius.card)
+            // Chosen option is inverted (web "selected"); glyphs inside flip with it.
+            .background(selected ? PFColor.primary : PFColor.card, in: RoundedRectangle(cornerRadius: PFRadius.card, style: .continuous))
+            .pfElevation(selected ? .flat : .card, radius: PFRadius.card)
             .contentShape(.rect)
         }
         .buttonStyle(.pfPressable)

@@ -24,14 +24,13 @@ public struct PFSegmented<Value: Hashable>: View {
                 } label: {
                     Text(option.label)
                         .pfText(.buttonSmall)
-                        .foregroundStyle(selected ? PFColor.textMain : PFColor.textMuted)
+                        .foregroundStyle(selected ? PFColor.onPrimary : PFColor.textMuted)
                         .lineLimit(1)
                         .padding(.horizontal, 14)
                         .frame(maxWidth: .infinity, minHeight: 34)
                         .background {
                             if selected {
-                                Capsule().fill(PFColor.card)
-                                    .pfElevation(.card, radius: 100)
+                                Capsule().fill(PFColor.primary)  // selected segment is inverted
                                     .matchedGeometryEffect(id: "thumb", in: glider)
                             }
                         }
@@ -143,7 +142,7 @@ public struct PFSwitch: View {
 
 // MARK: - Text field
 
-/// Filled input (42 pt, radius 10). Focus is shown by a fill change, not a ring (web rule).
+/// Borderless filled input (46 pt, radius control). Focus sinks the surface in — no border, no ring (web rule).
 public struct PFTextField: View {
     let placeholder: String
     @Binding var text: String
@@ -151,10 +150,20 @@ public struct PFTextField: View {
     let axis: Axis
     let submitLabel: SubmitLabel
     let onSubmit: () -> Void
+    let size: Size
+    let autoFocus: Bool
+    let isFocused: Binding<Bool>?
     @FocusState private var focused: Bool
 
+    /// `.large`: 56 pt, emphasized text — for the one field a screen is about (e.g. the name in onboarding).
+    public enum Size: Sendable { case regular, large }
+
     public init(_ placeholder: String, text: Binding<String>, systemImage: String? = nil, axis: Axis = .horizontal,
-                submitLabel: SubmitLabel = .done, onSubmit: @escaping () -> Void = {}) {
+                submitLabel: SubmitLabel = .done, size: Size = .regular, autoFocus: Bool = false,
+                isFocused: Binding<Bool>? = nil, onSubmit: @escaping () -> Void = {}) {
+        self.size = size
+        self.autoFocus = autoFocus
+        self.isFocused = isFocused
         self.placeholder = placeholder
         self._text = text
         self.systemImage = systemImage
@@ -166,11 +175,12 @@ public struct PFTextField: View {
     public var body: some View {
         HStack(spacing: 10) {
             if let systemImage {
-                Image(systemName: systemImage).font(.system(size: 15, weight: .medium)).foregroundStyle(PFColor.textMuted)
+                Image(systemName: systemImage).font(.system(size: size == .large ? 17 : 15, weight: .medium))
+                    .foregroundStyle(focused ? PFColor.textMain : PFColor.textMuted)
             }
             TextField("", text: $text, prompt: Text(placeholder).foregroundStyle(PFColor.textSubtle), axis: axis)
                 .textFieldStyle(.plain)
-                .pfText(.body)
+                .pfText(size == .large ? .bodyEmphasis : .body)
                 .foregroundStyle(PFColor.textMain)
                 .focused($focused)
                 .submitLabel(submitLabel)
@@ -183,18 +193,15 @@ public struct PFTextField: View {
                 .accessibilityLabel(Text("Clear"))
             }
         }
-        .padding(.horizontal, 14)
-        .frame(minHeight: 46)
-        // Card surface + hairline ring: readable on the grey canvas and inside white cards alike.
-        .background(PFColor.card, in: .rect(cornerRadius: PFRadius.control, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: PFRadius.control, style: .continuous)
-                .strokeBorder(focused ? PFColor.textMuted.opacity(0.55) : PFColor.hairlineStrong, lineWidth: 1)
-        }
-        .shadow(color: .black.opacity(0.04), radius: 2, y: 1)
+        .padding(.horizontal, size == .large ? 16 : 14)
+        .frame(minHeight: size == .large ? 56 : 46)
+        // Borderless like the web: a tinted field that sinks in on focus, no ring.
+        .pfFieldSurface(focused: focused)
         .animation(PFMotion.fast, value: focused)
         .contentShape(.rect)
         .onTapGesture { focused = true }
+        .onChange(of: focused) { _, value in isFocused?.wrappedValue = value }
+        .onAppear { if autoFocus { focused = true } }
     }
 }
 

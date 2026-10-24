@@ -41,10 +41,10 @@
   --color-surface-active: var(--color-surface-hover);
   --color-surface-bg-offset: var(--color-surface-hover);
   --color-surface-highlight: var(--color-surface-hover);
-  --color-surface-input: var(--color-surface-bg);
+  --color-surface-input: var(--color-surface-hover); /* L2 field fill; depth-canvas lifts it to card (§5.2) */
   --color-surface-order: var(--color-surface-border);
   --color-surface-pressed: var(--color-surface-hover);
-  --color-surface-sunken: var(--color-surface-bg);
+  --color-surface-sunken: var(--sunken-bg); /* recessed track/well, never the canvas tone (§5.2) */
   --color-accent: var(--color-primary);
   --color-primary-active: var(--color-primary-dark);
   --color-primary-rgb: 23, 23, 23;
@@ -140,6 +140,21 @@
   --shadow-soft: 0 24px 48px -12px rgba(0, 0, 0, 0.08);
   --shadow-inner: inset 0 2px 4px 0 rgba(0, 0, 0, 0.06);
 
+  /* Sunken (STYLING.md §1.10): focus, current and list selection read as a slightly recessed
+     surface, never as a border; choices (options, chips, segments) invert when selected.
+     --focus-ring is the only extra cue, for :focus-visible on non-text controls (keyboard).
+     Fields: rest --control-bg (depth-relative, §5.2), hover --control-bg-hover, focus sunken.
+     Use the sunken / selected / sunken-field / focus-ring mixins below. */
+  --field-bg-hover: #e9e9eb;
+  /* Glass menus (Select / InlineMenu popovers, STYLING.md §1.11): milky, slightly see-through. */
+  --glass-bg: rgba(255, 255, 255, 0.86);
+  --glass-filter: blur(24px) saturate(1.5);
+  --glass-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7), 0 0 0 1px rgba(0, 0, 0, 0.04), 0 16px 32px -8px rgba(0, 0, 0, 0.16), 0 6px 12px -4px rgba(0, 0, 0, 0.06);
+  --menu-sunken-bg: rgba(0, 0, 0, 0.045);
+  --sunken-bg: #e7e7ea;
+  --sunken-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.05), inset 0 1px 4px -1px rgba(0, 0, 0, 0.05);
+  --focus-ring: 0 0 0 2px var(--color-surface-card), 0 0 0 4px rgba(var(--color-primary-rgb), 0.5);
+
   /* Transitions */
   --transition-fast: 150ms cubic-bezier(0.16, 1, 0.3, 1);
   --transition-normal: 300ms cubic-bezier(0.16, 1, 0.3, 1);
@@ -230,13 +245,19 @@ html.dark {
   --color-surface-active: var(--color-surface-hover);
   --color-surface-bg-offset: var(--color-surface-hover);
   --color-surface-highlight: var(--color-surface-hover);
-  --color-surface-input: var(--color-surface-bg);
+  --color-surface-input: var(--color-surface-hover); /* L2 field fill; depth-canvas lifts it to card (§5.2) */
   --color-surface-order: var(--color-surface-border);
   --color-surface-pressed: var(--color-surface-hover);
-  --color-surface-sunken: var(--color-surface-bg);
+  --color-surface-sunken: var(--sunken-bg); /* recessed track/well, never the canvas tone (§5.2) */
   --color-accent: var(--color-primary);
   --color-primary-active: var(--color-primary-dark);
   --color-primary-rgb: 229, 229, 229;
+  --field-bg-hover: #232a35;
+  --glass-bg: rgba(21, 25, 32, 0.86);
+  --glass-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 0 0 1px rgba(255, 255, 255, 0.05), 0 16px 32px -8px rgba(0, 0, 0, 0.6), 0 6px 12px -4px rgba(0, 0, 0, 0.35);
+  --menu-sunken-bg: rgba(0, 0, 0, 0.28);
+  --sunken-bg: #12161c;
+  --sunken-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.35), inset 0 1px 5px -1px rgba(0, 0, 0, 0.3);
 
   --shadow-sm: 0 2px 8px -2px rgba(0, 0, 0, 0.4), 0 1px 4px -1px rgba(0, 0, 0, 0.2);
   --shadow-md: 0 8px 24px -4px rgba(0, 0, 0, 0.5), 0 4px 8px -2px rgba(0, 0, 0, 0.3);
@@ -261,4 +282,152 @@ html.dark {
   --priority-medium-rgb: 96, 165, 250;
   --priority-low: #94a3b8;
   --priority-low-rgb: 148, 163, 184;
+}
+
+// ---- Depth ladder (STYLING.md §5.2) ---------------------------------------------------
+// Depth is relative to the direct parent: a control (field, search pill, chip, segment track,
+// tile) sits one level above the surface it lives on — Level 1 card tone on the canvas,
+// Level 2 hover tone inside a card / modal / panel. Containers declare where their controls
+// sit; controls read the variables with the in-shell value as fallback:
+//   background-color: var(--control-bg, var(--color-surface-hover));
+//   &:hover { background-color: var(--control-bg-hover, var(--field-bg-hover)); }
+// Scope depth-canvas to the toolbar / filter row itself (not the whole page), so cards
+// further down keep the default. Shells (Card, Modal, glass menus) reset with depth-shell.
+// Blocks that are Level 1 on the canvas but Level 2 inside a shell (secondary buttons,
+// EmptyState, Skeleton block) read --nested-bg / --nested-shadow with the canvas value as
+// fallback: background: var(--nested-bg, var(--color-surface-card)); box-shadow: var(--nested-shadow, var(--shadow-sm));
+@mixin depth-canvas {
+  --control-bg: var(--color-surface-card);
+  --color-surface-input: var(--color-surface-card);
+  --nested-bg: var(--color-surface-card);
+  --nested-bg-hover: var(--color-surface-hover);
+  --nested-shadow: var(--shadow-sm);
+  --nested-shadow-hover: var(--shadow-md);
+  --nested-frame-bg: var(--color-surface-card);
+  --nested-inner-bg: var(--color-surface-hover);
+  --control-bg-hover: color-mix(in srgb, var(--color-surface-card) 45%, var(--color-surface-hover));
+}
+
+@mixin depth-shell {
+  --control-bg: var(--color-surface-hover);
+  --color-surface-input: var(--color-surface-hover);
+  --control-bg-hover: var(--field-bg-hover);
+  // Nested blocks (secondary buttons, empty states, skeletons) step down to Level 2 without a
+  // shadow; frame-only wrappers (ListToolbar) drop their own surface inside a shell.
+  --nested-bg: var(--color-surface-hover);
+  --nested-bg-hover: var(--field-bg-hover);
+  --nested-shadow: none;
+  --nested-shadow-hover: none;
+  --nested-frame-bg: transparent;
+  --nested-inner-bg: var(--color-surface-card);
+}
+
+// Control surface on the current depth (rest + hover); focus/selection stay sunken/selected.
+@mixin control-surface {
+  background-color: var(--control-bg, var(--color-surface-hover));
+
+  &:hover:not(:disabled) {
+    background-color: var(--control-bg-hover, var(--field-bg-hover));
+  }
+}
+
+// ---- Sunken state mixins (STYLING.md §1.10) ---------------------------------
+// Selected / pressed / current: recessed surface, no border.
+@mixin sunken {
+  background-color: var(--sunken-bg);
+  border-color: transparent;
+  box-shadow: var(--sunken-shadow);
+}
+
+// Selected choice (option card, chip, segment, picker option): inverted colours.
+// Text tokens are remapped for the subtree, so titles/descriptions/icons follow.
+@mixin selected-colors {
+  --sel-bg: var(--color-primary);
+  --sel-fg: var(--color-primary-text);
+  background-color: var(--sel-bg);
+  border-color: transparent;
+  box-shadow: none;
+  color: var(--sel-fg);
+  --color-text-main: var(--sel-fg);
+  --color-text-muted: color-mix(in srgb, var(--sel-fg) 72%, transparent);
+  --color-text-subtle: color-mix(in srgb, var(--sel-fg) 56%, transparent);
+
+  // Inside: primary and primary-text swap (checks, dots, filled badges stay visible) and
+  // surface tiles turn translucent on the inverted card.
+  * {
+    --color-primary: var(--sel-fg);
+    --color-primary-text: var(--sel-bg);
+    --color-surface-card: color-mix(in srgb, var(--sel-fg) 14%, transparent);
+    --color-surface-hover: color-mix(in srgb, var(--sel-fg) 10%, transparent);
+  }
+}
+
+@mixin selected {
+  @include selected-colors;
+
+  &:hover,
+  &:hover:not(:disabled) {
+    @include selected-colors;
+  }
+}
+
+// ---- Glass menus (STYLING.md §1.11) ----------------------------------------------------
+// Option popovers: milky glass panel; options sink into it on hover/highlight; the selected
+// option stays sunken and gets a primary bar + weight (no inverted fill in menus).
+// Options need >= 14px left padding so the bar clears the label/icon.
+@mixin glass-panel {
+  @include depth-shell;
+  background-color: var(--glass-bg);
+  -webkit-backdrop-filter: var(--glass-filter);
+  backdrop-filter: var(--glass-filter);
+  box-shadow: var(--glass-shadow);
+}
+
+@mixin menu-sunken {
+  background-color: var(--menu-sunken-bg);
+  box-shadow: var(--sunken-shadow);
+}
+
+@mixin menu-option-selected {
+  @include menu-sunken;
+  position: relative;
+  font-weight: 600;
+  color: var(--color-text-main);
+
+  &::before {
+    content: '';
+    position: absolute;
+    left: 4px;
+    top: 50%;
+    width: 3px;
+    height: 14px;
+    border-radius: var(--radius-full);
+    background: var(--color-primary);
+    transform: translateY(-50%);
+  }
+}
+
+// Keyboard focus on buttons, cards, chips, rows: soft offset ring (keeps any sunken state).
+@mixin focus-ring($sunken: false) {
+  outline: none;
+  @if $sunken {
+    box-shadow: var(--sunken-shadow), var(--focus-ring);
+  } @else {
+    box-shadow: var(--focus-ring);
+  }
+}
+
+// Text fields: sink in on focus. The global field rule in index.scss strips every focus
+// ring with !important and only lets --field-focus-shadow through.
+@mixin sunken-field {
+  &:focus,
+  &:focus:hover,
+  &:focus-within,
+  &:focus-within:hover {
+    --field-focus-shadow: var(--sunken-shadow);
+    background-color: var(--sunken-bg);
+    border-color: transparent;
+    box-shadow: var(--sunken-shadow);
+    outline: none;
+  }
 }

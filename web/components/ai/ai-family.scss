@@ -153,7 +153,7 @@ kbd {
 
             &::placeholder { color: var(--color-text-muted); }
 
-            &:focus { box-shadow: 0 0 0 2px var(--color-primary-fade); }
+            @include tokens.sunken-field;
         }
     }
 

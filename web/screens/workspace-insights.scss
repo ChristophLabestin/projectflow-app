@@ -1,3 +1,5 @@
+@use '../styles/tokens';
+
 // Workspace insights (/insights). Calm charts on card surfaces; borderless, token colours only.
 
 // Scrolls with the app's main scroller (app-main-scroll, standard padding) like other workspace pages.
@@ -36,6 +38,7 @@
 }
 
 .insights-page__filters {
+    @include tokens.depth-canvas;
     display: flex;
     flex-wrap: wrap;
     gap: 0.5rem;

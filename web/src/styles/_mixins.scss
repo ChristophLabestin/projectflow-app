@@ -1,3 +1,4 @@
+@use '../../styles/tokens';
 @use 'sass:map';
 
 // Breakpoints
@@ -55,12 +56,10 @@ $breakpoints: (
         display: none;
     }
 }
-// Frosted-glass surface for floating UI (menus, dropdowns, popovers):
-// 40% card colour with a strong backdrop blur. See components/_glass.scss.
+// Frosted-glass surface for floating UI (menus, dropdowns, popovers): milky, the page shimmers
+// through subtly; borderless. Values: --glass-* tokens (styles/_tokens.scss, STYLING.md §1.11).
+// See components/_glass.scss.
 @mixin glass-surface {
-    background: rgba(var(--color-surface-card-rgb), 0.4);
-    -webkit-backdrop-filter: blur(24px) saturate(180%);
-    backdrop-filter: blur(24px) saturate(180%);
-    border: 1px solid rgba(var(--color-surface-border-rgb), 0.55);
-    box-shadow: var(--shadow-lg);
+    @include tokens.glass-panel;
+    border: 0;
 }

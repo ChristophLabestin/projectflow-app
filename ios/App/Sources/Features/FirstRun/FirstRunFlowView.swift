@@ -166,22 +166,19 @@ struct FirstRunFlowView: View {
         } label: {
             HStack(spacing: PFSpace.m) {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(title).pfText(.rowTitle).foregroundStyle(PFColor.textMain)
-                    Text(subtitle).pfText(.meta).foregroundStyle(PFColor.textMuted)
+                    Text(title).pfText(.rowTitle).foregroundStyle(selected ? PFColor.onPrimary : PFColor.textMain)
+                    Text(subtitle).pfText(.meta).foregroundStyle(selected ? PFColor.onPrimary.opacity(0.75) : PFColor.textMuted)
                 }
                 Spacer(minLength: 0)
                 Image(systemName: selected ? "checkmark.circle.fill" : "circle")
                     .font(.system(size: 22, weight: .medium))
-                    .foregroundStyle(selected ? PFColor.textMain : PFColor.hairlineStrong)
+                    .foregroundStyle(selected ? PFColor.onPrimary : PFColor.hairlineStrong)
             }
             .padding(.horizontal, PFSpace.m)
             .frame(minHeight: 64)
-            .background(PFColor.card, in: RoundedRectangle(cornerRadius: PFRadius.card, style: .continuous))
-            .overlay {
-                RoundedRectangle(cornerRadius: PFRadius.card, style: .continuous)
-                    .strokeBorder(PFColor.textMain.opacity(selected ? 1 : 0), lineWidth: 2)
-            }
-            .pfElevation(.card, radius: PFRadius.card)
+            // Chosen option is inverted (web "selected"); glyphs inside flip with it.
+            .background(selected ? PFColor.primary : PFColor.card, in: RoundedRectangle(cornerRadius: PFRadius.card, style: .continuous))
+            .pfElevation(selected ? .flat : .card, radius: PFRadius.card)
             .contentShape(.rect)
         }
         .buttonStyle(.pfPressable)

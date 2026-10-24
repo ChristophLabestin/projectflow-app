@@ -1,3 +1,4 @@
+@use '../../styles/tokens';
 // Shared notification rows (bell popover + /notifications page).
 
 .notification-list {
@@ -63,8 +64,7 @@
     }
 
     &:focus-visible {
-        outline: 2px solid var(--color-primary);
-        outline-offset: -2px;
+        @include tokens.focus-ring;
     }
 }
 
@@ -201,8 +201,7 @@
     }
 
     &:focus-visible {
-        outline: 2px solid var(--color-primary);
-        outline-offset: 1px;
+        @include tokens.focus-ring;
     }
 }
 

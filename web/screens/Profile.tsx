@@ -117,7 +117,7 @@ export const Profile = () => {
             <div className="max-w-[1600px] mx-auto px-6 pt-8">
 
                 {/* 1. HERO BANNER */}
-                <div className="relative h-64 md:h-80 w-full rounded-3xl overflow-hidden bg-surface-hover border border-surface shadow-sm group">
+                <div className="relative h-64 md:h-80 w-full rounded-3xl overflow-hidden bg-surface-card shadow-sm group">
                     {coverURL ? (
                         <img src={coverURL} alt={t('profile.cover.alt')} className="w-full h-full object-cover" />
                     ) : (
@@ -146,7 +146,7 @@ export const Profile = () => {
                             {photoURL ? (
                                 <img src={photoURL} alt={t('profile.avatar.alt')} className="w-full h-full object-cover" />
                             ) : (
-                                <div className="w-full h-full flex items-center justify-center text-6xl font-black text-main bg-surface-card">
+                                <div className="w-full h-full flex items-center justify-center text-6xl font-black text-main">
                                     {initialOf(displayName, 'U')}
                                 </div>
                             )}
@@ -202,7 +202,7 @@ export const Profile = () => {
                                 <button
                                     onClick={() => setActiveTab('overview')}
                                     className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${activeTab === 'overview'
-                                        ? 'bg-surface-hover text-main shadow-sm ring-1 ring-black/5 dark:ring-white/10'
+                                        ? 'bg-surface-card text-main'
                                         : 'text-muted hover:bg-surface-hover hover:text-main'
                                         }`}
                                 >
@@ -212,7 +212,7 @@ export const Profile = () => {
                                 <button
                                     onClick={() => setActiveTab('projects')}
                                     className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${activeTab === 'projects'
-                                        ? 'bg-surface-hover text-main shadow-sm ring-1 ring-black/5 dark:ring-white/10'
+                                        ? 'bg-surface-card text-main'
                                         : 'text-muted hover:bg-surface-hover hover:text-main'
                                         }`}
                                 >
@@ -228,7 +228,7 @@ export const Profile = () => {
                                 <button
                                     onClick={() => setActiveTab('activity')}
                                     className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${activeTab === 'activity'
-                                        ? 'bg-surface-hover text-main shadow-sm ring-1 ring-black/5 dark:ring-white/10'
+                                        ? 'bg-surface-card text-main'
                                         : 'text-muted hover:bg-surface-hover hover:text-main'
                                         }`}
                                 >
@@ -238,7 +238,7 @@ export const Profile = () => {
                                 <button
                                     onClick={() => setActiveTab('about')}
                                     className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${activeTab === 'about'
-                                        ? 'bg-surface-hover text-main shadow-sm ring-1 ring-black/5 dark:ring-white/10'
+                                        ? 'bg-surface-card text-main'
                                         : 'text-muted hover:bg-surface-hover hover:text-main'
                                         }`}
                                 >

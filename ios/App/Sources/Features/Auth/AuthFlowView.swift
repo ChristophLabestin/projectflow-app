@@ -295,11 +295,7 @@ struct PFSecureField: View {
         }
         .padding(.horizontal, 14)
         .frame(minHeight: 46)
-        .background(PFColor.card, in: .rect(cornerRadius: PFRadius.control, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: PFRadius.control, style: .continuous)
-                .strokeBorder(focused ? PFColor.textMuted.opacity(0.55) : PFColor.hairlineStrong, lineWidth: 1)
-        }
+        .pfFieldSurface(focused: focused)
         .animation(PFMotion.fast, value: focused)
     }
 }
@@ -337,11 +333,8 @@ struct SecondFactorView: View {
                             .monospacedDigit()
                             .foregroundStyle(PFColor.textMain)
                             .frame(maxWidth: .infinity, minHeight: 60)
-                            .background(PFColor.card, in: .rect(cornerRadius: 14, style: .continuous))
-                            .overlay {
-                                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                    .strokeBorder(index == code.count && focused ? PFColor.primary : PFColor.hairline, lineWidth: index == code.count && focused ? 2 : 1)
-                            }
+                            // The cell being typed into sinks in; no outlines.
+                            .pfFieldSurface(focused: index == code.count && focused, cornerRadius: 14)
                             .scaleEffect(index == code.count - 1 ? 1.04 : 1)
                             .animation(PFMotion.bouncy, value: code)
                     }

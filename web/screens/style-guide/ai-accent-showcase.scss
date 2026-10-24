@@ -24,7 +24,7 @@
             font-size: 0.75rem;
             cursor: pointer;
 
-            &.is-on { background: var(--color-surface-card); color: var(--color-text-main); box-shadow: var(--shadow-sm); }
+            &.is-on { @include tokens.selected; }
         }
     }
 

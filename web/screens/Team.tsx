@@ -229,8 +229,8 @@ export const Team = () => {
                 onClick={() => setSelectedId(m.id)}
                 className="group relative text-left rounded-[16px] p-4 transition-all duration-200 hover:-translate-y-0.5"
                 style={{
-                    background: isSel ? SURFACE_HOVER_LIGHT : SURFACE_CARD,
-                    boxShadow: isSel ? 'var(--shadow-md)' : 'var(--shadow-sm)'
+                    background: isSel ? 'var(--sunken-bg)' : SURFACE_CARD,
+                    boxShadow: isSel ? 'var(--sunken-shadow)' : 'var(--shadow-sm)'
                 }}
             >
                 {isSel && <span className="absolute left-0 top-1/2 -translate-y-1/2 h-8 w-1 rounded-r-full" style={{ background: 'var(--color-primary)' }} />}
@@ -264,7 +264,7 @@ export const Team = () => {
             <div className="flex items-center gap-2.5 mb-4">
                 {color && <span className="w-2.5 h-2.5 rounded-full" style={{ background: color }} />}
                 <h3 className="text-[13px] font-black uppercase tracking-wider text-[var(--color-text-main)]">{title}</h3>
-                <span className="min-w-[20px] h-[20px] px-1.5 rounded-full text-[11px] font-bold text-[var(--color-text-muted)] flex items-center justify-center" style={{ background: SURFACE_HOVER }}>{members.length}</span>
+                <span className="min-w-[20px] h-[20px] px-1.5 rounded-full text-[11px] font-bold text-[var(--color-text-muted)] flex items-center justify-center" style={{ background: SURFACE_CARD }}>{members.length}</span>
             </div>
             <div className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,220px),1fr))] gap-3">
                 {members.map(AgentCard)}
@@ -304,12 +304,12 @@ export const Team = () => {
                     </div>
 
                     <div className="flex items-center gap-3 mt-5 flex-wrap">
-                        <div className="flex p-1 rounded-full max-w-full overflow-x-auto" style={{ background: SURFACE_HOVER }}>
+                        <div className="flex p-1 rounded-full max-w-full overflow-x-auto" style={{ background: SURFACE_CARD }}>
                             {segItems.map(([v, label]) => (
                                 <button key={v} onClick={() => setView(v)}
                                     className="px-4 py-1.5 rounded-full text-[12.5px] font-bold whitespace-nowrap shrink-0 transition-all"
                                     style={activeView === v
-                                        ? { background: SURFACE_CARD, color: 'var(--color-text-main)', boxShadow: 'var(--shadow-sm)' }
+                                        ? { background: 'var(--color-primary)', color: 'var(--color-primary-text)' }
                                         : { color: 'var(--color-text-muted)' }}>
                                     {label}
                                 </button>
@@ -319,8 +319,8 @@ export const Team = () => {
                             <div className="relative flex-1 min-w-[200px] max-w-sm">
                                 <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-text-subtle)] text-[18px]">search</span>
                                 <input value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder={t('common.search')}
-                                    className="w-full rounded-full pl-9 pr-3 py-2 text-[13px] text-[var(--color-text-main)] placeholder:text-[var(--color-text-subtle)] outline-none focus:shadow-[var(--shadow-sm)] transition-shadow"
-                                    style={{ background: SURFACE_HOVER }} />
+                                    className="w-full rounded-full pl-9 pr-3 py-2 text-[13px] text-[var(--color-text-main)] placeholder:text-[var(--color-text-subtle)] outline-none focus:!bg-[var(--sunken-bg)] focus:shadow-[var(--sunken-shadow)] transition-[background-color,box-shadow]"
+                                    style={{ background: SURFACE_CARD }} />
                             </div>
                         )}
                     </div>
@@ -412,7 +412,7 @@ export const Team = () => {
                                                 onClick={() => { if (selected.role !== role) void handleBaseRole(selected.id, role); }}
                                                 className="px-3 py-1 rounded-full text-[11.5px] font-bold transition-all"
                                                 style={selected.role === role
-                                                    ? { background: SURFACE_CARD, color: 'var(--color-text-main)', boxShadow: 'var(--shadow-sm)' }
+                                                    ? { background: 'var(--color-primary)', color: 'var(--color-primary-text)' }
                                                     : { color: 'var(--color-text-muted)' }}>
                                                 {t(`workspace.role.${role}`)}
                                             </button>

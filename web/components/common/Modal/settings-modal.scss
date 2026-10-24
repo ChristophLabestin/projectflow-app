@@ -47,7 +47,7 @@
         }
 
         &--active {
-            background-color: var(--color-surface-hover);
+            @include tokens.sunken;
             color: var(--color-primary); // Highlight active tab text
             font-weight: 600;
 

@@ -759,7 +759,7 @@ export const SidebarNavigator: React.FC<SidebarNavigatorProps> = ({ isDrawer = f
 
                     {/* Project dock — quick switch, always one click */}
                     <div className="snav-dock">
-                        <Link to="/" onClick={closeOnNavigate} className="snav-dock__home" title={t('sidebar.workspaceHome')} aria-label={t('sidebar.workspaceHome')}>
+                        <Link to="/" onClick={closeOnNavigate} className={`snav-dock__home ${location.pathname === '/' ? 'is-active' : ''}`} aria-current={location.pathname === '/' ? 'page' : undefined} title={t('sidebar.workspaceHome')} aria-label={t('sidebar.workspaceHome')}>
                             <span className="material-symbols-outlined">home</span>
                         </Link>
                         <span className="snav-dock__divider" aria-hidden="true" />
@@ -772,6 +772,7 @@ export const SidebarNavigator: React.FC<SidebarNavigatorProps> = ({ isDrawer = f
                                         to={`/project/${project.id}`}
                                         onClick={closeOnNavigate}
                                         className={`snav-dock__project ${active ? 'is-active' : ''}`}
+                                        aria-current={active ? 'page' : undefined}
                                         aria-label={project.title}
                                     >
                                         <ProjectAvatar project={project} className="snav-avatar--dock" />

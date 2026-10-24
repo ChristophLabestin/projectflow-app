@@ -41,6 +41,8 @@ final class AppRouter {
     var isFocusRoomOpen = false
     /// Workspace sidebar (left drawer on root screens).
     var isSidebarOpen = false
+    /// Bumped to make the closed sidebar peek in (coach mark, reminder after a long pause).
+    var sidebarPeek = 0
     /// iPhone Duo opened: the list column of a list/detail tab is folded away (rail toggle), e.g. for the board.
     var isListColumnHidden = false
     /// Today opens in day-close mode (`/?mode=close`, day_close push).

@@ -39,7 +39,7 @@
     font-family: inherit;
     line-height: 1.5;
     color: var(--color-text-main);
-    background-color: rgba(var(--color-surface-hover-rgb), 0.5); // Filled background match TextInput
+    background-color: var(--control-bg, var(--color-surface-hover)); // Filled, borderless (matches TextInput)
     border: none !important; // Borderless strict
     border-radius: var(--radius-md);
     transition: background-color var(--motion-duration-base) var(--motion-ease-out),
@@ -55,35 +55,12 @@
     &:hover:not(:disabled),
     .text-area-group:hover &:not(:disabled) {
         // Use exact same hover effect as TextInput
-        background-color: var(--color-surface-hover-light);
+        background-color: var(--control-bg-hover, var(--field-bg-hover));
     }
 
-    // ... standard styles ...
 
-    // Light Mode Variant (Distinct "Filled" look)
-    @media (prefers-color-scheme: light) {
-        :root:not(.dark) & {
-            background-color: #f4f4f5; // Explicit light grey for contrast
-
-            &:hover:not(:disabled),
-            .text-area-group:hover &:not(:disabled) {
-                background-color: #e4e4e7; // Darker interaction state
-            }
-
-            &:focus {
-                background-color: #f4f4f5;
-                box-shadow: inset 0 0 0 1px rgba(var(--color-primary-rgb), 0.28), 0 0 0 3px rgba(var(--color-primary-rgb), 0.08);
-            }
-        }
-    }
-
-    &:focus {
-        outline: none;
-        // Focus state matches TextInput.
-        background-color: var(--color-surface-hover-light);
-        // Soft focus ring that fades in with the background change.
-        box-shadow: inset 0 0 0 1px rgba(var(--color-primary-rgb), 0.28), 0 0 0 3px rgba(var(--color-primary-rgb), 0.08);
-    }
+    // Focus sinks in (tokens.sunken-field); no ring, no border.
+    @include tokens.sunken-field;
 
     // Validation feedback: error ring plus one short nudge when the state appears.
     &--error,
@@ -93,12 +70,12 @@
         animation: pf-nudge 240ms var(--motion-ease-in-out);
 
         &:focus {
-            box-shadow: inset 0 0 0 1px rgba(var(--color-error-rgb), 0.7), 0 0 0 3px rgba(var(--color-error-rgb), 0.1);
+            --field-focus-shadow: var(--sunken-shadow), inset 0 0 0 1px rgba(var(--color-error-rgb), 0.55);
         }
     }
 
     &:disabled {
-        background-color: var(--color-surface-hover);
+        background-color: var(--control-bg, var(--color-surface-hover));
         cursor: not-allowed;
         opacity: 0.7;
         resize: none;

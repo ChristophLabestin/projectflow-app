@@ -75,13 +75,13 @@
     &__items { display: flex; flex-direction: column; gap: 10px; margin: 0; padding: 0; list-style: none; }
 
     &__item {
-        border: 1px solid var(--color-surface-border);
+        border: 0;
         border-radius: 12px;
         padding: 12px 14px;
         display: flex;
         flex-direction: column;
         gap: 6px;
-        background: var(--color-surface-sunken, var(--color-surface-bg));
+        background: var(--color-surface-hover);
     }
 
     &__item-head { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px; color: var(--color-text-main); }
@@ -114,7 +114,7 @@
     gap: 12px;
     padding: 12px 14px;
     border-radius: 14px;
-    border: 1px solid var(--color-surface-border);
+    border: 0;
     background: var(--color-surface-card);
     box-shadow: 0 12px 32px rgba(0, 0, 0, 0.18);
 

@@ -1,3 +1,5 @@
+@use '../../../styles/tokens';
+
 .public-initiative-feedback {
     min-height: 100vh;
     padding: clamp(1.5rem, 4vw, 3rem) 1rem;
@@ -155,11 +157,11 @@
 .public-initiative-feedback__preview-input {
     width: 100%;
     min-height: 3rem;
-    border: 1px solid var(--color-surface-border);
+    border: 0;
     outline: 0;
     border-radius: var(--radius-control);
     padding: 0.7rem 1rem;
-    background-color: var(--color-surface-bg);
+    background-color: var(--color-surface-hover);
     color: var(--color-text-main);
     font-size: 0.975rem;
     transition: border-color var(--transition-fast), box-shadow var(--transition-fast), background-color var(--transition-fast);
@@ -168,10 +170,7 @@
         border-color: var(--color-surface-border-hover);
     }
 
-    &:focus,
-    &:focus-visible {
-        background-color: var(--color-surface-card);
-    }
+    @include tokens.sunken-field;
 
     &::placeholder {
         color: var(--color-text-subtle);
@@ -202,7 +201,7 @@
     padding: 1.15rem;
     border-radius: var(--radius-xl);
     background-color: var(--color-surface-hover);
-    border: 1px solid var(--color-surface-border);
+    border: 0;
 }
 
 .public-initiative-feedback__attachments-head {
@@ -247,7 +246,7 @@
     padding: 0.95rem 1rem;
     border-radius: var(--radius-control);
     border: 1px dashed var(--color-surface-border-hover);
-    background: var(--color-surface-card);
+    background: color-mix(in srgb, var(--color-surface-hover) 50%, var(--color-surface-card));
     color: var(--color-text-main);
     text-align: left;
     cursor: pointer;
@@ -272,14 +271,11 @@
     }
 
     &:hover {
-        border-color: var(--color-primary);
-        background: rgba(var(--color-primary-rgb), 0.02);
+        background: var(--color-surface-card);
     }
 
     &:focus-visible {
-        outline: 0;
-        border-color: var(--color-primary);
-        box-shadow: 0 0 0 3px rgba(var(--color-primary-rgb), 0.08);
+        @include tokens.focus-ring;
     }
 }
 
@@ -296,8 +292,8 @@
     max-width: 100%;
     padding: 0.35rem 0.65rem;
     border-radius: var(--radius-full);
-    background: var(--color-surface-card);
-    border: 1px solid var(--color-surface-border);
+    background: color-mix(in srgb, var(--color-surface-hover) 50%, var(--color-surface-card));
+    border: 0;
     color: var(--color-text-main);
     font-size: 0.8125rem;
     line-height: 1.2;

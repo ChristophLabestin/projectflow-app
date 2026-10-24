@@ -254,7 +254,6 @@ struct ProjectScreen: View {
                         .foregroundStyle(PFColor.textMain)
                         .frame(width: 46, height: 46)
                         .background(PFColor.card, in: .rect(cornerRadius: PFRadius.control, style: .continuous))
-                        .overlay { RoundedRectangle(cornerRadius: PFRadius.control, style: .continuous).strokeBorder(PFColor.hairlineStrong, lineWidth: 1) }
                 }
                 .buttonStyle(.pfPressable)
                 .accessibilityLabel(L10n.t("projects.group.by", ["group": grouping.label]))

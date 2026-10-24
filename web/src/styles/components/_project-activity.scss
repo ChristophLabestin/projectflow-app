@@ -38,16 +38,14 @@
     width: 2.25rem;
     height: 2.25rem;
     border-radius: var(--radius-md);
-    background-color: var(--color-surface-hover);
+    background-color: var(--color-surface-card);
     color: var(--color-text-muted);
-    box-shadow: var(--shadow-sm);
     transition: color var(--transition-fast), background-color var(--transition-fast), box-shadow var(--transition-fast), transform var(--transition-fast);
 }
 
 .project-activity__back:hover {
     color: var(--color-primary);
-    background-color: var(--color-surface-card);
-    box-shadow: var(--shadow-md);
+    background-color: var(--color-surface-hover);
     transform: translateY(-1px);
 }
 
@@ -96,13 +94,13 @@
 
 .activity-filter__button.btn {
     border-radius: var(--radius-full);
-    background-color: var(--color-surface-hover);
+    background-color: var(--color-surface-card);
     color: var(--color-text-muted);
     box-shadow: none;
 }
 
 .activity-filter__button.btn:hover:not(.is-active) {
-    background-color: var(--color-surface-border);
+    background-color: var(--color-surface-hover);
     color: var(--color-text-main);
 }
 
@@ -136,12 +134,11 @@
     width: 5rem;
     height: 5rem;
     border-radius: var(--radius-xl);
-    background-color: var(--color-surface-hover);
+    background-color: var(--color-surface-card);
     color: var(--color-text-subtle);
     display: flex;
     align-items: center;
     justify-content: center;
-    box-shadow: var(--shadow-sm);
     margin-bottom: 0.5rem;
 
     span {
@@ -268,7 +265,7 @@
     width: 1.5rem;
     height: 1.5rem;
     border-radius: var(--radius-full);
-    background-color: var(--color-surface-hover);
+    background-color: var(--color-surface-card);
     color: var(--color-text-subtle);
     display: flex;
     align-items: center;
@@ -314,8 +311,7 @@
 .project-activity__details {
     padding: 0.875rem;
     border-radius: var(--radius-lg);
-    background-color: rgba(var(--color-surface-hover-rgb), 0.6);
-    box-shadow: var(--shadow-sm);
+    background-color: var(--color-surface-card);
 }
 
 .project-activity__details-text {

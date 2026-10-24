@@ -1,3 +1,5 @@
+@use '../../../styles/tokens';
+
 .calendar-page {
     position: relative;
     display: flex;
@@ -133,13 +135,11 @@
 }
 
 .calendar-view-toggle .calendar-view-toggle__button.is-active {
-    background: var(--color-surface-card);
     color: var(--color-text-main);
-    box-shadow: var(--shadow-sm);
 }
 
 .calendar-header__schedule-btn {
-    box-shadow: var(--shadow-sm);
+    box-shadow: none;
 }
 
 .calendar-header__schedule-label {
@@ -169,7 +169,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    box-shadow: 0 0 0 2px var(--color-surface-bg);
+    box-shadow: 0 0 0 2px var(--color-surface-card);
 }
 
 .calendar-grid {
@@ -204,7 +204,7 @@
 }
 
 .calendar-day--selected {
-    box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-primary) 40%, transparent) inset;
+    @include tokens.sunken;
 }
 
 .calendar-day--drag {
@@ -272,11 +272,10 @@
     position: relative;
     padding: 8px;
     border-radius: var(--radius-md);
-    background: var(--color-surface-paper);
-    box-shadow: var(--shadow-sm);
+    background: var(--color-surface-hover); // item inside a day cell (card): Level 2, tonal only
     font-size: 0.75rem;
     cursor: grab;
-    transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+    transition: background-color var(--transition-fast);
 }
 
 .calendar-item::before {
@@ -291,8 +290,7 @@
 }
 
 .calendar-item:hover {
-    transform: translateY(-1px);
-    box-shadow: var(--shadow-md);
+    background: var(--field-bg-hover);
 }
 
 .calendar-item:active {
@@ -332,8 +330,8 @@
     right: 6px;
     opacity: 0;
     border: none;
-    background: var(--color-surface-paper);
-    box-shadow: 0 0 0 4px var(--color-surface-paper);
+    background: var(--field-bg-hover); // matches the hovered item it masks
+    box-shadow: 0 0 0 4px var(--field-bg-hover);
     padding: 4px;
     border-radius: var(--radius-control);
     color: var(--color-text-muted);
@@ -349,7 +347,7 @@
 }
 
 .calendar-item__action:hover {
-    background: var(--color-surface-hover);
+    background: var(--color-surface-card);
     color: var(--color-text-main);
 }
 
@@ -504,8 +502,7 @@
 }
 
 .calendar-unscheduled-card:hover {
-    background: var(--color-surface-card);
-    box-shadow: var(--shadow-md);
+    background: var(--field-bg-hover);
     transform: translateY(-2px);
 }
 
@@ -1089,8 +1086,7 @@
     cursor: pointer;
 
     &:focus-visible {
-        outline: 2px solid var(--color-primary);
-        outline-offset: -2px;
+        @include tokens.focus-ring;
     }
 }
 
@@ -1213,8 +1209,7 @@
     }
 
     &:focus-visible {
-        outline: 2px solid var(--color-primary);
-        outline-offset: -2px;
+        @include tokens.focus-ring;
     }
 }
 

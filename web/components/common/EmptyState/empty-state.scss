@@ -10,8 +10,8 @@
     width: 100%;
     padding: 32px 24px;
     border-radius: var(--radius-lg);
-    background: var(--color-surface-card);
-    box-shadow: var(--shadow-sm);
+    background: var(--nested-bg, var(--color-surface-card)); // L1 on the canvas, L2 in a shell (§5.2)
+    box-shadow: var(--nested-shadow, var(--shadow-sm));
     text-align: center;
     animation: pf-rise-in var(--motion-duration-slow) var(--motion-ease-out) both;
 }
@@ -29,7 +29,7 @@
     width: 48px;
     height: 48px;
     border-radius: var(--radius-md);
-    background: var(--color-surface-hover);
+    background: var(--nested-inner-bg, var(--color-surface-hover)); // one level above the empty state
     color: var(--color-text-muted);
 
     .material-symbols-outlined {
@@ -66,4 +66,12 @@
     flex-wrap: wrap;
     justify-content: center;
     gap: 8px;
+}
+
+// Buttons inside step one level above the empty state (L2 on the canvas, card when nested).
+.empty-state .btn {
+    --nested-bg: var(--nested-inner-bg, var(--color-surface-hover));
+    --nested-bg-hover: var(--field-bg-hover);
+    --nested-shadow: none;
+    --nested-shadow-hover: none;
 }

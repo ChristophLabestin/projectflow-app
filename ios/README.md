@@ -51,6 +51,14 @@ open `/admin/crashes`. Release = `MARKETING_VERSION`, build = `CURRENT_PROJECT_V
 
 ## Rules
 
+- State surfaces like the web (STYLING §1.10/§1.11, `PFSurfaces.swift`), never a border, ring or outline:
+  **sunken** (`pfSunken`, `PFSunkenFill`: `PFColor.sunken` + inner shadow) for focused fields (`pfFieldSurface`, rest =
+  `PFColor.field`) and the current navigation/list item (dock tab, sidebar workspace, calendar day); **selected**
+  (inverted primary, glyphs flip to `onPrimary`, icon tiles `onPrimary` 14 %) for choices — option cards, chips,
+  segments, templates, theme; **menus/option sheets** (`pfMenuOption`): chosen option sunken + semibold + 3×14 primary
+  bar + check; floating panels `pfGlassPanel` (milky, borderless). Exempt: checkboxes/toggles, colour swatches, tab
+  underlines, error/drop states, status/priority markers. Onboarding name uses the capture title field.
+
 - **Native mechanics, custom look.** Sheets (`PFPresenter.present`, backed by SwiftUI `.sheet` + detents) and
   page navigation (`PFNavigator`, backed by `NavigationStack`, system bar hidden) are native SwiftUI so
   dragging, swipe-back and transitions feel like iOS. Everything visible (navigation bar/dock, headers,
@@ -115,9 +123,12 @@ whole 84 pt system side region.
 ## Workspace sidebar and areas
 
 `Features/Workspace/WorkspaceSidebar.swift` + `Shell/SidebarDrawer.swift`: a left drawer like the ChatGPT app — screen-edge pan
-from the left on any root screen (disabled once something is pushed), or the ☰ button in Today's top bar (replaces the old
-workspace chip). It holds the areas (`WorkspaceArea.all`), all workspaces (switch, "Neuer Workspace") and workspace settings.
-iPhone: the content slides right and dims; iPhone Duo (side inset): the sidebar slides over the dimmed content, because shifted scroll views re-wrap there. Tap or drag back to close. The Projects tab no longer shows an areas row.
+from the left on any root screen (disabled once something is pushed), tapping the date above Today's headline, or the VoiceOver
+action "Workspace-Menü öffnen". It holds the areas (`WorkspaceArea.all`), all workspaces (switch, "Neuer Workspace"),
+workspace settings and the account (avatar row at the bottom). Today has no top bar of its own any more: on iPhone ✦/+ sit on
+the date line, on the Duo in the rail. `Shell/SidebarHint.swift`: one-time coach mark (dimmed, handle + arrow at the left edge,
+the sidebar peeks in), later only the peek after 14 days without opening it; QA: `-pfSidebarHint`. iPhone: the content slides
+right and dims; iPhone Duo (side inset): the sidebar slides over the dimmed content, because shifted scroll views re-wrap there.
 
 
 `Features/Workspace`: Activity feed (`tenants/{t}/activity`, workspace and per project; contract

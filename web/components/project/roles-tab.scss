@@ -95,8 +95,7 @@
 }
 
 .roles-tab__role--active {
-    border-color: rgba(var(--color-primary-rgb), 0.4);
-    background-color: rgba(var(--color-primary-rgb), 0.08);
+    @include tokens.sunken;
 }
 
 .roles-tab__role-dot {
@@ -211,7 +210,7 @@
 
 .roles-tab__color-swatch--active {
     transform: scale(1.1);
-    box-shadow: 0 0 0 2px var(--color-primary);
+    box-shadow: 0 0 0 2px var(--color-surface-card), 0 0 0 4px var(--color-primary);
 }
 
 .roles-tab__presets {
@@ -275,8 +274,7 @@
 }
 
 .roles-tab__permission-item--active {
-    background-color: rgba(var(--color-primary-rgb), 0.12);
-    box-shadow: var(--shadow-sm);
+    @include tokens.selected;
 }
 
 .roles-tab__permission-item .checkbox__label {

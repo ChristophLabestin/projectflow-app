@@ -1,9 +1,16 @@
+@use '../../../styles/tokens';
+
 /* Settings → Billing (BillingPanel). Card/head pattern mirrors _ai-settings.scss. */
 .billing-settings {
     display: flex;
     flex-direction: column;
     gap: 16px;
     max-width: 56rem;
+
+    // Banners directly on the page canvas sit at L1 (inside a card they stay L2).
+    > .billing-settings__banner:not(.billing-settings__banner--success):not(.billing-settings__banner--warning) {
+        background: var(--color-surface-card);
+    }
 
     &__banner {
         margin: 0;
@@ -103,9 +110,9 @@
         align-items: flex-start;
         gap: 2px;
         padding: 12px 14px;
-        border: 1px solid var(--color-surface-border);
+        border: 0;
         border-radius: var(--radius-control);
-        background: var(--color-surface-card);
+        background: var(--color-surface-hover);
         color: var(--color-text-muted);
         text-align: left;
         cursor: pointer;
@@ -115,8 +122,7 @@
         em { font-size: 12px; font-style: normal; font-weight: 700; color: var(--color-text-main); }
 
         &.is-active {
-            border-color: var(--color-primary);
-            box-shadow: 0 0 0 1px var(--color-primary);
+            @include tokens.selected;
         }
     }
 
@@ -177,7 +183,7 @@
     &__stepper {
         display: inline-flex;
         align-items: center;
-        border: 1px solid var(--color-surface-border);
+        border: 0;
         border-radius: var(--radius-control);
         overflow: hidden;
 
@@ -188,12 +194,12 @@
             width: 36px;
             height: 36px;
             border: none;
-            background: var(--color-surface-card);
+            background: var(--color-surface-hover);
             color: var(--color-text-main);
             cursor: pointer;
 
             &:disabled { color: var(--color-text-subtle); cursor: not-allowed; }
-            &:not(:disabled):hover { background: var(--color-surface-hover); }
+            &:not(:disabled):hover { background: var(--field-bg-hover); }
             .material-symbols-outlined { font-size: 18px; }
         }
 
