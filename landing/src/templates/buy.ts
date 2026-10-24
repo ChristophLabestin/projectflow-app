@@ -71,6 +71,7 @@ export const buyBody = (lang: Lang): string => {
         </section>
 
         <section class="ck-panel" aria-labelledby="ck-question">
+            <button type="button" class="ck-back" data-back hidden>${icon('arrowLeft')}${esc(c.backStep)}</button>
             <h2 class="ck-question" id="ck-question" data-question tabindex="-1"></h2>
             <form class="ck-form" data-buy-form novalidate>
                 <div class="ck-pane" data-pane="plan" hidden>

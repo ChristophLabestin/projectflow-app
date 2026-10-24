@@ -280,6 +280,35 @@
     min-width: 0;
 }
 
+.ck-back {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin: -8px 0 16px;
+    padding: 6px 0;
+    border: 0;
+    background: none;
+    color: var(--color-text-muted);
+    font: inherit;
+    font-size: var(--text-sm);
+    font-weight: 500;
+    cursor: pointer;
+
+    .icon {
+        width: 16px;
+        height: 16px;
+        transition: transform var(--dur-2) var(--ease-out);
+    }
+
+    &:hover {
+        color: var(--color-text-main);
+
+        .icon {
+            transform: translateX(-3px);
+        }
+    }
+}
+
 .ck-question {
     margin: 0 0 32px;
     font-size: clamp(1.6rem, 1.2rem + 1vw, 2.15rem);
