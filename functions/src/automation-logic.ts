@@ -454,12 +454,25 @@ export const canManageAutomation = (input: {
     return input.allowMemberFlows;
 };
 
-/** May the flow owner (the flow's permission ceiling) act on this project right now? */
-export const ownerCanReachProject = (role: Role | null, uid: string, project: Json | null | undefined): boolean => {
-    if (!role || !project) return false;
-    if (role === 'Owner' || role === 'Admin' || role === 'Member') return true;
-    return false; // guests never own flows
+/**
+ * Runtime permission ceiling (security review M6): the owner must still be allowed to manage the flow
+ * right now — same rule as saving (role, project owner, `automationPolicy.allowMemberFlows`). A project
+ * flow whose project is gone fails too.
+ */
+export const ownerMayRun = (input: {
+    role: Role | null;
+    uid: string;
+    scope: 'workspace' | 'project';
+    project: Json | null | undefined;
+    allowMemberFlows: boolean;
+}): boolean => {
+    if (input.scope === 'project' && !input.project) return false;
+    return canManageAutomation({ ...input, project: input.project || null });
 };
+
+/** Free plan over its project limit: these projects are read-only for flows too (security review M5). */
+export const lockedProjectsOf = (entitlement: Json | null | undefined): Set<string> =>
+    new Set(Array.isArray(entitlement?.lockedProjectIds) ? entitlement!.lockedProjectIds.filter((id: unknown) => typeof id === 'string') : []);
 
 // ---------------------------------------------------------------------------
 // Matching

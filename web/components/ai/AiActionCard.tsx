@@ -25,9 +25,11 @@ export interface AiActionCardProps {
     /** Demo/testing: replace the real callables (style guide). */
     onApply?: () => Promise<{ canUndo: boolean; createdId: string | null }>;
     onUndo?: () => Promise<unknown>;
+    /** After a successful apply (Snap attaches its image to the created task). */
+    onApplied?: (createdId: string | null) => void;
 }
 
-export const AiActionCard: React.FC<AiActionCardProps> = ({ proposal, onApply, onUndo }) => {
+export const AiActionCard: React.FC<AiActionCardProps> = ({ proposal, onApply, onUndo, onApplied }) => {
     const { t } = useLanguage();
     const [state, setState] = useState<State>('pending');
     const [canUndo, setCanUndo] = useState(false);
@@ -43,6 +45,7 @@ export const AiActionCard: React.FC<AiActionCardProps> = ({ proposal, onApply, o
             setCreatedId(result.createdId);
             setState('applied');
             announceChange(proposal.target.projectId, proposal.target.taskId);
+            onApplied?.(result.createdId);
         } catch (caught: any) {
             setError(caught?.message || t('ai.error.internal'));
             setState('error');
