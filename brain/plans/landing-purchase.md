@@ -24,7 +24,7 @@ zeigen auf `/checkout?plan=…&interval=…` (folgt dem Monat/Jahr-Schalter); Fr
 - Offen: Widerrufsbelehrung für Verbraucher (Personal), Laufzeittexte mit AGB abgleichen, USt/OSS (Summen sind netto, `tax` = 0).
 
 ## Owner-Setup
-- Firebase Auth → Authorized domains: `getprojectflow.com`, `www.getprojectflow.com`, Preview-Domain `getprojectflow--*.web.app`.
+- Firebase Auth → Authorized domains: `getprojectflow.com`, `www.getprojectflow.com`, Preview-Domain `getprojectflow--preview-bi8zmvui.web.app` (keine Wildcards). Google-Login nutzt `signInWithPopup` über `projectflow-labestin.firebaseapp.com/__/auth/handler`; im OAuth-Client ist dafür nichts zusätzlich einzutragen.
 - Firebase-API-Key-Referrer-Beschränkung (falls aktiv) um die Landing-Domains erweitern.
 - Publishable Key: `node functions/scripts/billing-config.mjs --publishable-key pk_test_…`.
 - CSP in `landing/firebase.json` erlaubt Stripe (`js.stripe.com`, `api.stripe.com`, `hooks.stripe.com`), Google-Popup

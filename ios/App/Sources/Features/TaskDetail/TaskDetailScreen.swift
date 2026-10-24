@@ -29,7 +29,6 @@ struct TaskDetailScreen: View {
     @State var isDeleting = false
     @State var labelStore: ProjectLabelsStore
     @State var groupStore: WorkspaceGroupsStore
-    @State var isDraftingDescription = false
     /// iPhone Duo outer display: format bar shown above the keyboard (toggled from the side column).
     @State var showsFormatBar = false
     @SwiftUI.FocusState var subtaskFocused: Bool

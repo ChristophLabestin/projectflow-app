@@ -31,6 +31,8 @@ interface WikiSidebarProps {
     onToggleFavorite: (doc: WikiDocMeta) => void;
     onMove: (docId: string, parentId: string | null, order: number) => void;
     onNavigate: (doc: WikiDocMeta) => void;
+    /** Rendered inside the app sidebar's context layer (SidebarPanelContext): no own card or header. */
+    embedded?: boolean;
 }
 
 const collapsedKey = (basePath: string) => `projectflow.wiki.collapsed.${basePath}`;
@@ -51,7 +53,7 @@ export const DocGlyph: React.FC<{ doc: Pick<WikiDocMeta, 'icon'>; className?: st
 
 export const WikiSidebar: React.FC<WikiSidebarProps> = ({
     t, title, docs, activeId, basePath, prefs, trashCount, isTrashView,
-    onCreate, onOpenTemplates, onArchive, onToggleFavorite, onMove, onNavigate,
+    onCreate, onOpenTemplates, onArchive, onToggleFavorite, onMove, onNavigate, embedded = false,
 }) => {
     const [collapsed, setCollapsed] = React.useState<Set<string>>(() => readCollapsed(basePath));
     const [queryText, setQueryText] = React.useState('');
@@ -186,8 +188,8 @@ export const WikiSidebar: React.FC<WikiSidebarProps> = ({
     };
 
     return (
-        <aside className="wiki-nav" aria-label={title}>
-            <div className="wiki-nav__head">
+        <aside className={`wiki-nav${embedded ? ' wiki-nav--embedded' : ''}`} aria-label={title}>
+            {!embedded && <div className="wiki-nav__head">
                 <Link to={basePath} className="wiki-nav__title">
                     <span className="material-symbols-outlined">menu_book</span>
                     <span>{title}</span>
@@ -195,7 +197,7 @@ export const WikiSidebar: React.FC<WikiSidebarProps> = ({
                 <button type="button" className="wiki-icon-btn" aria-label={t('wiki.action.newPage')} title={t('wiki.action.newPage')} onClick={() => onCreate(null)}>
                     <span className="material-symbols-outlined">edit_square</span>
                 </button>
-            </div>
+            </div>}
 
             <label className="wiki-nav__search">
                 <span className="material-symbols-outlined">search</span>

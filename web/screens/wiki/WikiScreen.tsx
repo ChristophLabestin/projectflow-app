@@ -1,7 +1,9 @@
 import React from 'react';
+import { createPortal } from 'react-dom';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { auth } from '../../services/firebase';
 import { useWorkspace } from '../../context/WorkspaceContext';
+import { useSidebarPanel } from '../../context/SidebarPanelContext';
 import { useConfirm, useToast } from '../../context/UIContext';
 import { EmptyState } from '../../components/common/EmptyState/EmptyState';
 import { Button } from '../../components/ui/Button';
@@ -140,6 +142,16 @@ export const WikiScreen: React.FC = () => {
         setDocs((current) => current?.map((doc) => (doc.id === id ? { ...doc, parentId, order } : doc)) || current);
         void moveWikiDoc(tenantId, id, parentId, order).catch(() => showError(t('wiki.error.generic')));
     }, [showError, t, tenantId]);
+
+    // Workspace wiki: the page tree lives in the app sidebar's context layer, like a project's modules.
+    // Project wikis keep it in the page (the sidebar already shows the project there).
+    const sidebarSlot = useSidebarPanel(!projectId && !blocked ? {
+        key: 'wiki',
+        title: t('wiki.space.workspace'),
+        icon: 'menu_book',
+        href: '/wiki',
+        actions: [{ icon: 'edit_square', label: t('wiki.action.newPage'), onSelect: () => void createPage(null) }],
+    } : null);
 
     if (!tenantId) return null;
 
@@ -306,8 +318,11 @@ export const WikiScreen: React.FC = () => {
     return (
         <WikiDataProvider tenantId={tenantId} space={space} isGuest={isGuest} uid={uid} spaceDocs={allDocs}>
             <div className="wiki-shell">
-            <div className="wiki">
+            <div className={`wiki${sidebarSlot ? ' wiki--nav-in-sidebar' : ''}`}>
+                {(() => {
+                    const tree = (
                 <WikiSidebar
+                    embedded={Boolean(sidebarSlot)}
                     t={t}
                     title={spaceTitle}
                     docs={allDocs}
@@ -323,6 +338,9 @@ export const WikiScreen: React.FC = () => {
                     onMove={move}
                     onNavigate={() => undefined}
                 />
+                    );
+                    return sidebarSlot ? createPortal(tree, sidebarSlot) : tree;
+                })()}
                 <main className="wiki-main">{renderMain()}</main>
             </div>
             </div>

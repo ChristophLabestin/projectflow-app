@@ -293,32 +293,6 @@ extension TaskDetailScreen {
             HStack {
                 Text(L10n.t("taskDetail.description.label")).pfText(.section).foregroundStyle(PFColor.textMain)
                 Spacer()
-                if canEdit, !isEditingDescription, document.isEditable {
-                    // Greyed out without server AI in this plan (billing contract: `aiEnabledFor`); a tap explains why.
-                    let aiEnabled = model.entitlements.aiEnabled(for: model.uid)
-                    Button {
-                        if aiEnabled { draftDescription(task) } else { model.toasts.show(PFToast(L10n.t("plan.aiOff"), style: .warning)) }
-                    } label: {
-                        Image(systemName: "sparkles").font(.system(size: 14, weight: .semibold)).foregroundStyle(PFColor.textMuted)
-                            .symbolEffect(.pulse, isActive: isDraftingDescription)
-                            .frame(width: 34, height: 34).background(PFColor.raised, in: .circle)
-                            .opacity(aiEnabled ? 1 : 0.4)
-                    }
-                    .buttonStyle(.pfPressable)
-                    .disabled(isDraftingDescription)
-                    .accessibilityLabel(L10n.t("taskDetail.ai.draft"))
-                    .accessibilityHint(aiEnabled ? "" : L10n.t("plan.aiOff"))
-                }
-                if canEdit, !isEditingDescription, !document.isEmpty, document.isEditable {
-                    Button {
-                        startEditingDescription(task, document)
-                    } label: {
-                        Image(systemName: "pencil").font(.system(size: 14, weight: .semibold)).foregroundStyle(PFColor.textMuted)
-                            .frame(width: 34, height: 34).background(PFColor.raised, in: .circle)
-                    }
-                    .buttonStyle(.pfPressable)
-                    .accessibilityLabel(L10n.t("common.edit"))
-                }
             }
             if isEditingDescription {
                 RichTextEditorView(controller: editor)
@@ -341,7 +315,11 @@ extension TaskDetailScreen {
                     Text(L10n.t("taskDetail.description.empty")).pfText(.meta).foregroundStyle(PFColor.textMuted)
                 }
             } else {
+                // Tap the text to edit it (no pencil): links inside still open, the rest of the card starts editing.
                 RichTextView(html: task.summary)
+                    .contentShape(.rect)
+                    .onTapGesture { if canEdit, document.isEditable { startEditingDescription(task, document) } }
+                    .accessibilityAction(named: L10n.t("common.edit")) { if canEdit, document.isEditable { startEditingDescription(task, document) } }
                 if canEdit, !document.isEditable {
                     PFButton(L10n.t("taskDetail.description.editWeb"), systemImage: "safari", kind: .ghost, size: .small) {
                         ProjectsClipboard.open(ProjectLinks.task(ref))
