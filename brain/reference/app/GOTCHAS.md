@@ -280,3 +280,4 @@ Living log of pitfalls, edge cases, and workflow surprises discovered while work
 - `2026-10-24 | Landing | [hidden] loses against .btn display` - `.btn` sets `display:inline-flex`, so `hidden` on buttons/links does nothing; optin.scss forces `.optin [hidden] { display: none !important }`.
 - `2026-10-24 | Rules | Clients cannot create tenants or members` - Workspaces only via `createTeamWorkspace` / `ensurePersonalWorkspace` / purchase webhook; members only via functions (invite accept, workspace creation). Tests or tools that seeded tenants with client writes must use the Admin SDK.
 
+- `2026-10-24 | iOS | Offset content re-measures its safe area` - `.offset` on the shell (sidebar drawer) changes the `safeAreaInsets` that `onGeometryChange` reports inside it; on the iPhone Duo the trailing side region vanished and the rail fell back to the bottom dock. Measure insets outside the drawer modifier (`MainShell`).

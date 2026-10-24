@@ -4,8 +4,8 @@ import PFData
 import PFDomain
 import PFModel
 
-/// Floating chrome row of Today: workspace menu · capture · avatar (account). While the headline
-/// scrolls away, the workspace name gives way to a compact version of the day statement.
+/// Floating chrome row of Today: sidebar button · capture · avatar (account). While the headline
+/// scrolls away, a compact version of the day statement appears next to the sidebar button.
 struct TodayTopBar: View {
     /// 0 = headline fully visible, 1 = collapsed into the bar.
     let collapse: CGFloat
@@ -16,10 +16,8 @@ struct TodayTopBar: View {
 
     var body: some View {
         HStack(spacing: PFSpace.xs) {
+            sidebarButton
             ZStack(alignment: .leading) {
-                workspaceChip
-                    .opacity(Double(1 - min(collapse * 1.6, 1)))
-                    .allowsHitTesting(collapse < 0.5)
                 if let compact {
                     compactTitle(compact)
                         .opacity(Double(max(collapse * 1.4 - 0.4, 0)))
@@ -63,24 +61,12 @@ struct TodayTopBar: View {
         .accessibilityLabel(L10n.t("today.account"))
     }
 
-    private var workspaceChip: some View {
-        Button { presentWorkspaces() } label: {
-            HStack(spacing: 6) {
-                Text(model.session?.activeWorkspace?.displayName ?? "")
-                    .pfText(.section)
-                    .foregroundStyle(PFColor.textMain)
-                    .lineLimit(1)
-                Image(systemName: "chevron.down")
-                    .font(.system(size: 10, weight: .bold))
-                    .foregroundStyle(PFColor.textMuted)
-            }
-            .padding(.horizontal, 14)
-            .frame(minHeight: 44)
-            .pfGlass(in: .capsule)
+    /// Opens the workspace sidebar (also reachable by swiping in from the left edge).
+    private var sidebarButton: some View {
+        PFIconButton("line.3.horizontal", label: L10n.t("sidebar.open")) {
+            withAnimation(PFMotion.respecting(PFMotion.snappy)) { model.router.isSidebarOpen = true }
         }
-        .buttonStyle(.pfPressable)
-        .accessibilityLabel(L10n.t("today.switchWorkspace"))
-        .accessibilityValue(model.session?.activeWorkspace?.name ?? "")
+        .accessibilityValue(model.session?.activeWorkspace?.displayName ?? "")
     }
 
     private func compactTitle(_ text: String) -> some View {
@@ -92,15 +78,5 @@ struct TodayTopBar: View {
             .padding(.horizontal, 16)
             .frame(minHeight: 44)
             .pfGlass(in: .capsule, interactive: false)
-    }
-
-    private func presentWorkspaces() {
-        guard let session = model.session else { return }
-        let workspaces = session.workspaces
-        let active = session.activeWorkspaceId
-        let model = model
-        model.presenter.present(detents: [.fit]) {
-            WorkspaceSwitcherSheet(workspaces: workspaces, activeId: active) { id in model.switchWorkspace(to: id) }
-        }
     }
 }
