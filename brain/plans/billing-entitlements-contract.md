@@ -125,6 +125,9 @@ Jeder Nutzer hat genau **einen persönlichen Workspace**, auch wer nur in ein Te
 
 ## 8. Eigene Kaufseite (Stripe Payment Element, Owner 2026-10-24)
 Kein Redirect zu Stripe Checkout: die Landing baut eine eigene Kaufseite mit dem **Payment Element** (PCI SAQ A).
+Route (Entscheidung User 2026-10-24): **`https://getprojectflow.com/checkout`** bzw. **`/en/checkout`**. Die App verlinkt dorthin mit
+`?tenant=<tenantId>&plan=team|personal&interval=month|year[&ai=1]` (`checkoutPageUrl` in `web/services/billingService.ts`);
+der gehostete Stripe Checkout (`createBillingCheckout`) bleibt nur als Fallback im Code.
 Backend-Callables (europe-west3, Firebase-Auth nötig → Landing nutzt Firebase Auth desselben Projekts; Domain
 `getprojectflow.com` muss in Firebase Auth → Authorized domains stehen):
 
