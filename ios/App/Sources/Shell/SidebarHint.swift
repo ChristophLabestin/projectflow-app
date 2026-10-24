@@ -16,7 +16,11 @@ struct SidebarHint: View {
     var body: some View {
         ZStack(alignment: .leading) {
             if visible {
-                Color.black.opacity(0.66)
+                // Blurred and darkened, so the message reads without a box around it.
+                ZStack {
+                    Rectangle().fill(.ultraThinMaterial).environment(\.colorScheme, .dark)
+                    Color.black.opacity(0.5)
+                }
                     .ignoresSafeArea()
                     .contentShape(.rect)
                     .onTapGesture { dismiss() }
@@ -25,27 +29,30 @@ struct SidebarHint: View {
                         dismiss()
                         withAnimation(PFMotion.respecting(PFMotion.snappy)) { model.router.isSidebarOpen = true }
                     })
-                // A glowing handle on the edge the swipe starts from.
-                Capsule().fill(.white.opacity(0.9)).frame(width: 5, height: 64)
-                    .shadow(color: .white.opacity(0.6), radius: 8)
-                    .padding(.leading, 4)
-                    .offset(x: nudge ? 6 : 0)
+                // A glowing line along the whole left edge — where the swipe starts.
+                LinearGradient(colors: [.white.opacity(0), .white.opacity(0.95), .white.opacity(0.95), .white.opacity(0)],
+                               startPoint: .top, endPoint: .bottom)
+                    .frame(width: 5)
+                    .shadow(color: .white.opacity(nudge ? 0.9 : 0.4), radius: 12)
+                    .opacity(nudge ? 1 : 0.7)
+                    .ignoresSafeArea()
                     .allowsHitTesting(false)
-                HStack(spacing: PFSpace.s) {
-                    Image(systemName: "chevron.right")
-                        .font(.system(size: 22, weight: .bold))
-                        .offset(x: nudge ? 14 : 0)
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(L10n.t("sidebar.hint.title")).pfText(.section)
-                        Text(L10n.t("sidebar.hint.body")).pfText(.meta).opacity(0.85)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
+                    .transition(.opacity)
+                // Message right on the dimmed screen, centred in the upper half — no box.
+                VStack(spacing: PFSpace.s) {
+                    Image(systemName: "chevron.right.2")
+                        .font(.system(size: 28, weight: .bold))
+                        .offset(x: nudge ? 10 : -10)
+                    Text(L10n.t("sidebar.hint.title")).pfText(.title).multilineTextAlignment(.center)
+                    Text(L10n.t("sidebar.hint.body")).pfText(.body).opacity(0.85).multilineTextAlignment(.center)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
                 .foregroundStyle(.white)
-                .padding(PFSpace.m)
-                .background(Color(white: 0.1).opacity(0.94), in: .rect(cornerRadius: 20, style: .continuous))
-                .padding(.leading, PFSpace.page)
-                .padding(.trailing, PFSpace.xl)
+                .shadow(color: .black.opacity(0.3), radius: 8)
+                .padding(.horizontal, PFSpace.xl)
+                .frame(maxWidth: .infinity)
+                .containerRelativeFrame(.vertical, alignment: .center) { height, _ in height * 0.62 }
+                .frame(maxHeight: .infinity, alignment: .top)
                 .allowsHitTesting(false)
                 .transition(.opacity)
             }
