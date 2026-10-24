@@ -1793,3 +1793,40 @@
         min-height: 3.5rem;
     }
 }
+
+// Flow list inside the app sidebar context layer (SidebarPanelContext): no card, the layer scrolls.
+.flows-layout--nav-in-sidebar {
+    grid-template-columns: minmax(0, 1fr);
+}
+
+.flows-nav--embedded {
+    position: static;
+    flex: 1 0 auto;
+    max-height: none;
+    padding: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+    animation: pf-fade-in var(--motion-duration-base) var(--motion-ease-out) both;
+
+    .flows-nav__scroll {
+        overflow: visible;
+        margin: 0;
+        padding: 0;
+    }
+
+    .flows-nav__search {
+        background: var(--color-surface-hover);
+    }
+
+    .flows-nav__usage {
+        margin-top: auto;
+    }
+}
+
+.flows-nav__links {
+    display: flex;
+    flex-direction: column;
+    padding-bottom: 0.375rem;
+    border-bottom: 1px solid var(--color-surface-border);
+}

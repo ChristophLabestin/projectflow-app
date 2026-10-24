@@ -1,8 +1,10 @@
 // Flows shell (/flows/*, /project/:id/flows): sidebar with all flows + "Neuer Flow", content via <Outlet>.
 import React, { useEffect, useState } from 'react';
-import { Outlet, useOutletContext, useParams } from 'react-router-dom';
+import { createPortal } from 'react-dom';
+import { Outlet, useNavigate, useOutletContext, useParams } from 'react-router-dom';
 
 import { useLanguage } from '../../context/LanguageContext';
+import { useSidebarPanel } from '../../context/SidebarPanelContext';
 import { EmptyState } from '../../components/common/EmptyState/EmptyState';
 import { FlowsSidebar } from '../../components/flows/FlowsSidebar';
 import {
@@ -37,6 +39,7 @@ export const newFlowPath = (projectId: string | null, extra?: Record<string, str
 
 export const FlowsLayout = () => {
     const { t } = useLanguage();
+    const navigate = useNavigate();
     const { id: routeProjectId } = useParams<{ id: string }>();
     const ctx = useFlowContext();
     const { tenantId, isGuest } = ctx;
@@ -54,6 +57,17 @@ export const FlowsLayout = () => {
         return () => { offFlows(); offUsage(); offQuota(); };
     }, [tenantId, isGuest]);
 
+    const canCreate = ctx.role === 'Owner' || ctx.role === 'Admin' || ctx.role === 'Member';
+    // Workspace flows: the flow list lives in the app sidebar's context layer (like the wiki and a project's
+    // modules). Project flows stay in the page — there the sidebar already shows the project.
+    const sidebarSlot = useSidebarPanel(!routeProjectId && !isGuest ? {
+        key: 'flows',
+        title: t('nav.flows'),
+        icon: 'account_tree',
+        href: '/flows',
+        actions: canCreate ? [{ icon: 'add', label: t('flows.new'), onSelect: () => navigate('/flows/new') }] : undefined,
+    } : null);
+
     if (isGuest) {
         return <EmptyState title={t('flows.noAccess')} icon={<span className="material-symbols-outlined">lock</span>} />;
     }
@@ -61,9 +75,14 @@ export const FlowsLayout = () => {
     const outlet: FlowsOutlet = { flows, failed, quota, usage, ctx, routeProjectId: routeProjectId || null };
     return (
         <div className="flows-shell">
-            <div className="flows-layout">
-                <FlowsSidebar t={t} flows={flows} names={ctx.names} quota={quota} usage={usage}
-                    routeProjectId={routeProjectId || null} canCreate={ctx.role === 'Owner' || ctx.role === 'Admin' || ctx.role === 'Member'} />
+            <div className={`flows-layout${sidebarSlot ? ' flows-layout--nav-in-sidebar' : ''}`}>
+                {(() => {
+                    const nav = (
+                        <FlowsSidebar t={t} flows={flows} names={ctx.names} quota={quota} usage={usage}
+                            routeProjectId={routeProjectId || null} canCreate={canCreate} embedded={Boolean(sidebarSlot)} />
+                    );
+                    return sidebarSlot ? createPortal(nav, sidebarSlot) : nav;
+                })()}
                 <main className="flows-main">
                     <Outlet context={outlet} />
                 </main>

@@ -4484,6 +4484,8 @@ const en = {
     'flows.fromText.warning.unknown_project': "An unknown project was removed.",
     'flows.fromText.warning.dropped_condition': "A condition could not be used.",
     'flows.fromText.warning.dropped_action': "An action could not be used.",
+    'flows.nav.overview': "Overview",
+    'flows.nav.templates': "Templates",
     'flows.nav.search': "Search flows",
     'flows.nav.filter': "Filter",
     'flows.nav.filters.all': "All",

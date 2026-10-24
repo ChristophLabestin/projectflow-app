@@ -1,6 +1,6 @@
 // Flows sidebar: every flow grouped by scope, search + status filter, "Neuer Flow", monthly usage.
 import React, { useMemo, useState } from 'react';
-import { Link, NavLink, useNavigate } from 'react-router-dom';
+import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 
 import { Button } from '../common/Button/Button';
 import type { Flow, FlowQuota } from '../../services/domain/automationsService';
@@ -19,10 +19,13 @@ interface FlowsSidebarProps {
     usage: { runs: number; aiSteps: number };
     routeProjectId: string | null;
     canCreate: boolean;
+    /** Rendered inside the app sidebar's context layer: its header already shows title + "Neuer Flow". */
+    embedded?: boolean;
 }
 
-export const FlowsSidebar: React.FC<FlowsSidebarProps> = ({ t, flows, names, quota, usage, routeProjectId, canCreate }) => {
+export const FlowsSidebar: React.FC<FlowsSidebarProps> = ({ t, flows, names, quota, usage, routeProjectId, canCreate, embedded }) => {
     const navigate = useNavigate();
+    const location = useLocation();
     const [query, setQuery] = useState('');
     const [filter, setFilter] = useState<Filter>('all');
 
@@ -61,18 +64,33 @@ export const FlowsSidebar: React.FC<FlowsSidebarProps> = ({ t, flows, names, quo
     const newPath = routeProjectId ? `/flows/new?projectId=${routeProjectId}` : '/flows/new';
 
     return (
-        <nav className="flows-nav" aria-label={t('nav.flows')}>
-            <div className="flows-nav__head">
-                <Link to={routeProjectId ? `/project/${routeProjectId}/flows` : '/flows'} className="flows-nav__title">
-                    <span className="material-symbols-outlined" aria-hidden="true">account_tree</span>
-                    <span>{t('nav.flows')}</span>
-                </Link>
-            </div>
-            {canCreate && (
+        <nav className={`flows-nav${embedded ? ' flows-nav--embedded' : ''}`} aria-label={t('nav.flows')}>
+            {!embedded && (
+                <div className="flows-nav__head">
+                    <Link to={routeProjectId ? `/project/${routeProjectId}/flows` : '/flows'} className="flows-nav__title">
+                        <span className="material-symbols-outlined" aria-hidden="true">account_tree</span>
+                        <span>{t('nav.flows')}</span>
+                    </Link>
+                </div>
+            )}
+            {canCreate && !embedded && (
                 <Button className="flows-nav__new" onClick={() => navigate(newPath)} icon={<span className="material-symbols-outlined">add</span>}>
                     {t('flows.new')}
                 </Button>
             )}
+            <div className="flows-nav__links">
+                <NavLink end to={routeProjectId ? `/project/${routeProjectId}/flows` : '/flows'} className={({ isActive }) => `flows-nav__item ${isActive ? 'is-active' : ''}`.trim()}>
+                    <span className="flows-nav__icon material-symbols-outlined" aria-hidden="true">dashboard</span>
+                    <span className="flows-nav__name">{t('flows.nav.overview')}</span>
+                </NavLink>
+                {canCreate && (
+                    <NavLink to={`/flows/new?start=template${routeProjectId ? `&projectId=${routeProjectId}` : ''}`}
+                        className={() => `flows-nav__item ${location.pathname === '/flows/new' && location.search.includes('start=template') ? 'is-active' : ''}`.trim()}>
+                        <span className="flows-nav__icon material-symbols-outlined" aria-hidden="true">dashboard_customize</span>
+                        <span className="flows-nav__name">{t('flows.nav.templates')}</span>
+                    </NavLink>
+                )}
+            </div>
             <label className="flows-nav__search">
                 <span className="material-symbols-outlined" aria-hidden="true">search</span>
                 <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder={t('flows.nav.search')} aria-label={t('flows.nav.search')} />
