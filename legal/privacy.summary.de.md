@@ -1,5 +1,2 @@
-- Eine gemeinsame Datenschutzerklärung für Website, Web-App, iOS-App und Desktop-App.
-- Neu beschrieben: Anmeldung mit Passkeys, Push-Mitteilungen (iOS/Desktop), Live-Aktivitäten, die Desktop-App mit automatischen Updates, die optionale Onboarding-Umfrage und Fehlerberichte.
-- KI-Funktionen: Anbieter ist OpenAI (vorher irrtümlich Google Gemini genannt).
-- Die Website setzt keine Cookies und kein Tracking mehr ein; Google Analytics und der Cookie-Banner entfallen.
-- Entfernt: Social-Media-Anbindungen (Facebook, Instagram, TikTok, YouTube) und die frühere Marketing-Suite.
+- Anbieterangaben korrigiert: Labestin Digital (Inhaber Christoph Labestin), Ödwieser Weg 7, 84082 Laberweinting.
+- Inhaltlich hat sich nichts geändert.

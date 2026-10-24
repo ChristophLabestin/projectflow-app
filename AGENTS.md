@@ -63,6 +63,7 @@ Teilweise erzwungen über `.claude/token-guard.json` (Hook). Bewusster Einmal-By
 - After completing a task, run the build for the surface you touched:
   - Web app work: `cd web && npm run build`.
   - iOS app work: `cd ios && xcodegen generate`, then `xcodebuild -project ios/ProjectFlow.xcodeproj -scheme ProjectFlow -destination 'generic/platform=iOS Simulator' -derivedDataPath .xcodebuild build` (conventions in `ios/README.md`).
+- New Cloud Functions: add the name to `FUNCTION_MODULES` in `functions/src/index.ts` (lazy export map, cold start), and give user-facing gen 1 callables `runWith(FAST_START)`. See `brain/operations/functions-performance.md`.
 - After changing Cloud Functions, deploy only the functions you touched (for example: `cd functions && firebase deploy --only functions:callGemini`).
 - After changing Firestore rules or indexes, deploy them to Firebase (for example: `firebase deploy --only firestore:rules` or `firebase deploy --only firestore:indexes`).
 - Full command and environment reference: `brain/commands-and-environment.md`.

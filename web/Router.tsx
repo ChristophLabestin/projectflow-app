@@ -25,6 +25,7 @@ import { DesktopBridge } from './components/desktop/DesktopBridge';
 import { DesktopTitleBar } from './components/desktop/DesktopTitleBar';
 import { QuickAccessWindow } from './screens/QuickAccessWindow';
 import { QuickCaptureWindow } from './screens/QuickCaptureWindow';
+import { DesktopAssistWindow } from './screens/DesktopAssistWindow';
 import { DesktopDayWindow } from './screens/DesktopDayWindow';
 import { DesktopTrayPanel } from './screens/DesktopTrayPanel';
 import { DesktopAuthHandoff } from './screens/DesktopAuthHandoff';
@@ -158,7 +159,7 @@ const RootLayout = () => {
     // Desktop utility windows (Quick Access pop-out, Quick Capture, day window): only their own content,
     // none of the global overlays (no second Quick Access modal, help, banners, bridge).
     const windowKind = desktopWindowKind();
-    const isUtilityWindow = windowKind === 'quick-access' || windowKind === 'capture' || windowKind === 'day' || windowKind === 'tray' || windowKind === 'palette';
+    const isUtilityWindow = windowKind === 'quick-access' || windowKind === 'capture' || windowKind === 'day' || windowKind === 'tray' || windowKind === 'palette' || windowKind === 'assist';
     if (isUtilityWindow && location.pathname.startsWith('/desktop/')) {
         return (
             <>
@@ -247,6 +248,7 @@ export const AppRouter = () => {
                     <Route path="/desktop/tray" element={<LegalConsentGate><DesktopTrayPanel /></LegalConsentGate>} />
                     <Route path="/desktop/auth" element={<DesktopAuthHandoff />} />
                     <Route path="/desktop/palette" element={<DesktopCommandPalette />} />
+                    <Route path="/desktop/assist" element={<LegalConsentGate><DesktopAssistWindow /></LegalConsentGate>} />
                     {/* Consent first, then authorize: the gate keeps ?request=… (it never navigates). /desktop/auth stays ungated: it only hands a sign-in code to the desktop app, whose windows are gated. */}
                     <Route path="/oauth/consent" element={<LegalConsentGate><OAuthConsent /></LegalConsentGate>} />
                     {/* Public project intake was removed; old share links land on the app start. */}

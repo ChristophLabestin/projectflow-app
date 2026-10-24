@@ -5,6 +5,7 @@
  * Stripe ids: billing_customers/{tenantId} (server-only). Own OpenAI keys: ai_user_keys/{uid} (server-only).
  */
 import * as functions from 'firebase-functions/v1';
+import { FAST_START } from './runtime-options';
 import * as admin from 'firebase-admin';
 import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 import Stripe = require('stripe');
@@ -77,6 +78,61 @@ export const assertCanAddMember = async (tenantId: string, role: string) => {
         throw new functions.https.HttpsError('failed-precondition', 'plan-seat-limit');
     }
 };
+
+/**
+ * Seat/plan check for a new full member INSIDE a transaction (security review M4): reads the entitlement and the
+ * current full members via the transaction; the caller writes `memberCount` (returned) so concurrent joins
+ * conflict on the entitlement doc and are retried instead of both passing. Call after the caller's other reads.
+ */
+export const seatCheckInTx = async (tx: FirebaseFirestore.Transaction, tenantId: string) => {
+    const [entSnap, members] = await Promise.all([
+        tx.get(entRef(tenantId)),
+        tx.get(db.collection(`tenants/${tenantId}/members`).where('role', 'in', ['Owner', 'Admin', 'Member'])),
+    ]);
+    const ent = entSnap.data();
+    const limits = limitsFor(ent);
+    if (!limits.invitesAllowed) throw new functions.https.HttpsError('failed-precondition', 'plan-invites-disabled');
+    const fullMembers = members.size;
+    if (!memberLimitAllows(limits, fullMembers)) throw new functions.https.HttpsError('failed-precondition', 'plan-member-limit');
+    if (ent?.stripeSubscriptionId && LIVE_STATUSES.includes(String(ent.status)) && ent.billingExempt !== true
+        && fullMembers >= Number(ent.seats || 0)) {
+        throw new functions.https.HttpsError('failed-precondition', 'plan-seat-limit');
+    }
+    return { ref: entRef(tenantId), memberCount: fullMembers + 1 };
+};
+
+/**
+ * Role changes of workspace members by Owner/Admin (same authority as the rules' canManageMemberRole).
+ * Guest → full member runs the seat check; the rules deny that transition for clients.
+ */
+export const setWorkspaceMemberRole = functions.region(REGION).https.onCall(async (data, context) => {
+    const uid = context.auth?.uid;
+    if (!uid) throw new functions.https.HttpsError('unauthenticated', 'Authentication required.');
+    const tenantId = typeof data?.tenantId === 'string' ? data.tenantId : '';
+    const targetUid = typeof data?.uid === 'string' ? data.uid : '';
+    const toRole = String(data?.role || '');
+    if (!/^[A-Za-z0-9_-]{1,128}$/.test(tenantId) || !/^[A-Za-z0-9_-]{1,128}$/.test(targetUid)) {
+        throw new functions.https.HttpsError('invalid-argument', 'tenantId and uid are required.');
+    }
+    if (!['Admin', 'Member', 'Guest'].includes(toRole)) throw new functions.https.HttpsError('invalid-argument', 'invalid-role');
+    const callerRef = db.doc(`tenants/${tenantId}/members/${uid}`);
+    const targetRef = db.doc(`tenants/${tenantId}/members/${targetUid}`);
+    await db.runTransaction(async (tx) => {
+        const [caller, target] = await Promise.all([tx.get(callerRef), tx.get(targetRef)]);
+        const callerRole = String(caller.data()?.role || '');
+        const fromRole = String(target.data()?.role || '');
+        if (!target.exists) throw new functions.https.HttpsError('not-found', 'Member not found.');
+        if (!['Owner', 'Admin'].includes(callerRole) || fromRole === 'Owner'
+            || (callerRole !== 'Owner' && (fromRole === 'Admin' || toRole === 'Admin'))) {
+            throw new functions.https.HttpsError('permission-denied', 'Insufficient workspace role.');
+        }
+        if (fromRole === toRole) return;
+        const seat = fromRole === 'Guest' ? await seatCheckInTx(tx, tenantId) : null;
+        tx.update(targetRef, { role: toRole, updatedAt: FieldValue.serverTimestamp() });
+        if (seat) tx.set(seat.ref, { memberCount: seat.memberCount }, { merge: true });
+    });
+    return { ok: true };
+});
 
 /** Server AI for `uid` in this workspace: trial/grace for everyone, otherwise the AI add-on per user. */
 export const memberHasAi = async (tenantId: string, uid: string) => aiEnabledFor((await entRef(tenantId).get()).data(), uid);
@@ -450,7 +506,7 @@ export const createPersonalWorkspace = async (uid: string, language?: string) =>
 };
 
 /** Called by the client after every sign-in; replaces client-side creation of a first workspace. */
-export const ensurePersonalWorkspace = functions.region(REGION).https.onCall(async (data, context) => {
+export const ensurePersonalWorkspace = functions.region(REGION).runWith(FAST_START).https.onCall(async (data, context) => {
     const uid = context.auth?.uid;
     if (!uid) throw new functions.https.HttpsError('unauthenticated', 'Authentication required.');
     return createPersonalWorkspace(uid, typeof data?.language === 'string' ? data.language : undefined);
@@ -478,7 +534,7 @@ const resolveOrigin = (requested: unknown) =>
 
 // Kleinunternehmerregelung (§ 19 UStG, owner 2026-10-24): no VAT, no Stripe Tax; the note is on every invoice.
 export const INVOICE_FOOTER = [
-    'ProjectFlow · Christoph Labestin · Frühlingsstraße 8 · 84082 Laberweinting · hello@getprojectflow.com',
+    'ProjectFlow · Labestin Digital, Inh. Christoph Labestin · Ödwieser Weg 7 · 84082 Laberweinting · St.-Nr. 163/243/00682 · hello@getprojectflow.com',
     'Gemäß § 19 UStG wird keine Umsatzsteuer berechnet. / No VAT is charged under the German small business scheme (§ 19 UStG).',
 ].join('\n');
 /** "PF" + 6 chars derived from the tenant id (Stripe: 3–12 uppercase letters/digits, unique per customer). */
@@ -501,7 +557,7 @@ const ensureCustomer = async (stripe: Stripe, tenantId: string, uid: string, nam
     return customer.id;
 };
 
-export const createBillingCheckout = functions.region(REGION).runWith({ secrets: STRIPE_SECRETS })
+export const createBillingCheckout = functions.region(REGION).runWith(FAST_START).runWith({ secrets: STRIPE_SECRETS })
     .https.onCall(async (data, context) => {
         const { uid, tenantId } = await requireOwner(data?.tenantId, context);
         const interval: BillingInterval = data?.interval === 'month' ? 'month' : 'year';
@@ -545,7 +601,7 @@ export const createBillingCheckout = functions.region(REGION).runWith({ secrets:
         return { url: session.url };
     });
 
-export const createBillingPortal = functions.region(REGION).runWith({ secrets: STRIPE_SECRETS })
+export const createBillingPortal = functions.region(REGION).runWith(FAST_START).runWith({ secrets: STRIPE_SECRETS })
     .https.onCall(async (data, context) => {
         const { tenantId } = await requireOwner(data?.tenantId, context);
         const customerId = (await customerRef(tenantId).get()).data()?.customerId;
@@ -722,7 +778,7 @@ const changeItemsFor = (subscription: Stripe.Subscription, target: { price: stri
 };
 
 /** Price preview for the purchase page (no side effects). */
-export const previewSubscription = functions.region(REGION).runWith({ secrets: STRIPE_SECRETS })
+export const previewSubscription = functions.region(REGION).runWith(FAST_START).runWith({ secrets: STRIPE_SECRETS })
     .https.onCall(async (data, context) => {
         const input = await resolvePurchase(data, context);
         const stripe = getStripe();
@@ -823,7 +879,7 @@ const createNewWorkspaceIntent = async (data: any, context: functions.https.Call
     return result(subscription, tenantId);
 };
 
-export const createSubscriptionIntent = functions.region(REGION).runWith({ secrets: STRIPE_SECRETS })
+export const createSubscriptionIntent = functions.region(REGION).runWith(FAST_START).runWith({ secrets: STRIPE_SECRETS })
     .https.onCall(async (data, context) => {
         if (data?.newWorkspace) return createNewWorkspaceIntent(data, context);
         const input = await resolvePurchase(data, context);
@@ -916,7 +972,7 @@ export const createSubscriptionIntent = functions.region(REGION).runWith({ secre
 // --- Purchase page helpers (landing /checkout, contract §8) ---
 
 /** Public: publishable key + availability for the purchase page (billing_public/config, set by script). */
-export const getBillingConfig = functions.region(REGION).https.onCall(async () => {
+export const getBillingConfig = functions.region(REGION).runWith(FAST_START).https.onCall(async () => {
     const config = (await db.doc('billing_public/config').get()).data() || {};
     return {
         publishableKey: typeof config.publishableKey === 'string' ? config.publishableKey : null,
@@ -926,7 +982,7 @@ export const getBillingConfig = functions.region(REGION).https.onCall(async () =
 });
 
 /** Workspaces the caller owns (personal one created if missing), with their billing state. */
-export const listBillingWorkspaces = functions.region(REGION).https.onCall(async (data, context) => {
+export const listBillingWorkspaces = functions.region(REGION).runWith(FAST_START).https.onCall(async (data, context) => {
     const uid = context.auth?.uid;
     if (!uid) throw new functions.https.HttpsError('unauthenticated', 'Authentication required.');
     await createPersonalWorkspace(uid, typeof data?.language === 'string' ? data.language : undefined);
@@ -956,7 +1012,7 @@ export const listBillingWorkspaces = functions.region(REGION).https.onCall(async
 });
 
 /** Creates a team workspace for the caller (Owner); the onCreate trigger starts the 14-day Team trial. */
-export const createTeamWorkspace = functions.region(REGION).https.onCall(async (data, context) => {
+export const createTeamWorkspace = functions.region(REGION).runWith(FAST_START).https.onCall(async (data, context) => {
     const uid = context.auth?.uid;
     if (!uid) throw new functions.https.HttpsError('unauthenticated', 'Authentication required.');
     const name = typeof data?.name === 'string' && data.name.trim() ? data.name.trim().slice(0, 80) : 'Workspace';
@@ -966,6 +1022,14 @@ export const createTeamWorkspace = functions.region(REGION).https.onCall(async (
     const now = FieldValue.serverTimestamp();
     const batch = db.batch();
     batch.set(tenantRef, { tenantId: tenantRef.id, name, ownerId: uid, createdBy: uid, createdAt: now, updatedAt: now });
+    // Entitlement written with the tenant (no window without plan doc; the trigger then skips).
+    const trial = initialEntitlement(Date.now(), Date.now(), 'team');
+    batch.set(entRef(tenantRef.id), {
+        plan: trial.plan, status: trial.status, workspaceType: 'team', ...limitsForType('team', 'team'),
+        aiIncluded: true, trialEndsAt: trial.trialEndsAtMs ? Timestamp.fromMillis(trial.trialEndsAtMs) : null,
+        seats: 0, billingInterval: null, projectCount: 0, lockedProjectIds: [], aiMemberIds: [], aiAddonSeats: 0,
+        memberCount: 1, ...storageFor('team', 1), flowsQuota: 'seat', updatedAt: now,
+    });
     batch.set(tenantRef.collection('members').doc(uid), {
         uid, role: 'Owner', roleIds: [], joinedAt: now,
         displayName: user.displayName || email.split('@')[0] || 'User', email, photoURL: user.photoURL || '',
@@ -975,7 +1039,7 @@ export const createTeamWorkspace = functions.region(REGION).https.onCall(async (
 });
 
 /** Polled by the success page until the webhook has applied the purchase. */
-export const getSubscriptionStatus = functions.region(REGION).https.onCall(async (data, context) => {
+export const getSubscriptionStatus = functions.region(REGION).runWith(FAST_START).https.onCall(async (data, context) => {
     // New workspace from the purchase page that does not exist yet (card not saved / webhook not through).
     if (context.auth?.uid && typeof data?.tenantId === 'string' && !(await db.doc(`tenants/${data.tenantId}`).get()).exists) {
         const pending = (await pendingWorkspaceRef(context.auth.uid).get()).data();

@@ -2,7 +2,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAuth } from '../../../context/AuthContext';
 import { useLanguage } from '../../../context/LanguageContext';
 import { useInAppAi } from '../../../hooks/useInAppAi';
-import { AiAssistError, streamAiAssist, type AiChatMessage, type AiContextEnvelope, type AiProposalPreview } from '../../../services/aiAssistClient';
+import { AiAssistError, streamAiAssist, type AiChatMessage, type AiContextEnvelope, type AiProposalPreview, type AiSnapResult } from '../../../services/aiAssistClient';
+import { prepareSnapImage } from './snapImage';
 import { clearThread, loadThread, saveThread, threadKey } from '../../../services/aiThreads';
 import { aiErrorMessage } from './aiErrors';
 import { aiAccessFromError, type AiAccessStatus } from '../../../hooks/useAiAccess';
@@ -12,7 +13,12 @@ import { aiAccessFromError, type AiAccessStatus } from '../../../hooks/useAiAcce
  * panel — renders it). Owns: screen context, thread per object (30 days), streaming, tool steps,
  * proposals for action cards, abort, errors. Concept §4, §5.
  */
-export type AiConversationMessage = AiChatMessage & { proposals?: AiProposalPreview[] };
+export type AiConversationMessage = AiChatMessage & {
+    proposals?: AiProposalPreview[];
+    /** Snap: the user's image (object URL for the thumbnail, original file for attaching). */
+    image?: { url: string; file: File };
+    snap?: AiSnapResult;
+};
 export type AiContextChip = { kind: 'project' | 'task' | 'selection' | 'surface'; label: string };
 
 export interface UseAiConversationOptions {
@@ -61,7 +67,7 @@ export const useAiConversation = ({ active, getContext, screenKey }: UseAiConver
         const content = text.trim();
         if (!content || running || !tenantId || !user) return;
         const key = keyRef.current;
-        const history: AiChatMessage[] = [...messages.map(({ role, content: body }) => ({ role, content: body })), { role: 'user', content }];
+        const history: AiChatMessage[] = [...messages.filter((message) => !message.image && !message.snap && message.content).map(({ role, content: body }) => ({ role, content: body })), { role: 'user', content }];
         const earlier: AiConversationMessage[] = [...messages, { role: 'user', content }];
         let proposals: AiProposalPreview[] = [];
         let answer = '';
@@ -103,6 +109,43 @@ export const useAiConversation = ({ active, getContext, screenKey }: UseAiConver
         }
     }, [messages, running, tenantId, user, context, t]);
 
+    /** Snap: image (+ optional note) → recognized kind, short summary and task proposals. Not saved to the thread. */
+    const snap = useCallback(async (file: File, note: string) => {
+        if (running || !tenantId || !user) return;
+        const earlier: AiConversationMessage[] = [...messages, { role: 'user', content: note.trim(), image: { url: URL.createObjectURL(file), file } }];
+        let proposals: AiProposalPreview[] = [];
+        let result: AiSnapResult | undefined;
+        const show = () => setMessages([...earlier, { role: 'assistant', content: result?.summary || '', proposals, snap: result }]);
+        setMessages(earlier);
+        setSteps(['snap_look']);
+        setError('');
+        setPlanStatus(null);
+        setRunning(true);
+        const controller = new AbortController();
+        abortRef.current = controller;
+        try {
+            const image = await prepareSnapImage(file);
+            await streamAiAssist({ capability: 'snap', tenantId, input: { image, note: note.trim() || undefined }, context }, {
+                signal: controller.signal,
+                onSnap: (snapped) => { result = snapped; show(); },
+                onProposal: (proposal) => { proposals = [...proposals, proposal]; show(); },
+                onStep: ({ tool }) => setSteps((current) => [...current, tool])
+            });
+            if (!result) result = { kind: 'other' };
+            show();
+        } catch (caught) {
+            if (!controller.signal.aborted) {
+                const code = caught instanceof AiAssistError ? caught.code : 'internal';
+                setPlanStatus(aiAccessFromError(code));
+                setError(aiErrorMessage(code, t));
+            }
+            if (result || proposals.length) show();
+        } finally {
+            setRunning(false);
+            setSteps([]);
+        }
+    }, [messages, running, tenantId, user, context, t]);
+
     const stop = useCallback(() => abortRef.current?.abort(), []);
 
     const reset = useCallback(() => {
@@ -112,5 +155,5 @@ export const useAiConversation = ({ active, getContext, screenKey }: UseAiConver
         if (user && keyRef.current) void clearThread(user.uid, keyRef.current).catch(() => undefined);
     }, [user]);
 
-    return { messages, running, steps, error, planStatus, chips, context, send, stop, reset };
+    return { messages, running, steps, error, planStatus, chips, context, send, snap, stop, reset };
 };

@@ -927,10 +927,11 @@ html:not(.is-ready) {
     grid-template-columns: minmax(0, 1fr);
     gap: 7px;
     align-content: start;
+    // Real iPhone proportions (~1 : 2.05).
     width: 164px;
-    height: 262px;
-    padding: 38px 9px 9px;
-    border-radius: 34px;
+    height: 336px;
+    padding: 40px 9px 12px;
+    border-radius: 36px;
     background: var(--color-surface-bg);
     box-shadow: 0 0 0 6px var(--color-device-frame), 0 0 0 7px var(--color-device-edge), var(--shadow-xl);
     font-size: 10.5px;
@@ -1639,6 +1640,9 @@ kbd {
 
 .price-grid {
     display: grid;
+    margin: 0;
+    padding: 0;
+    list-style: none;
     grid-template-columns: repeat(4, minmax(0, 1fr));
     overflow: hidden;
     border: 1px solid var(--color-surface-border);

@@ -7,50 +7,17 @@ import {
 } from '@aws-sdk/client-sesv2';
 import { db } from './init';
 import {
-  EmailType, NON_TRANSACTIONAL, SendRateLimiter, backoffMs, isActiveSuppression, isRetryableSendError,
+  ALLOWED_SMTP_PORTS, EmailType, NON_TRANSACTIONAL, isAllowedSmtpPort, isPrivateIp, SendRateLimiter, backoffMs, isActiveSuppression, isRetryableSendError,
   listUnsubscribeHeaders, normalizeEmail, sesTagValue, stripHtml, suppressionId
 } from './email-logic';
 import { memberRef } from './tenant-id';
 const REGION = 'europe-west3'; // Frankfurt
 
-const ALLOWED_SMTP_PORTS = [25, 465, 587, 2525];
-
-const isPrivateIPv4 = (ip: string): boolean => {
-  const parts = ip.split('.').map(Number);
-  if (parts.length !== 4 || parts.some((p) => !Number.isInteger(p))) return true;
-  const [a, b] = parts;
-  return (
-    a === 0 ||
-    a === 10 ||
-    a === 127 ||
-    (a === 100 && b >= 64 && b <= 127) ||
-    (a === 169 && b === 254) ||
-    (a === 172 && b >= 16 && b <= 31) ||
-    (a === 192 && b === 168) ||
-    (a === 192 && b === 0) ||
-    (a === 198 && (b === 18 || b === 19)) ||
-    a >= 224
-  );
-};
-
-const isPrivateIp = (ip: string): boolean => {
-  const version = net.isIP(ip);
-  if (version === 4) return isPrivateIPv4(ip);
-  if (version === 6) {
-    const lower = ip.toLowerCase();
-    if (lower === '::' || lower === '::1') return true;
-    const mapped = lower.match(/^::ffff:(\d+\.\d+\.\d+\.\d+)$/);
-    if (mapped) return isPrivateIPv4(mapped[1]);
-    return /^(fc|fd|fe[89ab])/.test(lower) || lower.startsWith('ff');
-  }
-  return true;
-};
-
 /**
  * Resolves the host and returns a public IP to connect to. Pinning the
  * resolved IP (and using `servername` for TLS) avoids DNS rebinding.
  */
-const resolvePublicHost = async (host: string): Promise<string> => {
+export const resolvePublicHost = async (host: string): Promise<string> => {
   const addresses = net.isIP(host) ? [{ address: host }] : await dns.lookup(host, { all: true });
   if (!addresses.length || addresses.some((entry) => isPrivateIp(entry.address))) {
     throw new functions.https.HttpsError('invalid-argument', 'SMTP host is not allowed.');
@@ -179,17 +146,21 @@ const systemSmtpConfig = () => {
 
 const sendViaSmtp = async (
   config: { host: string; port: number; secure: boolean; user: string; pass: string; fromEmail: string },
-  mail: { to: string; subject: string; html: string; text: string; replyTo: string; headers: { Name: string; Value: string }[] }
+  mail: { to: string; subject: string; html: string; text: string; replyTo: string; headers: { Name: string; Value: string }[] },
+  pinnedIp?: string
 ) => {
   if (!config.host || !config.pass) {
     throw new Error('SMTP is not configured (SMTP_HOST / SMTP_PASS).');
   }
   const transporter = nodemailer.createTransport({
-    host: config.host,
+    host: pinnedIp || config.host,
     port: config.port,
     secure: config.secure,
     auth: { user: config.user, pass: config.pass },
-    tls: { rejectUnauthorized: true }
+    tls: { rejectUnauthorized: true, servername: pinnedIp && !net.isIP(config.host) ? config.host : undefined },
+    connectionTimeout: 10000,
+    greetingTimeout: 10000,
+    socketTimeout: 20000
   });
   const info = await transporter.sendMail({
     from: `"ProjectFlow" <${config.fromEmail}>`,
@@ -320,7 +291,10 @@ export const sendEmail = async (to: string, subject: string, html: string, optio
 
   const tenantSmtp = await getTenantSmtpConfig(options.tenantId);
   if (tenantSmtp) {
-    const messageId = await sendViaSmtp({ ...tenantSmtp, fromEmail: options.fromEmail || tenantSmtp.fromEmail }, mail);
+    // Workspace-controlled host: public IPs and mail ports only, resolved IP pinned (audit M9).
+    if (!isAllowedSmtpPort(tenantSmtp.port)) throw new Error('Workspace SMTP port is not allowed.');
+    const ip = await resolvePublicHost(tenantSmtp.host);
+    const messageId = await sendViaSmtp({ ...tenantSmtp, fromEmail: options.fromEmail || tenantSmtp.fromEmail }, mail, ip);
     return { transport: 'tenant-smtp', messageId };
   }
 

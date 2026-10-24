@@ -209,6 +209,12 @@ button, header = OS drag region, buttons `no-drag`) and:
    `will-navigate` from `file://` to the app origin allowed). Offline mode only covers *initial load*; once loaded,
    Firebase handles transient offline as in the browser.
 7. **External links** always open in the default browser. Downloads use Electron's default save dialog (`will-download`).
+8. **AI pop-out** (2026-10-24, capability `assist`): the global AI shortcut (⌃⌘J / Ctrl+Shift+Alt+J) opens `windows/assistWindow.ts`
+   (floating panel like the palette, page `/desktop/assist` = the ⌘J bar with `variant="window"`, links open in the main window).
+   IPC `pf:assist`: `{ action: 'open', image?, prompt? }` from any window (Quick Capture „✦ In Aufgaben verwandeln“ hands over its
+   screenshot) and `{ action: 'capture-screen' }` only from the pop-out, only on click („Bildschirm anhängen“, `desktopCapturer`
+   of the pop-out's display, the panel hides for the frame). Older web builds without the route: the shell still loads it
+   (redirects to `/`); older shells keep sending `open-ai` to the main window.
 
 ## 8. Web changes
 
@@ -493,3 +499,4 @@ route `/desktop/tray`, `web/screens/DesktopTrayPanel.tsx`), right click keeps th
   Upload verified only up to the call (emulator cannot sign upload URLs).
 - **Smoother launch handover** (2026-10-23, shell ≥ 0.1.4 for the grace): on `markRendererReady` the launch scene waits up to 1.5 s for the page's `splashDone` (Dashboard sends it once its data is in) and fades straight into the finished page; otherwise into the layout-matching `DashboardSkeleton`. Verified launch trace: splash → (skeleton under the splash) → dashboard, no first-run flash.
 - **Web updates in running windows** (2026-10-24): the shell loads the hosted app, so a hosting deploy reaches the desktop app without a release; `AppUpdateWatcher` makes long-running windows pick it up (silent reload in the background, hint in front). No shell change.
+- **0.1.5** (2026-10-24): desktop AI pop-out from in-app-ai (`windows/assistWindow.ts`, ⌃⌘J, capability `assist`) + fix: launch scene and offline page as `data:` URLs (`localPages.ts`) — `loadFile` from app.asar failed in packaged builds because of the file-protocol fuse.

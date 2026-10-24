@@ -7,6 +7,7 @@
  * step; `aiUndoProposal` reverts it (created items are deleted, changed fields restored).
  */
 import * as functions from 'firebase-functions/v1';
+import { FAST_START } from './runtime-options';
 import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 
 import { db } from './init';
@@ -32,6 +33,7 @@ interface UndoStep { method: 'DELETE' | 'PATCH'; path: string; body?: Record<str
 
 const proposalRef = (uid: string, id: string) => db.doc(`users/${uid}/ai_proposals/${id}`);
 
+/** Previous values are context only and may be shortened; new values (`to`) are shown exactly as they will be written. */
 const clipValue = (value: unknown) => (typeof value === 'string' && value.length > 400 ? `${value.slice(0, 400)}…` : value);
 
 const get = async (ctx: ToolContext, path: string) => {
@@ -49,7 +51,7 @@ export const diffTaskUpdate = (current: Record<string, unknown>, args: Record<st
         if (!(field in args) || args[field] === undefined) continue;
         const from = current[field] ?? (field === 'assigneeIds' ? [] : '');
         if (JSON.stringify(from) === JSON.stringify(args[field])) continue;
-        changes.push({ field, from: clipValue(from), to: clipValue(args[field]) });
+        changes.push({ field, from: clipValue(from), to: args[field] });
         before[field] = from;
     }
     if ('status' in before) before.isCompleted = before.status === 'Done';
@@ -75,16 +77,16 @@ export const createProposal = async (ctx: ToolContext, toolName: string, rawArgs
     let before: Record<string, unknown> | null = null;
     if (toolName === 'create_task') {
         changes = Object.entries(compact({ title: args.title, description: args.description, status: args.status, priority: args.priority, dueDate: args.dueDate, assigneeIds: args.assigneeIds }))
-            .map(([field, to]) => ({ field, to: clipValue(to) }));
+            .map(([field, to]) => ({ field, to }));
     } else if (toolName === 'update_task') {
         const diff = diffTaskUpdate(taskPayload.task, args);
         if (!diff.changes.length) throw new Error('Nothing would change.');
         changes = diff.changes;
         before = diff.before;
     } else if (toolName === 'add_comment') {
-        changes = [{ field: 'comment', to: clipValue(args.content) }];
+        changes = [{ field: 'comment', to: args.content }];
     } else if (toolName === 'add_subtask') {
-        changes = [{ field: 'subtask', to: clipValue(args.title) }];
+        changes = [{ field: 'subtask', to: args.title }];
     }
 
     const ref = db.collection(`users/${ctx.uid}/ai_proposals`).doc();
@@ -141,7 +143,7 @@ const audit = (ctx: ToolContext, method: string, path: string, projectId: string
         clientName: 'ProjectFlow KI (in-app)', permission, method, path, projectId, status
     }).catch((error) => console.error('AI audit write failed', { tenantId: ctx.tenantId, message: error?.message }));
 
-export const aiApplyProposal = functions.region(REGION).https.onCall(async (data, context) => {
+export const aiApplyProposal = functions.region(REGION).runWith(FAST_START).https.onCall(async (data, context) => {
     const { ref, data: proposal, ctx } = await loadOwnProposal(context, data?.proposalId);
     if (proposal.status !== 'pending') throw new functions.https.HttpsError('failed-precondition', 'This proposal was already handled.');
     if (proposal.expireAt?.toMillis?.() < Date.now()) throw new functions.https.HttpsError('deadline-exceeded', 'This proposal has expired.');
@@ -171,7 +173,7 @@ export const aiApplyProposal = functions.region(REGION).https.onCall(async (data
     }
 });
 
-export const aiUndoProposal = functions.region(REGION).https.onCall(async (data, context) => {
+export const aiUndoProposal = functions.region(REGION).runWith(FAST_START).https.onCall(async (data, context) => {
     const { ref, data: proposal, ctx } = await loadOwnProposal(context, data?.proposalId);
     if (proposal.status !== 'applied' || !proposal.undo) throw new functions.https.HttpsError('failed-precondition', 'Nothing to undo.');
     if (proposal.appliedAt?.toMillis?.() < Date.now() - UNDO_WINDOW_MS) throw new functions.https.HttpsError('deadline-exceeded', 'Too late to undo.');

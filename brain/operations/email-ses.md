@@ -156,7 +156,7 @@ SES → Account dashboard → „Request production access“. Felder:
 - **Preferred contact language:** English
 - **Use case description** (EN, so ins Formular):
 
-> ProjectFlow (https://getprojectflow.com, app at https://app.getprojectflow.com) is a project management SaaS for small teams, operated by Christoph Labestin, Frühlingsstraße 8, 84082 Laberweinting, Germany. We use Amazon SES in eu-north-1 only for transactional email from our verified domain mail.getprojectflow.com (Easy DKIM, custom MAIL FROM bounce.mail.getprojectflow.com, SPF and DMARC published).
+> ProjectFlow (https://getprojectflow.com, app at https://app.getprojectflow.com) is a project management SaaS for small teams, operated by Labestin Digital (sole proprietorship of Christoph Labestin), Ödwieser Weg 7, 84082 Laberweinting, Germany. We use Amazon SES in eu-north-1 only for transactional email from our verified domain mail.getprojectflow.com (Easy DKIM, custom MAIL FROM bounce.mail.getprojectflow.com, SPF and DMARC published).
 >
 > Email types: (1) workspace invitations that a workspace owner sends to a specific person, (2) activity notifications for registered users (task assigned, mentions, due dates), (3) account, billing and legal notices to registered users (e.g. updated Terms of Service or Privacy Policy), (4) double-opt-in confirmations for our waitlist/newsletter and contact-form copies to our own inbox. We do not send marketing campaigns, do not buy, rent or scrape lists, and never email anyone who has not signed up or been explicitly invited by a workspace owner.
 >

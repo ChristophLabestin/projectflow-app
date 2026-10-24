@@ -743,6 +743,7 @@ const createDriveResumableUpload = async (args: {
     secret: FileStorageSecret;
     fileName: string;
     mimeType: string;
+    sizeBytes: number;
     folderId: string;
     metadata?: Record<string, string>;
 }) => {
@@ -754,6 +755,8 @@ const createDriveResumableUpload = async (args: {
             Authorization: `Bearer ${token}`,
             'Content-Type': 'application/json',
             'X-Upload-Content-Type': args.mimeType,
+            // Drive rejects a body of any other length (audit 2026-10-24, M2).
+            'X-Upload-Content-Length': String(args.sizeBytes),
         },
         body: JSON.stringify({
             name: args.fileName,
@@ -778,6 +781,13 @@ const createDriveResumableUpload = async (args: {
     return location;
 };
 
+/**
+ * Sign `x-goog-content-length-range` into Firebase Storage upload URLs (audit 2026-10-24, M2). Requires the
+ * header in the bucket CORS (`cors.json`, applied with `gcloud storage buckets update … --cors-file=cors.json`);
+ * flip to true only after that, otherwise browser uploads fail the preflight.
+ */
+const SIGN_GCS_LENGTH_RANGE = process.env.GCS_SIGN_LENGTH_RANGE === 'true';
+
 const generateUploadTarget = async (args: {
     tenantId: string;
     secret: FileStorageSecret;
@@ -785,6 +795,8 @@ const generateUploadTarget = async (args: {
     objectKey: string;
     fileName: string;
     mimeType: string;
+    /** Announced size (already checked against the plan); the signed target never accepts more. */
+    sizeBytes: number;
     moduleName: UploadModule;
     entityType: string;
     entityId: string;
@@ -803,11 +815,16 @@ const generateUploadTarget = async (args: {
 
     if (args.resolvedProvider === 'firebase') {
         const bucket = fileBucket();
+        // The length range becomes part of the signature (audit 2026-10-24, M2): GCS rejects a larger body,
+        // and clients send every header from uploadTarget.headers (web, desktop, iOS). Browsers only send it
+        // once the bucket CORS allows the header (cors.json) — until then finalize re-checks the real size.
+        const lengthRange = SIGN_GCS_LENGTH_RANGE ? `0,${Math.max(0, Math.floor(args.sizeBytes))}` : null;
         const [uploadUrl] = await bucket.file(args.objectKey).getSignedUrl({
             version: 'v4',
             action: 'write',
             expires: Date.now() + STORAGE_SIGNED_URL_TTL_MS,
             contentType: args.mimeType,
+            ...(lengthRange ? { extensionHeaders: { 'x-goog-content-length-range': lengthRange } } : {}),
         });
 
         return {
@@ -819,6 +836,7 @@ const generateUploadTarget = async (args: {
                 url: uploadUrl,
                 headers: {
                     'Content-Type': args.mimeType,
+                    ...(lengthRange ? { 'x-goog-content-length-range': lengthRange } : {}),
                 },
             },
         };
@@ -835,13 +853,19 @@ const generateUploadTarget = async (args: {
         const key = pathPrefix ? `${pathPrefix.replace(/\/+$/, '')}/${args.objectKey}` : args.objectKey;
         const client = createS3Client(s3);
 
+        // Exact length signed as a header (not hoisted into the query): S3 rejects any other body size (M2).
         const command = new PutObjectCommand({
             Bucket: bucket,
             Key: key,
             ContentType: args.mimeType,
+            ContentLength: Math.floor(args.sizeBytes),
         });
 
-        const uploadUrl = await getS3SignedUrl(client, command, { expiresIn: Math.floor(STORAGE_SIGNED_URL_TTL_MS / 1000) });
+        const uploadUrl = await getS3SignedUrl(client, command, {
+            expiresIn: Math.floor(STORAGE_SIGNED_URL_TTL_MS / 1000),
+            signableHeaders: new Set(['content-length']),
+            unhoistableHeaders: new Set(['content-length']),
+        });
 
         return {
             providerRef: {
@@ -874,6 +898,7 @@ const generateUploadTarget = async (args: {
         secret: args.secret,
         fileName: args.fileName,
         mimeType: args.mimeType,
+        sizeBytes: args.sizeBytes,
         folderId,
         metadata: {
             tenantId: args.tenantId,
@@ -1492,6 +1517,49 @@ const finalizeManagedUpload = async (args: {
     return { id: fileRef.id, ...persisted };
 };
 
+/** Type blocklist, plan max file size and pooled quota — shared by every upload path (audit 2026-10-24, M1/M2). */
+const assertUploadAllowed = async (tenantId: string, fileName: string, mimeType: string, sizeBytes: number) => {
+    if (isBlockedFileType(fileName, mimeType)) {
+        throw new functions.https.HttpsError('invalid-argument', 'This file type is not allowed.', { reason: 'blocked-type' });
+    }
+    const usage = await getWorkspaceFileUsage(tenantId);
+    if (sizeBytes > usage.maxFileBytes) {
+        throw new functions.https.HttpsError('invalid-argument', 'File is too large.', {
+            reason: 'too-large', code: 'plan-file-too-large', maxBytes: usage.maxFileBytes,
+        });
+    }
+    if (!quotaAllows(usage.usedBytes, usage.quotaBytes, sizeBytes)) {
+        throw new functions.https.HttpsError('resource-exhausted', 'Workspace storage is full.', {
+            reason: 'quota', code: 'plan-storage-limit', usedBytes: usage.usedBytes, quotaBytes: usage.quotaBytes,
+        });
+    }
+};
+
+/**
+ * After the object exists: its real type/size decide, and the quota is checked again so parallel sessions
+ * cannot overshoot it together. On violation the object is deleted before the error is thrown.
+ */
+const assertUploadedObjectAllowed = async (args: {
+    tenantId: string;
+    secret: FileStorageSecret;
+    draftData: Record<string, any>;
+    verification: { providerRef: TenantFileRecord['providerRef']; sizeBytes: number; mimeType: string };
+}) => {
+    const fileName = normalizeString(args.draftData.fileName);
+    const record = {
+        provider: normalizeString(args.draftData.resolvedProvider) as StorageProvider,
+        providerRef: args.verification.providerRef,
+        fileName,
+        mimeType: args.verification.mimeType,
+    } as TenantFileRecord;
+    try {
+        await assertUploadAllowed(args.tenantId, fileName, args.verification.mimeType, args.verification.sizeBytes);
+    } catch (error) {
+        await deleteProviderObject({ tenantId: args.tenantId, secret: args.secret, record }).catch(() => undefined);
+        throw error;
+    }
+};
+
 export const createTenantFileUploadSession = functions.region(REGION).https.onCall(async (data, context) => {
     const payload = (data || {}) as Record<string, unknown>;
     const tenantId = normalizeString(payload.tenantId);
@@ -1515,6 +1583,11 @@ export const createTenantFileUploadSession = functions.region(REGION).https.onCa
         ? await prepareManagedUpload({ tenantId, context, payload, fileName, mimeType, sizeBytes })
         : null;
     const actorId = managed ? managed.actorId : await requireUploadPermission(tenantId, context, moduleName);
+    if (!managed) {
+        // Legacy modules (media, attachments, avatars …) get the same checks as the file manager (audit 2026-10-24, M1).
+        await assertUploadAllowed(tenantId, fileName, mimeType, sizeBytes);
+        if (projectId) await requireFileScopeRead(tenantId, actorId, projectId);
+    }
     const scopedProjectId = managed ? managed.parent.projectId : projectId;
     const secret = await getSecretConfig(tenantId);
     const provider = resolveProvider(secret);
@@ -1535,6 +1608,7 @@ export const createTenantFileUploadSession = functions.region(REGION).https.onCa
         objectKey,
         fileName,
         mimeType,
+        sizeBytes,
         moduleName,
         entityType,
         entityId,
@@ -1615,6 +1689,7 @@ export const finalizeTenantFileUpload = functions.region(REGION).https.onCall(as
         draftData,
         providerResult: (payload.providerResult as Record<string, any>) || undefined,
     });
+    await assertUploadedObjectAllowed({ tenantId, secret, draftData, verification });
 
     if (moduleName === 'files') {
         const file = await finalizeManagedUpload({ tenantId, context, actorId, draftData, verification, secret });

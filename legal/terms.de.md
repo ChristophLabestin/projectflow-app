@@ -1,12 +1,12 @@
 # Nutzungsbedingungen (AGB) / SaaS-Vertrag
 
-_Zuletzt aktualisiert: 23. Oktober 2026_
+_Zuletzt aktualisiert: 24. Oktober 2026_
 
 Zusammenfassung (nicht verbindlich): ProjectFlow ist ein Online-Projektmanagement-Dienst für Unternehmen (nicht für Verbraucher), der im Abonnement angeboten wird. Mit der Registrierung stimmt das Unternehmen diesen Bedingungen zu.
 
 ## 1. Parteien und Geltungsbereich (nur B2B)
 
-Diese Bedingungen gelten zwischen Christoph Labestin, Frühlingsstraße 8, 84082 Laberweinting, Deutschland („Anbieter“), und dem registrierenden Unternehmen („Kunde“) für die Nutzung von ProjectFlow („Service“), einschließlich Web-App, iOS-App und Desktop-App.
+Diese Bedingungen gelten zwischen Labestin Digital, Inhaber Christoph Labestin, Ödwieser Weg 7, 84082 Laberweinting, Deutschland („Anbieter“), und dem registrierenden Unternehmen („Kunde“) für die Nutzung von ProjectFlow („Service“), einschließlich Web-App, iOS-App und Desktop-App.
 
 Der Service richtet sich ausschließlich an Unternehmer im Sinne von § 14 BGB. Der Kunde sichert zu, kein Verbraucher zu sein und befugt zu sein, das Unternehmen zu binden. Verbraucherschutzrechte (z. B. Widerrufsrecht) finden keine Anwendung. Abweichende Bedingungen des Kunden gelten nicht, es sei denn, der Anbieter stimmt ihnen schriftlich zu. Individuelle Vereinbarungen (z. B. Bestellformular) haben Vorrang; in Datenschutzfragen gilt zudem die Auftragsverarbeitungsvereinbarung (Abschnitt 11).
 

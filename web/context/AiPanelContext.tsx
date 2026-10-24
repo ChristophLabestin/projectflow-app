@@ -10,12 +10,21 @@ import type { AiContextEnvelope } from '../services/aiAssistClient';
  */
 type ScreenExtras = Pick<AiContextEnvelope, 'selection' | 'view'> & { surface?: string };
 
+export const dataUrlToFile = (dataUrl: string): File | null => {
+    const match = /^data:(image\/(?:png|jpeg|webp));base64,(.+)$/.exec(dataUrl);
+    if (!match) return null;
+    const bytes = Uint8Array.from(atob(match[2]), (char) => char.charCodeAt(0));
+    return new File([bytes], `snap.${match[1].split('/')[1]}`, { type: match[1] });
+};
+
 interface AiPanelContextValue {
     enabled: boolean;
     open: boolean;
     /** Text to put into the input when opening (e.g. from a suggestion chip elsewhere). */
     draft: string;
-    openPanel: (draft?: string) => void;
+    /** Image to analyse when opening (Snap: desktop quick capture, paste elsewhere). */
+    draftImage: File | null;
+    openPanel: (draft?: string, image?: File | null) => void;
     closePanel: () => void;
     togglePanel: () => void;
     getContext: () => AiContextEnvelope;
@@ -49,12 +58,14 @@ export const AiPanelProvider: React.FC<{ children: React.ReactNode }> = ({ child
     const location = useLocation();
     const [open, setOpen] = useState(false);
     const [draft, setDraft] = useState('');
+    const [draftImage, setDraftImage] = useState<File | null>(null);
     const extrasRef = useRef<ScreenExtras | null>(null);
     const pathRef = useRef(location.pathname);
     pathRef.current = location.pathname;
 
-    const openPanel = useCallback((text?: string) => {
+    const openPanel = useCallback((text?: string, image?: File | null) => {
         setDraft(text || '');
+        setDraftImage(image || null);
         setOpen(true);
     }, []);
     const closePanel = useCallback(() => setOpen(false), []);
@@ -77,10 +88,16 @@ export const AiPanelProvider: React.FC<{ children: React.ReactNode }> = ({ child
             if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'j') {
                 event.preventDefault();
                 setDraft('');
+                setDraftImage(null);
                 setOpen((value) => !value);
             }
         };
-        const onExternalOpen = (event: Event) => openPanel((event as CustomEvent<{ prompt?: string }>).detail?.prompt);
+        // Desktop (global ⌃⌘J, quick capture) and other surfaces: { prompt?, image?: File | data URL }.
+        const onExternalOpen = (event: Event) => {
+            const detail = (event as CustomEvent<{ prompt?: string; image?: File | string }>).detail || {};
+            const image = typeof detail.image === 'string' ? dataUrlToFile(detail.image) : detail.image || null;
+            openPanel(detail.prompt, image);
+        };
         window.addEventListener('keydown', onKey);
         window.addEventListener('pf:open-ai-panel', onExternalOpen);
         return () => {
@@ -92,14 +109,14 @@ export const AiPanelProvider: React.FC<{ children: React.ReactNode }> = ({ child
     useEffect(() => { if (!enabled) setOpen(false); }, [enabled]);
 
     const value = useMemo(() => ({
-        enabled, open, draft, openPanel, closePanel, togglePanel, getContext, setScreenExtras
-    }), [enabled, open, draft, openPanel, closePanel, togglePanel, getContext, setScreenExtras]);
+        enabled, open, draft, draftImage, openPanel, closePanel, togglePanel, getContext, setScreenExtras
+    }), [enabled, open, draft, draftImage, openPanel, closePanel, togglePanel, getContext, setScreenExtras]);
 
     return <AiPanelContext.Provider value={value}>{children}</AiPanelContext.Provider>;
 };
 
 const FALLBACK: AiPanelContextValue = {
-    enabled: false, open: false, draft: '',
+    enabled: false, open: false, draft: '', draftImage: null,
     openPanel: () => undefined, closePanel: () => undefined, togglePanel: () => undefined,
     getContext: () => ({ surface: 'other' }), setScreenExtras: () => undefined
 };

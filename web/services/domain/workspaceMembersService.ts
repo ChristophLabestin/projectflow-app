@@ -1,6 +1,7 @@
 import { arrayRemove, collection, deleteDoc, deleteField, doc, getDoc, getDocs, onSnapshot, query, setDoc, updateDoc, where } from 'firebase/firestore';
 
-import { db } from '../firebase';
+import { httpsCallable } from 'firebase/functions';
+import { db, functions } from '../firebase';
 import { getActiveTenantId } from './authService';
 import type { Member, WorkspaceRole } from '../../types';
 
@@ -139,7 +140,9 @@ export const updateUserRole = async (
         throw new Error('Tenant not available');
     }
 
-    await updateDoc(tenantMemberDocRef(resolvedTenant, targetUserId), { role: newRole });
+    // Server-side (seat check for guest → member, security review M4); the rules deny that transition for clients.
+    await httpsCallable<{ tenantId: string; uid: string; role: WorkspaceRole }, { ok: boolean }>(functions, 'setWorkspaceMemberRole')(
+        { tenantId: resolvedTenant, uid: targetUserId, role: newRole });
 };
 
 /**

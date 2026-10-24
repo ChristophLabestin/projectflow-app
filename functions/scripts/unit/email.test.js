@@ -136,7 +136,8 @@ test('retry only throttling, network and 5xx errors', () => {
 test('system template shows the real imprint, not the old San Francisco footer', () => {
     const html = tpl.getSystemEmailTemplate('Join us', 'Body', 'https://app.getprojectflow.com/invite/1', 'Accept', 'de');
     assert.ok(html.includes(tpl.EMAIL_IMPRINT));
-    assert.ok(html.includes('Frühlingsstraße 8 · 84082 Laberweinting'));
+    assert.ok(html.includes('Ödwieser Weg 7 · 84082 Laberweinting'));
+    assert.ok(html.includes('Labestin Digital'));
     assert.ok(!/San Francisco|Project Flow Inc/.test(html));
     assert.ok(html.includes('oder Link einfügen') || html.includes('Link'));
     assert.ok(html.includes('href="https://app.getprojectflow.com/invite/1"'));
@@ -160,4 +161,19 @@ test('notification template escapes content and links settings + unsubscribe', (
 test('plain-text part strips markup and keeps links', () => {
     const text = logic.stripHtml('<html><head><style>p{}</style></head><body><h1>Hi</h1><p>A &amp; B<br>next</p><a href="https://x.test">Go</a></body></html>');
     assert.equal(text, 'Hi\nA & B\nnext\nGo (https://x.test)');
+});
+
+test('workspace SMTP hosts must be public (SSRF guard, audit M9)', () => {
+    for (const ip of ['127.0.0.1', '10.1.2.3', '172.16.0.1', '192.168.1.1', '169.254.169.254', '100.64.0.1', '0.0.0.0',
+        '::1', '::', 'fd00::1', 'fe80::1', '::ffff:127.0.0.1', '::ffff:7f00:1', '0:0:0:0:0:ffff:a9fe:a9fe', '::ffff:a00:1',
+        '64:ff9b::7f00:1', 'localhost', 'not-an-ip']) {
+        assert.equal(logic.isPrivateIp(ip), true, ip);
+    }
+    for (const ip of ['8.8.8.8', '142.250.74.109', '2a00:1450:4001:82a::201a', '::ffff:8.8.8.8']) {
+        assert.equal(logic.isPrivateIp(ip), false, ip);
+    }
+    assert.equal(logic.isAllowedSmtpPort(587), true);
+    assert.equal(logic.isAllowedSmtpPort('465'), true);
+    assert.equal(logic.isAllowedSmtpPort(22), false);
+    assert.equal(logic.isAllowedSmtpPort(6379), false);
 });

@@ -1,4 +1,5 @@
 import * as functions from 'firebase-functions/v1';
+import { FAST_START } from './runtime-options';
 import {
     generateRegistrationOptions,
     verifyRegistrationResponse,
@@ -96,7 +97,7 @@ const resolveRp = (clientOrigin?: string, client?: unknown): { rpID: string; ori
     return { rpID: fallback.hostname, origin: fallback.origin };
 };
 
-export const generatePasskeyRegistrationOptions = functions.region(REGION).https.onCall(async (data, context) => {
+export const generatePasskeyRegistrationOptions = functions.region(REGION).runWith(FAST_START).https.onCall(async (data, context) => {
     try {
         // 1. Ensure user is authenticated
         if (!context.auth) {
@@ -152,7 +153,7 @@ export const generatePasskeyRegistrationOptions = functions.region(REGION).https
  * Verify Registration
  * Called after the user has performed the biometric/security key interaction.
  */
-export const verifyPasskeyRegistration = functions.region(REGION).https.onCall(async (data, context) => {
+export const verifyPasskeyRegistration = functions.region(REGION).runWith(FAST_START).https.onCall(async (data, context) => {
     // 1. Ensure user is authenticated
     if (!context.auth) {
         throw new functions.https.HttpsError('unauthenticated', 'User must be logged in to register a passkey.');
@@ -241,7 +242,7 @@ export const verifyPasskeyRegistration = functions.region(REGION).https.onCall(a
  *
  * We allow passing an email if known, otherwise we generate options for "empty" (discoverable).
  */
-export const generatePasskeyAuthenticationOptions = functions.region(REGION).https.onCall(async (data, context) => {
+export const generatePasskeyAuthenticationOptions = functions.region(REGION).runWith(FAST_START).https.onCall(async (data, context) => {
     try {
         // data.email is optional.
 
@@ -311,7 +312,7 @@ export const generatePasskeyAuthenticationOptions = functions.region(REGION).htt
  * Verify Authentication
  * Called after the user signs in with the passkey.
  */
-export const verifyPasskeyAuthentication = functions.region(REGION).https.onCall(async (data, context) => {
+export const verifyPasskeyAuthentication = functions.region(REGION).runWith(FAST_START).https.onCall(async (data, context) => {
     // Helper to safely get Buffer from Firestore field (which might be Blob, Buffer, or Uint8Array)
     const toBuffer = (field: any): Buffer => {
         if (!field) return Buffer.alloc(0);

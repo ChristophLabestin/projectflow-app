@@ -4,10 +4,15 @@ import { esc, layout, links } from './layout';
 import { icon } from './icons';
 import { urlFor, type PageDef } from './pages';
 import { legalBody } from './legal';
+import type { LegalDoc } from '../shared/legal-markdown';
 import { docsMcpBody } from './docs';
 import { buyBody } from './buy';
 import { buyCopy } from '../content/buy';
 import { docsMcp } from '../content/docs-mcp';
+
+/** Legal texts fetched once per build/dev render by vite.config.ts (key: "<kind>.<lang>"). */
+let legalDocs: Record<string, LegalDoc> = {};
+export const setLegalDocs = (docs: Record<string, LegalDoc>) => { legalDocs = docs; };
 
 const notFoundBody = (): string => {
     const de = site.de.notFound;
@@ -73,7 +78,7 @@ export function renderPage(page: PageDef): string {
                 page,
                 title: `${meta.title} · ProjectFlow`,
                 description: meta.description,
-                body: legalBody(page.kind, page.lang),
+                body: legalBody(page.kind, page.lang, legalDocs[`${page.kind}.${page.lang}`]),
                 scripts: ['/src/js/main.ts', '/src/js/legal.ts'],
                 bodyClass: 'page-legal',
             });

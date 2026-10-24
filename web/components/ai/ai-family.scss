@@ -352,6 +352,16 @@ kbd {
     animation: ai-family-fade 80ms linear both;
 }
 
+.ai-bar-window {
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    height: 100vh;
+    padding: 16px;
+
+    .ai-bar { width: 100%; max-height: 100%; -webkit-app-region: no-drag; }
+}
+
 .ai-bar {
     display: flex;
     flex-direction: column;
@@ -361,6 +371,113 @@ kbd {
     background: var(--color-surface-card);
     box-shadow: $float-shadow, var(--shadow-lg);
     overflow: hidden;
+    position: relative;
+
+    // Snap: drop an image anywhere on the bar.
+    &__drop {
+        position: absolute;
+        inset: 4px;
+        z-index: 2;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        border: 1px dashed var(--color-surface-border);
+        border-radius: var(--radius-md);
+        background: rgba(var(--color-surface-card-rgb), 0.94);
+        color: var(--color-text-main);
+        font-size: 0.8125rem;
+        pointer-events: none;
+
+        .material-symbols-outlined { font-size: 1.125rem; color: var(--color-text-muted); }
+    }
+
+    &__thumb {
+        position: relative;
+        flex: none;
+        width: 34px;
+        height: 26px;
+
+        img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: var(--radius-sm);
+            box-shadow: 0 0 0 1px rgba(var(--color-surface-border-rgb), 0.9);
+        }
+
+        button {
+            position: absolute;
+            top: -6px;
+            right: -6px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 16px;
+            height: 16px;
+            padding: 0;
+            border: 0;
+            border-radius: var(--radius-full);
+            background: var(--color-text-main);
+            color: var(--color-surface-card);
+            cursor: pointer;
+
+            .material-symbols-outlined { font-size: 0.6875rem; }
+        }
+    }
+
+    &__snap-source {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 0.75rem;
+        color: var(--color-text-muted);
+
+        img {
+            flex: none;
+            width: 56px;
+            height: 40px;
+            object-fit: cover;
+            border-radius: var(--radius-sm);
+            box-shadow: 0 0 0 1px rgba(var(--color-surface-border-rgb), 0.9);
+        }
+
+        span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    }
+
+    &__snap-kind {
+        margin: 0;
+        font-size: 0.8125rem;
+        line-height: 1.5;
+        color: var(--color-text-main);
+    }
+
+    &__snap-tag {
+        display: inline-flex;
+        align-items: center;
+        height: 20px;
+        margin-right: 8px;
+        padding: 0 8px;
+        border-radius: var(--radius-full);
+        background: var(--color-surface-hover);
+        color: var(--color-text-muted);
+        font-size: 0.6875rem;
+        font-weight: 600;
+        vertical-align: 1px;
+    }
+
+    &__attach {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 0.75rem;
+        color: var(--color-text-muted);
+        cursor: pointer;
+
+        input { margin: 0; accent-color: var(--color-text-main); }
+    }
+
+    &__attach-error { margin-left: 6px; color: var(--color-error); }
 
     &__input {
         display: flex;

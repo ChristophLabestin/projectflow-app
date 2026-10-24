@@ -1,0 +1,2 @@
+- Provider details corrected: Labestin Digital (owner Christoph Labestin), Ödwieser Weg 7, 84082 Laberweinting.
+- Nothing else has changed.

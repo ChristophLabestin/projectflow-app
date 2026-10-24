@@ -1,7 +1,7 @@
 import { BrowserWindow, WebContentsView, nativeTheme } from 'electron';
-import path from 'node:path';
 import { IS_DEV } from '../config';
 import { labels } from '../labels';
+import { localPageUrl } from '../localPages';
 import { getSettings } from '../store';
 
 /**
@@ -46,9 +46,7 @@ export const attachSplash = (win: BrowserWindow, onReady: () => void) => {
     view.webContents.on('will-navigate', (event) => event.preventDefault());
     view.webContents.once('did-finish-load', onReady);
     const l = labels();
-    void view.webContents.loadFile(path.join(__dirname, '..', 'assets', 'splash.html'), {
-        query: { theme: dark ? 'dark' : 'light', preparing: l.splashPreparing, slow: l.splashSlow }
-    });
+    void view.webContents.loadURL(localPageUrl('splash.html', { theme: dark ? 'dark' : 'light', preparing: l.splashPreparing, slow: l.splashSlow }));
     setTimeout(finishSplash, MAX_MS);
 };
 

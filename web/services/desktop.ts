@@ -5,7 +5,7 @@
  */
 
 export type DesktopPlatform = 'darwin' | 'win32' | 'linux';
-export type DesktopWindowKind = 'main' | 'quick-access' | 'capture' | 'day' | 'secondary' | 'tray' | 'palette';
+export type DesktopWindowKind = 'main' | 'quick-access' | 'capture' | 'day' | 'secondary' | 'tray' | 'palette' | 'assist';
 export type DesktopCapability =
     | 'titlebar' | 'app-menu' | 'popout' | 'badge' | 'tray' | 'notifications' | 'language'
     | 'preferences' | 'quick-capture' | 'notification-actions' | 'day-flow' | 'file-drop' | 'calendar' | 'recents' | 'windows'
@@ -16,7 +16,8 @@ export type DesktopCapability =
     | 'updates'
     | 'offline-cache'
     | 'command-palette'
-    | 'screenshot';
+    | 'screenshot'
+    | 'assist';
 
 export type DesktopCommand =
     | 'new-task'
@@ -153,6 +154,8 @@ export interface DesktopBridge {
     splashDone?(): void;
     /** Since 'offline-cache': wipes the on-disk Firestore cache (sign-out) and reloads the windows. */
     clearOfflineCache?(): void;
+    /** Since 'assist': AI pop-out. `open` (optional Snap image data URL); `capture-screen` (pop-out only) → PNG data URL or null. */
+    assist?(request: { action: 'open'; image?: string; prompt?: string } | { action: 'capture-screen' }): Promise<string | null>;
     indexSpotlight?(items: { id: string; title: string; subtitle?: string; keywords?: string[] }[]): void;
 }
 

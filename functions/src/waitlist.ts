@@ -3,15 +3,14 @@ import * as admin from 'firebase-admin';
 import { EMAIL_SECRETS, sendEmail, getSystemEmailTemplate } from './email';
 import { EMAIL_CONTENT, getLocale } from './email-locales';
 import { corsMiddleware } from './corsConfig';
+import { clientIp, consumeRateLimits, generateConfirmCode, signupRateLimitRules } from './public-rate-limit';
 import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 
 const db = admin.firestore();
 const REGION = 'europe-west3';
 
 // Helper to generate a unique code
-const generateCode = () => {
-    return Math.random().toString(36).substring(2, 10).toUpperCase();
-};
+const generateCode = generateConfirmCode;
 
 export const requestWaitlist = functions.region(REGION).runWith({ secrets: EMAIL_SECRETS }).https.onRequest((req, res) => {
     return corsMiddleware(req, res, async () => {
@@ -33,6 +32,15 @@ export const requestWaitlist = functions.region(REGION).runWith({ secrets: EMAIL
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!emailRegex.test(email)) {
             res.status(400).json({ success: false, error: 'Invalid email format' });
+            return;
+        }
+        if (typeof email !== 'string' || email.length > 254) {
+            res.status(400).json({ success: false, error: 'Invalid email format' });
+            return;
+        }
+        // Mail-bombing guard (audit M10): per IP and per address.
+        if (!(await consumeRateLimits(signupRateLimitRules('waitlist', clientIp(req), email)))) {
+            res.status(429).json({ success: false, error: 'Too many requests. Please try again later.' });
             return;
         }
 

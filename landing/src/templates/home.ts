@@ -67,7 +67,7 @@ const story = (t: SiteCopy, lang: Lang) => {
             <div class="story__phone" data-phone>
                 <div class="phone__island"></div>
                 <p class="story__phone-title">${icon('sun')}${lang === 'en' ? 'Today' : 'Heute'}</p>
-                ${s.cards.filter((c) => c.col !== 3).slice(0, 3).map((c) => `<p class="story__phone-row">${check()}<span>${esc(c.title)}</span></p>`).join('')}
+                ${s.cards.filter((c) => c.col !== 3).slice(0, 5).map((c) => `<p class="story__phone-row">${check()}<span>${esc(c.title)}</span></p>`).join('')}
                 <p class="story__phone-live">${icon('timer')}<span>${esc(s.cards[0].title)}</span><b>24:13</b></p>
             </div>
         </div>
@@ -200,7 +200,7 @@ const pricing = (t: SiteCopy, lang: Lang) => {
             : plan.key === 'org' ? esc(p.onRequestUnit)
             : `${esc(plan.key === 'personal' ? p.perMonth : p.perSeat)}, <span data-billing-unit data-monthly="${esc(p.billedMonthly)}" data-yearly="${esc(p.billedYearly)}">${esc(p.billedYearly)}</span>`;
         return `
-            <article class="price-col${featured ? ' is-featured' : ''}" role="listitem" aria-labelledby="plan-${plan.key}">
+            <li class="price-col${featured ? ' is-featured' : ''}" aria-labelledby="plan-${plan.key}">
                 <div class="price-col__name">
                     <h3 id="plan-${plan.key}">${esc(plan.name)}</h3>
                     ${featured ? `<span class="price-col__badge">${esc(p.popular)}</span>` : ''}
@@ -210,7 +210,7 @@ const pricing = (t: SiteCopy, lang: Lang) => {
                 <p class="price-col__unit">${unit}</p>
                 <a class="price-col__cta${featured ? ' is-primary' : ''}" href="${href}"${plan.key === 'personal' || plan.key === 'team' ? ' data-buy-link' : ''}>${esc(plan.cta)}${icon('arrowRight')}</a>
                 <ul class="price-col__list">${plan.features.map((f) => `<li>${icon('check')}${esc(f)}</li>`).join('')}</ul>
-            </article>`;
+            </li>`;
     };
     return `
 <section class="section pricing" id="pricing" aria-labelledby="pricing-title">
@@ -230,9 +230,9 @@ const pricing = (t: SiteCopy, lang: Lang) => {
                 <p class="pricing__save">${esc(p.saveHint)}</p>
             </div>
         </header>
-        <div class="price-grid" role="list" data-reveal>
+        <ul class="price-grid" data-reveal>
             ${p.plans.map(column).join('')}
-        </div>
+        </ul>
         <div class="price-included" data-reveal>
             <h3>${esc(p.included.title)}</h3>
             <ul>${p.included.items.map((it) => `<li>${icon('check')}${esc(it)}</li>`).join('')}</ul>
