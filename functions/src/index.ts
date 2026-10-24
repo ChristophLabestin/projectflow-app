@@ -1,5 +1,7 @@
+// Node process uptime when index.ts starts loading (cold start log below).
+const indexStartMs = process.uptime() * 1000;
 import './init'; // Ensure init runs
-import { setGlobalOptions } from 'firebase-functions/v2';
+import { setGlobalOptions } from 'firebase-functions/v2/options';
 
 // Defaults for v2 functions only (v1 functions set their own region via functions.region()).
 setGlobalOptions({ region: 'europe-west3', maxInstances: 10, timeoutSeconds: 60, memory: '256MiB' });
@@ -84,13 +86,27 @@ const FUNCTION_MODULES: Record<string, string[]> = {
     './billing-seats': ['previewSeatChange', 'changeSeats', 'getBillingOverview'],
 };
 
+let coldStartLogged = false;
+
 for (const [modulePath, names] of Object.entries(FUNCTION_MODULES)) {
     for (const name of names) {
         Object.defineProperty(exports, name, {
             enumerable: true,
             get: () => {
+                const loadStartMs = process.uptime() * 1000;
                 const fn = require(modulePath)[name];
                 if (!fn) throw new Error(`index.ts: ${modulePath} does not export ${name}`);
+                if (!coldStartLogged && name === process.env.FUNCTION_TARGET) {
+                    // One line per instance: node boot, init + SDK base, own module (ms since process start).
+                    coldStartLogged = true;
+                    const doneMs = process.uptime() * 1000;
+                    console.log(JSON.stringify({
+                        message: 'coldStart', target: name,
+                        nodeBootMs: Math.round(indexStartMs),
+                        initMs: Math.round(loadStartMs - indexStartMs),
+                        moduleLoadMs: Math.round(doneMs - loadStartMs),
+                    }));
+                }
                 return fn;
             },
         });

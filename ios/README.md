@@ -106,6 +106,13 @@ UI in `Features/AI`: "Frag ProjectFlow" sheet (✦ on Today, task and project to
 hidden while typing, back after 800 ms) and "✦ KI" rewrites in the edit menu of a selection (replace + undo). Plan refusals
 show a hint, not an error. QA without a key: `-pfAiFake`.
 
+## Workspace areas (Projects tab → "Arbeitsbereich")
+
+`Features/Workspace`: Activity feed (`tenants/{t}/activity`, workspace and per project; contract
+`brain/plans/activity-events-contract.md`), Insights (`insights_daily/latest`, `refreshWorkspaceInsights`, weekly report via
+`generateWeeklyInsightsReport`). Routes `.activity`/`.insights`, web links `/activity`, `/insights`, `/project/:id/activity`.
+Copy for these areas comes from the web locales (`ActivityWebStrings`, generated). Files, Wiki and Flows join the same row.
+
 ## Startup template seed data
 
 `App/Resources/StartupSeeds.json` holds the content of the `startup_company_formation` template (tracks,

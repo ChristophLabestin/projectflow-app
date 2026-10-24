@@ -128,3 +128,46 @@ jobs:
         if: failure()
         run: tail -n 120 .predeploy-smoke.log
 
+  regression:
+    name: E2E regression (core flows, production build + emulators)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            web/package-lock.json
+            functions/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - name: Install web
+        run: npm ci
+        working-directory: web
+      - name: Install functions
+        run: npm ci
+        working-directory: functions
+      - name: Install Firebase CLI
+        run: npm install -g firebase-tools
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+        working-directory: web
+      - name: Regression suite
+        run: bash scripts/e2e-regression.sh
+        env:
+          SMOKE_CHANNEL: ''
+      - name: Regression log
+        if: failure()
+        run: tail -n 120 .e2e-regression.log
+      - name: Playwright traces
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: regression-traces
+          path: web/test-results
+          retention-days: 7
+

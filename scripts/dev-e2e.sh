@@ -64,9 +64,12 @@ if [[ "${E2E_FUNCTIONS:-1}" == "1" ]]; then
     npm --prefix "$ROOT/functions" run build --silent
     EMULATORS="$EMULATORS,functions"
 fi
-firebase emulators:start --only "$EMULATORS" --project "$PROJECT_ID" --config "$CONFIG" > "$LOG" 2>&1 &
+# Own temp dir: the Storage emulator keeps blobs in $TMPDIR/firebase/storage and wipes it on exit, which
+# breaks uploads of every other emulator suite on this machine that shares the default temp dir.
+EMULATOR_TMP="$(mktemp -d "${TMPDIR:-/tmp}/pf-emulators.XXXXXX")"
+TMPDIR="$EMULATOR_TMP" firebase emulators:start --only "$EMULATORS" --project "$PROJECT_ID" --config "$CONFIG" > "$LOG" 2>&1 &
 EMULATOR_PID=$!
-trap 'kill -INT "$EMULATOR_PID" 2>/dev/null; wait "$EMULATOR_PID" 2>/dev/null || true' EXIT INT TERM
+trap 'kill -INT "$EMULATOR_PID" 2>/dev/null; wait "$EMULATOR_PID" 2>/dev/null || true; rm -rf "$EMULATOR_TMP"' EXIT INT TERM
 
 echo "Waiting for Firebase emulators (log: .firebase-e2e.log)..."
 for _ in $(seq 1 90); do

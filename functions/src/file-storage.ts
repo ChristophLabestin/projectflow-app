@@ -360,7 +360,7 @@ export const generateExpiringUrlFromRecord = async (
     record: TenantFileRecord,
     options: { download?: boolean } = {},
 ) => {
-    if (record.provider === 'firebase' && isManagedDocument(record)) {
+    if (record.provider === 'firebase' && isManagedDocument(record) && !storageEmulatorHost()) {
         const objectPath = normalizeString(record.providerRef.firebasePath);
         const displayName = (record.name || record.fileName || 'file').replace(/["\\\r\n]/g, '_');
         const [url] = await fileBucket().file(objectPath).getSignedUrl({
@@ -541,8 +541,14 @@ const firstDownloadToken = (value: unknown) => normalizeString(value)
     .map((token) => token.trim())
     .filter(Boolean)[0] || '';
 
+/**
+ * Local emulators only: the Storage emulator cannot verify V4 signatures and the emulated service account
+ * cannot sign, so uploads go straight to the emulator and reads use token URLs on the emulator host.
+ */
+const storageEmulatorHost = () => (process.env.FUNCTIONS_EMULATOR === 'true' ? normalizeString(process.env.FIREBASE_STORAGE_EMULATOR_HOST) : '');
+
 const firebaseDownloadUrl = (bucketName: string, objectPath: string, token: string) => (
-    `https://firebasestorage.googleapis.com/v0/b/${encodeURIComponent(bucketName)}/o/${encodeURIComponent(objectPath)}?alt=media&token=${encodeURIComponent(token)}`
+    `${storageEmulatorHost() ? `http://${storageEmulatorHost()}` : 'https://firebasestorage.googleapis.com'}/v0/b/${encodeURIComponent(bucketName)}/o/${encodeURIComponent(objectPath)}?alt=media&token=${encodeURIComponent(token)}`
 );
 
 const ensureFirebaseDownloadToken = async (file: any) => {
@@ -795,6 +801,18 @@ const generateUploadTarget = async (args: {
     entityType: string;
     entityId: string;
 }) => {
+    if (args.resolvedProvider === 'firebase' && storageEmulatorHost()) {
+        const bucket = fileBucket();
+        return {
+            providerRef: { firebasePath: args.objectKey },
+            uploadTarget: {
+                method: 'POST',
+                url: `http://${storageEmulatorHost()}/upload/storage/v1/b/${encodeURIComponent(bucket.name)}/o?uploadType=media&name=${encodeURIComponent(args.objectKey)}`,
+                headers: { 'Content-Type': args.mimeType, Authorization: 'Bearer owner' },
+            },
+        };
+    }
+
     if (args.resolvedProvider === 'firebase') {
         const bucket = fileBucket();
         // The length range becomes part of the signature (audit 2026-10-24, M2): GCS rejects a larger body,

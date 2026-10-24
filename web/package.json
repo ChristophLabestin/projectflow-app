@@ -15,6 +15,7 @@
     "test": "vitest",
     "test:run": "vitest run",
     "test:e2e": "playwright test",
+    "test:e2e:regression": "bash ../scripts/e2e-regression.sh",
     "prepare": "husky install ../.husky"
   },
   "dependencies": {

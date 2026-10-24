@@ -56,6 +56,7 @@ Teilweise erzwungen über `.claude/token-guard.json` (Hook). Bewusster Einmal-By
 - `cd web && npm run test` runs Vitest in watch mode.
 - `cd web && npm run test:run` runs Vitest once.
 - `cd web && npm run test:e2e` runs Playwright E2E tests (expects a running web server or PLAYWRIGHT_BASE_URL).
+- `bash scripts/e2e-regression.sh` runs the E2E regression suite of the core flows against seeded emulators (~70 s; details in `brain/commands-and-environment.md`).
 - `cd web && npm run deploy` builds and deploys hosting (requires Firebase CLI).
 - Cloud Functions: `cd functions && npm run build|serve|deploy|lint`.
 - Desktop app: `bash scripts/dev-desktop.sh` (signed in against emulators), `npm --prefix desktop run build` (typecheck + bundle); release = tag `v<desktop version>` (see `brain/commands-and-environment.md`).
