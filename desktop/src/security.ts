@@ -1,6 +1,4 @@
 import { app, session, shell, type IpcMainEvent, type IpcMainInvokeEvent, type WebContents } from 'electron';
-import path from 'node:path';
-import { pathToFileURL } from 'node:url';
 import { APP_ORIGIN, isAppUrl } from './config';
 
 /** Notifications are shown by main, so the page needs none of the notification permissions. */
@@ -49,8 +47,6 @@ export const applySessionSecurity = () => {
     ));
 };
 
-const OFFLINE_PAGE = pathToFileURL(path.join(__dirname, '..', 'assets', 'offline.html')).toString();
-const isOfflinePage = (url: string) => url.split('?')[0] === OFFLINE_PAGE;
 
 let openAppWindow: ((path: string) => void) | null = null;
 
@@ -85,7 +81,7 @@ export const hardenAppContents = (contents: WebContents) => {
     });
 
     const guard = (event: Electron.Event, url: string) => {
-        if (isAppUrl(url) || isOfflinePage(url)) return;
+        if (isAppUrl(url)) return;
         event.preventDefault();
         openExternalSafe(url);
     };

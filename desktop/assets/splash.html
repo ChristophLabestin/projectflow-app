@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src 'self'; style-src 'unsafe-inline'; script-src 'unsafe-inline'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline'; script-src 'unsafe-inline'">
 <title>ProjectFlow</title>
 <!--
   Launch scene of the desktop app, shown as an overlay in the main window until the web app is ready
@@ -77,7 +77,8 @@
 </div>
 <div class="status"><div class="track"></div><div class="label" id="label"></div></div>
 <script>
-    const params = new URLSearchParams(location.search);
+    // Parameters come in the fragment (the shell loads this page as a data: URL, see desktop/src/localPages.ts).
+    const params = new URLSearchParams(location.hash.slice(1) || location.search);
     const root = document.documentElement;
     if (params.get('theme') === 'dark') root.classList.add('dark');
     const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
