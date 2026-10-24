@@ -159,7 +159,8 @@ function storyScene(mobile: boolean) {
             return cards.map((_, i) => {
                 const [nx, ny, r] = pts[i % pts.length];
                 let x = nx * (g.W - g.cw * s);
-                let y = ny * (g.H - CARD_H);
+                // Never under the header (short landscape viewports put the top row there).
+                let y = Math.max(HEADER + 8, ny * (g.H - CARD_H));
                 // Keep headline, text and buttons readable: move a fragment just clear of whatever it would cover.
                 const b = hits(x, y);
                 if (b) {
@@ -653,6 +654,15 @@ if (prefersMotion()) {
         mm.add('(max-width: 999px), (max-height: 779px)', () => mcpOnce());
         if (selectRole) rolesScroll(selectRole);
         playOnce();
+        // Header turns dark while it sits over the dark closing band (like over the story's focus act).
+        const siteHeader = $('[data-header]');
+        const band = $('.cta');
+        if (siteHeader && band) {
+            ScrollTrigger.create({
+                trigger: band, start: () => `top top+=${HEADER}`, end: () => `bottom top+=${HEADER}`,
+                onToggle: (self) => siteHeader.classList.toggle('is-dark', self.isActive),
+            });
+        }
         ScrollTrigger.refresh();
     };
     if ('requestIdleCallback' in window) window.requestIdleCallback(later, { timeout: 1500 });
