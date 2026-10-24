@@ -153,38 +153,6 @@ extension TaskDetailScreen {
 
     // MARK: AI draft
 
-    /// Drafts a description with the AI function and appends it; the toast offers undo.
-    func draftDescription(_ task: WorkTask) {
-        guard !isDraftingDescription else { return }
-        isDraftingDescription = true
-        let previous = task.summary ?? ""
-        let title = task.title
-        let projectTitle = projectModel?.title
-        let ref = ref
-        Task {
-            defer { isDraftingDescription = false }
-            do {
-                let text = try await PlanningAI.draftDescription(taskTitle: title, projectTitle: projectTitle,
-                                                                 currentText: RichHTML.parse(previous).blocks.map(\.plainText).joined(separator: "\n"), language: L10n.language.rawValue)
-                let paragraphs = text.components(separatedBy: "\n\n").filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
-                let base = previous.isEmpty || previous.contains("<") ? previous : "<p>\(Self.escape(previous))</p>"
-                let html = base + paragraphs.map { "<p>\(Self.escape($0))</p>" }.joined()
-                guard let actions = model.actions else { return }
-                guard await model.perform({ try await actions.setDescription(ref, html: html) }) else { return }
-                PFHaptics.success()
-                model.toasts.show(PFToast(L10n.t("taskDetail.ai.inserted"), style: .success, actionTitle: L10n.t("common.undo")) {
-                    Task { _ = await model.perform { try await actions.setDescription(ref, html: previous) } }
-                })
-            } catch PlanningAI.Failure.quotaExceeded {
-                model.toasts.show(PFToast(L10n.t("taskDetail.ai.quota"), style: .warning))
-            } catch PlanningAI.Failure.plan(let code) {
-                model.toasts.show(PFToast(L10n.t("planError.\(code)"), style: .warning))
-            } catch {
-                model.toasts.show(PFToast(L10n.t("taskDetail.ai.failed"), style: .error))
-            }
-        }
-    }
-
     private static func escape(_ text: String) -> String {
         text.replacingOccurrences(of: "&", with: "&amp;").replacingOccurrences(of: "<", with: "&lt;").replacingOccurrences(of: ">", with: "&gt;")
             .replacingOccurrences(of: "\n", with: "<br>")

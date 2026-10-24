@@ -73,6 +73,13 @@ open `/admin/crashes`. Release = `MARKETING_VERSION`, build = `CURRENT_PROJECT_V
 - **Same gesture, same meaning**: use `WorkItemRow` / `WorkItemActions` for every task list.
 - **Writes** go through `WorkActions` etc. (contract C1: `updatedBy`/`updatedAt`, full paths; side
   effects are server triggers).
+- **Tap to edit.** Text shown in a card is edited by tapping the text itself (description, label names, …), never via
+  a separate pencil button; offer the same as an accessibility action ("Bearbeiten"). Pencil/"Bearbeiten" buttons are
+  only for opening an editor of a whole object (sprint, profile), not for a single field.
+- **No inline AI on the phone.** ✦ appears only (1) once per screen in the chrome (top bar / root actions, Duo: side
+  rail) for "Frag ProjectFlow", (2) above the keyboard while a field is being edited (format bar / keyboard toolbar,
+  hidden while typing, back after 800 ms), and (3) as "✦ KI" in the edit menu of a selection. Never as buttons inside
+  cards or next to fields.
 - **Accessibility**: every icon-only control has a label; components expose traits/actions; respect
   Dynamic Type (`pfText`) and Reduce Motion (`PFMotion.respecting`).
 
