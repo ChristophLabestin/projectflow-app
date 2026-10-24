@@ -7,6 +7,7 @@ import { AiPlanHint } from '../billing/AiPlanHint';
 import type { AiFieldKind, AiWriteAction } from '../../services/aiAssistClient';
 import { useAiWrite } from './core/useAiWrite';
 import { getCaretRect, type CaretRect } from './caret';
+import { AiWorking } from './AiWorking';
 import './ai-family.scss';
 
 /**
@@ -310,7 +311,7 @@ export const AiFieldAssist: React.FC<AiFieldAssistProps> = ({
                     <div className="ai-field__bar">
                         {writer.phase === 'running' ? (
                             <>
-                                <span className="ai-hint__working">{t('ai.spark.writing')}</span>
+                                <AiWorking label={t('ai.spark.writing')} />
                                 <button type="button" onMouseDown={(event) => event.preventDefault()} onClick={closeAll}>{t('ai.spark.stop')} <kbd>Esc</kbd></button>
                             </>
                         ) : (
@@ -328,7 +329,7 @@ export const AiFieldAssist: React.FC<AiFieldAssistProps> = ({
 
             {focused && chipAt && mode === 'idle' && !undo && (
                 <Floating at={chipAt} className="ai-caret-chip">
-                    <button type="button" onClick={openMini} aria-label={t('ai.spark.open')} title={`${t('ai.spark.open')} (⌘J)`}>✦</button>
+                    <button type="button" onClick={openMini} aria-label={t('ai.spark.open')} aria-expanded={false} title={`${t('ai.spark.open')} (⌘J)`}>✦</button>
                 </Floating>
             )}
 
