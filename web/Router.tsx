@@ -28,6 +28,7 @@ import { QuickCaptureWindow } from './screens/QuickCaptureWindow';
 import { DesktopDayWindow } from './screens/DesktopDayWindow';
 import { DesktopTrayPanel } from './screens/DesktopTrayPanel';
 import { DesktopAuthHandoff } from './screens/DesktopAuthHandoff';
+import { AppUpdateWatcher } from './components/AppUpdateWatcher';
 import { DesktopCommandPalette } from './screens/DesktopCommandPalette';
 import { OAuthConsent } from './screens/OAuthConsent';
 import { SettingsUrlOpener } from './components/settings/SettingsUrlOpener';
@@ -163,6 +164,7 @@ const RootLayout = () => {
             <>
                 <GlobalToast />
                 <GlobalConfirmationModal />
+                <AppUpdateWatcher />
                 <Outlet />
             </>
         );
@@ -174,6 +176,7 @@ const RootLayout = () => {
             {windowKind === 'main' && <DesktopBridge />}
             <GlobalToast />
             <OfflineBanner />
+            <AppUpdateWatcher />
             <GlobalConfirmationModal />
             <PinnedTasksModal />
             <HelpCenterDrawer />

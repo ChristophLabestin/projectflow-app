@@ -1272,6 +1272,8 @@ const de = {
 
 
     'common.cancel': 'Abbrechen',
+    'app.update.available': 'Eine neue Version von ProjectFlow ist da',
+    'app.update.reload': 'Neu laden',
     'common.close': 'Schließen',
     'common.done': 'Fertig',
     'common.saveChanges': 'Änderungen speichern',
@@ -3254,6 +3256,7 @@ const de = {
     'ai.field.changed': 'Von der KI geändert',
     'ai.bar.placeholder': 'Frag oder sag der KI etwas …',
     'ai.bar.followUp': 'Nachfragen …',
+    'ai.bar.suggestions': 'Vorschläge für diese Ansicht',
     'ai.bar.send': 'senden',
     'ai.label': 'KI',
     'ai.spark.open': 'Mit KI schreiben',
@@ -3267,6 +3270,7 @@ const de = {
     'ai.spark.discard': 'Verwerfen',
     'ai.spark.stop': 'Stopp',
     'ai.spark.more': 'Mehr …',
+    'ai.spark.suggestion': 'Vorschlag',
     'ai.spark.retry': 'Neu erzeugen',
     'ai.action.draft': 'Entwurf schreiben',
     'ai.action.expand': 'Aus Stichpunkten ausformulieren',

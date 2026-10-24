@@ -1,239 +1,342 @@
 @use '../../styles/tokens';
 
-// In-app AI family (STYLING §1.9): caret ✦, mini popover, selection tools, in-field preview, hint,
-// undo pill, command bar. Small, app surfaces, hairline + shadow, ✦ as the only mark. Fades only
-// (opacity, 80–160 ms); everything static under prefers-reduced-motion.
-$float-shadow: var(--ai-hairline), var(--shadow-md);
+// In-app AI family (STYLING §1.9): caret button, write menu, suggestion card, selection toolbar,
+// undo pill, command bar. Regular app sizes (13 px text, 28–32 px controls), app surfaces with a
+// hairline + shadow, ✦ as the only mark. Fades only; static under prefers-reduced-motion.
+$float-shadow: var(--ai-hairline), var(--shadow-lg);
 
 .ai-field {
     position: relative;
     width: 100%;
-
-    &.is-previewing textarea {
-        color: transparent !important;
-        caret-color: var(--color-text-main);
-    }
-
-    // Preview layer over the field; grows beyond small fields (comment composers) instead of clipping.
-    &__preview {
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        z-index: 5;
-        min-height: 100%;
-        display: flex;
-        flex-direction: column;
-        border-radius: var(--radius-md);
-        background: var(--color-surface-card);
-        box-shadow: var(--ai-hairline), var(--shadow-md);
-    }
-
-    &__ghost {
-        flex: 1;
-        max-height: 40vh;
-        overflow: auto;
-        white-space: pre-wrap;
-        overflow-wrap: break-word;
-        color: var(--color-text-main);
-    }
-
-    &__bar {
-        display: flex;
-        align-items: center;
-        gap: 4px;
-        padding: 4px 6px;
-        box-shadow: inset 0 1px 0 rgba(var(--color-surface-border-rgb), 0.7);
-        font-size: 0.6875rem;
-        color: var(--color-text-muted);
-
-        button {
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
-            height: 22px;
-            padding: 0 6px;
-            border: 0;
-            border-radius: var(--radius-sm);
-            background: transparent;
-            color: var(--color-text-main);
-            font-size: 0.6875rem;
-            cursor: pointer;
-
-            .material-symbols-outlined { font-size: 0.8125rem; }
-
-            &:hover,
-            &:focus-visible { outline: none; background: var(--color-surface-hover); }
-        }
-
-        kbd { font-family: inherit; color: var(--color-text-muted); }
-    }
-
-    &__ghost-old {
-        display: block;
-        margin-bottom: 4px;
-        color: var(--color-text-muted);
-        text-decoration: line-through;
-        opacity: 0.75;
-    }
-
-    &__ghost-new {
-        display: block;
-        border-radius: var(--radius-sm);
-        background: rgba(var(--color-success-rgb), 0.10);
-        animation: ai-family-fade 160ms linear both;
-    }
 }
 
 .ai-caret-chip,
-.ai-mini,
-.ai-tools,
-.ai-hint,
+.ai-menu,
+.ai-toolbar,
+.ai-suggestion-card,
 .ai-undo {
     position: fixed;
     z-index: 1300;
     animation: ai-family-fade 120ms linear both;
 }
 
-.ai-caret-chip button {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 20px;
-    height: 18px;
-    padding: 0;
-    border: 0;
-    border-radius: var(--radius-sm);
-    background: var(--color-surface-card);
-    box-shadow: $float-shadow;
-    color: var(--color-text-muted);
-    font-size: 0.6875rem;
-    cursor: pointer;
-
-    &:hover,
-    &:focus-visible { outline: none; color: var(--color-text-main); }
-}
-
-.ai-mini,
-.ai-tools {
-    padding: 4px;
-    border-radius: var(--radius-md);
-    background: var(--color-surface-card);
-    box-shadow: $float-shadow;
-
-    button {
-        display: flex;
+kbd {
+    .ai-menu &,
+    .ai-suggestion-card &,
+    .ai-undo & {
+        display: inline-flex;
         align-items: center;
-        gap: 8px;
-        width: 100%;
-        padding: 4px 6px;
-        border: 0;
-        border-radius: var(--radius-sm);
-        background: transparent;
-        color: var(--color-text-main);
-        font-size: 0.75rem;
-        text-align: left;
-        cursor: pointer;
-
-        .material-symbols-outlined { font-size: 0.875rem; color: var(--color-text-muted); }
-
-        &:hover,
-        &:focus-visible { outline: none; background: var(--color-surface-hover); }
+        justify-content: center;
+        min-width: 18px;
+        height: 18px;
+        padding: 0 4px;
+        border-radius: 4px;
+        background: var(--color-surface-hover);
+        color: var(--color-text-muted);
+        font-family: inherit;
+        font-size: 0.6875rem;
+        line-height: 1;
     }
 }
 
-.ai-mini {
-    width: 240px;
+// ---------------------------------------------------------------- caret button „✦ KI“
+.ai-caret-chip button {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    height: 24px;
+    padding: 0 9px 0 7px;
+    border: 0;
+    border-radius: var(--radius-full);
+    background: var(--color-surface-card);
+    box-shadow: $float-shadow;
+    color: var(--color-text-main);
+    font-size: 0.75rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background var(--motion-duration-fast);
 
-    form {
+    &:hover,
+    &:focus-visible { outline: none; background: var(--color-surface-hover); }
+}
+
+.ai-caret-chip__mark { font-size: 0.6875rem; color: var(--color-text-muted); }
+
+// ---------------------------------------------------------------- write menu
+.ai-menu {
+    width: 280px;
+    border-radius: var(--radius-lg);
+    background: var(--color-surface-card);
+    box-shadow: $float-shadow;
+    overflow: hidden;
+
+    &__head {
         display: flex;
         align-items: center;
-        gap: 6px;
-        padding: 4px 6px;
+        justify-content: space-between;
+        padding: 10px 12px 0;
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: var(--color-text-main);
+    }
 
-        span { font-size: 0.6875rem; color: var(--color-text-muted); }
+    &__scope {
+        font-weight: 400;
+        color: var(--color-text-muted);
+    }
+
+    &__ask {
+        padding: 8px 8px 6px;
 
         input {
-            flex: 1;
-            min-width: 0;
+            width: 100%;
+            height: 34px;
+            padding: 0 10px;
             border: 0;
+            border-radius: var(--radius-md);
             outline: none;
-            background: transparent;
+            background: var(--color-surface-input);
             color: var(--color-text-main);
             font: inherit;
             font-size: 0.8125rem;
 
             &::placeholder { color: var(--color-text-muted); }
+
+            &:focus { box-shadow: 0 0 0 2px var(--color-primary-fade); }
         }
     }
 
-    &__actions {
+    &__list {
         display: flex;
         flex-direction: column;
-        padding-top: 2px;
-        box-shadow: inset 0 1px 0 rgba(var(--color-surface-border-rgb), 0.7);
+        padding: 0 6px 6px;
     }
-}
 
-.ai-tools {
-    display: flex;
-    flex-direction: column;
-    width: 200px;
-
-    &__head {
+    &__list button {
         display: flex;
         align-items: center;
-        gap: 5px;
-        padding: 2px 6px 4px;
-        font-size: 0.625rem;
-        font-weight: 600;
-        letter-spacing: 0.04em;
-        text-transform: uppercase;
-        color: var(--color-text-muted);
-    }
-}
-
-.ai-hint,
-.ai-undo {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    min-height: 24px;
-    padding: 2px 4px 2px 8px;
-    border-radius: var(--radius-sm);
-    background: var(--color-surface-card);
-    box-shadow: $float-shadow;
-    color: var(--color-text-muted);
-    font-size: 0.6875rem;
-    white-space: nowrap;
-
-    button {
-        display: inline-flex;
-        align-items: center;
-        gap: 4px;
-        height: 20px;
-        padding: 0 6px;
+        gap: 10px;
+        width: 100%;
+        height: 32px;
+        padding: 0 8px;
         border: 0;
-        border-radius: var(--radius-sm);
+        border-radius: var(--radius-md);
         background: transparent;
         color: var(--color-text-main);
-        font-size: 0.6875rem;
+        font-size: 0.8125rem;
+        text-align: left;
         cursor: pointer;
 
-        .material-symbols-outlined { font-size: 0.8125rem; }
+        .material-symbols-outlined { font-size: 1.05rem; color: var(--color-text-muted); }
 
         &:hover,
         &:focus-visible { outline: none; background: var(--color-surface-hover); }
     }
 
-    kbd { font-family: inherit; color: var(--color-text-muted); }
+    &__label { flex: 1; }
+
+    &__hint { padding: 8px 12px 12px; }
 }
 
-.ai-hint {
-    &__primary { background: var(--color-surface-hover) !important; }
+// ---------------------------------------------------------------- selection toolbar (above the selection)
+.ai-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    height: 34px;
+    padding: 3px;
+    border-radius: var(--radius-lg);
+    background: var(--color-surface-card);
+    box-shadow: $float-shadow;
 
-    &__error { color: var(--color-error); white-space: normal; max-width: 260px; }
+    > button {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        height: 28px;
+        padding: 0 9px;
+        border: 0;
+        border-radius: var(--radius-md);
+        background: transparent;
+        color: var(--color-text-main);
+        font-size: 0.8125rem;
+        white-space: nowrap;
+        cursor: pointer;
 
+        .material-symbols-outlined { font-size: 1rem; color: var(--color-text-muted); }
+
+        &:hover,
+        &:focus-visible,
+        &.is-open { outline: none; background: var(--color-surface-hover); }
+    }
+
+    &__mark {
+        padding: 0 6px 0 8px;
+        font-size: 0.75rem;
+        color: var(--color-text-muted);
+    }
+
+    &__more {
+        position: absolute;
+        top: calc(100% + 6px);
+        right: 0;
+        display: flex;
+        flex-direction: column;
+        width: 220px;
+        padding: 6px;
+        border-radius: var(--radius-lg);
+        background: var(--color-surface-card);
+        box-shadow: $float-shadow;
+
+        button {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            height: 32px;
+            padding: 0 8px;
+            border: 0;
+            border-radius: var(--radius-md);
+            background: transparent;
+            color: var(--color-text-main);
+            font-size: 0.8125rem;
+            text-align: left;
+            cursor: pointer;
+
+            .material-symbols-outlined { font-size: 1.05rem; color: var(--color-text-muted); }
+
+            &:hover,
+            &:focus-visible { outline: none; background: var(--color-surface-hover); }
+        }
+    }
+}
+
+// ---------------------------------------------------------------- suggestion card (below the field)
+.ai-suggestion-card {
+    &__inner {
+        max-width: calc(100vw - 24px);
+        border-radius: var(--radius-lg);
+        background: var(--color-surface-card);
+        box-shadow: $float-shadow;
+        overflow: hidden;
+    }
+
+    &__head {
+        padding: 10px 14px 0;
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: var(--color-text-muted);
+    }
+
+    &__text {
+        max-height: 40vh;
+        margin: 0;
+        padding: 6px 14px 12px;
+        overflow: auto;
+        white-space: pre-wrap;
+        overflow-wrap: break-word;
+        font-size: 0.875rem;
+        line-height: 1.55;
+        color: var(--color-text-main);
+        animation: ai-family-fade 160ms linear both;
+    }
+
+    .ai-working { padding: 8px 14px 12px; font-size: 0.8125rem; }
+
+    &__error {
+        margin: 0;
+        padding: 6px 14px 12px;
+        font-size: 0.8125rem;
+        color: var(--color-error);
+    }
+
+    &__actions {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 6px;
+        padding: 8px 10px;
+        background: var(--color-surface-bg-offset, var(--color-surface-hover));
+    }
+}
+
+.ai-btn-primary,
+.ai-btn-secondary,
+.ai-btn-ghost {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 30px;
+    padding: 0 12px;
+    border: 0;
+    border-radius: var(--radius-md);
+    font-size: 0.8125rem;
+    font-weight: 500;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: background var(--motion-duration-fast);
+
+    .material-symbols-outlined { font-size: 1rem; }
+
+    kbd { background: transparent !important; color: inherit !important; opacity: 0.7; }
+}
+
+.ai-btn-primary {
+    background: var(--color-primary);
+    color: var(--color-primary-text);
+
+    &:hover,
+    &:focus-visible { outline: none; background: var(--color-primary-hover); }
+}
+
+.ai-btn-secondary {
+    background: var(--color-surface-card);
+    box-shadow: var(--ai-hairline);
+    color: var(--color-text-main);
+
+    &:hover,
+    &:focus-visible { outline: none; background: var(--color-surface-hover); }
+}
+
+.ai-btn-ghost {
+    margin-left: auto;
+    background: transparent;
+    color: var(--color-text-muted);
+
+    &:hover,
+    &:focus-visible { outline: none; background: var(--color-surface-hover); color: var(--color-text-main); }
+}
+
+// ---------------------------------------------------------------- undo pill
+.ai-undo {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    height: 34px;
+    padding: 0 4px 0 12px;
+    border-radius: var(--radius-lg);
+    background: var(--color-surface-card);
+    box-shadow: $float-shadow;
+    font-size: 0.8125rem;
+    color: var(--color-text-muted);
+    white-space: nowrap;
+
+    button {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        height: 26px;
+        padding: 0 10px;
+        border: 0;
+        border-radius: var(--radius-md);
+        background: var(--color-surface-hover);
+        color: var(--color-text-main);
+        font-size: 0.8125rem;
+        font-weight: 500;
+        cursor: pointer;
+
+        &:hover,
+        &:focus-visible { outline: none; background: var(--color-surface-active); }
+    }
 }
 
 // ---------------------------------------------------------------- command bar (⌘J)
@@ -282,13 +385,28 @@ $float-shadow: var(--ai-hairline), var(--shadow-md);
 
     &__mark { font-size: 0.75rem; color: var(--color-text-muted); }
 
+    &__section {
+        margin: 0 0 2px;
+        font-size: 0.6875rem;
+        font-weight: 600;
+        letter-spacing: 0.03em;
+        text-transform: uppercase;
+        color: var(--color-text-muted);
+    }
+
     &__context {
-        max-width: 180px;
-        padding: 1px 6px;
-        border-radius: var(--radius-sm);
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        max-width: 200px;
+        height: 22px;
+        padding: 0 8px 0 6px;
+        border-radius: var(--radius-full);
         background: var(--color-surface-hover);
         color: var(--color-text-muted);
-        font-size: 0.6875rem;
+        font-size: 0.75rem;
+
+        .material-symbols-outlined { font-size: 0.875rem; }
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
@@ -378,7 +496,7 @@ $float-shadow: var(--ai-hairline), var(--shadow-md);
 @keyframes ai-family-shimmer { to { background-position: -150% 0; } }
 
 @media (prefers-reduced-motion: reduce) {
-    .ai-caret-chip, .ai-mini, .ai-tools, .ai-hint, .ai-undo, .ai-bar-scrim, .ai-field__ghost-new { animation: none; }
+    .ai-caret-chip, .ai-menu, .ai-toolbar, .ai-suggestion-card, .ai-suggestion-card__text, .ai-undo, .ai-bar-scrim { animation: none; }
 }
 
 // ---------------------------------------------------------------- shared working line
@@ -411,9 +529,9 @@ $float-shadow: var(--ai-hairline), var(--shadow-md);
     }
 
     // 2 · caret ✦: neutral at rest, one short colour pass on hover/open (≤ 400 ms)
-    .ai-caret-chip button:hover,
-    .ai-caret-chip button:focus-visible,
-    .ai-caret-chip button[aria-expanded='true'] {
+    .ai-caret-chip button:hover .ai-caret-chip__mark,
+    .ai-caret-chip button:focus-visible .ai-caret-chip__mark,
+    .ai-caret-chip button[aria-expanded='true'] .ai-caret-chip__mark {
         background-image: var(--brand-gradient-linear);
         background-size: 300% 100%;
         -webkit-background-clip: text;
@@ -450,9 +568,9 @@ $float-shadow: var(--ai-hairline), var(--shadow-md);
     .ai-working__label { animation: none; color: var(--color-text-muted); }
 
     [data-ai-accent='brand'] {
-        .ai-caret-chip button:hover,
-        .ai-caret-chip button:focus-visible,
-        .ai-caret-chip button[aria-expanded='true'] { animation: none; color: var(--color-text-main); background-image: none; }
+        .ai-caret-chip button:hover .ai-caret-chip__mark,
+        .ai-caret-chip button:focus-visible .ai-caret-chip__mark,
+        .ai-caret-chip button[aria-expanded='true'] .ai-caret-chip__mark { animation: none; color: var(--color-text-main); background-image: none; }
 
         .ai-bar[data-generating='true']::before { animation: none; }
     }

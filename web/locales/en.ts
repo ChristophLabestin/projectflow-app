@@ -1270,6 +1270,8 @@ const en = {
 
 
     'common.cancel': 'Cancel',
+    'app.update.available': 'A new version of ProjectFlow is available',
+    'app.update.reload': 'Reload',
     'common.close': 'Close',
     'common.done': 'Done',
     'common.saveChanges': 'Save Changes',
@@ -3254,6 +3256,7 @@ const en = {
     'ai.field.changed': 'Changed by AI',
     'ai.bar.placeholder': 'Ask or tell the AI…',
     'ai.bar.followUp': 'Ask a follow-up…',
+    'ai.bar.suggestions': 'Suggestions for this view',
     'ai.bar.send': 'send',
     'ai.label': 'AI',
     'ai.spark.open': 'Write with AI',
@@ -3267,6 +3270,7 @@ const en = {
     'ai.spark.discard': 'Discard',
     'ai.spark.stop': 'Stop',
     'ai.spark.more': 'More…',
+    'ai.spark.suggestion': 'Suggestion',
     'ai.spark.retry': 'Try again',
     'ai.action.draft': 'Write a draft',
     'ai.action.expand': 'Write out from notes',
