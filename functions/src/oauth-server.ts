@@ -12,6 +12,7 @@
  */
 import { lookup } from 'dns/promises';
 import * as functions from 'firebase-functions/v1';
+import { FAST_START } from './runtime-options';
 import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 
 import { checkWorkspaceAccess, effectiveScopes, normalizeRole, RateLimiter, type WorkspaceRole } from './ai-access';
@@ -336,7 +337,7 @@ const handleRevoke = async (req: any, res: any) => {
     res.status(200).send('');
 };
 
-export const oauth = functions.region(REGION).runWith({ memory: '256MB', timeoutSeconds: 30 }).https.onRequest(async (req, res) => {
+export const oauth = functions.region(REGION).runWith({ memory: FAST_START.memory, timeoutSeconds: 30 }).https.onRequest(async (req, res) => {
     res.set('Access-Control-Allow-Origin', '*');
     res.set('Access-Control-Allow-Headers', 'Authorization, Content-Type, MCP-Protocol-Version');
     if (req.method === 'OPTIONS') {
@@ -390,7 +391,7 @@ const memberRole = async (tenantId: string, uid: string): Promise<WorkspaceRole 
     return snapshot.exists ? normalizeRole(String(snapshot.data()?.role || 'Member')) : null;
 };
 
-export const getOAuthConsentRequest = functions.region(REGION).https.onCall(async (data, context) => {
+export const getOAuthConsentRequest = functions.region(REGION).runWith(FAST_START).https.onCall(async (data, context) => {
     const uid = requireUid(context);
     const { data: request } = await loadOpenRequest(data?.requestId);
     const clientSnapshot = await clientRef(request.clientDocId).get();
@@ -423,7 +424,7 @@ export const getOAuthConsentRequest = functions.region(REGION).https.onCall(asyn
     };
 });
 
-export const approveOAuthConsent = functions.region(REGION).https.onCall(async (data, context) => {
+export const approveOAuthConsent = functions.region(REGION).runWith(FAST_START).https.onCall(async (data, context) => {
     const uid = requireUid(context);
     const { ref, data: request } = await loadOpenRequest(data?.requestId);
     const tenantId = typeof data?.tenantId === 'string' ? data.tenantId : '';
