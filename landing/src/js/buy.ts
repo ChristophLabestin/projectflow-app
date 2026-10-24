@@ -29,7 +29,8 @@ function start(root: HTMLElement, c: any) {
         ai: params.get('ai') === '1',
         user: null as BuyUser | null,
         workspaces: [] as Workspace[],
-        tenantId: '' as string,
+        // Links from the app pass ?tenant= to preselect the workspace (ignored if it is not an open team workspace of the user).
+        tenantId: (params.get('step') === 'done' ? '' : params.get('tenant') ?? '') as string,
         newTeamName: '',
         intent: null as Intent | null,
         current: 'plan' as StepId,
