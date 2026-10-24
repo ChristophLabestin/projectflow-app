@@ -25,7 +25,7 @@ export const buyBody = (lang: Lang): string => {
     }).replace(/</g, '\\u003c');
 
     const steps = (['plan', 'account', 'workspace', 'payment'] as const).map((id, i) => `
-            <li class="ck-stepper__item" data-stepper="${id}">
+            <li class="ck-stepper__item${i === 0 ? ' is-active' : ''}" data-stepper="${id}"${i === 0 ? ' aria-current="step"' : ''}>
                 <span class="ck-stepper__dot" aria-hidden="true"><span>${i + 1}</span>${icon('check')}</span>
                 <span class="ck-stepper__label">${esc(c.stepNames[id])}</span>
             </li>`).join('');
@@ -39,7 +39,7 @@ export const buyBody = (lang: Lang): string => {
                             <b>${esc(c.plan[key].name)}</b>
                             <small>${esc(c.plan[key].text)}</small>
                         </span>
-                        <span class="ck-option__price"><b data-plan-amount="${key}"></b> ${esc(c.plan[key].unit)}</span>
+                        <span class="ck-option__price"><b data-plan-amount="${key}">${key === 'team' ? team.yearly : personal.yearly}&nbsp;€</b> ${esc(c.plan[key].unit)}</span>
                     </label>`;
 
     const terms = esc(c.payment.terms)
@@ -63,18 +63,18 @@ export const buyBody = (lang: Lang): string => {
 
     <div class="ck-grid">
         <section class="ck-intro" aria-live="polite">
-            <p class="ck-eyebrow" data-eyebrow></p>
-            <h1 class="ck-headline" data-headline></h1>
-            <p class="ck-lead" data-lead></p>
+            <p class="ck-eyebrow" data-eyebrow>${esc(c.stepNames.plan)}</p>
+            <h1 class="ck-headline" data-headline>${esc(c.intro.plan.headline)}</h1>
+            <p class="ck-lead" data-lead>${esc(c.intro.plan.lead)}</p>
             <div class="ck-recap" data-recap></div>
             <p class="ck-intro__foot">${esc(c.plan.pricesNet)}</p>
         </section>
 
         <section class="ck-panel" aria-labelledby="ck-question">
             <button type="button" class="ck-back" data-back hidden>${icon('arrowLeft')}${esc(c.backStep)}</button>
-            <h2 class="ck-question" id="ck-question" data-question tabindex="-1"></h2>
+            <h2 class="ck-question" id="ck-question" data-question tabindex="-1">${esc(c.intro.plan.question)}</h2>
             <form class="ck-form" data-buy-form novalidate>
-                <div class="ck-pane" data-pane="plan" hidden>
+                <div class="ck-pane" data-pane="plan">
                     <fieldset class="ck-options">
                         <legend class="sr-only">${esc(c.stepNames.plan)}</legend>
                         ${planCard('personal', 'user')}
