@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useLanguage } from '../../context/LanguageContext';
 import { useAiAccess } from '../../hooks/useAiAccess';
@@ -43,7 +43,7 @@ type Mode = 'idle' | 'mini' | 'tools' | 'preview' | 'replacing';
 type Range = { start: number; end: number };
 type Point = { left: number; top: number };
 
-const QUICK: Array<[AiWriteAction, string]> = [['expand', 'notes'], ['shorten', 'short_text'], ['rephrase', 'autorenew'], ['fix', 'spellcheck']];
+export const QUICK_ACTIONS: Array<[AiWriteAction, string]> = [['expand', 'notes'], ['shorten', 'short_text'], ['rephrase', 'autorenew'], ['fix', 'spellcheck']];
 const TOOLS_PRIMARY: Array<[AiWriteAction, string]> = [['rephrase', 'autorenew'], ['shorten', 'short_text'], ['fix', 'spellcheck']];
 const TOOLS_MORE: Array<[AiWriteAction, string]> = [
     ['expand', 'notes'], ['friendlier', 'sentiment_satisfied'], ['formal', 'work'], ['bullets', 'format_list_bulleted'], ['translate', 'translate']
@@ -71,6 +71,7 @@ export const AiFieldAssist: React.FC<AiFieldAssistProps> = ({
     const [mode, setMode] = useState<Mode>('idle');
     const [focused, setFocused] = useState(false);
     const [chipAt, setChipAt] = useState<Point | null>(null);
+    const tipId = useId();
     const [menuAt, setMenuAt] = useState<Point | null>(null);
     const [selection, setSelection] = useState<Range | null>(null);
     const [instruction, setInstruction] = useState('');
@@ -304,9 +305,10 @@ export const AiFieldAssist: React.FC<AiFieldAssistProps> = ({
 
             {focused && chipAt && mode === 'idle' && !undo && (
                 <Floating at={chipAt} className="ai-caret-chip">
-                    <button type="button" onClick={openMini} aria-expanded={false} title={`${t('ai.spark.open')} (⌘J)`}>
+                    <button type="button" onClick={openMini} aria-expanded={false} aria-label={t('ai.spark.tooltip')} aria-describedby={tipId}>
                         <span className="ai-caret-chip__mark" aria-hidden="true">✦</span>{t('ai.label')}
                     </button>
+                    <span id={tipId} role="tooltip" className="ai-caret-chip__tip">{t('ai.spark.tooltip')} <kbd>⌘J</kbd></span>
                 </Floating>
             )}
 
@@ -323,13 +325,13 @@ export const AiFieldAssist: React.FC<AiFieldAssistProps> = ({
                                     placeholder={t('ai.spark.customPlaceholder')} aria-label={t('ai.spark.customPlaceholder')}
                                     onKeyDown={(event) => {
                                         if (event.key === 'Escape') { event.preventDefault(); closeAll(); el?.focus(); return; }
-                                        const quick = empty ? [] : QUICK;
+                                        const quick = empty ? [] : QUICK_ACTIONS;
                                         const index = Number(event.key) - 1;
                                         if (!instruction && index >= 0 && index < quick.length) { event.preventDefault(); runWhole(quick[index][0]); }
                                     }} />
                             </form>
                             <div className="ai-menu__list" role="menu">
-                                {(empty ? [['draft', 'edit_note'] as [AiWriteAction, string]] : QUICK).map(([action, icon], index) => (
+                                {(empty ? [['draft', 'edit_note'] as [AiWriteAction, string]] : QUICK_ACTIONS).map(([action, icon], index) => (
                                     <button key={action} type="button" role="menuitem" onClick={() => runWhole(action)}>
                                         <span className="material-symbols-outlined" aria-hidden="true">{icon}</span>
                                         <span className="ai-menu__label">{t(`ai.action.${action}`)}</span>

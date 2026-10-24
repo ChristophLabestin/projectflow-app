@@ -1,7 +1,8 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { useLanguage } from '../../context/LanguageContext';
 import { playCompletionBurst } from '../../components/brand';
 import { AiWorking } from '../../components/ai/AiWorking';
+import { AiCaretDemo } from './AiCaretDemo';
 import '../../components/ai/ai-family.scss';
 import './ai-accent-showcase.scss';
 
@@ -13,16 +14,9 @@ export const AiAccentShowcase: React.FC = () => {
     const { t } = useLanguage();
     const [brand, setBrand] = useState(true);
     const [working, setWorking] = useState(true);
-    const [chipOpen, setChipOpen] = useState(false);
     const [applied, setApplied] = useState(false);
     const [generating, setGenerating] = useState(false);
     const applyRef = useRef<HTMLButtonElement>(null);
-
-    useEffect(() => {
-        if (!chipOpen) return undefined;
-        const timer = window.setTimeout(() => setChipOpen(false), 900);
-        return () => window.clearTimeout(timer);
-    }, [chipOpen]);
 
     const generate = () => {
         setGenerating(true);
@@ -43,15 +37,9 @@ export const AiAccentShowcase: React.FC = () => {
                     <button type="button" className="ai-accent__replay" onClick={() => { setWorking(true); window.setTimeout(() => setWorking(false), 2200); }}>{t('styleGuide.ai.accent.replay')}</button>
                 </section>
 
-                <section>
+                <section className="ai-accent__wide">
                     <h4>{t('styleGuide.ai.accent.caret')}</h4>
-                    <div className="ai-accent__stage">
-                        <span className="ai-accent__line">login fails after reset<span className="ai-accent__caret" /></span>
-                        <span className="ai-caret-chip ai-accent__static">
-                            <button type="button" aria-expanded={chipOpen} aria-label={t('ai.spark.open')}><span className="ai-caret-chip__mark" aria-hidden="true">✦</span>{t('ai.label')}</button>
-                        </span>
-                    </div>
-                    <button type="button" className="ai-accent__replay" onClick={() => { setChipOpen(false); window.requestAnimationFrame(() => setChipOpen(true)); }}>{t('styleGuide.ai.accent.replay')}</button>
+                    <AiCaretDemo />
                 </section>
 
                 <section>

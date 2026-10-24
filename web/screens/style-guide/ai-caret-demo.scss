@@ -1,0 +1,104 @@
+@use '../../styles/tokens';
+
+// `/ui` → AI: the ✦-at-the-caret sequence (AiCaretDemo). Real family classes, positioned inside the stage.
+.ai-caret-demo {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+
+    &__stage {
+        position: relative;
+        min-height: 300px;
+    }
+
+    &__field {
+        min-height: 72px;
+        padding: 10px 12px;
+        border-radius: var(--radius-md);
+        background: var(--color-surface-bg);
+        box-shadow: inset 0 0 0 1px var(--color-surface-border);
+        font-size: 0.875rem;
+        line-height: 1.5;
+        color: var(--color-text-main);
+    }
+
+    &__anchor {
+        position: relative;
+        display: inline-block;
+        width: 0;
+        height: 1em;
+        vertical-align: text-bottom;
+    }
+
+    &__caret {
+        position: absolute;
+        left: 1px;
+        top: 0;
+        width: 1px;
+        height: 1.15em;
+        background: var(--color-text-main);
+        animation: ai-caret-demo-blink 1s steps(1) infinite;
+
+        &.is-typing { animation: none; }
+    }
+
+    // The family floats are `position: fixed` in the app; here they hang off the caret.
+    &__float {
+        position: absolute !important;
+        z-index: 2;
+    }
+
+    &__chip { left: -4px; top: calc(1.15em + 4px); }
+
+    &__menu { left: -8px; top: calc(1.15em + 6px); }
+
+    &__card {
+        position: relative !important;
+        margin-top: 6px;
+        max-width: 520px;
+    }
+
+    &__undo {
+        position: relative !important;
+        display: inline-flex;
+        margin-top: 6px;
+    }
+
+    // Demo only: the tooltip shows by itself while the ✦ waits for the click.
+    .ai-caret-chip__tip.is-shown { opacity: 1; transform: none; transition-delay: 600ms; }
+
+    .is-pressed {
+        background: var(--color-surface-hover) !important;
+        transform: scale(0.97);
+        transition: transform 80ms var(--motion-ease-out);
+    }
+
+    .ai-btn-primary.is-pressed { transform: scale(0.96); }
+
+    &__steps {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px 14px;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+        counter-reset: ai-step;
+        font-size: 0.75rem;
+        color: var(--color-text-muted);
+
+        li {
+            counter-increment: ai-step;
+            transition: color var(--motion-duration-fast) linear;
+
+            &::before { content: counter(ai-step) ' · '; }
+            &.is-active { color: var(--color-text-main); font-weight: 600; }
+            &.is-done { color: var(--color-text-main); }
+        }
+    }
+}
+
+@keyframes ai-caret-demo-blink { 50% { opacity: 0; } }
+
+@media (prefers-reduced-motion: reduce) {
+    .ai-caret-demo__caret { animation: none; }
+}
