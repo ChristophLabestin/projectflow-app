@@ -46,8 +46,8 @@ Test: `functions/scripts/unit/tenant-id.test.js`.
 | M6 | Flows | Rechte des Flow-Owners werden zur Laufzeit nicht neu bewertet (Herabstufung, `allowMemberFlows` aus); `ownerCanReachProject` toter Code | `automations.ts` `executeRun` | `canManageAutomation` bei jedem Lauf |
 | M7 | KI | Aktionskarte zeigt 400 Zeichen, angewendet wird der volle Text (bis 8000) | `ai-actions.ts` `clipValue` | Volltext zeigen oder ablehnen |
 | M8 | KI | `consumeAiQuota` überspringt Tageslimit für BYOK-Nutzer auch bei Server-KI | `ai-service.ts` | Modus aus Tenant-Gate übergeben |
-| M9 | E-Mail | Workspace-SMTP: Host/Port beim Senden ungeprüft (SSRF ins interne Netz); IPv4-mapped-IPv6-Hex nicht geblockt | `email.ts` `sendViaSmtp`, `workspace-admin.ts` | Public-IP- und Port-Check beim Speichern und Senden |
-| M10 | E-Mail | Waitlist/Newsletter ohne Rate-Limit (Mail-Bombing über SES), Codes per `Math.random` | `waitlist.ts`, `newsletter-public.ts` | Cooldown pro E-Mail/IP, `crypto.randomBytes` |
+| M9 | E-Mail | Workspace-SMTP: Host/Port beim Senden ungeprüft (SSRF ins interne Netz); IPv4-mapped-IPv6-Hex nicht geblockt | `email.ts` `sendViaSmtp`, `workspace-admin.ts` | Public-IP- und Port-Check beim Speichern und Senden — **erledigt 2026-10-24**: `isPrivateIp` über `net.BlockList` (inkl. IPv4-mapped in jeder Schreibweise, NAT64), Prüfung in `saveWorkspaceSmtpConfig`, `testSMTPConnection` und beim Senden mit fest verdrahteter IP + TLS-`servername`; Ports 25/465/587/2525; Unit-Test `email.test.js` |
+| M10 | E-Mail | Waitlist/Newsletter ohne Rate-Limit (Mail-Bombing über SES), Codes per `Math.random` | `waitlist.ts`, `newsletter-public.ts` | Cooldown pro E-Mail/IP, `crypto.randomBytes` — **erledigt 2026-10-24**: `public-rate-limit.ts` (10/h pro IP, 3/h pro Adresse, Hash-Keys, `public_rate_limits` server-only), Codes 128 Bit aus `crypto.randomBytes`; live geprüft (4. Anfrage → 429) |
 | M11 | Admin-MCP | DCR offen, Rate-Limit per XFF spoofbar und nur im Speicher → Clients/Audit fluten | `admin-console/mcp/oauth.ts` | Firestore-Zähler, echte Peer-IP, Pending-Cap |
 
 ## Niedrig (offen, gemeldet)
