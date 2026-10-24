@@ -187,7 +187,7 @@ const apps = (t: SiteCopy) => {
 };
 
 const pricing = (t: SiteCopy, lang: Lang) => {
-    const buy = lang === 'de' ? '/kaufen' : '/en/buy';
+    const buy = lang === 'de' ? '/checkout' : '/en/checkout';
     const p = t.pricing;
     const price = (plan: (typeof p.plans)[number], yearly: boolean) => (yearly ? plan.yearly : plan.monthly);
     return `

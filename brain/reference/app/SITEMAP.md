@@ -136,9 +136,9 @@ Static pages rendered at build time from `landing/src/templates/pages.ts` (Fireb
 - `/docs/mcp` · `/en/docs/mcp` — public MCP guide (`landing/src/content/docs-mcp.ts`, template `docs.ts`); server URL constant `MCP_URL` in `landing/src/templates/pages.ts`. Linked from nav, footer and the AI section. Keep in sync with `brain/operations/mcp-install-guide.md` and `web/components/settings/aiClients.ts`.
 - `404.html` — bilingual not-found
 - `/sitemap.xml`, `/robots.txt`, `/og-de.png`, `/og-en.png`
-- `/kaufen` · `/en/buy` — own purchase page (Stripe Payment Element, inline Firebase Auth; `noindex`). Flow and contract: `brain/plans/landing-purchase.md`.
+- `/checkout` · `/en/checkout` — own purchase page (Stripe Payment Element, inline Firebase Auth; `noindex`). Flow and contract: `brain/plans/landing-purchase.md`.
 
-CTAs point to the app (Personal/Team pricing CTAs to `/kaufen`): `/register`, `/login`, `/download`. Concept: `brain/plans/landing-page-concept.md`.
+CTAs point to the app (Personal/Team pricing CTAs to `/checkout`): `/register`, `/login`, `/download`. Concept: `brain/plans/landing-page-concept.md`.
 
 ## Notes / Migration Considerations
 

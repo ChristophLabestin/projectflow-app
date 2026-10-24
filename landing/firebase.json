@@ -3,6 +3,10 @@
     "site": "getprojectflow",
     "public": "dist",
     "cleanUrls": true,
+    "redirects": [
+      { "source": "/kaufen", "destination": "/checkout", "type": 301 },
+      { "source": "/en/buy", "destination": "/en/checkout", "type": 301 }
+    ],
     "trailingSlash": false,
     "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
     "headers": [
