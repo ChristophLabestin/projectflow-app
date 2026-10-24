@@ -349,6 +349,17 @@ Treat these as v1 defaults before creating one-off versions in feature screens; 
 - The back arrow goes one level up; every crumb except the current page is a link. Labels are localized (project sections reuse the sidebar `nav.*` labels).
 - New routes: add them to `web/utils/breadcrumbs.ts` and its test, never in a page.
 
+## 5.10) Sidebar context panels (2026-10-24)
+
+Workspace areas with their own navigation switch the app sidebar like a project does (user rule): the
+sidebar slides to its context layer ("‹ Workspace", area header, then the area's navigation) instead of
+the page showing a second navigation column. Mechanism `web/context/SidebarPanelContext.tsx`: the page
+calls `useSidebarPanel({ key, title, icon, href?, actions? })` and portals its navigation into the returned
+slot; `null` (sidebar collapsed, mobile drawer closed, inside a project) → render it inline as fallback.
+Styles: `.snav-panel-slot`, `.snav-avatar--icon` in `_sidebar-navigator.scss`; the area provides an
+`--embedded` variant without card/header. In use: workspace wiki (`/wiki`). Apply to new areas and
+existing ones where it fits (Files, Flows, …).
+
 ## 6) Interaction Guidelines (UX Patterns)
 
 - **No Native Browser Dialogs:** never use `window.alert()`, `confirm()`, or `prompt()`.

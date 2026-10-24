@@ -1,4 +1,5 @@
 import React from 'react';
+import { useSidebarPanelHost } from '../context/SidebarPanelContext';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { getUserTasks } from '../services/domain/tasksService';
 import { getUserProjects, getSharedProjects } from '../services/domain/projectsService';
@@ -252,14 +253,34 @@ export const SidebarNavigator: React.FC<SidebarNavigatorProps> = ({ isDrawer = f
     const effectiveCollapsed = collapsed && !isDrawer;
     const pmCore = isPmCoreOnly();
 
-    const contextKind: 'project' | null = workspace?.projectId ? 'project' : null;
+    // Areas with their own navigation (wiki tree, …) claim the context layer like a project does.
+    const panelHost = useSidebarPanelHost();
+    const panel = workspace?.projectId ? null : panelHost?.panel || null;
+    const contextKind: 'project' | 'panel' | null = workspace?.projectId ? 'project' : panel ? 'panel' : null;
+    const [panelSlot, setPanelSlot] = React.useState<HTMLDivElement | null>(null);
+    const [desktopViewport, setDesktopViewport] = React.useState(() =>
+        typeof window === 'undefined' || window.matchMedia('(min-width: 768px)').matches);
+    React.useEffect(() => {
+        const query = window.matchMedia('(min-width: 768px)');
+        const update = () => setDesktopViewport(query.matches);
+        query.addEventListener('change', update);
+        return () => query.removeEventListener('change', update);
+    }, []);
+    // Only a visible sidebar hosts the panel: the desktop one while expanded, or the open drawer.
+    const canHostPanel = Boolean(panelSlot) && !effectiveCollapsed && (isDrawer || desktopViewport);
+    React.useEffect(() => {
+        if (!panelHost || !panelSlot || !canHostPanel) return undefined;
+        panelHost.registerSlot(panelSlot);
+        return () => panelHost.unregisterSlot(panelSlot);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [canHostPanel, panelSlot, panelHost?.registerSlot, panelHost?.unregisterSlot]);
 
     // Depth: 0 = workspace anchors, 1 = active context (project).
     // Auto-follows the route, but the user can pop back to preview the workspace.
     const [previewWorkspace, setPreviewWorkspace] = React.useState(false);
     React.useEffect(() => {
         setPreviewWorkspace(false);
-    }, [contextKind, workspace?.projectId]);
+    }, [contextKind, workspace?.projectId, panel?.key]);
     const depth = contextKind && !previewWorkspace ? 1 : 0;
 
     // ---- Data: my-tasks badge ------------------------------------------------
@@ -681,6 +702,25 @@ export const SidebarNavigator: React.FC<SidebarNavigatorProps> = ({ isDrawer = f
                                     </button>
                                 )}
                                 {contextHeader}
+                                {contextKind === 'panel' && panel && (
+                                    <>
+                                        <div className="snav-context-head">
+                                            <span className="snav-avatar snav-avatar--icon"><span className="material-symbols-outlined">{panel.icon}</span></span>
+                                            <div className="snav-context-head__copy">
+                                                {panel.href
+                                                    ? <Link to={panel.href} onClick={closeOnNavigate} className="snav-context-head__title">{panel.title}</Link>
+                                                    : <span className="snav-context-head__title">{panel.title}</span>}
+                                                {panel.subtitle && <span className="snav-context-head__meta">{panel.subtitle}</span>}
+                                            </div>
+                                            {panel.actions?.map((action) => (
+                                                <button key={action.label} type="button" className="snav-pin" title={action.label} aria-label={action.label} onClick={action.onSelect}>
+                                                    <span className="material-symbols-outlined">{action.icon}</span>
+                                                </button>
+                                            ))}
+                                        </div>
+                                        <div className="snav-panel-slot" ref={setPanelSlot} />
+                                    </>
+                                )}
                                 {contextKind === 'project' && (
                                     <>
                                         <NavGroup items={projectModules} onNavigate={closeOnNavigate} />

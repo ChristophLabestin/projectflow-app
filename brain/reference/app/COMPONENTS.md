@@ -338,6 +338,9 @@ Concept: `brain/plans/help-center-rework.md`.
 - `CrashReports.tsx` / `CrashIssueDetail.tsx` (+ `crashFormat.ts`, `admin.scss`): crash issue list and detail on `services/crashReportsService.ts`.
 - Web crash capture lives in `services/errorReporting.ts` (`reportError`, global handlers, `isCrashReportingEnabled`/`setCrashReportingEnabled`); the ErrorBoundary reports render crashes through it.
 
+## Sidebar context panels (`web/context/SidebarPanelContext.tsx`, 2026-10-24)
+- `SidebarPanelProvider` (AppLayout), `useSidebarPanel(def)` (page claims the sidebar context layer, returns a portal slot or null), `useSidebarPanelHost()` (SidebarNavigator). Rules in STYLING.md §5.10. Used by the workspace wiki (`WikiSidebar embedded`).
+
 ## Wiki & Docs (`web/screens/wiki/`, `web/components/wiki/`, 2026-10-23)
 - `WikiScreen` (route container: tree + home/page/trash), `WikiSidebar` (tree, native drag & drop before/inside/after, favorites, search), `WikiPage` (autosave 1.5 s, `bodyRev` conflict guard, presence, rail: TOC/linked tasks/backlinks), `WikiDialogs` (`IconPicker`, `WikiVersionsDrawer`, `WikiLinkTaskDialog`, `WikiAiDialog`, `WikiTemplatePicker`), `WikiMenu` (portaled origin-aware action menu).
 - Editor `screens/wiki/editor/WikiEditor` on Tiptap 3 (same library as the blog editor) + `extension-table`/`-mention`/`-details`: slash menu, `@`-mentions (`wikiMention` live chips), `wikiCallout`, `wikiTaskList` (filtered live task list), `wikiFile` (file block, provider `screens/wiki/wikiFiles.ts`), `wikiToc`, bubble menus (format/table). Host contract `editor/host.ts`.
