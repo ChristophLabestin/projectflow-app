@@ -428,7 +428,7 @@
         z-index: 30;
         min-width: 200px;
         background: var(--color-surface-card);
-        border: 1px solid var(--color-surface-border);
+        border: 0;
         border-radius: var(--radius-md);
         box-shadow: var(--shadow-lg);
         padding: 6px;
@@ -475,7 +475,7 @@
         margin-left: auto;
         padding: 5px 12px;
         border-radius: var(--radius-control);
-        border: 1px solid currentColor;
+        border: 0;
         background: none;
         color: inherit;
         font-size: 12px;
@@ -498,7 +498,7 @@
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        border: 1px solid var(--color-surface-border);
+        border: 0;
         border-radius: var(--radius-md);
         background: var(--color-surface-card);
         color: var(--color-text-muted);
@@ -545,7 +545,7 @@
         flex-direction: column;
         gap: 10px;
         padding: 10px;
-        border: 1px solid var(--color-surface-border);
+        border: 0;
         border-radius: var(--radius-lg);
         background: var(--color-surface-card);
         box-shadow: var(--shadow-lg);
@@ -816,7 +816,7 @@
 }
 
 .po-ref-card {
-    border: 1px solid var(--color-surface-border);
+    border: 0;
     border-radius: var(--radius-lg);
     background: var(--color-surface-card);
     padding: 14px;
@@ -1062,7 +1062,7 @@
     z-index: 30;
     width: 300px;
     background: var(--color-surface-card);
-    border: 1px solid var(--color-surface-border);
+    border: 0;
     border-radius: var(--radius-md);
     box-shadow: var(--shadow-lg);
     padding: 14px;
@@ -1074,7 +1074,7 @@
     &__chips { display: flex; flex-wrap: wrap; gap: 6px; }
     &__chip {
         padding: 4px 10px;
-        border: 1px solid var(--color-surface-border);
+        border: 0;
         border-radius: var(--radius-full);
         background: var(--color-surface-hover);
         font-size: 12px;
@@ -1177,7 +1177,7 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    border: 1px solid var(--color-surface-border);
+    border: 0;
     border-radius: var(--radius-md);
     background: var(--color-surface-hover);
     color: var(--color-text-muted);
@@ -1248,7 +1248,7 @@
     &__title-text { font-size: 13px; color: var(--color-text-main); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
     &__select {
-        height: 28px; border: 1px solid var(--color-surface-border); border-radius: var(--radius-sm);
+        height: 28px; border: 0; border-radius: var(--radius-sm);
         background: var(--color-surface-card); font-size: 12px; color: var(--color-text-main); cursor: pointer; padding: 0 4px;
     }
 
@@ -1442,13 +1442,13 @@
 .po-calendar {
     &__head { display: flex; align-items: center; gap: 8px; padding: 4px 0 12px; }
     &__title { font-size: 15px; font-weight: 700; color: var(--color-text-main); }
-    &__nav { width: 30px; height: 30px; border: 1px solid var(--color-surface-border); border-radius: var(--radius-sm); background: var(--color-surface-card); cursor: pointer; color: var(--color-text-muted);
+    &__nav { width: 30px; height: 30px; border: 0; border-radius: var(--radius-sm); background: var(--color-surface-card); cursor: pointer; color: var(--color-text-muted);
         display: flex; align-items: center; justify-content: center; &:hover { background: var(--color-surface-hover); } }
-    &__today-btn { margin-left: auto; height: 30px; padding: 0 12px; border: 1px solid var(--color-surface-border); border-radius: var(--radius-sm); background: var(--color-surface-card); font-size: 12px; cursor: pointer; color: var(--color-text-main); &:hover { background: var(--color-surface-hover); } }
+    &__today-btn { margin-left: auto; height: 30px; padding: 0 12px; border: 0; border-radius: var(--radius-sm); background: var(--color-surface-card); font-size: 12px; cursor: pointer; color: var(--color-text-main); &:hover { background: var(--color-surface-hover); } }
     &__weekdays { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin-bottom: 4px;
         span { font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--color-text-subtle); text-align: center; } }
     &__grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
-    &__day { min-height: 92px; border: 1px solid var(--color-surface-border); border-radius: var(--radius-sm); padding: 4px; display: flex; flex-direction: column; gap: 2px; background: var(--color-surface-card);
+    &__day { min-height: 92px; border: 0; border-radius: var(--radius-sm); padding: 4px; display: flex; flex-direction: column; gap: 2px; background: var(--color-surface-card);
         &.is-muted { background: var(--color-surface-bg); opacity: 0.6; }
         &.is-today { border-color: var(--color-primary); }
     }
@@ -1579,7 +1579,7 @@
         align-items: center;
         gap: 22px;
         padding: 14px 18px;
-        border: 1px solid var(--color-surface-border);
+        border: 0;
         border-radius: var(--radius-lg);
         background: var(--color-surface-card);
         flex-wrap: wrap;
@@ -1598,7 +1598,7 @@
     &__active { display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 14px; }
     &__cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; }
     &__col {
-        border: 1px solid var(--color-surface-border);
+        border: 0;
         border-radius: var(--radius-lg);
         background: var(--color-surface-card);
         padding: 14px;
@@ -1617,7 +1617,7 @@
 }
 
 .po-sprint {
-    border: 1px solid var(--color-surface-border);
+    border: 0;
     border-radius: var(--radius-lg);
     background: var(--color-surface-card);
     padding: 16px;
@@ -1696,7 +1696,7 @@
         align-items: center;
         gap: 22px;
         padding: 14px 18px;
-        border: 1px solid var(--color-surface-border);
+        border: 0;
         border-radius: var(--radius-lg);
         background: var(--color-surface-card);
         flex-wrap: wrap;
@@ -1752,7 +1752,7 @@
     }
 
     &__card {
-        border: 1px solid var(--color-surface-border);
+        border: 0;
         border-left: 3px solid var(--st, var(--color-surface-border));
         border-radius: var(--radius-md);
         background: var(--color-surface-card);
@@ -1866,7 +1866,7 @@
         .material-symbols-outlined { font-size: 16px; }
     }
     &__clear { border: none; background: none; color: var(--color-text-muted); &:hover { color: var(--color-text-main); } }
-    &__new { border: 1px solid var(--color-surface-border); background: var(--color-surface-hover); color: var(--color-text-main);
+    &__new { border: 0; background: var(--color-surface-hover); color: var(--color-text-main);
         &:hover { background: var(--field-bg-hover); } }
 
     &__list { display: flex; flex-direction: column; max-height: 320px; overflow-y: auto; border-top: 1px solid var(--color-surface-border); }
@@ -1917,7 +1917,7 @@
         position: absolute; top: calc(100% + 6px); right: 0; z-index: 30;
         display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px;
         padding: 8px; background: var(--color-surface-card);
-        border: 1px solid var(--color-surface-border); border-radius: var(--radius-md); box-shadow: var(--shadow-lg);
+        border: 0; border-radius: var(--radius-md); box-shadow: var(--shadow-lg);
     }
     &__swatch { width: 20px; height: 20px; border-radius: 50%; border: 2px solid transparent; cursor: pointer;
         &.is-active { border-color: transparent; box-shadow: 0 0 0 1.5px var(--color-surface-card), 0 0 0 3px var(--color-text-main); }

@@ -431,7 +431,7 @@ export const CommentSection: React.FC<CommentSectionProps> = ({
                 )}
 
                 <div
-                    className="comment-composer flex flex-col gap-2 p-1.5 border border-[var(--color-surface-border)] rounded-xl bg-[var(--color-surface-hover)] transition-colors focus-within:border-[var(--color-surface-border-hover)] focus-within:bg-[var(--color-surface-card)]"
+                    className="comment-composer flex flex-col gap-2 p-1.5 rounded-xl bg-[var(--color-surface-hover)] transition-colors focus-within:bg-[var(--color-surface-card)]"
                     data-dragging={composerDrop.isDragging ? 'true' : 'false'}
                     {...composerDrop.dropProps}
                     onPaste={composerDrop.onPaste}

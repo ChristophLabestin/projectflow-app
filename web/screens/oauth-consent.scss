@@ -19,7 +19,7 @@
     gap: 12px;
     padding: 28px;
     background: var(--color-surface-card);
-    border: 1px solid var(--color-surface-border);
+    border: 0;
     border-radius: var(--radius-lg);
 
     h1 {
@@ -90,7 +90,7 @@
     font: inherit;
     color: var(--color-text-main);
     background: var(--color-surface-input);
-    border: 1px solid var(--color-surface-border);
+    border: 0;
     border-radius: var(--radius-md);
 }
 

@@ -185,6 +185,13 @@ Global guard (`web/styles/index.scss`): focused input/textarea/select get `borde
 `--field-focus-shadow` as box-shadow (`@property`, non-inheriting) — the Tailwind forms focus border/ring can't
 come back. Exempt: checkbox/radio/switch controls, colour swatches (offset ring), tab underlines, error and
 drop-zone states, status/priority markers.
+**No decorative borders (sweep 2026-10-24):** cards, modals, panels, popovers, chips, buttons, kbd caps and
+tinted action buttons carry no `border: 1px solid …` or `inset 0 0 0 1px` hairline. Edges come from tonal
+contrast (§5.2) and, on Level 1 cards on the canvas, `--shadow-sm`. Kept on purpose: checkbox/radio/switch boxes,
+colour swatches, tab underlines, dashed add/drop-zone affordances, error and success/warning alert states,
+status/priority/label markers (`currentColor` borders), the calendar "today" marker, ring gaps around avatars
+and presence dots, the brand mark ring, and side dividers (`border-top/bottom` separators). Legacy Tailwind
+`border` utility classes in TSX are being phased out — don't add new ones.
 
 ## 1.11 Glass menus — option popovers (2026-10-24)
 

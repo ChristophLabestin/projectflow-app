@@ -114,7 +114,7 @@
     justify-content: center;
     flex: 0 0 auto;
     overflow: hidden;
-    border: 1px solid rgba(var(--color-surface-hover-rgb), 0.78);
+    border: 0;
     background: linear-gradient(135deg, var(--color-primary), var(--color-text-muted));
     color: var(--color-primary-text);
     font-weight: 850;
@@ -188,7 +188,7 @@
     position: fixed;
     z-index: 100;
     overflow: hidden;
-    border: 1px solid rgba(var(--color-surface-hover-rgb), 0.95);
+    border: 0;
     border-radius: var(--radius-md);
     background: rgba(var(--color-surface-card-rgb), 0.94);
     box-shadow: 0 1.5rem 4rem rgba(0, 0, 0, 0.16), var(--shadow-lg);
@@ -259,7 +259,7 @@
     width: 3.375rem;
     height: 3.375rem;
     flex-direction: column;
-    border: 1px solid var(--color-surface-border);
+    border: 0;
     border-radius: var(--radius-md);
     background: var(--color-surface-hover);
 }
@@ -313,7 +313,7 @@
 .pinned-project-menu__stat {
     min-width: 0;
     padding: 0.625rem 0.6875rem;
-    border: 1px solid var(--color-surface-border);
+    border: 0;
     border-radius: var(--radius-sm);
     background: var(--color-surface-hover);
 }
@@ -373,7 +373,7 @@
     align-items: flex-start;
     gap: 0.625rem;
     padding: 0.625rem 0.6875rem;
-    border: 1px solid var(--color-surface-border);
+    border: 0;
     border-radius: var(--radius-sm);
     background: rgba(var(--color-surface-hover-rgb), 0.34);
 
@@ -434,7 +434,7 @@
     display: inline-flex;
     align-items: center;
     min-width: 0;
-    border: 1px solid var(--color-surface-border);
+    border: 0;
     border-radius: var(--radius-control);
     background: var(--color-surface-hover);
     color: var(--color-text-main);
@@ -988,7 +988,7 @@
     padding: 0.75rem;
     font-size: 0.875rem;
     background-color: var(--color-surface-hover);
-    border: 1px solid var(--color-surface-border);
+    border: 0;
     border-radius: var(--radius-control);
     resize: none;
     transition: box-shadow var(--transition-fast), border-color var(--transition-fast);
@@ -1035,7 +1035,7 @@
     gap: 0.75rem;
     margin-bottom: 1rem;
     padding: 0.875rem;
-    border: 1px solid rgba(var(--color-primary-rgb), 0.18);
+    border: 0;
     border-radius: var(--radius-lg);
     background: rgba(var(--color-primary-rgb), 0.06);
 
@@ -1117,7 +1117,7 @@
         justify-content: center;
         min-height: 2rem;
         padding: 0 0.625rem;
-        border: 1px solid var(--color-surface-border);
+        border: 0;
         border-radius: var(--radius-md);
         background: var(--color-surface-hover);
         color: var(--color-text-main);
@@ -1302,7 +1302,7 @@
     background-color: var(--color-surface-card);
     padding: 0.125rem 0.25rem;
     border-radius: var(--radius-sm);
-    border: 1px solid var(--color-surface-border);
+    border: 0;
 }
 
 .pinned-tasks__add-icon {
@@ -1438,7 +1438,7 @@
             margin-top: 0.5rem;
             width: 13rem;
             border-radius: var(--radius-lg);
-            border: 1px solid var(--color-surface-border);
+            border: 0;
             background-color: var(--color-surface-card);
             box-shadow: var(--shadow-lg);
             padding: 0.25rem;
@@ -1497,7 +1497,7 @@
         background-color: var(--color-surface-hover);
         padding: 0.75rem;
         border-radius: var(--radius-lg);
-        border: 1px solid var(--color-surface-border);
+        border: 0;
         font-size: 0.875rem;
         white-space: pre-wrap;
         color: var(--color-text-main);
@@ -1828,7 +1828,7 @@
                     justify-content: center;
                     padding: 0.5rem;
                     border-radius: var(--radius-md);
-                    border: 1px solid var(--color-surface-border);
+                    border: 0;
                     background-color: var(--color-surface-card);
 
                     .pinned-item-icon {

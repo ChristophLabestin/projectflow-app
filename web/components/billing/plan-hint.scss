@@ -8,13 +8,13 @@
     padding: 12px 14px;
     border-radius: var(--radius-card);
     background: var(--color-surface-hover-light);
-    box-shadow: inset 0 0 0 1px var(--color-surface-border);
+    box-shadow: none;
     color: var(--color-text-main);
     font-size: 0.8125rem;
 
     &--warning {
         background: rgba(var(--brand-amber-rgb), 0.08);
-        box-shadow: inset 0 0 0 1px rgba(var(--brand-amber-rgb), 0.28);
+        box-shadow: none;
 
         .plan-hint__icon { color: var(--brand-amber-text); }
     }

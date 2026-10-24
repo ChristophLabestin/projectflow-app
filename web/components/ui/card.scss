@@ -3,7 +3,7 @@
 .ui-card {
     @include tokens.depth-shell;
     background-color: var(--color-surface-card);
-    border: 1px solid var(--color-surface-border);
+    border: 0;
     border-radius: var(--radius-lg);
     box-shadow: var(--shadow-sm);
 }

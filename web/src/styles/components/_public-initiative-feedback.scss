@@ -157,7 +157,7 @@
 .public-initiative-feedback__preview-input {
     width: 100%;
     min-height: 3rem;
-    border: 1px solid var(--color-surface-border);
+    border: 0;
     outline: 0;
     border-radius: var(--radius-control);
     padding: 0.7rem 1rem;
@@ -201,7 +201,7 @@
     padding: 1.15rem;
     border-radius: var(--radius-xl);
     background-color: var(--color-surface-hover);
-    border: 1px solid var(--color-surface-border);
+    border: 0;
 }
 
 .public-initiative-feedback__attachments-head {
@@ -293,7 +293,7 @@
     padding: 0.35rem 0.65rem;
     border-radius: var(--radius-full);
     background: color-mix(in srgb, var(--color-surface-hover) 50%, var(--color-surface-card));
-    border: 1px solid var(--color-surface-border);
+    border: 0;
     color: var(--color-text-main);
     font-size: 0.8125rem;
     line-height: 1.2;
