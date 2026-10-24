@@ -1,6 +1,6 @@
 # Forms — konfigurierbare Formulare für ProjectFlow (Konzept)
 
-Stand 2026-10-24 · Status: **Konzept, wartet auf Freigabe** (keine Umsetzung vor Owner-Go) ·
+Stand 2026-10-24 · Status: **freigegeben 2026-10-24; Paket 1 (Fundament) umgesetzt**, Paket 2 offen ·
 UI-Name **Formulare / Forms**, Code und Firestore `forms`.
 
 ## 0. Owner-Entscheidungen (Interview 2026-10-24)
@@ -266,6 +266,15 @@ Formular-Eigentümers (opt-in).
 
 ## 12. Phasenplan
 **MVP** wird in vier Paketen gebaut, Release öffentlich erst nach Paket 3:
+
+*Paket 1 erledigt (2026-10-24):* `web/utils/formsLogic.ts` (= `functions/src/forms-logic.ts`, Sync-Test
+`functions/scripts/unit/forms-logic.test.js`) mit Schema-Prüfung, Sichtbarkeit, Antwort-Validierung, CSV-Zelle,
+`formQuotaFor`, Zugriffs-Helfern, `responseExpiry`; Golden Fixtures `shared/fixtures/forms{Schema,Visibility,Submission,Quota}`;
+Regeln + Regeltests (inkl. Ausschluss aus dem Tenant-Catch-all), Indizes + TTL; Doc-Typen `web/types/forms.ts`;
+`formsService` (Quota-Abo, Legal speichern); Karte „Rechtliches“ in den Workspace-Einstellungen; Rechte
+`tenant.forms.create|manageAll`; Bereichs-Flag `forms` (aus, bis Paket 2 die Routen bringt). **Deploy offen:**
+`firestore:rules` + `firestore:indexes` (keine Functions in Paket 1).
+
 1. **Fundament** — `forms-logic` (+ Tests, Golden Fixtures), Datenmodell, Regeln/Indizes/TTL,
    Entitlements-Felder, `tenants/{t}.legal`-Einstellungen, Tenant-Rechte, Workspace-Bereich `forms`.
 2. **Builder + öffentliches Formular** — Liste, Vorlagen, Builder (alle Feldtypen, Abschnitte,

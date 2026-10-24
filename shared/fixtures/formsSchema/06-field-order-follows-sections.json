@@ -1,0 +1,47 @@
+{
+  "name": "Order is section order, not array order: a field listed first but in a later section is \"later\"",
+  "input": {
+    "schema": {
+      "sections": [
+        {
+          "id": "s1"
+        },
+        {
+          "id": "s2"
+        }
+      ],
+      "fields": [
+        {
+          "id": "late",
+          "sectionId": "s2",
+          "type": "shortText",
+          "label": "Late"
+        },
+        {
+          "id": "early",
+          "sectionId": "s1",
+          "type": "shortText",
+          "label": "Early",
+          "showIf": {
+            "mode": "all",
+            "rules": [
+              {
+                "fieldId": "late",
+                "op": "answered"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "expected": {
+    "issues": [
+      {
+        "code": "forwardReference",
+        "targetId": "early",
+        "refId": "late"
+      }
+    ]
+  }
+}

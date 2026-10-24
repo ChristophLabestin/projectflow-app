@@ -1,0 +1,138 @@
+{
+  "name": "Text equals/contains ignore case and spaces; dates compare as YYYY-MM-DD",
+  "input": {
+    "schema": {
+      "sections": [
+        {
+          "id": "s"
+        }
+      ],
+      "fields": [
+        {
+          "id": "t",
+          "sectionId": "s",
+          "type": "shortText",
+          "label": "T"
+        },
+        {
+          "id": "d",
+          "sectionId": "s",
+          "type": "date",
+          "label": "D"
+        },
+        {
+          "id": "eq",
+          "sectionId": "s",
+          "type": "statement",
+          "label": "eq",
+          "showIf": {
+            "mode": "all",
+            "rules": [
+              {
+                "fieldId": "t",
+                "op": "equals",
+                "value": "hello world"
+              }
+            ]
+          }
+        },
+        {
+          "id": "has",
+          "sectionId": "s",
+          "type": "statement",
+          "label": "has",
+          "showIf": {
+            "mode": "all",
+            "rules": [
+              {
+                "fieldId": "t",
+                "op": "contains",
+                "value": "WORLD"
+              }
+            ]
+          }
+        },
+        {
+          "id": "empty",
+          "sectionId": "s",
+          "type": "statement",
+          "label": "empty contains",
+          "showIf": {
+            "mode": "all",
+            "rules": [
+              {
+                "fieldId": "t",
+                "op": "contains",
+                "value": ""
+              }
+            ]
+          }
+        },
+        {
+          "id": "after",
+          "sectionId": "s",
+          "type": "statement",
+          "label": "after",
+          "showIf": {
+            "mode": "all",
+            "rules": [
+              {
+                "fieldId": "d",
+                "op": "gt",
+                "value": "2026-06-30"
+              }
+            ]
+          }
+        },
+        {
+          "id": "before",
+          "sectionId": "s",
+          "type": "statement",
+          "label": "before",
+          "showIf": {
+            "mode": "all",
+            "rules": [
+              {
+                "fieldId": "d",
+                "op": "lt",
+                "value": "2026-06-30"
+              }
+            ]
+          }
+        },
+        {
+          "id": "textgt",
+          "sectionId": "s",
+          "type": "statement",
+          "label": "text gt never",
+          "showIf": {
+            "mode": "all",
+            "rules": [
+              {
+                "fieldId": "t",
+                "op": "gt",
+                "value": "a"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "answers": {
+      "t": "  Hello World ",
+      "d": "2026-07-01"
+    }
+  },
+  "expected": {
+    "sectionIds": [
+      "s"
+    ],
+    "fieldIds": [
+      "t",
+      "d",
+      "eq",
+      "has",
+      "after"
+    ]
+  }
+}

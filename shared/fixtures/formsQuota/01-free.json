@@ -1,0 +1,19 @@
+{
+  "name": "Free: 3 forms, 100 responses, presets only, no uploads/logic/branding removal/workspace audience",
+  "input": {
+    "entitlement": {
+      "plan": "free"
+    },
+    "tenant": null
+  },
+  "expected": {
+    "activeForms": 3,
+    "responsesPerMonth": 100,
+    "uploads": false,
+    "logic": false,
+    "fullTheme": false,
+    "removeBranding": false,
+    "workspaceAudience": false,
+    "plan": "free"
+  }
+}

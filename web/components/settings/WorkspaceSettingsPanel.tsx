@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 
 import { Button } from '../common/Button/Button';
 import { InviteToWorkspaceModal } from '../workspace/InviteToWorkspaceModal';
+import { WorkspaceLegalCard } from './WorkspaceLegalCard';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { useToast } from '../../context/UIContext';
@@ -157,6 +158,7 @@ export const WorkspaceSettingsPanel: React.FC<{ section: WorkspaceSettingsSectio
                 )}
             </section>
 
+            <WorkspaceLegalCard tenantId={tenantId} isAdmin={isAdmin} />
                 </>
             )}
             {section === 'members' && (

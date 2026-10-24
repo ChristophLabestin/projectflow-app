@@ -508,6 +508,7 @@ export const SidebarNavigator: React.FC<SidebarNavigatorProps> = ({ isDrawer = f
         ...(isWorkspaceAreaEnabled('documents') ? [{ key: 'documents', to: '/files', icon: 'folder_open', label: t('nav.documents') }] : []),
         ...(isWorkspaceAreaEnabled('wiki') && activeWorkspace?.role !== 'Guest' ? [{ key: 'wiki', to: '/wiki', icon: 'menu_book', label: t('nav.wiki') }] : []),
         ...(isWorkspaceAreaEnabled('flows') && activeWorkspace?.role !== 'Guest' ? [{ key: 'flows', to: '/flows', icon: 'account_tree', label: t('nav.flows') }] : []),
+        ...(isWorkspaceAreaEnabled('forms') && activeWorkspace?.role !== 'Guest' ? [{ key: 'forms', to: '/forms', icon: 'assignment', label: t('nav.forms') }] : []),
         { key: 'activity', to: '/activity', icon: 'history', label: t('nav.activity') },
         ...(activeWorkspace?.role !== 'Guest' ? [{ key: 'insights', to: '/insights', icon: 'insights', label: t('nav.insights'), exact: true }] : []),
         // Personal workspace: only you — no Team page in the nav (billing contract §7).

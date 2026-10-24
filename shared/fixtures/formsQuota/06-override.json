@@ -1,0 +1,29 @@
+{
+  "name": "The platform override wins field by field; invalid values are ignored",
+  "input": {
+    "entitlement": {
+      "plan": "free"
+    },
+    "tenant": {
+      "limits": {
+        "forms": {
+          "activeForms": null,
+          "responsesPerMonth": 250.7,
+          "uploads": true,
+          "logic": "yes",
+          "fullTheme": -1
+        }
+      }
+    }
+  },
+  "expected": {
+    "activeForms": null,
+    "responsesPerMonth": 250,
+    "uploads": true,
+    "logic": false,
+    "fullTheme": false,
+    "removeBranding": false,
+    "workspaceAudience": false,
+    "plan": "free"
+  }
+}

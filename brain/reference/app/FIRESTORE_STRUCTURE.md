@@ -260,6 +260,9 @@ User prefs: `/tenants/{tenantId}/users/{uid}/prefs/wiki` — `{ favorites: docId
 #### ↳ 📂 **`automation_usage/{yyyy-mm}`** `{ runs, aiSteps, skipped, runsLimit, aiStepsLimit, activeLimit, quotaTier }` · **`automation_throttle`** (per-minute / per-entity-hour counters, server only, TTL)
 Limits: `AUTOMATION_LIMITS` in `functions/src/automation-logic.ts`; per-workspace override `tenants/{t}.limits.automations { runsPerMonth, aiStepsPerMonth, activeFlowsPerWorkspace }`. Member policy: `tenants/{t}.automationPolicy.allowMemberFlows` (default true).
 
+#### ↳ 📂 **`forms`** *(Forms; reads: owner, editors, Owner/Admin; writes via Functions only)*
+**Path:** `/tenants/{tenantId}/forms/{formId}` — concept `brain/plans/forms-concept.md` §4, doc types `web/types/forms.ts`, schema/answer types and validation in `web/utils/formsLogic.ts` (= `functions/src/forms-logic.ts`). Subcollections `versions/{n}` (published snapshot), `responses/{rid}` (TTL on `expireAt`), `stats/summary`. Workspace-level: `form_themes/{id}` (full members read), `forms_usage/{yyyy-mm}` (full members read). Root `public_forms/{token}` = public index, server only. Quota override `tenants/{t}.limits.forms`; legal details `tenants/{t}.legal { controllerName, privacyPolicyUrl, imprintUrl, contactEmail }`.
+
 #### ↳ 📂 **`files`** *(Canonical tenant file metadata; writes via Functions only)*
 **Path:** `/tenants/{tenantId}/files/{fileId}`
 **Schema highlights:**

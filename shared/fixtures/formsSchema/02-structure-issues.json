@@ -1,0 +1,60 @@
+{
+  "name": "No sections, duplicate ids, unknown section, bad type and missing label are reported",
+  "input": {
+    "schema": {
+      "sections": [],
+      "fields": [
+        {
+          "id": "a",
+          "sectionId": "nope",
+          "type": "shortText",
+          "label": "A"
+        },
+        {
+          "id": "a",
+          "sectionId": "nope",
+          "type": "bogus",
+          "label": "Dup"
+        },
+        {
+          "id": "b",
+          "sectionId": "nope",
+          "type": "longText",
+          "label": "   "
+        }
+      ]
+    }
+  },
+  "expected": {
+    "issues": [
+      {
+        "code": "noSections",
+        "targetId": null
+      },
+      {
+        "code": "duplicateId",
+        "targetId": "a"
+      },
+      {
+        "code": "unknownSection",
+        "targetId": "a"
+      },
+      {
+        "code": "unknownSection",
+        "targetId": "a"
+      },
+      {
+        "code": "invalidType",
+        "targetId": "a"
+      },
+      {
+        "code": "unknownSection",
+        "targetId": "b"
+      },
+      {
+        "code": "missingLabel",
+        "targetId": "b"
+      }
+    ]
+  }
+}

@@ -63,12 +63,22 @@ Locale-Schlüssel `billing.errors.<code>`. Upgrade-Link: `?openSettings=billing`
 | `plan-flow-limit` | `saveAutomation`, `setAutomationEnabled` | Limit aktiver Flows des Plans erreicht (nichts wird abgeschaltet) |
 | `plan-flow-runs-limit` | `runAutomation`; automatische Läufe enden als `skipped_limit` (Protokoll: „Kontingent erreicht“) | Flow-Läufe des Monats aufgebraucht |
 | `plan-flow-ai-limit` | Flow-KI-Schritte (Lauf `failed`) | KI-Schritte des Monats aufgebraucht |
+| `plan-form-limit` | `publishForm`, `setFormStatus` (Forms, geplant) | Limit aktiver Formulare erreicht |
+| `plan-form-responses` | `submitPublicForm`, `submitFormAsMember` (geplant) | Antworten des Monats aufgebraucht; Formular zeigt „nimmt derzeit keine Antworten an“ |
+| `plan-form-feature` | `publishForm`, `saveFormTheme` (geplant) | Upload-Feld, Logik, volles Theme, Branding ausblenden oder Zielgruppe „Nur Workspace“ nicht im Plan |
 
 **Flow-Kontingent (`flowsQuota`, umgesetzt von Flows, `flowQuotaFor` in `functions/src/automation-logic.ts`):** `free` = 3 aktive Flows,
 200 Läufe/Monat, KI-Schritte nur mit eigenem OpenAI-Schlüssel des Flow-Verantwortlichen; `seat` = je bezahltem Platz 2.000 Läufe und
 200 KI-Schritte pro Monat, 50 aktive Flows + 10 je weiterem Platz (max. 200); Server-KI nur, wenn `aiEnabledFor(doc, flowOwner)`,
 sonst eigener Schlüssel, sonst `ai-not-enabled`. Ohne Entitlements-Dokument (Grace) = Ein-Platz-Kontingent. Override pro Workspace:
 `tenants/{t}.limits.automations`. Zählerstand und aktuelles Limit stehen in `tenants/{t}/automation_usage/{yyyy-mm}`.
+
+**Forms-Kontingent (`formQuotaFor` in `web/utils/formsLogic.ts` = `functions/src/forms-logic.ts`, Konzept
+[forms-concept.md](./forms-concept.md) §9):** abgeleitet aus `entitlements/plan.plan`, kein eigenes Entitlement-Feld.
+Free 3 aktive Formulare / 100 Antworten pro Monat, nur Theme-Presets; Personal 20 / 1.000, Uploads, volles Theme;
+Team unbegrenzt / 10.000, zusätzlich Logik, Branding ausblendbar, Zielgruppe „Nur Workspace“; Organization unbegrenzt /
+50.000. Ohne Entitlements-Dokument (Grace) = Team. Override pro Workspace (Plattform-Admin, Feld für Feld):
+`tenants/{t}.limits.forms` (`activeForms` darf `null` = unbegrenzt sein). Zähler: `tenants/{t}/forms_usage/{yyyy-mm}`.
 
 Callable-Fehler kommen als `HttpsError('failed-precondition' | 'invalid-argument', <code>)` — der Code steht in `message`.
 

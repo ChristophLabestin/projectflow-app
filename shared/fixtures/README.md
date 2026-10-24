@@ -12,6 +12,10 @@ fails when either side deviates.
 | `portfolioGroup/` | `web/utils/attention.ts` | `classifyPortfolio(input)` |
 | `globalSearch/` | `web/utils/globalSearch.ts` | `parseQuery(query)` |
 | `globalSearchScore/` | `web/utils/globalSearch.ts` | `scoreCandidate(terms, title, secondary)` |
+| `formsSchema/` | `web/utils/formsLogic.ts` | `{ issues: validateFormSchema(schema) }` |
+| `formsVisibility/` | `web/utils/formsLogic.ts` | `visibleFormItems(schema, answers)` |
+| `formsSubmission/` | `web/utils/formsLogic.ts` | `validateSubmission(schema, answers)` |
+| `formsQuota/` | `web/utils/formsLogic.ts` | `formQuotaFor(entitlement, tenant)` |
 
 Shared date helpers live in `web/utils/zonedDate.ts` (port them first, everything else builds on them).
 The exact calling convention of every fixture is `web/utils/fixtureRunners.ts`.

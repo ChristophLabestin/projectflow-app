@@ -1,0 +1,57 @@
+{
+  "name": "Dates must exist; withTime needs HH:mm",
+  "input": {
+    "schema": {
+      "sections": [
+        {
+          "id": "s"
+        }
+      ],
+      "fields": [
+        {
+          "id": "d1",
+          "sectionId": "s",
+          "type": "date",
+          "label": "D1"
+        },
+        {
+          "id": "d2",
+          "sectionId": "s",
+          "type": "date",
+          "label": "D2",
+          "withTime": true
+        },
+        {
+          "id": "d3",
+          "sectionId": "s",
+          "type": "date",
+          "label": "D3",
+          "withTime": true
+        }
+      ]
+    },
+    "answers": {
+      "d1": "2026-02-30",
+      "d2": "2026-03-01",
+      "d3": "2026-03-01T24:00"
+    }
+  },
+  "expected": {
+    "ok": false,
+    "answers": {},
+    "errors": [
+      {
+        "fieldId": "d1",
+        "code": "invalidDate"
+      },
+      {
+        "fieldId": "d2",
+        "code": "invalidDate"
+      },
+      {
+        "fieldId": "d3",
+        "code": "invalidDate"
+      }
+    ]
+  }
+}

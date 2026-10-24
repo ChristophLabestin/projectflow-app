@@ -210,6 +210,7 @@ Startup/company legal, finance, compliance, funding, and advisor links use the s
 - Removing a member also removes them from every project `memberIds` in that workspace.
 - Activity stream (`tenants/{t}/activity`): guests read only events of their projects (queries must filter `projectId`); workspace-level events and Insights (`insights_daily`, `insights_reports`, `/insights`) are full-member only.
 - Flows (`tenants/{t}/automations`, runs, usage): full members read; guests never see flows. Create/edit/toggle/delete/run/retry only via callables: workspace flows Owner/Admin; project flows Owner/Admin, the project owner and — while `automationPolicy.allowMemberFlows` (default on) — Members. A flow acts as workspace bot (`writeVia.kind = 'automation'`) capped by its owner (last editor): the owner must still be a non-guest member at run time, otherwise the flow pauses (`owner_lost_access`).
+- Forms (`tenants/{t}/forms`, versions, responses, stats; concept `brain/plans/forms-concept.md` §10): new tenant nodes `tenant.forms.create` (Member default, Guest no) and `tenant.forms.manageAll` (Owner/Admin). A form has `ownerId` + `editorIds`; only they and Owner/Admin read the form and its responses (rules). Custom roles with `tenant.forms.manageAll` are honoured by the Forms callables only (rules cannot read custom roles). All writes via Functions. Shared checks: `canCreateForms`/`canEditForm`/`canFillWorkspaceForm` in `web/utils/formsLogic.ts`. Workspace legal details `tenants/{t}.legal` are Owner/Admin-writable (rules check keys, lengths, https URLs).
 
 ---
 

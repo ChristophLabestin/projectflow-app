@@ -97,6 +97,10 @@ export const PERMISSION_CATALOG: Record<PermissionNode, PermissionMetadata> = {
     'tenant.media.reworkAI': { scope: 'tenant', description: 'Use AI image rework/edit' },
     'tenant.media.manageVisibility': { scope: 'tenant', description: 'Change asset visibility/sharing rules' },
 
+    // Tenant - Forms
+    'tenant.forms.create': { scope: 'tenant', description: 'Create forms and manage own forms and their responses' },
+    'tenant.forms.manageAll': { scope: 'tenant', description: 'Edit every form and see all responses', dangerLevel: 'medium' },
+
     // Tenant - Calendar
     'tenant.calendar.view': { scope: 'tenant', description: 'View tenant/global calendar' },
     'tenant.calendar.manage': { scope: 'tenant', description: 'Create/edit/remove tenant calendar items' },
@@ -532,6 +536,8 @@ export function getLegacyWorkspaceRolePermissions(role: LegacyWorkspaceRole): Pe
                 'tenant.media.upload',
                 'tenant.media.edit',
                 'tenant.media.delete',
+                'tenant.forms.create',
+                'tenant.forms.manageAll',
                 'ai.text.use',
                 'ai.image.generate',
                 'ai.image.rework',

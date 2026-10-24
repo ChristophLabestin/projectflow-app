@@ -1,0 +1,77 @@
+{
+  "name": "Choices need options, unique and non-empty; multiple choice bounds must fit the options",
+  "input": {
+    "schema": {
+      "sections": [
+        {
+          "id": "s"
+        }
+      ],
+      "fields": [
+        {
+          "id": "none",
+          "sectionId": "s",
+          "type": "dropdown",
+          "label": "No options",
+          "options": []
+        },
+        {
+          "id": "dup",
+          "sectionId": "s",
+          "type": "singleChoice",
+          "label": "Dup",
+          "options": [
+            {
+              "id": "x",
+              "label": "X"
+            },
+            {
+              "id": "x",
+              "label": ""
+            }
+          ]
+        },
+        {
+          "id": "multi",
+          "sectionId": "s",
+          "type": "multipleChoice",
+          "label": "Multi",
+          "options": [
+            {
+              "id": "a",
+              "label": "A"
+            },
+            {
+              "id": "b",
+              "label": "B"
+            }
+          ],
+          "minSelect": 3,
+          "maxSelect": 2
+        }
+      ]
+    }
+  },
+  "expected": {
+    "issues": [
+      {
+        "code": "missingOptions",
+        "targetId": "none"
+      },
+      {
+        "code": "duplicateOption",
+        "targetId": "dup",
+        "refId": "x"
+      },
+      {
+        "code": "emptyOption",
+        "targetId": "dup",
+        "refId": "x"
+      },
+      {
+        "code": "invalidRange",
+        "targetId": "multi"
+      }
+    ]
+  }
+}

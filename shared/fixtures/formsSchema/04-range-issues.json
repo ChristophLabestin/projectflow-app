@@ -1,0 +1,95 @@
+{
+  "name": "Rating 3-10, scale from 0/1 spanning at most 10, number/date min<=max, 1-10 files with known kinds",
+  "input": {
+    "schema": {
+      "sections": [
+        {
+          "id": "s"
+        }
+      ],
+      "fields": [
+        {
+          "id": "r",
+          "sectionId": "s",
+          "type": "rating",
+          "label": "R",
+          "ratingMax": 2
+        },
+        {
+          "id": "sc",
+          "sectionId": "s",
+          "type": "scale",
+          "label": "S",
+          "scaleMin": 2,
+          "scaleMax": 5
+        },
+        {
+          "id": "sc2",
+          "sectionId": "s",
+          "type": "scale",
+          "label": "S2",
+          "scaleMin": 0,
+          "scaleMax": 11
+        },
+        {
+          "id": "n",
+          "sectionId": "s",
+          "type": "number",
+          "label": "N",
+          "min": 5,
+          "max": 1
+        },
+        {
+          "id": "d",
+          "sectionId": "s",
+          "type": "date",
+          "label": "D",
+          "min": "2026-12-01",
+          "max": "2026-01-01"
+        },
+        {
+          "id": "f",
+          "sectionId": "s",
+          "type": "fileUpload",
+          "label": "F",
+          "maxFiles": 11,
+          "fileKinds": [
+            "exe"
+          ]
+        }
+      ]
+    }
+  },
+  "expected": {
+    "issues": [
+      {
+        "code": "invalidRange",
+        "targetId": "r"
+      },
+      {
+        "code": "invalidRange",
+        "targetId": "sc"
+      },
+      {
+        "code": "invalidRange",
+        "targetId": "sc2"
+      },
+      {
+        "code": "invalidRange",
+        "targetId": "n"
+      },
+      {
+        "code": "invalidRange",
+        "targetId": "d"
+      },
+      {
+        "code": "invalidRange",
+        "targetId": "f"
+      },
+      {
+        "code": "invalidFileKinds",
+        "targetId": "f"
+      }
+    ]
+  }
+}
