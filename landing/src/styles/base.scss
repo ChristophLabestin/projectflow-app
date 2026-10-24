@@ -131,6 +131,8 @@ main:focus {
     max-width: calc(var(--container) + 2 * var(--gutter));
     margin-inline: auto;
     padding-inline: var(--gutter);
+    // iPhone landscape: keep content clear of the Dynamic Island / rounded corners (viewport-fit=cover).
+    padding-inline: max(var(--gutter), env(safe-area-inset-left)) max(var(--gutter), env(safe-area-inset-right));
 }
 
 .icon {
@@ -634,6 +636,7 @@ main:focus {
     position: sticky;
     top: calc(var(--header-h) + 24px);
     max-height: calc(100vh - var(--header-h) - 48px);
+    max-height: calc(100dvh - var(--header-h) - 48px);
     overflow: auto;
     padding: 20px;
     border-radius: var(--radius-card);
@@ -798,8 +801,8 @@ main:focus {
 // ---------------------------------------------------------------- Cookie consent (only rendered with a GA ID)
 .consent {
     position: fixed;
-    right: 20px;
-    bottom: 20px;
+    right: max(20px, env(safe-area-inset-right));
+    bottom: calc(20px + env(safe-area-inset-bottom));
     z-index: 80;
     display: grid;
     gap: 12px;
@@ -857,4 +860,37 @@ main:focus {
     text-decoration: underline;
     text-underline-offset: 3px;
     cursor: pointer;
+}
+
+// ---------------------------------------------------------------- Touch devices (iPhone, iPad)
+html {
+    // The iOS grey tap flash; buttons and cards have their own pressed state.
+    -webkit-tap-highlight-color: transparent;
+}
+
+.site-footer {
+    padding-bottom: env(safe-area-inset-bottom);
+}
+
+// Apple HIG: touch targets at least 44 × 44 pt. Only for coarse pointers, so the desktop layout stays as is.
+@media (pointer: coarse) {
+    .btn--sm,
+    .lang-switch {
+        min-height: 44px;
+    }
+
+    .site-footer__col ul {
+        gap: 0;
+    }
+
+    .site-footer__col a {
+        display: inline-flex;
+        align-items: center;
+        min-width: 44px;
+        min-height: 44px;
+    }
+
+    .brand {
+        min-height: 44px;
+    }
 }

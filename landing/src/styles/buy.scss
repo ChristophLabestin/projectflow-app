@@ -10,7 +10,9 @@
     --ck-radius: var(--radius-sm);
     --ck-line: var(--color-surface-border);
     width: min(100% - 2 * var(--gutter), 1340px);
+    padding-inline: env(safe-area-inset-left) env(safe-area-inset-right);
     min-height: 100vh;
+    min-height: 100dvh;
     margin-inline: auto;
     padding-bottom: 72px;
 }
@@ -841,8 +843,8 @@
 
 .ck-help {
     position: fixed;
-    right: 24px;
-    bottom: 20px;
+    right: max(24px, env(safe-area-inset-right));
+    bottom: calc(20px + env(safe-area-inset-bottom));
     display: inline-flex;
     align-items: center;
     gap: 8px;
@@ -1285,5 +1287,22 @@
 
     .ck-seats {
         padding: 14px 16px;
+    }
+}
+
+@media (pointer: coarse) {
+    .ck-edit,
+    .ck-link,
+    .ck-back,
+    .ck-top__brand,
+    .ck-top__back,
+    .ck-help {
+        min-height: 44px;
+    }
+
+    .ck-counter button,
+    .ck-counter input {
+        width: 44px;
+        height: 44px;
     }
 }

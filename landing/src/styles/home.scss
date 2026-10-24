@@ -1433,6 +1433,7 @@ html:not(.is-ready) {
     display: grid;
     align-content: center;
     min-height: calc(100vh - var(--header-h));
+    min-height: calc(100svh - var(--header-h));
     padding-block: 24px;
 }
 
@@ -2737,5 +2738,46 @@ kbd {
 
     .price-included {
         padding: 20px 22px;
+    }
+}
+
+// Touch devices: bigger hit areas for the chapter dots, skip link, billing switch and standalone links.
+@media (pointer: coarse) {
+    // ::after is the visible dot; ::before is an invisible 44 pt hit area around it.
+    .story__nav a {
+        position: relative;
+
+        &::before {
+            content: '';
+            position: absolute;
+            inset: 50% auto auto 50%;
+            width: 44px;
+            height: 44px;
+            transform: translate(-50%, -50%);
+        }
+    }
+
+    .story__skip {
+        min-height: 44px;
+    }
+
+    .billing-toggle button {
+        min-height: 44px;
+    }
+
+    .trust__more a {
+        min-height: 44px;
+    }
+}
+
+// Phones in landscape (short viewports): the hero headline scales with the height, so text and buttons fit on
+// one screen; the copy starts closer to the header.
+@media (max-height: 520px) and (orientation: landscape) {
+    .act__title--hero {
+        font-size: clamp(1.8rem, 9svh, 3rem);
+    }
+
+    .motion .act--hero {
+        top: calc(var(--header-h) + 4svh);
     }
 }
