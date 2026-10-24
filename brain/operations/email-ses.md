@@ -130,7 +130,7 @@ firebase functions:secrets:set AWS_SES_SECRET_ACCESS_KEY --project projectflow-l
    Neue Secret-Versionen (Key-Rotation) greifen erst nach erneutem Deploy der Mail-Functions (Liste unten).
    Der Code behandelt den Wert `unset` als „nicht gesetzt“ (Fallback SMTP), falls Secrets vorab als Platzhalter angelegt werden.
 
-Functions mit `EMAIL_SECRETS`: `sendInvitation`, `onNotificationCreated`, `onLegalMailJobCreated`,
+Functions mit `EMAIL_SECRETS` (AWS-Keys + `SMTP_USER`/`SMTP_PASS`): `sendInvitation`, `onNotificationCreated`, `onLegalMailJobCreated`,
 `processLegalMailJobs`, `requestWaitlist`, `requestNewsletterSignup`, `sendContactFormEmail`, `adminApi`, `adminMcp`.
 
 ```bash
@@ -194,6 +194,44 @@ Nach der Freischaltung: `EMAIL_SMTP_FALLBACK=false` lassen, `SES_MAX_SEND_RATE` 
 - Die IAM-Policy erlaubt kein `ses:GetEmailIdentity`; der Verifizierungsstatus steht in der Konsole (erfolgreiche Sends von
   `@mail.getprojectflow.com` belegen die Verifizierung).
 - In der Sandbox scheitern Mails an nicht verifizierte Empfänger (Einladungen, Benachrichtigungen) bis zur Freischaltung.
+
+## Übergang: Google Workspace SMTP (bis SES Production Access)
+
+Seit 2026-10-24 `EMAIL_TRANSPORT=smtp` in `functions/.env.projectflow-labestin`: alle System-Mails gehen über
+`smtp.gmail.com:465` mit dem Konto `office@labestindigital.de` (Secrets `SMTP_USER`/`SMTP_PASS`, App-Passwort) und
+dem „Senden als“-Alias `ProjectFlow <hello@getprojectflow.com>` (Reply-To gleich). SES-Code und -Konfiguration bleiben.
+
+- Schutz (`sendViaSystemSmtp` in `email.ts`): nur Hosts aus `SMTP_ALLOWED_HOSTS` (Default `smtp.gmail.com`), nur Port
+  465 (TLS) / 587 (STARTTLS Pflicht), aufgelöste IP muss öffentlich sein und wird gepinnt (M9), TLS ≥ 1.2.
+- Drossel: eine gepoolte Verbindung pro Instanz, `SMTP_MAX_SEND_RATE` (0,5/s), Tageslimit `SMTP_DAILY_LIMIT` (1.800,
+  Zähler `email_stats/{Tag}.counts.smtp`; Google erlaubt ~2.000 Empfänger/Tag), Retries bei 4xx/Netzfehlern.
+- Suppression-Liste wird weiter vor jedem Versand geprüft. Bounces kommen nur als Rückläufer ins Postfach von office@ —
+  dauerhafte Fehlzustellungen dort von Hand per Admin-Konsole „Adresse unterdrücken“ eintragen. Kein SNS, kein
+  `counts.bounce`. Die Bounce-Rate im Admin ist in dieser Phase 0.
+- Folge: Mails tragen DKIM von getprojectflow.com nur, wenn im Workspace DKIM für die Alias-Domain aktiv ist (sonst
+  `d=labestindigital.de`, DMARC der Root-Domain ist `p=none`, also zustellbar).
+
+**User-Schritte (einmalig):**
+1. Google-Konto office@labestindigital.de: Bestätigung in zwei Schritten aktiv (myaccount.google.com/security).
+2. Ist getprojectflow.com im Workspace (admin.google.com → Konto → Domains) als Alias-/sekundäre Domain mit dem
+   Alias hello@ auf office@? Dann ist „Senden als“ meist automatisch da. Sonst: Gmail → Einstellungen → Konten →
+   „Weitere E-Mail-Adresse hinzufügen“ → `ProjectFlow` / `hello@getprojectflow.com`, „Als Alias behandeln“ an →
+   SMTP-Server `smtp.gmail.com`, Port 465 (SSL), Nutzer office@labestindigital.de + App-Passwort → Bestätigungscode an
+   hello@ (landet im Google-Postfach von hello@) eingeben.
+3. App-Passwort: myaccount.google.com/apppasswords → Name „ProjectFlow SMTP“ → 16-stelligen Code kopieren.
+4. Secrets setzen (Repo-Root, interaktiv):
+```bash
+firebase functions:secrets:set SMTP_USER --project projectflow-labestin
+```
+```bash
+firebase functions:secrets:set SMTP_PASS --project projectflow-labestin
+```
+5. Danach (Agent): main mergen, bauen, Mail-Functions deployen (Liste in Abschnitt 4), Testmail + Einladung an eine fremde Adresse.
+
+**Zurück auf SES nach der Freigabe:** `EMAIL_TRANSPORT=ses` setzen, Mail-Functions deployen, Testmail prüfen
+(Header `dkim=pass header.d=mail.getprojectflow.com`). `SMTP_USER`/`SMTP_PASS` bleiben gebunden, solange
+`EMAIL_SECRETS` sie nennt; erst wenn sie aus `email-logic.ts` entfernt und alle Mail-Functions neu deployt sind, das
+App-Passwort in Google widerrufen und die Secrets löschen.
 
 ## Betrieb
 
