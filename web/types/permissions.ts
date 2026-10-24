@@ -66,6 +66,9 @@ export type TenantPermissionNode =
     | 'tenant.media.generateAI'
     | 'tenant.media.reworkAI'
     | 'tenant.media.manageVisibility'
+    // Forms (brain/plans/forms-concept.md §10)
+    | 'tenant.forms.create'
+    | 'tenant.forms.manageAll'
     // Calendar (optional)
     | 'tenant.calendar.view'
     | 'tenant.calendar.manage'
@@ -342,6 +345,8 @@ export const DEFAULT_MEMBER_PERMISSIONS: PermissionNode[] = [
     // Media library access
     'tenant.media.view',
     'tenant.media.upload',
+    // Forms: build own forms
+    'tenant.forms.create',
     // AI access (basic)
     'ai.text.use',
     'ai.usage.viewSelf',
@@ -462,6 +467,8 @@ export const ALL_TENANT_PERMISSIONS: TenantPermissionNode[] = [
     'tenant.media.generateAI',
     'tenant.media.reworkAI',
     'tenant.media.manageVisibility',
+    'tenant.forms.create',
+    'tenant.forms.manageAll',
     'tenant.calendar.view',
     'tenant.calendar.manage',
     'tenant.notifications.view',

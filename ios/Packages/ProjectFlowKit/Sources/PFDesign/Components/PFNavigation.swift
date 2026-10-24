@@ -93,9 +93,13 @@ public struct PFTopBar<Trailing: View>: View {
     let backLabel: String
     let onBack: (() -> Void)?
     let trailing: Trailing
+    /// Side region (iPhone Duo outer display) and no title: take no height up here at all.
+    let collapsesOnSide: Bool
     @Environment(\.pfSideRegionWidth) private var sideRegion
 
-    public init(title: String? = nil, backLabel: String = "Back", onBack: (() -> Void)? = nil, @ViewBuilder trailing: () -> Trailing) {
+    public init(title: String? = nil, backLabel: String = "Back", onBack: (() -> Void)? = nil, collapsesOnSide: Bool = false,
+                @ViewBuilder trailing: () -> Trailing) {
+        self.collapsesOnSide = collapsesOnSide
         self.title = title
         self.backLabel = backLabel
         self.onBack = onBack
@@ -110,9 +114,9 @@ public struct PFTopBar<Trailing: View>: View {
                 if let title { titleCapsule(title) }
                 Spacer(minLength: 0)
             }
-            .frame(minHeight: 44)
+            .frame(minHeight: collapsesOnSide && title == nil ? 0 : 44)
             .padding(.horizontal, PFSpace.page)
-            .padding(.top, 4)
+            .padding(.top, collapsesOnSide && title == nil ? 0 : 4)
             .preference(key: PFSideControlsKey.self, value: PFSideControls(
                 toolbar: AnyView(VStack(spacing: 10) { trailing }),
                 back: AnyView(PFIconButton("chevron.left", label: backLabel, action: onBack))

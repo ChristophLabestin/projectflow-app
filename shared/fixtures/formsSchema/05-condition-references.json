@@ -1,0 +1,109 @@
+{
+  "name": "Conditions must point at earlier fields; sections only at fields of earlier sections; operators must be known",
+  "input": {
+    "schema": {
+      "sections": [
+        {
+          "id": "s1",
+          "showIf": {
+            "mode": "all",
+            "rules": [
+              {
+                "fieldId": "q1",
+                "op": "answered"
+              }
+            ]
+          }
+        },
+        {
+          "id": "s2",
+          "showIf": {
+            "mode": "all",
+            "rules": [
+              {
+                "fieldId": "q1",
+                "op": "answered"
+              },
+              {
+                "fieldId": "q3",
+                "op": "answered"
+              }
+            ]
+          }
+        }
+      ],
+      "fields": [
+        {
+          "id": "q1",
+          "sectionId": "s1",
+          "type": "shortText",
+          "label": "Q1",
+          "showIf": {
+            "mode": "all",
+            "rules": [
+              {
+                "fieldId": "q2",
+                "op": "answered"
+              },
+              {
+                "fieldId": "ghost",
+                "op": "answered"
+              }
+            ]
+          }
+        },
+        {
+          "id": "q2",
+          "sectionId": "s1",
+          "type": "shortText",
+          "label": "Q2",
+          "showIf": {
+            "mode": "all",
+            "rules": [
+              {
+                "fieldId": "q1",
+                "op": "matches",
+                "value": "x"
+              }
+            ]
+          }
+        },
+        {
+          "id": "q3",
+          "sectionId": "s2",
+          "type": "shortText",
+          "label": "Q3"
+        }
+      ]
+    }
+  },
+  "expected": {
+    "issues": [
+      {
+        "code": "forwardReference",
+        "targetId": "s1",
+        "refId": "q1"
+      },
+      {
+        "code": "forwardReference",
+        "targetId": "q1",
+        "refId": "q2"
+      },
+      {
+        "code": "unknownReference",
+        "targetId": "q1",
+        "refId": "ghost"
+      },
+      {
+        "code": "invalidOperator",
+        "targetId": "q2",
+        "refId": "q1"
+      },
+      {
+        "code": "forwardReference",
+        "targetId": "s2",
+        "refId": "q3"
+      }
+    ]
+  }
+}

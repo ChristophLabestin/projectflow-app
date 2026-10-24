@@ -1,0 +1,80 @@
+{
+  "name": "A condition on a hidden field sees it as unanswered even if a value was sent",
+  "input": {
+    "schema": {
+      "sections": [
+        {
+          "id": "s"
+        }
+      ],
+      "fields": [
+        {
+          "id": "a",
+          "sectionId": "s",
+          "type": "consent",
+          "label": "A"
+        },
+        {
+          "id": "b",
+          "sectionId": "s",
+          "type": "shortText",
+          "label": "B",
+          "showIf": {
+            "mode": "all",
+            "rules": [
+              {
+                "fieldId": "a",
+                "op": "equals",
+                "value": true
+              }
+            ]
+          }
+        },
+        {
+          "id": "c",
+          "sectionId": "s",
+          "type": "shortText",
+          "label": "C",
+          "showIf": {
+            "mode": "all",
+            "rules": [
+              {
+                "fieldId": "b",
+                "op": "notAnswered"
+              }
+            ]
+          }
+        },
+        {
+          "id": "d",
+          "sectionId": "s",
+          "type": "shortText",
+          "label": "D",
+          "showIf": {
+            "mode": "all",
+            "rules": [
+              {
+                "fieldId": "b",
+                "op": "notEquals",
+                "value": "yes"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "answers": {
+      "b": "yes"
+    }
+  },
+  "expected": {
+    "sectionIds": [
+      "s"
+    ],
+    "fieldIds": [
+      "a",
+      "c",
+      "d"
+    ]
+  }
+}

@@ -1,0 +1,208 @@
+{
+  "name": "\"Other\" text alone is a valid single-choice answer and is trimmed",
+  "input": {
+    "schema": {
+      "sections": [
+        {
+          "id": "about",
+          "title": "About you"
+        },
+        {
+          "id": "bug",
+          "title": "Bug details",
+          "showIf": {
+            "mode": "all",
+            "rules": [
+              {
+                "fieldId": "kind",
+                "op": "equals",
+                "value": "bug"
+              }
+            ]
+          }
+        },
+        {
+          "id": "wrap",
+          "title": "Wrap-up"
+        }
+      ],
+      "fields": [
+        {
+          "id": "email",
+          "sectionId": "about",
+          "type": "email",
+          "label": "E-mail",
+          "required": true,
+          "isRespondentEmail": true
+        },
+        {
+          "id": "kind",
+          "sectionId": "about",
+          "type": "singleChoice",
+          "label": "What is it about?",
+          "required": true,
+          "options": [
+            {
+              "id": "bug",
+              "label": "BUG"
+            },
+            {
+              "id": "idea",
+              "label": "IDEA"
+            },
+            {
+              "id": "other",
+              "label": "OTHER"
+            }
+          ],
+          "allowOther": true
+        },
+        {
+          "id": "stars",
+          "sectionId": "about",
+          "type": "rating",
+          "label": "How important?",
+          "ratingMax": 5
+        },
+        {
+          "id": "budget",
+          "sectionId": "about",
+          "type": "number",
+          "label": "Budget",
+          "min": 0,
+          "max": 100000,
+          "decimals": 2,
+          "unit": "EUR",
+          "showIf": {
+            "mode": "all",
+            "rules": [
+              {
+                "fieldId": "kind",
+                "op": "equals",
+                "value": "idea"
+              },
+              {
+                "fieldId": "stars",
+                "op": "gt",
+                "value": 3
+              }
+            ]
+          }
+        },
+        {
+          "id": "steps",
+          "sectionId": "bug",
+          "type": "longText",
+          "label": "Steps to reproduce",
+          "required": true,
+          "maxLength": 50
+        },
+        {
+          "id": "when",
+          "sectionId": "bug",
+          "type": "date",
+          "label": "When did it happen?",
+          "min": "2026-01-01",
+          "max": "2026-12-31"
+        },
+        {
+          "id": "shot",
+          "sectionId": "bug",
+          "type": "fileUpload",
+          "label": "Screenshots",
+          "maxFiles": 2,
+          "maxFileBytes": 5000000,
+          "fileKinds": [
+            "image",
+            "pdf"
+          ]
+        },
+        {
+          "id": "note",
+          "sectionId": "wrap",
+          "type": "statement",
+          "label": "Thanks for your time."
+        },
+        {
+          "id": "areas",
+          "sectionId": "wrap",
+          "type": "multipleChoice",
+          "label": "Areas",
+          "options": [
+            {
+              "id": "web",
+              "label": "WEB"
+            },
+            {
+              "id": "ios",
+              "label": "IOS"
+            },
+            {
+              "id": "desktop",
+              "label": "DESKTOP"
+            }
+          ],
+          "minSelect": 1,
+          "maxSelect": 2,
+          "showIf": {
+            "mode": "any",
+            "rules": [
+              {
+                "fieldId": "kind",
+                "op": "equals",
+                "value": "bug"
+              },
+              {
+                "fieldId": "kind",
+                "op": "equals",
+                "value": "idea"
+              }
+            ]
+          }
+        },
+        {
+          "id": "nps",
+          "sectionId": "wrap",
+          "type": "scale",
+          "label": "Recommend us?",
+          "scaleMin": 0,
+          "scaleMax": 10
+        },
+        {
+          "id": "phone",
+          "sectionId": "wrap",
+          "type": "phone",
+          "label": "Phone"
+        },
+        {
+          "id": "ok",
+          "sectionId": "wrap",
+          "type": "consent",
+          "label": "I agree to the privacy notice",
+          "required": true,
+          "consentUrl": "https://example.com/privacy"
+        }
+      ]
+    },
+    "answers": {
+      "email": "a@b.co",
+      "kind": {
+        "selected": [],
+        "other": "  Billing  "
+      },
+      "ok": true
+    }
+  },
+  "expected": {
+    "ok": true,
+    "answers": {
+      "email": "a@b.co",
+      "kind": {
+        "selected": [],
+        "other": "Billing"
+      },
+      "ok": true
+    },
+    "errors": []
+  }
+}

@@ -1,0 +1,74 @@
+{
+  "name": "Single choice takes one answer (option or other); dropdown never takes \"other\"",
+  "input": {
+    "schema": {
+      "sections": [
+        {
+          "id": "s"
+        }
+      ],
+      "fields": [
+        {
+          "id": "one",
+          "sectionId": "s",
+          "type": "singleChoice",
+          "label": "One",
+          "options": [
+            {
+              "id": "a",
+              "label": "A"
+            },
+            {
+              "id": "b",
+              "label": "B"
+            }
+          ],
+          "allowOther": true
+        },
+        {
+          "id": "dd",
+          "sectionId": "s",
+          "type": "dropdown",
+          "label": "Dd",
+          "options": [
+            {
+              "id": "a",
+              "label": "A"
+            },
+            {
+              "id": "b",
+              "label": "B"
+            }
+          ],
+          "allowOther": true
+        }
+      ]
+    },
+    "answers": {
+      "one": {
+        "selected": [
+          "a"
+        ],
+        "other": "too"
+      },
+      "dd": {
+        "selected": [],
+        "other": "x"
+      }
+    }
+  },
+  "expected": {
+    "ok": false,
+    "answers": {},
+    "errors": [
+      {
+        "fieldId": "one",
+        "code": "tooManySelected"
+      },
+      {
+        "fieldId": "dd",
+        "code": "invalidOption"
+      }
+    ]
+  }
+}

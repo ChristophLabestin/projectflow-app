@@ -1,0 +1,19 @@
+{
+  "name": "Team: unlimited forms, 10,000 responses, every feature",
+  "input": {
+    "entitlement": {
+      "plan": "team"
+    },
+    "tenant": null
+  },
+  "expected": {
+    "activeForms": null,
+    "responsesPerMonth": 10000,
+    "uploads": true,
+    "logic": true,
+    "fullTheme": true,
+    "removeBranding": true,
+    "workspaceAudience": true,
+    "plan": "team"
+  }
+}

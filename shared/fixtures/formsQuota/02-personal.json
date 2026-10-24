@@ -1,0 +1,19 @@
+{
+  "name": "Personal: 20 forms, 1,000 responses, uploads and full theme",
+  "input": {
+    "entitlement": {
+      "plan": "personal"
+    },
+    "tenant": null
+  },
+  "expected": {
+    "activeForms": 20,
+    "responsesPerMonth": 1000,
+    "uploads": true,
+    "logic": false,
+    "fullTheme": true,
+    "removeBranding": false,
+    "workspaceAudience": false,
+    "plan": "personal"
+  }
+}

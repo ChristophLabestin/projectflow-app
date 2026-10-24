@@ -64,7 +64,7 @@ const dayPlan = (base = {}) => ({
     ...base
 });
 
-const cases = { dayPlan: [], dueBuckets: [], attention: [], portfolioGroup: [], globalSearch: [], globalSearchScore: [] };
+const cases = { dayPlan: [], dueBuckets: [], attention: [], portfolioGroup: [], globalSearch: [], globalSearchScore: [], formsSchema: [], formsVisibility: [], formsSubmission: [], formsQuota: [] };
 const add = (module, slug, name, input) => cases[module].push({ slug, name, input });
 
 // ---------------------------------------------------------------------------
@@ -666,6 +666,178 @@ add('portfolioGroup', 'all-groups', 'Status decides closed/paused/planning; acti
     ['diacritics-in-title', 'Titles are normalized before matching', ['uber'], 'Übersicht', []],
     ['multiple-terms-sum', 'Term scores add up', ['fix', 'check'], 'Fix the checkout', []]
 ].forEach(([slug, name, terms, title, secondary]) => add('globalSearchScore', slug, name, { terms, title, secondary }));
+
+// ---------------------------------------------------------------------------
+// forms (web/utils/formsLogic.ts, brain/plans/forms-concept.md)
+// ---------------------------------------------------------------------------
+
+const opt = (...ids) => ids.map((id) => ({ id, label: id.toUpperCase() }));
+const cond = (mode, ...rules) => ({ mode, rules: rules.map(([fieldId, op, value]) => (value === undefined ? { fieldId, op } : { fieldId, op, value })) });
+
+/** Intake form: kind decides whether the bug section shows; budget only for ideas over 3 stars. */
+const INTAKE = {
+    sections: [
+        { id: 'about', title: 'About you' },
+        { id: 'bug', title: 'Bug details', showIf: cond('all', ['kind', 'equals', 'bug']) },
+        { id: 'wrap', title: 'Wrap-up' }
+    ],
+    fields: [
+        { id: 'email', sectionId: 'about', type: 'email', label: 'E-mail', required: true, isRespondentEmail: true },
+        { id: 'kind', sectionId: 'about', type: 'singleChoice', label: 'What is it about?', required: true, options: opt('bug', 'idea', 'other'), allowOther: true },
+        { id: 'stars', sectionId: 'about', type: 'rating', label: 'How important?', ratingMax: 5 },
+        { id: 'budget', sectionId: 'about', type: 'number', label: 'Budget', min: 0, max: 100000, decimals: 2, unit: 'EUR', showIf: cond('all', ['kind', 'equals', 'idea'], ['stars', 'gt', 3]) },
+        { id: 'steps', sectionId: 'bug', type: 'longText', label: 'Steps to reproduce', required: true, maxLength: 50 },
+        { id: 'when', sectionId: 'bug', type: 'date', label: 'When did it happen?', min: '2026-01-01', max: '2026-12-31' },
+        { id: 'shot', sectionId: 'bug', type: 'fileUpload', label: 'Screenshots', maxFiles: 2, maxFileBytes: 5000000, fileKinds: ['image', 'pdf'] },
+        { id: 'note', sectionId: 'wrap', type: 'statement', label: 'Thanks for your time.' },
+        { id: 'areas', sectionId: 'wrap', type: 'multipleChoice', label: 'Areas', options: opt('web', 'ios', 'desktop'), minSelect: 1, maxSelect: 2, showIf: cond('any', ['kind', 'equals', 'bug'], ['kind', 'equals', 'idea']) },
+        { id: 'nps', sectionId: 'wrap', type: 'scale', label: 'Recommend us?', scaleMin: 0, scaleMax: 10 },
+        { id: 'phone', sectionId: 'wrap', type: 'phone', label: 'Phone' },
+        { id: 'ok', sectionId: 'wrap', type: 'consent', label: 'I agree to the privacy notice', required: true, consentUrl: 'https://example.com/privacy' }
+    ]
+};
+
+add('formsSchema', 'valid-intake', 'A valid schema has no issues', { schema: INTAKE });
+add('formsSchema', 'structure-issues', 'No sections, duplicate ids, unknown section, bad type and missing label are reported', {
+    schema: { sections: [], fields: [
+        { id: 'a', sectionId: 'nope', type: 'shortText', label: 'A' },
+        { id: 'a', sectionId: 'nope', type: 'bogus', label: 'Dup' },
+        { id: 'b', sectionId: 'nope', type: 'longText', label: '   ' }
+    ] }
+});
+add('formsSchema', 'choice-issues', 'Choices need options, unique and non-empty; multiple choice bounds must fit the options', {
+    schema: { sections: [{ id: 's' }], fields: [
+        { id: 'none', sectionId: 's', type: 'dropdown', label: 'No options', options: [] },
+        { id: 'dup', sectionId: 's', type: 'singleChoice', label: 'Dup', options: [{ id: 'x', label: 'X' }, { id: 'x', label: '' }] },
+        { id: 'multi', sectionId: 's', type: 'multipleChoice', label: 'Multi', options: opt('a', 'b'), minSelect: 3, maxSelect: 2 }
+    ] }
+});
+add('formsSchema', 'range-issues', 'Rating 3-10, scale from 0/1 spanning at most 10, number/date min<=max, 1-10 files with known kinds', {
+    schema: { sections: [{ id: 's' }], fields: [
+        { id: 'r', sectionId: 's', type: 'rating', label: 'R', ratingMax: 2 },
+        { id: 'sc', sectionId: 's', type: 'scale', label: 'S', scaleMin: 2, scaleMax: 5 },
+        { id: 'sc2', sectionId: 's', type: 'scale', label: 'S2', scaleMin: 0, scaleMax: 11 },
+        { id: 'n', sectionId: 's', type: 'number', label: 'N', min: 5, max: 1 },
+        { id: 'd', sectionId: 's', type: 'date', label: 'D', min: '2026-12-01', max: '2026-01-01' },
+        { id: 'f', sectionId: 's', type: 'fileUpload', label: 'F', maxFiles: 11, fileKinds: ['exe'] }
+    ] }
+});
+add('formsSchema', 'condition-references', 'Conditions must point at earlier fields; sections only at fields of earlier sections; operators must be known', {
+    schema: {
+        sections: [{ id: 's1', showIf: cond('all', ['q1', 'answered']) }, { id: 's2', showIf: cond('all', ['q1', 'answered'], ['q3', 'answered']) }],
+        fields: [
+            { id: 'q1', sectionId: 's1', type: 'shortText', label: 'Q1', showIf: cond('all', ['q2', 'answered'], ['ghost', 'answered']) },
+            { id: 'q2', sectionId: 's1', type: 'shortText', label: 'Q2', showIf: cond('all', ['q1', 'matches', 'x']) },
+            { id: 'q3', sectionId: 's2', type: 'shortText', label: 'Q3' }
+        ]
+    }
+});
+add('formsSchema', 'field-order-follows-sections', 'Order is section order, not array order: a field listed first but in a later section is "later"', {
+    schema: {
+        sections: [{ id: 's1' }, { id: 's2' }],
+        fields: [
+            { id: 'late', sectionId: 's2', type: 'shortText', label: 'Late' },
+            { id: 'early', sectionId: 's1', type: 'shortText', label: 'Early', showIf: cond('all', ['late', 'answered']) }
+        ]
+    }
+});
+
+add('formsVisibility', 'nothing-answered', 'Without answers the bug section and the conditional fields stay hidden', { schema: INTAKE, answers: {} });
+add('formsVisibility', 'bug-path', 'Choosing "bug" shows the bug section and the areas question', { schema: INTAKE, answers: { kind: { selected: ['bug'] } } });
+add('formsVisibility', 'idea-with-high-rating', 'All-rule: idea and more than 3 stars shows the budget', { schema: INTAKE, answers: { kind: { selected: ['idea'] }, stars: 4 } });
+add('formsVisibility', 'idea-with-low-rating', 'All-rule fails on exactly 3 stars (gt is strict)', { schema: INTAKE, answers: { kind: { selected: ['idea'] }, stars: 3 } });
+add('formsVisibility', 'other-text-only', 'An "other" answer selects no option, so equals-conditions stay false', { schema: INTAKE, answers: { kind: { selected: [], other: 'Billing' } } });
+add('formsVisibility', 'hidden-field-counts-unanswered', 'A condition on a hidden field sees it as unanswered even if a value was sent', {
+    schema: {
+        sections: [{ id: 's' }],
+        fields: [
+            { id: 'a', sectionId: 's', type: 'consent', label: 'A' },
+            { id: 'b', sectionId: 's', type: 'shortText', label: 'B', showIf: cond('all', ['a', 'equals', true]) },
+            { id: 'c', sectionId: 's', type: 'shortText', label: 'C', showIf: cond('all', ['b', 'notAnswered']) },
+            { id: 'd', sectionId: 's', type: 'shortText', label: 'D', showIf: cond('all', ['b', 'notEquals', 'yes']) }
+        ]
+    },
+    answers: { b: 'yes' }
+});
+add('formsVisibility', 'text-and-date-operators', 'Text equals/contains ignore case and spaces; dates compare as YYYY-MM-DD', {
+    schema: {
+        sections: [{ id: 's' }],
+        fields: [
+            { id: 't', sectionId: 's', type: 'shortText', label: 'T' },
+            { id: 'd', sectionId: 's', type: 'date', label: 'D' },
+            { id: 'eq', sectionId: 's', type: 'statement', label: 'eq', showIf: cond('all', ['t', 'equals', 'hello world']) },
+            { id: 'has', sectionId: 's', type: 'statement', label: 'has', showIf: cond('all', ['t', 'contains', 'WORLD']) },
+            { id: 'empty', sectionId: 's', type: 'statement', label: 'empty contains', showIf: cond('all', ['t', 'contains', '']) },
+            { id: 'after', sectionId: 's', type: 'statement', label: 'after', showIf: cond('all', ['d', 'gt', '2026-06-30']) },
+            { id: 'before', sectionId: 's', type: 'statement', label: 'before', showIf: cond('all', ['d', 'lt', '2026-06-30']) },
+            { id: 'textgt', sectionId: 's', type: 'statement', label: 'text gt never', showIf: cond('all', ['t', 'gt', 'a']) }
+        ]
+    },
+    answers: { t: '  Hello World ', d: '2026-07-01' }
+});
+
+const validIdea = { email: ' Ada@Example.COM ', kind: { selected: ['idea'] }, stars: 4, budget: 1234.567, areas: { selected: ['web', 'ios'] }, nps: 0, ok: true };
+add('formsSubmission', 'valid-idea', 'Valid answers are normalized (trimmed lower-case e-mail, rounded number); hidden fields and statements are dropped', {
+    schema: INTAKE, answers: { ...validIdea, steps: 'not visible', note: 'ignored', unknown: 'x' }
+});
+add('formsSubmission', 'required-on-visible-only', 'Required applies to visible fields only; consent must be true', {
+    schema: INTAKE, answers: { kind: { selected: ['bug'] }, ok: false }
+});
+add('formsSubmission', 'bug-errors', 'Too long text, out-of-range date, too many files, disallowed file type and too many areas', {
+    schema: INTAKE,
+    answers: {
+        email: 'a@b.co', kind: { selected: ['bug'] }, ok: true,
+        steps: 'x'.repeat(51), when: '2027-01-01',
+        shot: [
+            { fileId: 'f1', name: 'a.png', size: 10, contentType: 'image/png' },
+            { fileId: 'f2', name: 'b.png', size: 10, contentType: 'image/png' },
+            { fileId: 'f3', name: 'c.png', size: 10, contentType: 'image/png' }
+        ],
+        areas: { selected: ['web', 'ios', 'desktop'] }
+    }
+});
+add('formsSubmission', 'type-errors', 'Wrong value types, unknown options, invalid e-mail/phone/date and out-of-range numbers', {
+    schema: INTAKE,
+    answers: { email: 'nope', kind: { selected: ['bogus'] }, stars: 6, nps: 4.5, phone: 'call me', ok: 'yes' }
+});
+add('formsSubmission', 'other-text-kept', '"Other" text alone is a valid single-choice answer and is trimmed', {
+    schema: INTAKE,
+    answers: {
+        email: 'a@b.co', kind: { selected: [], other: '  Billing  ' }, ok: true
+    }
+});
+add('formsSubmission', 'bug-valid', 'A complete bug report passes; file refs are stripped to known keys', {
+    schema: INTAKE,
+    answers: {
+        email: 'a@b.co', kind: { selected: ['bug'] }, ok: true, steps: 'Open, click, crash', when: '2026-02-28',
+        shot: [{ fileId: 'f1', name: 'trace.pdf', size: 2000, contentType: 'application/pdf', url: 'https://evil.example' }],
+        areas: { selected: ['ios', 'ios'] }, phone: '+49 (0)30 123-456'
+    }
+});
+add('formsSubmission', 'invalid-calendar-dates', 'Dates must exist; withTime needs HH:mm', {
+    schema: { sections: [{ id: 's' }], fields: [
+        { id: 'd1', sectionId: 's', type: 'date', label: 'D1' },
+        { id: 'd2', sectionId: 's', type: 'date', label: 'D2', withTime: true },
+        { id: 'd3', sectionId: 's', type: 'date', label: 'D3', withTime: true }
+    ] },
+    answers: { d1: '2026-02-30', d2: '2026-03-01', d3: '2026-03-01T24:00' }
+});
+add('formsSubmission', 'choice-single-and-dropdown', 'Single choice takes one answer (option or other); dropdown never takes "other"', {
+    schema: { sections: [{ id: 's' }], fields: [
+        { id: 'one', sectionId: 's', type: 'singleChoice', label: 'One', options: opt('a', 'b'), allowOther: true },
+        { id: 'dd', sectionId: 's', type: 'dropdown', label: 'Dd', options: opt('a', 'b'), allowOther: true }
+    ] },
+    answers: { one: { selected: ['a'], other: 'too' }, dd: { selected: [], other: 'x' } }
+});
+
+add('formsQuota', 'free', 'Free: 3 forms, 100 responses, presets only, no uploads/logic/branding removal/workspace audience', { entitlement: { plan: 'free' }, tenant: null });
+add('formsQuota', 'personal', 'Personal: 20 forms, 1,000 responses, uploads and full theme', { entitlement: { plan: 'personal' }, tenant: null });
+add('formsQuota', 'team', 'Team: unlimited forms, 10,000 responses, every feature', { entitlement: { plan: 'team' }, tenant: null });
+add('formsQuota', 'organization', 'Organization: unlimited forms, 50,000 responses', { entitlement: { plan: 'organization' }, tenant: null });
+add('formsQuota', 'legacy', 'No entitlement doc (beta grace) is treated like Team', { entitlement: null, tenant: null });
+add('formsQuota', 'override', 'The platform override wins field by field; invalid values are ignored', {
+    entitlement: { plan: 'free' }, tenant: { limits: { forms: { activeForms: null, responsesPerMonth: 250.7, uploads: true, logic: 'yes', fullTheme: -1 } } }
+});
 
 // ---------------------------------------------------------------------------
 // Write files

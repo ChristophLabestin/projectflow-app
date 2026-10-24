@@ -37,6 +37,16 @@ const seedData = async (testEnv) => {
         await set(`${T}/ai_audit/entryA`, { tool: 'create_task', actorId: 'ownerA' });
         await set(`${T}/ai_config/policy`, { enabled: true });
         await set(`${T}/entitlements/plan`, { plan: 'free', seats: 3 });
+        await set(`${T}/members/member2A`, { uid: 'member2A', role: 'Member' });
+        await set(`${T}/forms/formA`, { title: 'Intake', ownerId: 'memberA', editorIds: ['member2A'], status: 'draft' });
+        await set(`${T}/forms/formB`, { title: 'Other', ownerId: 'ownerA', editorIds: [], status: 'published' });
+        await set(`${T}/forms/formA/responses/r1`, { answers: { q: 'a' }, status: 'new' });
+        await set(`${T}/forms/formA/versions/1`, { sections: [], fields: [] });
+        await set(`${T}/forms/formA/stats/summary`, { responses: 1 });
+        await set(`${T}/forms/formB/responses/r1`, { answers: { q: 'b' }, status: 'new' });
+        await set(`${T}/form_themes/themeA`, { name: 'Brand' });
+        await set(`${T}/forms_usage/2026-10`, { responses: 1 });
+        await set('public_forms/tok', { tenantId: 'tenantA', formId: 'formB' });
         await set('tenants/personal_ownerA', { tenantId: 'personal_ownerA', name: 'Mein Workspace', ownerId: 'ownerA', workspaceType: 'personal' });
         await set('tenants/personal_ownerA/members/ownerA', { uid: 'ownerA', role: 'Owner' });
         await set('tenants/personal_ownerA/entitlements/plan', { plan: 'personal', workspaceType: 'personal', invitesAllowed: false, memberLimit: 1, projectLimit: null });
@@ -535,6 +545,45 @@ const run = async () => {
         await check('member cannot read campaigns', 'deny', () => owner.doc('platform_campaigns/x').get());
         await check('member cannot write campaign sends', 'deny', () => owner.doc('platform_campaigns/x/sends/y').set({ status: 'sent' }));
         await check('nobody reads the emulator outbox', 'deny', () => owner.doc('dev_outbox/x').get());
+
+        // Forms (brain/plans/forms-concept.md §10): owner, editors, Owner/Admin read; all writes via Functions.
+        const member2 = as('member2A');
+        await check('form owner reads own form', 'allow', () => member.doc(`${T}/forms/formA`).get());
+        await check('form editor reads form', 'allow', () => member2.doc(`${T}/forms/formA`).get());
+        await check('admin reads any form', 'allow', () => admin.doc(`${T}/forms/formA`).get());
+        await check('other member cannot read form', 'deny', () => member.doc(`${T}/forms/formB`).get());
+        await check('guest cannot read form', 'deny', () => guest.doc(`${T}/forms/formA`).get());
+        await check('outsider cannot read form', 'deny', () => outsider.doc(`${T}/forms/formA`).get());
+        await check('member lists own forms', 'allow', () => member.collection(`${T}/forms`).where('ownerId', '==', 'memberA').get());
+        await check('member lists forms shared with them', 'allow', () => member2.collection(`${T}/forms`).where('editorIds', 'array-contains', 'member2A').get());
+        await check('member cannot list all forms', 'deny', () => member.collection(`${T}/forms`).get());
+        await check('admin lists all forms', 'allow', () => admin.collection(`${T}/forms`).get());
+        await check('owner cannot write form directly', 'deny', () => member.doc(`${T}/forms/formA`).update({ title: 'x' }));
+        await check('member cannot create form directly', 'deny', () => member.doc(`${T}/forms/new`).set({ ownerId: 'memberA' }));
+        await check('editor reads responses', 'allow', () => member2.collection(`${T}/forms/formA/responses`).get());
+        await check('editor reads versions + stats', 'allow', () => member2.doc(`${T}/forms/formA/stats/summary`).get());
+        await check('editor reads version', 'allow', () => member2.doc(`${T}/forms/formA/versions/1`).get());
+        await check('other member cannot read responses', 'deny', () => member.collection(`${T}/forms/formB/responses`).get());
+        await check('owner cannot write responses directly', 'deny', () => member.doc(`${T}/forms/formA/responses/r2`).set({ answers: {} }));
+        await check('owner cannot delete response directly', 'deny', () => member.doc(`${T}/forms/formA/responses/r1`).delete());
+        await check('member reads form themes', 'allow', () => member.doc(`${T}/form_themes/themeA`).get());
+        await check('guest cannot read form themes', 'deny', () => guest.doc(`${T}/form_themes/themeA`).get());
+        await check('member cannot write form themes', 'deny', () => member.doc(`${T}/form_themes/themeB`).set({ name: 'x' }));
+        await check('member reads forms usage', 'allow', () => member.doc(`${T}/forms_usage/2026-10`).get());
+        await check('member cannot write forms usage', 'deny', () => member.doc(`${T}/forms_usage/2026-10`).set({ responses: 0 }));
+        await check('nobody reads public form index', 'deny', () => owner.doc('public_forms/tok').get());
+        await check('anon cannot read public form index', 'deny', () => anon.doc('public_forms/tok').get());
+
+        // Workspace legal details (shown on public forms).
+        await fresh();
+        await check('admin sets legal details', 'allow', () => admin.doc(T).update({
+            legal: { controllerName: 'Tenant A GmbH', privacyPolicyUrl: 'https://a.de/datenschutz', imprintUrl: 'https://a.de/impressum' }
+        }));
+        await check('admin clears a legal url', 'allow', () => admin.doc(T).update({ legal: { controllerName: 'A', privacyPolicyUrl: '' } }));
+        await check('legal urls must be https', 'deny', () => admin.doc(T).update({ legal: { privacyPolicyUrl: 'javascript:alert(1)' } }));
+        await check('legal has no unknown keys', 'deny', () => admin.doc(T).update({ legal: { controllerName: 'A', script: 'x' } }));
+        await check('member cannot set legal details', 'deny', () => member.doc(T).update({ legal: { controllerName: 'A' } }));
+        await check('nobody sets the forms quota override', 'deny', () => owner.doc(T).update({ limits: { forms: { responsesPerMonth: 1e9 } } }));
     } finally {
         await testEnv.cleanup();
     }

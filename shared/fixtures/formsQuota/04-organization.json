@@ -1,0 +1,19 @@
+{
+  "name": "Organization: unlimited forms, 50,000 responses",
+  "input": {
+    "entitlement": {
+      "plan": "organization"
+    },
+    "tenant": null
+  },
+  "expected": {
+    "activeForms": null,
+    "responsesPerMonth": 50000,
+    "uploads": true,
+    "logic": true,
+    "fullTheme": true,
+    "removeBranding": true,
+    "workspaceAudience": true,
+    "plan": "organization"
+  }
+}

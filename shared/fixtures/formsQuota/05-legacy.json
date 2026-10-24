@@ -1,0 +1,17 @@
+{
+  "name": "No entitlement doc (beta grace) is treated like Team",
+  "input": {
+    "entitlement": null,
+    "tenant": null
+  },
+  "expected": {
+    "activeForms": null,
+    "responsesPerMonth": 10000,
+    "uploads": true,
+    "logic": true,
+    "fullTheme": true,
+    "removeBranding": true,
+    "workspaceAudience": true,
+    "plan": "legacy"
+  }
+}

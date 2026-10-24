@@ -214,3 +214,29 @@ public extension View {
         overlayPreferenceValue(PFSideControlsKey.self, alignment: alignment) { overlay($0.toolbar) }
     }
 }
+
+// MARK: - Soft edge next to the side rail
+
+public extension View {
+    /// Horizontal scrollers on the iPhone Duo outer display: fade out before the rail instead of a hard cut.
+    /// No-op on plain iPhones (they keep scrolling to the screen edge).
+    func pfSideFade(width: CGFloat = 56) -> some View { modifier(PFSideFadeModifier(width: width)) }
+}
+
+struct PFSideFadeModifier: ViewModifier {
+    let width: CGFloat
+    @Environment(\.pfSideRegionWidth) private var sideRegion
+
+    func body(content: Content) -> some View {
+        if sideRegion > 0 {
+            content.mask {
+                HStack(spacing: 0) {
+                    Color.black
+                    LinearGradient(colors: [.black, .black.opacity(0)], startPoint: .leading, endPoint: .trailing).frame(width: width)
+                }
+            }
+        } else {
+            content
+        }
+    }
+}

@@ -9,8 +9,8 @@ public enum PFColor {
     // Depth ladder
     public static let canvas = dynamic(0xF2F2F3, 0x0B0D11)
     public static let card = dynamic(0xFFFFFF, 0x151920)
-    public static let raised = dynamic(0xEDEDEE, 0x1E242E)
-    public static let raisedSoft = dynamic(0xF7F7F8, 0x212732)
+    public static let raised = dynamic(0xEDEDEE, 0x1F232A)
+    public static let raisedSoft = dynamic(0xF7F7F8, 0x23272E)
     public static let hairline = dynamic(0xE5E7EB, 0x2E3440)
     public static let hairlineStrong = dynamic(0xD1D5DB, 0x3C4453)
 
@@ -53,14 +53,16 @@ public enum PFColor {
 
     // State surfaces (web STYLING §1.10/§1.11: borderless / sunken / selected / glass).
     /// Field at rest (web `surface-hover`): filled, no hairline.
-    public static let field = dynamic(0xEDEDEE, 0x1E242E)
+    public static let field = dynamic(0xEDEDEE, 0x1F232A)
     /// Field under the pointer (web `--field-bg-hover`).
-    public static let fieldHover = dynamic(0xE9E9EB, 0x232A35)
+    public static let fieldHover = dynamic(0xE9E9EB, 0x22262D)
     /// Sunken (web `--sunken-bg`): focused field, current navigation/list item. Always with `sunkenShadow`.
-    public static let sunken = dynamic(0xE7E7EA, 0x12161C)
-    /// Inner shadow strength of sunken surfaces (light 5 %, dark 35 %).
+    /// Dark: black 24 % over the parent surface (canvas, card or sheet), so it always sinks relative to it.
+    public static let sunken = Color(uiColor: UIColor { @Sendable traits in traits.userInterfaceStyle == .dark
+        ? UIColor(white: 0, alpha: 0.24) : UIColor(hex: 0xE7E7EA, alpha: 1) })
+    /// Inner shadow strength of sunken surfaces (light 5 %, dark 40 %).
     public static let sunkenShadow = Color(uiColor: UIColor { @Sendable traits in traits.userInterfaceStyle == .dark
-        ? UIColor(white: 0, alpha: 0.35) : UIColor(white: 0, alpha: 0.05) })
+        ? UIColor(white: 0, alpha: 0.40) : UIColor(white: 0, alpha: 0.05) })
     /// Highlight inside glass menus: sinks into the glass (black 4.5 % light / 28 % dark).
     public static let glassSunken = Color(uiColor: UIColor { @Sendable traits in traits.userInterfaceStyle == .dark
         ? UIColor(white: 0, alpha: 0.28) : UIColor(white: 0, alpha: 0.045) })

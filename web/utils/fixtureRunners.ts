@@ -8,6 +8,7 @@
 import { buildAttention, classifyPortfolio, type AttentionInput } from './attention';
 import { buildDayPlan, type DayPlanInput } from './dayPlan';
 import { groupByDueBucket, normalizeStatus, summarizeDue, type DueBucketTask, type DueContext } from './dueBuckets';
+import { formQuotaFor, validateFormSchema, validateSubmission, visibleFormItems, type FormAnswers, type FormSchema } from './formsLogic';
 import { parseQuery, scoreCandidate } from './globalSearch';
 
 export const FIXTURE_MODULES = [
@@ -16,7 +17,11 @@ export const FIXTURE_MODULES = [
     'attention',
     'portfolioGroup',
     'globalSearch',
-    'globalSearchScore'
+    'globalSearchScore',
+    'formsSchema',
+    'formsVisibility',
+    'formsSubmission',
+    'formsQuota'
 ] as const;
 
 export type FixtureModule = typeof FIXTURE_MODULES[number];
@@ -50,6 +55,20 @@ export const runFixture = (module: FixtureModule, input: unknown): unknown => {
         case 'globalSearchScore': {
             const { terms, title, secondary } = input as { terms: string[]; title: string; secondary?: string[] };
             return { score: scoreCandidate(terms, title, secondary || []) };
+        }
+        case 'formsSchema':
+            return { issues: validateFormSchema((input as { schema: FormSchema }).schema) };
+        case 'formsVisibility': {
+            const { schema, answers } = input as { schema: FormSchema; answers: FormAnswers };
+            return visibleFormItems(schema, answers);
+        }
+        case 'formsSubmission': {
+            const { schema, answers } = input as { schema: FormSchema; answers: FormAnswers };
+            return validateSubmission(schema, answers);
+        }
+        case 'formsQuota': {
+            const { entitlement, tenant } = input as { entitlement: Record<string, unknown> | null; tenant: Record<string, unknown> | null };
+            return formQuotaFor(entitlement, tenant);
         }
         default:
             throw new Error(`Unknown fixture module: ${String(module)}`);
