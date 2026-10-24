@@ -62,6 +62,8 @@ public struct FileItem: Identifiable, Hashable, Sendable {
         version = (data["version"] as? NSNumber)?.intValue ?? 1
     }
 
+    public static func make(id: String, data: [String: Any]) -> FileItem? { FileItem(id: id, data: data) }
+
     public var isImage: Bool { mimeType.hasPrefix("image/") }
     public var kindSymbol: String {
         if mimeType.hasPrefix("image/") { return "photo" }

@@ -122,6 +122,7 @@ struct TaskDetailScreen: View {
                 FileAttachmentsCard(tenantId: ref.tenantId,
                                     parent: FileParent(kind: .task, id: ref.taskId, projectId: ref.projectId, title: task.title),
                                     canUpload: canEdit)
+                TaskLinkedDocsCard(ref: ref, canEdit: canEdit)
                 CommentsSection(projectId: ref.projectId, targetId: ref.taskId, targetType: "task", comments: store.comments,
                                 mentionable: members, canComment: true)
                 detailsCard(task)

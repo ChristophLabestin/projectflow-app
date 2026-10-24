@@ -25,7 +25,8 @@ struct WorkspaceAreasRow: View {
 
     /// Filled in by later areas (files, wiki, flows).
     static func extraAreas(tenantId: String) -> [Area] {
-        [Area(id: "files", icon: "doc.on.doc", route: .files(tenantId: tenantId))]
+        [Area(id: "files", icon: "doc.on.doc", route: .files(tenantId: tenantId)),
+         Area(id: "wiki", icon: "book.closed", route: .wiki(tenantId: tenantId))]
     }
 
     var body: some View {

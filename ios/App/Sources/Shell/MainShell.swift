@@ -277,6 +277,8 @@ struct RouteDestination: View {
         case .activity(let tenantId, let projectId): ActivityScreen(tenantId: tenantId, projectId: projectId)
         case .insights(let tenantId): InsightsScreen(tenantId: tenantId)
         case .files(let tenantId): FilesScreen(tenantId: tenantId)
+        case .wiki(let tenantId): WikiScreen(tenantId: tenantId)
+        case .wikiPage(let tenantId, let docId, let startEditing): WikiPageScreen(tenantId: tenantId, docId: docId, startEditing: startEditing)
         }
     }
 }
