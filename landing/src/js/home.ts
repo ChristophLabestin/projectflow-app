@@ -332,6 +332,7 @@ function storyScene(mobile: boolean) {
         start: 'top top',
         end: () => `+=${actLen() * ACTS}`,
         pin: true,
+        refreshPriority: 2, // measured before the MCP pin (1) and all other triggers (0)
         scrub: 0.5,
         animation: tl,
         invalidateOnRefresh: true,
@@ -487,6 +488,7 @@ function mcpPinned() {
     const st = ScrollTrigger.create({
         trigger: section, start: () => `top top+=${HEADER}`, end: '+=140%',
         pin: true, scrub: 0.5, animation: tl, invalidateOnRefresh: true,
+        refreshPriority: 1, // created after the reveal triggers below it; must be measured first
         onUpdate: (self) => {
             p.write.classList.toggle('is-on', self.progress > 0.55);
             if (p.count) p.count.textContent = self.progress > 0.62 ? '3' : '2';
@@ -650,14 +652,20 @@ if (prefersMotion()) {
     const mm = gsap.matchMedia();
     mm.add('(min-width: 1000px)', () => storyScene(false));
     mm.add('(max-width: 999px)', () => storyScene(true));
-    // After the story exactly one more pinned scene (MCP, desktop); everything else scrolls freely.
-    mm.add('(min-width: 1000px)', () => {
-        const cleanups = [mcpPinned(), appsDrift(), ctaConverge()];
-        return () => cleanups.forEach((c) => c?.());
-    });
-    mm.add('(max-width: 999px)', () => mcpOnce());
-    if (selectRole) rolesScroll(selectRole);
-    playOnce();
+    // Scenes below the story are set up when the browser is idle after the first paint (keeps the main thread
+    // free during load). After the story exactly one more pinned scene (MCP, desktop); the rest scrolls freely.
+    const later = () => {
+        mm.add('(min-width: 1000px)', () => {
+            const cleanups = [mcpPinned(), appsDrift(), ctaConverge()];
+            return () => cleanups.forEach((c) => c?.());
+        });
+        mm.add('(max-width: 999px)', () => mcpOnce());
+        if (selectRole) rolesScroll(selectRole);
+        playOnce();
+        ScrollTrigger.refresh();
+    };
+    if ('requestIdleCallback' in window) window.requestIdleCallback(later, { timeout: 1500 });
+    else setTimeout(later, 400);
     shortcutsScene();
     spotlights();
     reveals();
