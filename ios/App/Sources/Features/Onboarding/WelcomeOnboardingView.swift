@@ -18,6 +18,7 @@ struct WelcomeOnboardingView: View {
     @State private var markCenter: CGPoint?
     @State private var name = ""
     @State private var photoURL = ""
+    @SwiftUI.FocusState private var nameFocused: Bool
     @State private var isUploadingPhoto = false
     @State private var teamName = ""
     @State private var workMode: WorkMode?
@@ -211,40 +212,85 @@ struct WelcomeOnboardingView: View {
                     return CGPoint(x: frame.midX, y: frame.midY)
                 } action: { markCenter = $0 }
             heading(L10n.t("welcome.name.title"), L10n.t("welcome.name.subtitle"))
-            PFTextField(L10n.t("welcome.name.placeholder"), text: $name, systemImage: "person", submitLabel: .continue) {
-                if canContinue { primaryAction() }
-            }
-            .textContentType(.name)
-            photoRow
+            identityCard
         }
     }
 
-    /// Optional profile photo; uploaded and saved right away (same path as the profile editor).
-    private var photoRow: some View {
-        HStack(spacing: PFSpace.m) {
+    /// The person as others will see them: big photo target and the name written large, like a task title —
+    /// no form field chrome. Photo is optional (tag, no extra sentence); it uploads and saves right away.
+    private var identityCard: some View {
+        VStack(alignment: .leading, spacing: PFSpace.l) {
             Button { changePhoto() } label: {
-                PFAvatar(name: name, seed: model.uid, imageURL: photoURL.isEmpty ? nil : photoURL, size: 64)
-                    .overlay { if isUploadingPhoto { ProgressView() } }
-                    .overlay(alignment: .bottomTrailing) {
-                        Image(systemName: "camera.fill")
-                            .font(.system(size: 11, weight: .bold))
-                            .foregroundStyle(PFColor.onPrimary)
-                            .frame(width: 24, height: 24)
-                            .background(PFColor.textMain, in: .circle)
-                            .overlay(Circle().stroke(PFColor.canvas, lineWidth: 2))
-                            .offset(x: 2, y: 2)
+                HStack(spacing: PFSpace.m) {
+                    photoCircle
+                    VStack(alignment: .leading, spacing: 4) {
+                        HStack(spacing: 6) {
+                            Text(L10n.t("welcome.photo.label")).pfText(.rowTitle).foregroundStyle(PFColor.textMain)
+                            Text(L10n.t("welcome.optional")).pfText(.caption).foregroundStyle(PFColor.textMuted)
+                                .padding(.horizontal, 7).frame(minHeight: 20)
+                                .background(PFColor.raised, in: .capsule)
+                        }
+                        Text(L10n.t(photoURL.isEmpty ? "welcome.photo.tapAdd" : "welcome.photo.tapChange"))
+                            .pfText(.meta).foregroundStyle(PFColor.textMuted)
                     }
+                    Spacer(minLength: 0)
+                }
+                .contentShape(.rect)
             }
             .buttonStyle(.pfPressable)
             .disabled(isUploadingPhoto || isBusy)
             .accessibilityLabel(L10n.t(photoURL.isEmpty ? "welcome.photo.add" : "profile.photo.change"))
-            VStack(alignment: .leading, spacing: PFSpace.xs) {
-                PFButton(L10n.t(photoURL.isEmpty ? "welcome.photo.add" : "profile.photo.change"), systemImage: "camera",
-                         kind: .secondary, size: .small) { changePhoto() }
-                    .disabled(isUploadingPhoto || isBusy)
-                Text(L10n.t("welcome.photo.hint")).pfText(.meta).foregroundStyle(PFColor.textMuted)
+            .accessibilityHint(L10n.t("welcome.optional"))
+
+            VStack(alignment: .leading, spacing: 6) {
+                TextField("", text: $name, prompt: Text(L10n.t("welcome.name.placeholder")).foregroundStyle(PFColor.textSubtle), axis: .vertical)
+                    .pfText(.displayLarge)
+                    .foregroundStyle(PFColor.textMain)
+                    .textContentType(.name)
+                    .submitLabel(.continue)
+                    .lineLimit(1...2)
+                    .focused($nameFocused)
+                    .onSubmit { if canContinue { primaryAction() } }
+                    .onChange(of: name) { _, value in
+                        // Vertical axis turns Return into a newline; treat it as "continue".
+                        if value.contains("\n") {
+                            name = value.replacingOccurrences(of: "\n", with: "")
+                            if canContinue { primaryAction() }
+                        }
+                    }
+                // A quiet baseline that fills in while typing, instead of a box.
+                Capsule()
+                    .fill(name.trimmingCharacters(in: .whitespaces).isEmpty ? PFColor.hairlineStrong : PFColor.textMain)
+                    .frame(width: nameFocused || !name.isEmpty ? 120 : 48, height: 3)
+                    .animation(PFMotion.respecting(PFMotion.snappy), value: nameFocused)
             }
-            .accessibilityElement(children: .contain)
+        }
+        .padding(PFSpace.l)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(PFColor.card, in: .rect(cornerRadius: 24, style: .continuous))
+        .pfElevation(.card, radius: 24)
+        .onAppear { if name.isEmpty { nameFocused = true } }
+    }
+
+    private var photoCircle: some View {
+        ZStack {
+            if photoURL.isEmpty {
+                Circle().fill(PFColor.raised)
+                Circle().strokeBorder(PFColor.hairlineStrong, style: StrokeStyle(lineWidth: 1.5, dash: [5, 4]))
+                Image(systemName: "camera.fill").font(.system(size: 22, weight: .semibold)).foregroundStyle(PFColor.textMuted)
+            } else {
+                PFAvatar(name: name, seed: model.uid, imageURL: photoURL, size: 76)
+            }
+            if isUploadingPhoto { Circle().fill(.black.opacity(0.25)); ProgressView().tint(.white) }
+        }
+        .frame(width: 76, height: 76)
+        .overlay(alignment: .bottomTrailing) {
+            Image(systemName: photoURL.isEmpty ? "plus" : "pencil")
+                .font(.system(size: 11, weight: .bold))
+                .foregroundStyle(PFColor.onPrimary)
+                .frame(width: 26, height: 26)
+                .background(PFColor.primary, in: .circle)
+                .overlay(Circle().stroke(PFColor.card, lineWidth: 2.5))
         }
     }
 
