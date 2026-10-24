@@ -4,6 +4,7 @@ import { FieldPath, FieldValue, Firestore, Timestamp } from 'firebase-admin/fire
 
 import { db } from './init';
 import { EMAIL_SECRETS, getSystemEmailTemplate, sendEmail } from './email';
+import { FUNCTIONS_SERVICE_ACCOUNT } from './email-logic';
 import {
     ACCEPTANCE_TYPES,
     AcceptedDocs,
@@ -476,6 +477,6 @@ export const onLegalMailJobCreated = functions.region(REGION).runWith({ timeoutS
 
 /** Picks up future-dated (effectiveAt) and unfinished jobs. */
 export const processLegalMailJobs = onSchedule(
-    { schedule: 'every 15 minutes', region: REGION, timeoutSeconds: 540, memory: '256MiB', secrets: EMAIL_SECRETS },
+    { schedule: 'every 15 minutes', region: REGION, timeoutSeconds: 540, memory: '256MiB', secrets: EMAIL_SECRETS, serviceAccount: FUNCTIONS_SERVICE_ACCOUNT },
     async () => { await runDueJobs(); },
 );

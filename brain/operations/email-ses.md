@@ -186,6 +186,15 @@ Einladung schicken). Erst beantragen, wenn DKIM/MAIL FROM „Verified“ und die
 
 Nach der Freischaltung: `EMAIL_SMTP_FALLBACK=false` lassen, `SES_MAX_SEND_RATE` nicht nötig (kommt aus GetAccount).
 
+### Stand 2026-10-24 (live)
+- Alle Mail-Functions + `sesEvents` + `emailUnsubscribe` + Rules deployt; SNS-Subscription Confirmed.
+- SES-Konto: Sandbox (`ProductionAccessEnabled=false`), 200 Mails/24 h, 1 Mail/s, Konto-Suppression BOUNCE+COMPLAINT.
+- Simulator-Test grün: success → `counts.delivery`, bounce → Suppression `bounce` (Permanent · General · 550 5.1.1),
+  complaint → Suppression `complaint` (abuse). Die zwei Simulator-Einträge stehen bewusst in `email_suppressions`.
+- Die IAM-Policy erlaubt kein `ses:GetEmailIdentity`; der Verifizierungsstatus steht in der Konsole (erfolgreiche Sends von
+  `@mail.getprojectflow.com` belegen die Verifizierung).
+- In der Sandbox scheitern Mails an nicht verifizierte Empfänger (Einladungen, Benachrichtigungen) bis zur Freischaltung.
+
 ## Betrieb
 
 - **Kennzahlen:** `adminApi email.stats` (14 Tage). SES prüft Konten ab 5 % Bounces bzw. 0,1 % Beschwerden und

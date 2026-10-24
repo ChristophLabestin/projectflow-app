@@ -5,6 +5,12 @@ import { createHmac, createHash, timingSafeEqual } from 'crypto';
 /** Bind these on every function that can reach sendEmail(): `runWith({ secrets: EMAIL_SECRETS })`. */
 export const EMAIL_SECRETS = ['AWS_SES_ACCESS_KEY_ID', 'AWS_SES_SECRET_ACCESS_KEY'];
 
+/**
+ * v2 functions default to the compute service account, which has no Firestore role in this project
+ * (PERMISSION_DENIED); mail functions run as the App Engine default account like the v1 functions.
+ */
+export const FUNCTIONS_SERVICE_ACCOUNT = 'projectflow-labestin@appspot.gserviceaccount.com';
+
 /** Mail types become the SES tag `type`; they decide transactional vs. list mail. */
 export const EMAIL_TYPES = [
     'invitation',

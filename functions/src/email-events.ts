@@ -7,7 +7,7 @@ import { createVerify, randomBytes } from 'crypto';
 import { FieldValue } from 'firebase-admin/firestore';
 import { db } from './init';
 import {
-    SesEventAction, applySoftBounce, isAllowedTopic, isSnsCertUrl, isSnsHostUrl, normalizeEmail, parseSesEvent,
+    FUNCTIONS_SERVICE_ACCOUNT, SesEventAction, applySoftBounce, isAllowedTopic, isSnsCertUrl, isSnsHostUrl, normalizeEmail, parseSesEvent,
     parseSnsMessage, safeJson, signUnsubscribeToken, snsStringToSign, suppressionId, verifyUnsubscribeToken
 } from './email-logic';
 import type { SuppressionReason } from './email-logic';
@@ -100,7 +100,7 @@ const fetchCert = async (url: string) => {
  * SNS HTTPS subscription endpoint. Accepts only signed messages from the topics in
  * SES_SNS_TOPIC_ARNS (exact ARNs, comma separated) and confirms their subscription.
  */
-export const sesEvents = onRequest({ region: REGION, memory: '256MiB', timeoutSeconds: 60, concurrency: 20 }, async (req, res) => {
+export const sesEvents = onRequest({ region: REGION, serviceAccount: FUNCTIONS_SERVICE_ACCOUNT, memory: '256MiB', timeoutSeconds: 60, concurrency: 20 }, async (req, res) => {
     if (req.method !== 'POST') {
         res.status(405).send('Method not allowed');
         return;
