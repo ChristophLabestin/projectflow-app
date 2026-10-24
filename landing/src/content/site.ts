@@ -233,6 +233,14 @@ const de = {
         rights: 'Alle Rechte vorbehalten.',
         madeIn: 'Gemacht in Deutschland.',
     },
+    consent: {
+        title: 'Cookies & Statistik',
+        text: 'Mit deiner Einwilligung messen wir mit Google Analytics anonymisiert, wie unsere Website genutzt wird. Dafür werden Cookies gesetzt und Daten an Google übermittelt. Du kannst die Einwilligung jederzeit in den Cookie-Einstellungen widerrufen.',
+        accept: 'Akzeptieren',
+        decline: 'Ablehnen',
+        privacy: 'Datenschutzerklärung',
+        settings: 'Cookie-Einstellungen',
+    },
     legalPage: {
         back: 'Zur Startseite',
         toc: 'Inhalt',
@@ -476,6 +484,14 @@ const en: SiteCopy = {
         },
         rights: 'All rights reserved.',
         madeIn: 'Made in Germany.',
+    },
+    consent: {
+        title: 'Cookies & analytics',
+        text: 'With your consent we use Google Analytics to measure, anonymised, how our website is used. This sets cookies and sends data to Google. You can withdraw your consent any time in the cookie settings.',
+        accept: 'Accept',
+        decline: 'Decline',
+        privacy: 'Privacy policy',
+        settings: 'Cookie settings',
     },
     legalPage: {
         back: 'Back to home',

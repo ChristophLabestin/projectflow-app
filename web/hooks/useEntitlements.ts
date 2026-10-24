@@ -18,11 +18,28 @@ const subscribe = (tenantId: string, listener: (state: PlanState) => void) => {
             created.state = state;
             created.listeners.forEach((notify) => notify(state));
         };
-        created.unsubscribe = onSnapshot(
-            doc(db, 'tenants', tenantId, 'entitlements', 'plan'),
-            (snap) => publish(toPlanState(parseEntitlements(snap.exists() ? snap.data() : undefined))),
-            () => publish(toPlanState(parseEntitlements(undefined))),
-        );
+        // A listener error (typically permission-denied while sign-in or the membership is still settling) kills the
+        // listener. Do NOT publish "missing doc" (= Free) then — that stuck the demo workspace on Free — but keep the
+        // last known state and re-subscribe with backoff while someone is still listening.
+        let attempt = 0;
+        const listen = () => {
+            created.unsubscribe = onSnapshot(
+                doc(db, 'tenants', tenantId, 'entitlements', 'plan'),
+                (snap) => {
+                    attempt = 0;
+                    publish(toPlanState(parseEntitlements(snap.exists() ? snap.data() : undefined)));
+                },
+                () => {
+                    attempt += 1;
+                    const delay = Math.min(30_000, 1000 * 2 ** Math.min(attempt, 5));
+                    const timer = window.setTimeout(() => {
+                        if (entries.get(tenantId) === created && created.listeners.size > 0) listen();
+                    }, delay);
+                    created.unsubscribe = () => window.clearTimeout(timer);
+                },
+            );
+        };
+        listen();
         entries.set(tenantId, created);
         entry = created;
     }

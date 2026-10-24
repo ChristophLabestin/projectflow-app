@@ -1,3 +1,2 @@
-- Die AGB wurden gestrafft und an den heutigen Funktionsumfang angepasst.
-- Regelungen zu entfernten Modulen (Social Media, Marketing-Suite) sind entfallen.
-- Die Anlagen (Nutzungsrichtlinie, SLA, Auftragsverarbeitung) sind nicht mehr Teil des Dokuments; der AV-Vertrag ist auf Anfrage erhältlich.
+- Anbieterangaben korrigiert: Labestin Digital (Inhaber Christoph Labestin), Ödwieser Weg 7, 84082 Laberweinting.
+- Inhaltlich hat sich nichts geändert.

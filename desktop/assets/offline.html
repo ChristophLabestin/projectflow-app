@@ -24,7 +24,7 @@
   </div>
 </main>
 <script>
-  const params = new URLSearchParams(location.search);
+  const params = new URLSearchParams(location.hash.slice(1) || location.search); // data: URL, see desktop/src/localPages.ts
   const target = params.get('url');
   document.getElementById('title').textContent = params.get('title') || 'ProjectFlow is offline';
   document.getElementById('body').textContent = params.get('body') || '';

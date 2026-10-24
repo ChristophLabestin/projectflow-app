@@ -4,35 +4,78 @@
     "public": "dist",
     "cleanUrls": true,
     "redirects": [
-      { "source": "/kaufen", "destination": "/checkout", "type": 301 },
-      { "source": "/en/buy", "destination": "/en/checkout", "type": 301 }
+      {
+        "source": "/kaufen",
+        "destination": "/checkout",
+        "type": 301
+      },
+      {
+        "source": "/en/buy",
+        "destination": "/en/checkout",
+        "type": 301
+      }
     ],
     "trailingSlash": false,
-    "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
     "headers": [
-      {
-        "source": "/fonts/**",
-        "headers": [{ "key": "Access-Control-Allow-Origin", "value": "*" }]
-      },
       {
         "source": "**",
         "headers": [
-          { "key": "Cache-Control", "value": "no-cache" },
-          { "key": "Strict-Transport-Security", "value": "max-age=31536000; includeSubDomains" },
-          { "key": "X-Content-Type-Options", "value": "nosniff" },
-          { "key": "X-Frame-Options", "value": "DENY" },
-          { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
-          { "key": "Permissions-Policy", "value": "camera=(), microphone=(), geolocation=(), payment=(), usb=()" },
-          { "key": "Content-Security-Policy", "value": "default-src 'self'; script-src 'self' https://js.stripe.com https://apis.google.com 'sha256-kXTLEHImivTpeMdzxLQWbURwbPY99JwzChIwagsvpIU='; style-src 'self'; style-src-attr 'unsafe-inline'; font-src 'self'; img-src 'self' data: https://*.stripe.com; connect-src 'self' https://app.getprojectflow.com https://api.stripe.com https://m.stripe.network https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://europe-west3-projectflow-labestin.cloudfunctions.net; frame-src https://js.stripe.com https://hooks.stripe.com https://projectflow-labestin.firebaseapp.com; object-src 'none'; base-uri 'self'; form-action 'none'; frame-ancestors 'none'" }
+          {
+            "key": "Cache-Control",
+            "value": "no-cache"
+          },
+          {
+            "key": "Strict-Transport-Security",
+            "value": "max-age=31536000; includeSubDomains"
+          },
+          {
+            "key": "X-Content-Type-Options",
+            "value": "nosniff"
+          },
+          {
+            "key": "X-Frame-Options",
+            "value": "DENY"
+          },
+          {
+            "key": "Referrer-Policy",
+            "value": "strict-origin-when-cross-origin"
+          },
+          {
+            "key": "Permissions-Policy",
+            "value": "camera=(), microphone=(), geolocation=(), payment=(), usb=()"
+          },
+          {
+            "key": "Content-Security-Policy",
+            "value": "default-src 'self'; script-src 'self' https://js.stripe.com https://apis.google.com https://www.googletagmanager.com 'sha256-kXTLEHImivTpeMdzxLQWbURwbPY99JwzChIwagsvpIU='; style-src 'self'; style-src-attr 'unsafe-inline'; font-src 'self'; img-src 'self' data: https://*.stripe.com https://*.google-analytics.com https://*.googletagmanager.com; connect-src 'self' https://app.getprojectflow.com https://*.google-analytics.com https://*.analytics.google.com https://*.googletagmanager.com https://api.stripe.com https://m.stripe.network https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://europe-west3-projectflow-labestin.cloudfunctions.net; frame-src https://js.stripe.com https://hooks.stripe.com https://projectflow-labestin.firebaseapp.com; object-src 'none'; base-uri 'self'; form-action 'none'; frame-ancestors 'none'"
+          }
         ]
       },
       {
         "source": "/assets/**",
-        "headers": [{ "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }]
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "public, max-age=31536000, immutable"
+          }
+        ]
       },
       {
         "source": "/fonts/**",
-        "headers": [{ "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }]
+        "headers": [
+          {
+            "key": "Access-Control-Allow-Origin",
+            "value": "*"
+          },
+          {
+            "key": "Cache-Control",
+            "value": "public, max-age=31536000, immutable"
+          }
+        ]
       }
     ]
   }

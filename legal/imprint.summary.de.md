@@ -1,0 +1,2 @@
+- Anbieterangaben korrigiert: Labestin Digital (Inhaber Christoph Labestin), Ödwieser Weg 7, 84082 Laberweinting.
+- Inhaltlich hat sich nichts geändert.

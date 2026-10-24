@@ -59,9 +59,41 @@ export const authorizationServerMetadata = (base: string) => ({
     service_documentation: 'https://admin.getprojectflow.com/mcp-access',
 });
 
+export const MAX_PENDING_CLIENTS = 5;
+export const MAX_REGISTRATIONS_PER_HOUR = 10;
+const PENDING_CLIENT_TTL_MS = 24 * 3_600_000;
+
+/** Deletes unapproved clients older than 24 h (the Firestore TTL on `expireAt` does the same eventually). */
+const cleanupStalePending = async () => {
+    const stale = await col.clients().where('status', '==', 'pending').where('expireAt', '<', Timestamp.now()).limit(50).get();
+    if (stale.empty) return;
+    const batch = db.batch();
+    stale.docs.forEach((d) => batch.delete(d.ref));
+    await batch.commit();
+};
+
+/** Returns an error text when registration must be refused, else reserves one slot (transaction). */
+const takeRegistrationSlot = async (): Promise<string | null> => {
+    const hour = new Date().toISOString().slice(0, 13);
+    const counterRef = db.collection('admin_config').doc(`mcp_dcr_${hour}`);
+    const pending = (await col.clients().where('status', '==', 'pending').count().get()).data().count;
+    if (pending >= MAX_PENDING_CLIENTS) return `Too many unapproved clients (${pending}). Approve or revoke them in the admin console first.`;
+    return db.runTransaction(async (tx) => {
+        const snap = await tx.get(counterRef);
+        const count = Number(snap.get('count') || 0);
+        if (count >= MAX_REGISTRATIONS_PER_HOUR) return 'Too many registrations this hour';
+        tx.set(counterRef, { count: count + 1, expireAt: Timestamp.fromMillis(Date.now() + 2 * 3_600_000) }, { merge: true });
+        return null;
+    });
+};
+
 const handleRegister = async (req: any, res: any) => {
     if (!(await killSwitchOn())) return oauthError(res, 403, 'access_denied', 'Admin MCP is disabled');
-    if (limited(`dcr:${clientIp(req)}`, 10, 3_600_000)) return oauthError(res, 429, 'slow_down', 'Too many registrations');
+    // Flood guard (security review 2026-10-24, M11): no per-IP trust (X-Forwarded-For is spoofable) — a global
+    // Firestore counter per hour across all instances, a cap on unapproved clients, and pending clients expire after 24 h.
+    await cleanupStalePending();
+    const gate = await takeRegistrationSlot();
+    if (gate) return oauthError(res, 429, 'slow_down', gate);
     const meta = parseClientMetadata(req.body);
     if (typeof meta === 'string') return oauthError(res, 400, meta === 'invalid_redirect_uri' ? 'invalid_redirect_uri' : 'invalid_client_metadata', meta);
     if (!meta.redirectUris.every(isAllowedAdminRedirect)) return oauthError(res, 400, 'invalid_redirect_uri', 'Only Claude Code (loopback) and claude.ai / claude.com callbacks are allowed');
@@ -69,6 +101,7 @@ const handleRegister = async (req: any, res: any) => {
     const clientId = `pfac_client_${randomId()}`;
     await col.clients().doc(clientId).set({
         name: meta.name, redirectUris: meta.redirectUris, status: 'pending', createdAt: FieldValue.serverTimestamp(),
+        expireAt: Timestamp.fromMillis(Date.now() + PENDING_CLIENT_TTL_MS), // TTL; cleared on approval
         registeredFromIpHash: sha256Hex(clientIp(req)).slice(0, 16),
     });
     await writeAudit(db, { uid: null, email: null, action: 'mcp:client.register', target: `admin_mcp_clients/${clientId}`, summary: `${meta.name} (pending)`, ok: true, ip: clientIp(req) }).catch(() => undefined);

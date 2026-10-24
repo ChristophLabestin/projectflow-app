@@ -159,7 +159,7 @@ const RootLayout = () => {
     // Desktop utility windows (Quick Access pop-out, Quick Capture, day window): only their own content,
     // none of the global overlays (no second Quick Access modal, help, banners, bridge).
     const windowKind = desktopWindowKind();
-    const isUtilityWindow = windowKind === 'quick-access' || windowKind === 'capture' || windowKind === 'day' || windowKind === 'tray' || windowKind === 'palette';
+    const isUtilityWindow = windowKind === 'quick-access' || windowKind === 'capture' || windowKind === 'day' || windowKind === 'tray' || windowKind === 'palette' || windowKind === 'assist';
     if (isUtilityWindow && location.pathname.startsWith('/desktop/')) {
         return (
             <>

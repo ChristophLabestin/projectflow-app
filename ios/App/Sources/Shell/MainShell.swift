@@ -274,6 +274,8 @@ struct RouteDestination: View {
         case .team: TeamScreen()
         case .accountPage(let page): AccountPageView(page: page)
         case .designCatalog: DesignCatalogScreen()
+        case .activity(let tenantId, let projectId): ActivityScreen(tenantId: tenantId, projectId: projectId)
+        case .insights(let tenantId): InsightsScreen(tenantId: tenantId)
         }
     }
 }

@@ -46,7 +46,8 @@ const usageRefs = (tenantId: string, uid: string, month: string) => {
     return { workspace, member: workspace.collection('users').doc(uid) };
 };
 
-export interface CreditDecision { ok: boolean; used: number; limit: number }
+/** `month` is the reservation's month: a refund must go back to the same month doc. */
+export interface CreditDecision { ok: boolean; used: number; limit: number; month: string }
 
 /** Reserve the credits of one request before calling the model. */
 export const reserveCredits = async (tenantId: string, uid: string, capability: CreditCapability, limit: number): Promise<CreditDecision> => {
@@ -56,7 +57,7 @@ export const reserveCredits = async (tenantId: string, uid: string, capability: 
     return db.runTransaction(async (tx) => {
         const snap = await tx.get(workspace);
         const used = Number(snap.data()?.credits || 0);
-        if (!canSpend(used, weight, limit)) return { ok: false, used, limit };
+        if (!canSpend(used, weight, limit)) return { ok: false, used, limit, month };
         const increment = {
             month,
             credits: FieldValue.increment(weight),
@@ -66,14 +67,14 @@ export const reserveCredits = async (tenantId: string, uid: string, capability: 
         };
         tx.set(workspace, { ...increment, limit }, { merge: true });
         tx.set(member, { ...increment, uid }, { merge: true });
-        return { ok: true, used: used + weight, limit };
+        return { ok: true, used: used + weight, limit, month };
     });
 };
 
 /** Undo a reservation when the request failed before the user got an answer. */
-export const refundCredits = async (tenantId: string, uid: string, capability: CreditCapability) => {
+export const refundCredits = async (tenantId: string, uid: string, capability: CreditCapability, month = monthKey()) => {
     const weight = CREDIT_WEIGHTS[capability];
-    const { workspace, member } = usageRefs(tenantId, uid, monthKey());
+    const { workspace, member } = usageRefs(tenantId, uid, month);
     const update = {
         credits: FieldValue.increment(-weight),
         requests: FieldValue.increment(-1),

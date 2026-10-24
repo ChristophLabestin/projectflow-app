@@ -2,7 +2,7 @@
 import { EMAIL_CONTENT, Language } from './email-locales';
 
 /** Imprint shown in every system mail footer (Impressum, DE). */
-export const EMAIL_IMPRINT = 'ProjectFlow · Christoph Labestin · Frühlingsstraße 8 · 84082 Laberweinting · hello@getprojectflow.com';
+export const EMAIL_IMPRINT = 'ProjectFlow · Labestin Digital, Inh. Christoph Labestin · Ödwieser Weg 7 · 84082 Laberweinting · hello@getprojectflow.com';
 
 export const getSystemEmailTemplate = (
   title: string,
