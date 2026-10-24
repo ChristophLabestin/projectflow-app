@@ -145,6 +145,8 @@ export { transferWorkspaceOwnership, deleteWorkspace } from './workspace-lifecyc
 export { exportMyData, deleteMyAccount } from './account-data';
 export { deleteProject } from './project-delete';
 export { adminApi } from './admin-console';
+export { adminOAuth } from './admin-console/mcp/oauth';
+export { adminMcp } from './admin-console/mcp/server';
 export {
     acceptLegalDocuments,
     declineLegalDocuments,

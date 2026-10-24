@@ -21,6 +21,8 @@ const UsersScreen = named(() => import('./screens/Users'), 'UsersScreen');
 const WorkspacesScreen = named(() => import('./screens/Workspaces'), 'WorkspacesScreen');
 const AiScreen = named(() => import('./screens/Ai'), 'AiScreen');
 const SystemScreen = named(() => import('./screens/System'), 'SystemScreen');
+const McpAccess = named(() => import('./screens/McpAccess'), 'McpAccess');
+const McpConsent = named(() => import('./screens/McpConsent'), 'McpConsent');
 
 const Splash: React.FC<{ text?: string }> = ({ text }) => <div className="ac-splash"><div style={{ display: 'grid', gap: 12, justifyItems: 'center' }}><LoadingTrack />{text}</div></div>;
 
@@ -40,6 +42,8 @@ const Gate: React.FC = () => {
                     <Route path="workspaces" element={<WorkspacesScreen />} />
                     <Route path="ai" element={<AiScreen />} />
                     <Route path="system" element={<SystemScreen />} />
+                    <Route path="mcp-access" element={<McpAccess />} />
+                    <Route path="oauth/consent" element={<McpConsent />} />
                     <Route path="audit" element={<AuditLog />} />
                     <Route path="crashes" element={<Crashes />} />
                     <Route path="crashes/:id" element={<CrashDetail />} />

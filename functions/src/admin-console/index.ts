@@ -4,7 +4,8 @@ import { randomUUID } from 'crypto';
 import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 
 import { db } from '../init';
-import { auditHandlers, writeAudit } from './audit';
+import { writeAudit } from './audit';
+import { featureHandlers } from './registry';
 import { checkAdminGate, GateDeps, GateToken, SESSION_IDLE_MS } from './gate';
 import { AdminContext, AdminInputError, HandlerMap, toMs } from './types';
 
@@ -55,14 +56,8 @@ const sessionHandlers: HandlerMap = {
     },
 };
 
-const loadHandlers = (): HandlerMap => ({
-    ...sessionHandlers,
-    ...auditHandlers,
-    ...require('./handlers').handlers,
-});
-
 let handlerCache: HandlerMap | null = null;
-const handlers = () => (handlerCache ??= loadHandlers());
+const handlers = () => (handlerCache ??= { ...sessionHandlers, ...featureHandlers() });
 
 const rawTokenOf = (context: functions.https.CallableContext) => {
     const header = String(context.rawRequest?.headers?.authorization || '');
@@ -110,7 +105,7 @@ export const adminApi = functions.region(REGION).runWith({ memory: '512MB', time
     if (!handler) throw new functions.https.HttpsError('not-found', `Unknown action ${action}`);
 
     const sessionId = String(data.sessionId);
-    const ctx: AdminContext = { uid: gate.uid, email: gate.email, sessionId, db, ...meta };
+    const ctx: AdminContext = { uid: gate.uid, email: gate.email, sessionId, db, ...meta, authTimeS: token?.auth_time, channel: 'console' };
     await sessionRef(gate.uid).update({ lastSeenAt: Timestamp.now() });
 
     const target = handler.target ? safe(() => handler.target!(params)) : null;
