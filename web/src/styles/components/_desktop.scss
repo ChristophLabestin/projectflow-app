@@ -407,6 +407,11 @@ html.is-desktop.desktop-window-capture {
     }
 }
 
+.quick-capture__chip--ai {
+    color: var(--color-text-main);
+    font-weight: 600;
+}
+
 .quick-capture__suggestions {
     list-style: none;
     margin: 0;
@@ -461,6 +466,21 @@ html.is-desktop.desktop-window-capture {
 
     &.is-error {
         color: var(--color-error);
+    }
+}
+
+// ---------------------------------------------------------------------------
+// AI pop-out (/desktop/assist) — transparent window, the ⌘J bar is the visible part
+// ---------------------------------------------------------------------------
+
+html.is-desktop.desktop-window-assist {
+    background: transparent;
+
+    body,
+    #root {
+        background: transparent;
+        padding-top: 0;
+        height: 100vh;
     }
 }
 

@@ -7,6 +7,7 @@
  * Core functions take a Stripe client so they can be exercised with test clocks (scripts/seat-test-clock.mjs).
  */
 import * as functions from 'firebase-functions/v1';
+import { FAST_START } from './runtime-options';
 import { FieldValue } from 'firebase-admin/firestore';
 import Stripe = require('stripe');
 
@@ -194,13 +195,13 @@ const targetOf = (data: any): SeatTarget => ({
     ...(data?.aiAddonSeats !== undefined ? { aiAddonSeats: Number(data.aiAddonSeats) } : {}),
 });
 
-export const previewSeatChange = functions.region(REGION).runWith({ secrets: STRIPE_SECRETS })
+export const previewSeatChange = functions.region(REGION).runWith(FAST_START).runWith({ secrets: STRIPE_SECRETS })
     .https.onCall(async (data, context) => {
         const { limits, subscriptionId } = await loadContext(data, context);
         return previewSeatChangeFor(getStripe(), subscriptionId, targetOf(data), limits);
     });
 
-export const changeSeats = functions.region(REGION).runWith({ secrets: STRIPE_SECRETS })
+export const changeSeats = functions.region(REGION).runWith(FAST_START).runWith({ secrets: STRIPE_SECRETS })
     .https.onCall(async (data, context) => {
         const { tenantId, limits, subscriptionId } = await loadContext(data, context);
         const stripe = getStripe();
@@ -216,7 +217,7 @@ export const changeSeats = functions.region(REGION).runWith({ secrets: STRIPE_SE
     });
 
 /** Billing tab: seats, usage, scheduled change, next invoice and invoice list. */
-export const getBillingOverview = functions.region(REGION).runWith({ secrets: STRIPE_SECRETS })
+export const getBillingOverview = functions.region(REGION).runWith(FAST_START).runWith({ secrets: STRIPE_SECRETS })
     .https.onCall(async (data, context) => {
         const { tenantId } = await requireOwner(data?.tenantId, context);
         const ent = (await entRef(tenantId).get()).data() || {};

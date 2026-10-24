@@ -3,6 +3,7 @@
 // createDesktopAuthCode and opens projectflow://auth?code=…; the app exchanges code + verifier for a custom token.
 // Codes are single use, expire after 2 minutes and are useless without the verifier that never leaves the app.
 import * as functions from 'firebase-functions/v1';
+import { FAST_START } from './runtime-options';
 import { createHash, randomBytes } from 'crypto';
 import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 import { db, auth } from './init';
@@ -14,7 +15,7 @@ const BASE64URL = /^[A-Za-z0-9_-]{43,128}$/;
 
 const sha256 = (value: string) => createHash('sha256').update(value).digest('base64url');
 
-export const createDesktopAuthCode = functions.region(REGION).https.onCall(async (data, context) => {
+export const createDesktopAuthCode = functions.region(REGION).runWith(FAST_START).https.onCall(async (data, context) => {
     const uid = context.auth?.uid;
     if (!uid) throw new functions.https.HttpsError('unauthenticated', 'Sign in first.');
     const challenge = typeof data?.challenge === 'string' ? data.challenge : '';
@@ -31,7 +32,7 @@ export const createDesktopAuthCode = functions.region(REGION).https.onCall(async
     return { code };
 });
 
-export const exchangeDesktopAuthCode = functions.region(REGION).https.onCall(async (data) => {
+export const exchangeDesktopAuthCode = functions.region(REGION).runWith(FAST_START).https.onCall(async (data) => {
     const code = typeof data?.code === 'string' ? data.code : '';
     const verifier = typeof data?.verifier === 'string' ? data.verifier : '';
     if (!BASE64URL.test(code) || !BASE64URL.test(verifier)) {

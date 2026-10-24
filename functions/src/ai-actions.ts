@@ -7,6 +7,7 @@
  * step; `aiUndoProposal` reverts it (created items are deleted, changed fields restored).
  */
 import * as functions from 'firebase-functions/v1';
+import { FAST_START } from './runtime-options';
 import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 
 import { db } from './init';
@@ -141,7 +142,7 @@ const audit = (ctx: ToolContext, method: string, path: string, projectId: string
         clientName: 'ProjectFlow KI (in-app)', permission, method, path, projectId, status
     }).catch((error) => console.error('AI audit write failed', { tenantId: ctx.tenantId, message: error?.message }));
 
-export const aiApplyProposal = functions.region(REGION).https.onCall(async (data, context) => {
+export const aiApplyProposal = functions.region(REGION).runWith(FAST_START).https.onCall(async (data, context) => {
     const { ref, data: proposal, ctx } = await loadOwnProposal(context, data?.proposalId);
     if (proposal.status !== 'pending') throw new functions.https.HttpsError('failed-precondition', 'This proposal was already handled.');
     if (proposal.expireAt?.toMillis?.() < Date.now()) throw new functions.https.HttpsError('deadline-exceeded', 'This proposal has expired.');
@@ -171,7 +172,7 @@ export const aiApplyProposal = functions.region(REGION).https.onCall(async (data
     }
 });
 
-export const aiUndoProposal = functions.region(REGION).https.onCall(async (data, context) => {
+export const aiUndoProposal = functions.region(REGION).runWith(FAST_START).https.onCall(async (data, context) => {
     const { ref, data: proposal, ctx } = await loadOwnProposal(context, data?.proposalId);
     if (proposal.status !== 'applied' || !proposal.undo) throw new functions.https.HttpsError('failed-precondition', 'Nothing to undo.');
     if (proposal.appliedAt?.toMillis?.() < Date.now() - UNDO_WINDOW_MS) throw new functions.https.HttpsError('deadline-exceeded', 'Too late to undo.');

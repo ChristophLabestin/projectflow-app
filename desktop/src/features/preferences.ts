@@ -5,8 +5,8 @@ import { getSettings, updateSettings } from '../store';
 import { toggleCapture } from '../windows/auxWindows';
 import { toggleQuickAccess } from '../windows/quickAccess';
 import { togglePalette } from '../windows/paletteWindow';
+import { toggleAssist } from '../windows/assistWindow';
 import { captureScreenshotToTask } from './screenshot';
-import { runCommand } from '../menu';
 import { applyCalendarSettings, calendarStatus, calendarSupported } from './calendar';
 import { applyMediaKeySetting } from './focus';
 import { reindexSpotlight, spotlightSupported } from './spotlight';
@@ -50,7 +50,7 @@ export const applyGlobalShortcuts = () => {
     const capture = register(resolveShortcut(settings.quickCaptureShortcut, DEFAULT_SHORTCUTS.quickCapture), toggleCapture);
     const palette = register(resolveShortcut(settings.paletteShortcut, DEFAULT_SHORTCUTS.palette), togglePalette);
     const screenshot = register(resolveShortcut(settings.screenshotShortcut, DEFAULT_SHORTCUTS.screenshot), () => void captureScreenshotToTask());
-    const ai = register(resolveShortcut(settings.aiShortcut, DEFAULT_SHORTCUTS.ai), () => runCommand('open-ai'));
+    const ai = register(resolveShortcut(settings.aiShortcut, DEFAULT_SHORTCUTS.ai), () => toggleAssist());
     return access && capture && palette && screenshot && ai;
 };
 

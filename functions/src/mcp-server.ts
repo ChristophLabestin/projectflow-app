@@ -11,6 +11,7 @@
  * validation and activity logging therefore behave exactly like the API.
  */
 import * as functions from 'firebase-functions/v1';
+import { FAST_START } from './runtime-options';
 import { onRequest } from 'firebase-functions/v2/https';
 import { toNodeHandler } from '@modelcontextprotocol/node';
 import { createMcpHandler, McpServer } from '@modelcontextprotocol/server';
@@ -667,7 +668,7 @@ const handleMcpRequest = async (req: any, res: any) => {
 };
 
 /** Legacy Gen1 endpoint (direct cloudfunctions.net URL); Hosting `/mcp` points to `mcpServer`. */
-export const mcp = functions.region(REGION).runWith({ memory: '512MB', timeoutSeconds: 120 }).https.onRequest(handleMcpRequest);
+export const mcp = functions.region(REGION).runWith({ memory: FAST_START.memory, timeoutSeconds: 120 }).https.onRequest(handleMcpRequest);
 
 /** Gen2 (Cloud Run): one instance serves up to 80 concurrent requests, so the in-memory rate limiter and warm caches hold. */
 export const mcpServer = onRequest({ region: REGION, memory: '512MiB', timeoutSeconds: 120, concurrency: 80 }, handleMcpRequest);

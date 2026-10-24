@@ -1,10 +1,11 @@
 import * as functions from 'firebase-functions/v1';
+import { FAST_START } from './runtime-options';
 import * as admin from 'firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
 import { EMAIL_SECRETS, sendEmail, getSystemEmailTemplate } from './email';
 import { EMAIL_CONTENT, getLocale } from './email-locales';
 import { ALLOWED_ORIGINS } from './corsConfig';
-import { assertCanAddMember, loadPlanLimits } from './billing';
+import { assertCanAddMember, loadPlanLimits, seatCheckInTx } from './billing';
 import { memberRef } from './tenant-id';
 
 const db = admin.firestore();
@@ -68,7 +69,7 @@ const resolveAppOrigin = (requested?: unknown) => {
     return process.env.APP_URL || 'https://app.getprojectflow.com';
 };
 
-export const sendInvitation = functions.region(REGION).runWith({ secrets: EMAIL_SECRETS }).https.onCall(async (data, context) => {
+export const sendInvitation = functions.region(REGION).runWith(FAST_START).runWith({ secrets: EMAIL_SECRETS }).https.onCall(async (data, context) => {
     if (!context.auth) {
         throw new functions.https.HttpsError('unauthenticated', 'User must be logged in to send invites.');
     }
@@ -105,7 +106,7 @@ export const sendInvitation = functions.region(REGION).runWith({ secrets: EMAIL_
     return { success: true };
 });
 
-export const acceptWorkspaceInvite = functions.region(REGION).https.onCall(async (data, context) => {
+export const acceptWorkspaceInvite = functions.region(REGION).runWith(FAST_START).https.onCall(async (data, context) => {
     if (!context.auth) {
         throw new functions.https.HttpsError('unauthenticated', 'Sign in to accept the invitation.');
     }
@@ -164,7 +165,12 @@ export const acceptWorkspaceInvite = functions.region(REGION).https.onCall(async
         const rank: Record<string, number> = { Guest: 0, Member: 1, Admin: 2, Owner: 3 };
         const role = existingRole && (rank[existingRole] ?? 1) >= (rank[inviteRole] ?? 1) ? existingRole : inviteRole;
 
+        // Seat/plan check inside the transaction (security review M4); guests are free.
+        const becomesFullMember = role !== 'Guest' && (existingRole === null || existingRole === 'Guest');
+        const seat = becomesFullMember ? await seatCheckInTx(tx, tenantId) : null;
+
         const now = FieldValue.serverTimestamp();
+        if (seat) tx.set(seat.ref, { memberCount: seat.memberCount }, { merge: true });
         tx.set(memberDoc, {
             uid,
             role,
