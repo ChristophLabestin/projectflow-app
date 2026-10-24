@@ -93,4 +93,5 @@ Zugriffe (`/api`, `/mcp`, PAT/OAuth) prüfen sie mit 14 Tagen Grace.
   `prefs`; Projektinhalte nur zwei Ebenen tief schreibbar und nie unter Server-Namen (`isServerOnlyName`).
 - Missbrauchsprüfung Prod (verschachtelte `members`/`ai_config`/`entitlements`, auffälliges `createdAt`,
   Workspaces ohne Entitlement): Skript `qa-prod-abuse-scan.cjs` im Notizordner der Orchestrator-Gruppe,
-  noch nicht ausgeführt (Prod-Lesezugriff aus der Session nicht freigegeben).
+  ausgeführt am 2026-10-24: 13 Workspaces, keine Funde (keine gefälschten Docs, kein auffälliges
+  `createdAt`, jeder Workspace hat eine Entitlement-Doc). Keine Hinweise auf Ausnutzung von C1/H3.
