@@ -490,6 +490,8 @@ const run = async () => {
             owner.doc(`${T}/members/memberA`).update({ role: 'Admin' }));
         await check('owner can demote admin back to member', 'allow', () =>
             owner.doc(`${T}/members/memberA`).update({ role: 'Member' }));
+        await check('no projects without an entitlement doc', 'deny', () =>
+            owner.doc('tenants/tenantNoEnt/projects/p1').set({ title: 'P', tenantId: 'tenantNoEnt', ownerId: 'ownerA', memberIds: ['ownerA'] }));
         await check('no invitations without an entitlement doc', 'deny', () =>
             owner.doc('tenants/tenantNoEnt/invitations/i1').set({ status: 'pending', invitedBy: 'ownerA', role: 'Member', kind: 'link' }));
         await check('member reads billing availability', 'allow', () => member.doc('billing_public/config').get());

@@ -63,10 +63,12 @@ service cloud.firestore {
       return /databases/$(database)/documents/tenants/$(tenantId)/entitlements/plan;
     }
 
+    // Every creation path writes the entitlement doc together with the tenant (web, iOS, personal, purchase page),
+    // so a missing doc means "no plan" = no new projects (security review 2026-10-24).
     function withinProjectLimit(tenantId) {
-      return !exists(planPath(tenantId)) ||
+      return exists(planPath(tenantId)) && (
         get(planPath(tenantId)).data.get('projectLimit', null) == null ||
-        get(planPath(tenantId)).data.get('projectCount', 0) < get(planPath(tenantId)).data.projectLimit;
+        get(planPath(tenantId)).data.get('projectCount', 0) < get(planPath(tenantId)).data.projectLimit);
     }
 
     // Projects over the Free limit stay readable but are read-only (no data loss).
