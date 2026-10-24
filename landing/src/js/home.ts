@@ -435,7 +435,10 @@ function billingToggle() {
         thumb.style.setProperty('--thumb-w', `${active.offsetWidth}px`);
         thumb.style.setProperty('--thumb-x', `${active.offsetLeft - 4}px`);
     };
+    // First placement without the slide, so the thumb doesn't travel in from the left on load.
+    if (thumb) thumb.style.transition = 'none';
     placeThumb();
+    requestAnimationFrame(() => requestAnimationFrame(() => { if (thumb) thumb.style.transition = ''; }));
     window.addEventListener('resize', placeThumb);
     document.fonts?.ready.then(placeThumb);
     options.forEach((btn) => btn.addEventListener('click', () => {
