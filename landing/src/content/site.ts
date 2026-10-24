@@ -157,7 +157,7 @@ const de = {
             { key: 'team', name: 'Team', monthly: 12, yearly: 10, desc: 'Für Teams, die gemeinsam liefern.', features: ['Bis 50 Mitglieder, unbegrenzte Projekte', '10 GB Speicher pro Platz, gemeinsam genutzt', 'Externe pro Projekt kostenlos', 'KI mit eigenem OpenAI-Schlüssel', 'Initiativen, Sprints & Module', 'Persönliche Tokens & KI-Aktivitätsprotokoll', '14 Tage kostenlos testen'], cta: 'Team kostenlos testen' },
             { key: 'org', name: 'Organization', monthly: 18, yearly: 18, desc: 'Für Unternehmen mit Governance-Anforderungen.', features: ['Alles aus Team, ab 10 Plätzen', '50 GB Speicher pro Platz', 'Single Sign-on (SSO)', 'KI mit eigenem OpenAI-Schlüssel', 'AV-Vertrag & erweiterte Protokolle', 'Priorisierter Support'], cta: 'Kontakt aufnehmen' },
         ],
-        note: 'Alle Preise netto zzgl. USt.',
+        note: 'Alle Preise sind Endpreise. Gemäß § 19 UStG wird keine Umsatzsteuer berechnet.',
     },
     mcp: {
         eyebrow: 'KI & MCP',
@@ -397,7 +397,7 @@ const en: SiteCopy = {
             { key: 'team', name: 'Team', monthly: 12, yearly: 10, desc: 'For teams that ship together.', features: ['Up to 50 members, unlimited projects', '10 GB storage per seat, pooled', 'Externals per project for free', 'AI with your own OpenAI key', 'Initiatives, sprints & modules', 'Personal tokens & AI activity log', 'Free 14-day trial'], cta: 'Try Team for free' },
             { key: 'org', name: 'Organization', monthly: 18, yearly: 18, desc: 'For companies with governance needs.', features: ['Everything in Team, from 10 seats', '50 GB storage per seat', 'Single sign-on (SSO)', 'AI with your own OpenAI key', 'DPA & extended logs', 'Priority support'], cta: 'Contact us' },
         ],
-        note: 'All prices net, plus VAT.',
+        note: 'All prices are final. No VAT is charged under the German small business scheme (§ 19 UStG).',
     },
     mcp: {
         eyebrow: 'AI & MCP',
