@@ -377,8 +377,8 @@ function start(root: HTMLElement, c: any) {
             ? c.payment.dueTrial.replace('{d}', date(trialEnd))
             : c.payment.dueNow.replace('{Interval}', billed).replace('{interval}', billed);
         $('[data-totals]').innerHTML = `${rows.join('')}
-            <div class="ck-totals__total"><dt>${esc(tax > 0 ? c.payment.total : c.payment.totalNet)}</dt><dd>${money(total)}</dd></div>
-            <p class="ck-totals__note">${esc(note)}${tax > 0 ? '' : `<br>${esc(c.payment.netNote)}`}</p>`;
+            <div class="ck-totals__total"><dt>${esc(c.payment.total)}</dt><dd>${money(total)}</dd></div>
+            <p class="ck-totals__note">${esc(note)}${tax > 0 ? '' : `<br>${esc(c.payment.taxNote)}`}</p>`;
         $('[data-fine]').textContent = state.interval === 'year' ? c.payment.fineYearly : c.payment.fineMonthly;
         if (trialEnd && !due) $('[data-lead]').textContent = c.intro.payment.leadTrial.replace('{d}', date(trialEnd));
     };
@@ -419,11 +419,27 @@ function start(root: HTMLElement, c: any) {
         url.searchParams.set('plan', state.plan);
         return url.toString();
     };
+    // The subscription request runs while the form is already visible (Stripe "deferred intent"): the elements
+    // render from the expected mode/amount and are confirmed against the real client secret on submit.
+    let intentReq: Promise<Intent> | null = null;
     const confirm = async () => {
-        const fn = state.intent?.intentType === 'setup' ? stripe.confirmSetup : stripe.confirmPayment;
-        const { error } = await fn.call(stripe, { elements, confirmParams: { return_url: returnUrl() }, redirect: 'if_required' });
+        const { error: submitError } = await elements.submit();
+        if (submitError) throw submitError;
+        const intent = await intentReq!;
+        const fn = intent.intentType === 'setup' ? stripe.confirmSetup : stripe.confirmPayment;
+        const { error } = await fn.call(stripe, { elements, clientSecret: intent.clientSecret, confirmParams: { return_url: returnUrl() }, redirect: 'if_required' });
         if (error) throw error;
         void showDone(state.tenantId, 'succeeded');
+    };
+
+    /** What the server will most likely ask for: a team workspace still in a long trial only saves the card. */
+    const expectedMode = () => {
+        const ws = state.workspaces.find((w) => w.tenantId === state.tenantId);
+        const trialEnd = Number(ws?.trialEndsAt ? new Date(ws.trialEndsAt).getTime() : 0);
+        const setup = state.plan === 'team' && ws?.status === 'trialing' && trialEnd - Date.now() > 48 * 3600e3;
+        const months = state.interval === 'year' ? 12 : 1;
+        const seats = state.plan === 'team' ? Math.max(state.seats, ws?.memberCount ?? 1) : 1;
+        return setup ? { mode: 'setup' as const } : { mode: 'subscription' as const, amount: c.prices[state.plan][state.interval] * months * 100 * seats };
     };
 
     const preparePayment = async () => {
@@ -435,24 +451,24 @@ function start(root: HTMLElement, c: any) {
         express.innerHTML = '';
         express.hidden = false;
         or.hidden = true;
+        state.intent = null;
         renderTotals();
+        intentReq = api.intent({ tenantId: state.tenantId, plan: state.plan, interval: state.interval, seats: state.plan === 'team' ? state.seats : undefined, language: lang });
+        intentReq.catch(() => { /* handled below */ });
         try {
-            const [intent, stripeInstance] = await Promise.all([
-                api.intent({ tenantId: state.tenantId, plan: state.plan, interval: state.interval, seats: state.plan === 'team' ? state.seats : undefined, language: lang }),
-                prepareStripe(),
-            ]);
-            state.intent = intent;
-            renderTotals();
-            if (state.intent.intentType === 'none') { mount.innerHTML = ''; return; }
             if (api.mock) {
                 express.innerHTML = '<div class="ck-mock ck-mock--wallet">Apple Pay · Google Pay</div>';
                 or.hidden = false;
                 mount.innerHTML = `<div class="ck-mock">${lang === 'de' ? 'Hier erscheint das Stripe-Zahlungsformular (Karte, SEPA).' : 'The Stripe payment form appears here (card, SEPA).'}</div>`;
+                state.intent = await intentReq;
+                renderTotals();
                 return;
             }
-            stripe = stripeInstance;
+            stripe = await prepareStripe();
+            const expected = expectedMode();
             elements = stripe.elements({
-                clientSecret: state.intent.clientSecret,
+                ...expected,
+                currency: 'eur',
                 appearance: appearance(),
                 // Same self-hosted variable font as the page (served with CORS for the Stripe iframe).
                 fonts: [{ family: 'Plus Jakarta Sans', src: `url(${location.origin}/fonts/pjs-latin.woff2)`, weight: '200 800' }],
@@ -470,6 +486,16 @@ function start(root: HTMLElement, c: any) {
             expressEl.mount(express);
             mount.innerHTML = '';
             elements.create('payment', { layout: 'tabs', wallets: { applePay: 'never', googlePay: 'never' } }).mount(mount);
+
+            state.intent = await intentReq;
+            renderTotals();
+            if (state.intent.intentType === 'none') { mount.innerHTML = ''; express.hidden = true; or.hidden = true; return; }
+            // Align the form with what the server actually created (mode and first amount).
+            const mode = state.intent.intentType === 'setup' ? 'setup' : 'subscription';
+            const amount = state.intent.summary?.amountDue ?? state.intent.summary?.total;
+            if (mode !== expected.mode || (mode === 'subscription' && amount && amount !== (expected as { amount?: number }).amount)) {
+                elements.update(mode === 'setup' ? { mode } : { mode, amount });
+            }
         } catch (e) {
             mount.innerHTML = '';
             showPayError(errorText(e));

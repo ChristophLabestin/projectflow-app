@@ -101,7 +101,7 @@ export const buyBody = (lang: Lang): string => {
                     </div>
                     <div class="ck-plan-sum">
                         <b data-sum-label></b>
-                        <span><b data-sum-amount></b> ${esc(c.plan.net)} <span data-sum-unit></span></span>
+                        <span><b data-sum-amount></b> <span data-sum-unit></span></span>
                     </div>
                     <button type="button" class="ck-btn" data-next="plan">${esc(c.plan.nextPlan)}${icon('arrowRight')}</button>
                     <p class="ck-fine">${esc(c.plan.checkLater)}</p>
