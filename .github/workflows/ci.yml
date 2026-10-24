@@ -124,6 +124,8 @@ jobs:
         run: bash scripts/predeploy-smoke.sh
         env:
           SMOKE_CHANNEL: ''
+          # CI tests exactly the checked-out commit (shallow clone, PR merge refs); the freshness guard is for deploys.
+          SMOKE_SKIP_FRESHNESS: '1'
       - name: Smoke log
         if: failure()
         run: tail -n 120 .predeploy-smoke.log

@@ -84,3 +84,14 @@ By design: Das Consent-Gate ist UI-seitig (Regeln/Callables prüfen keine Zustim
 Zugriffe (`/api`, `/mcp`, PAT/OAuth) prüfen sie mit 14 Tagen Grace.
 
 **Nachtrag 2026-10-24 (Billing):** Fehlende Entitlement-Doc gilt nicht mehr als Legacy-Grace (Team/KI für alle), sondern als Free ohne KI (Functions `limitsFor`, Web `parseEntitlements`, Rules `planAllowsInvites`). Vorher geprüft: alle 13 Prod-Workspaces haben eine Entitlement-Doc; neue Team-Workspaces bekommen sie atomar in `createTeamWorkspace`.
+
+## Nachtrag (Härtung nach C1)
+
+- Fehlende Entitlement-Doc = Free ohne KI (Billing-Session, `limitsFor`, `planAllowsInvites`). Offen (low):
+  `withinProjectLimit`/`projectLocked` in den Regeln behandeln eine fehlende Doc noch als unbegrenzt.
+- Regeln (Commit `0b8ddaa8`, deployt): `tenants/{t}/users/{uid}` nur `personalTasks`, `projectNavPrefs`,
+  `prefs`; Projektinhalte nur zwei Ebenen tief schreibbar und nie unter Server-Namen (`isServerOnlyName`).
+- Missbrauchsprüfung Prod (verschachtelte `members`/`ai_config`/`entitlements`, auffälliges `createdAt`,
+  Workspaces ohne Entitlement): Skript `qa-prod-abuse-scan.cjs` im Notizordner der Orchestrator-Gruppe,
+  ausgeführt am 2026-10-24: 13 Workspaces, keine Funde (keine gefälschten Docs, kein auffälliges
+  `createdAt`, jeder Workspace hat eine Entitlement-Doc). Keine Hinweise auf Ausnutzung von C1/H3.

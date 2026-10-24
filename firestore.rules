@@ -53,6 +53,12 @@ service cloud.firestore {
     // ---- Plan entitlements (brain/plans/billing-implementation.md) ----------
     // tenants/{tenantId}/entitlements/plan is written by Cloud Functions only. A missing doc is a
     // legacy workspace in grace and is not limited.
+    // Collection names only Cloud Functions write; never creatable as nested client data.
+    function isServerOnlyName(name) {
+      return name in ['members', 'invitations', 'entitlements', 'ai_config', 'ai_credits', 'secrets', 'api_tokens',
+        'users', 'automations', 'automation_runs', 'files', 'activity', 'legal_acceptances'];
+    }
+
     function planPath(tenantId) {
       return /databases/$(database)/documents/tenants/$(tenantId)/entitlements/plan;
     }
@@ -502,16 +508,37 @@ service cloud.firestore {
         match /{subcollection}/{document=**} {
           allow read: if canAccessProjectById(tenantId, projectId) &&
             !isRetiredProjectCollection(subcollection);
+        }
+
+        // Writes only two levels deep (e.g. tasks/{t}, tasks/{t}/subtasks/{s}) and never into
+        // server-trusted collection names: arbitrary nested paths were a forging ground for
+        // path-injected ids (audit 2026-10-24, C1).
+        function canWriteProjectContent(subcollection) {
           // No writes below a missing project: a still-open page must not
           // recreate orphaned subcollections after the project was deleted.
-          allow write: if canAccessProjectById(tenantId, projectId) && projectExists(tenantId, projectId) &&
+          return canAccessProjectById(tenantId, projectId) && projectExists(tenantId, projectId) &&
             !isRetiredProjectCollection(subcollection) && !projectLocked(tenantId, projectId);
+        }
+
+        match /{subcollection}/{docId} {
+          allow write: if canWriteProjectContent(subcollection);
+        }
+
+        match /{subcollection}/{docId}/{nested}/{nestedId} {
+          allow write: if canWriteProjectContent(subcollection) && !isServerOnlyName(nested);
         }
       }
 
       // User-owned tenant data (for example personal tasks)
-      match /users/{userId}/{document=**} {
+      // Only the known per-user collections (personal tasks, project nav prefs, wiki prefs); a recursive
+      // wildcard let any member write e.g. users/{uid}/members/{uid} (audit 2026-10-24, C1).
+      match /users/{userId} {
         allow read, write: if authed() && request.auth.uid == userId && isTenantMember(tenantId);
+
+        match /{collection}/{docId} {
+          allow read, write: if authed() && request.auth.uid == userId && isTenantMember(tenantId) &&
+            collection in ['personalTasks', 'projectNavPrefs', 'prefs'];
+        }
       }
 
       // Wiki & Docs (brain/plans/wiki-concept.md). Workspace pages: full members only.
