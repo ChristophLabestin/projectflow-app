@@ -1,0 +1,305 @@
+{
+  "database": {
+    "rules": "database.rules.json"
+  },
+  "firestore": {
+    "database": "(default)",
+    "location": "eur3",
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
+  },
+  "hosting": {
+    "public": "web/dist",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "headers": [
+      {
+        "source": "**",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-cache"
+          },
+          {
+            "key": "Strict-Transport-Security",
+            "value": "max-age=31536000; includeSubDomains"
+          },
+          {
+            "key": "X-Content-Type-Options",
+            "value": "nosniff"
+          },
+          {
+            "key": "X-Frame-Options",
+            "value": "DENY"
+          },
+          {
+            "key": "Referrer-Policy",
+            "value": "strict-origin-when-cross-origin"
+          },
+          {
+            "key": "Permissions-Policy",
+            "value": "camera=(), microphone=(), geolocation=(), payment=(), usb=()"
+          },
+          {
+            "key": "Content-Security-Policy-Report-Only",
+            "value": "default-src 'self'; script-src 'self' 'unsafe-inline' https://apis.google.com https://www.gstatic.com https://www.google.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https:; media-src 'self' blob: https:; connect-src 'self' https: wss:; frame-src 'self' https://*.firebaseapp.com https://accounts.google.com https://www.google.com https://www.youtube.com; worker-src 'self' blob:; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
+          }
+        ]
+      },
+      {
+        "source": "/assets/**/*.@(js|css|woff|woff2)",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "public, max-age=31536000, immutable"
+          }
+        ]
+      },
+      {
+        "source": "/.well-known/apple-app-site-association",
+        "headers": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ]
+      }
+    ],
+    "rewrites": [
+      {
+        "source": "/api/assist",
+        "function": "aiAssist",
+        "region": "europe-west3"
+      },
+      {
+        "source": "/mcp",
+        "function": "mcpServer",
+        "region": "europe-west3"
+      },
+      {
+        "source": "/.well-known/oauth-protected-resource",
+        "function": "mcpServer",
+        "region": "europe-west3"
+      },
+      {
+        "source": "/.well-known/oauth-protected-resource/**",
+        "function": "mcpServer",
+        "region": "europe-west3"
+      },
+      {
+        "source": "/.well-known/oauth-authorization-server",
+        "function": "oauth",
+        "region": "europe-west3"
+      },
+      {
+        "source": "/.well-known/oauth-authorization-server/**",
+        "function": "oauth",
+        "region": "europe-west3"
+      },
+      {
+        "source": "/oauth/authorize",
+        "function": "oauth",
+        "region": "europe-west3"
+      },
+      {
+        "source": "/oauth/token",
+        "function": "oauth",
+        "region": "europe-west3"
+      },
+      {
+        "source": "/oauth/register",
+        "function": "oauth",
+        "region": "europe-west3"
+      },
+      {
+        "source": "/oauth/revoke",
+        "function": "oauth",
+        "region": "europe-west3"
+      },
+      {
+        "source": "/api/crash",
+        "function": "crashIngest",
+        "region": "europe-west3"
+      },
+      {
+        "source": "/api/legal",
+        "function": "legalDocument",
+        "region": "europe-west3"
+      },
+      {
+        "source": "/api/legal/**",
+        "function": "legalDocument",
+        "region": "europe-west3"
+      },
+      {
+        "source": "/generatePasskeyRegistrationOptions",
+        "function": "generatePasskeyRegistrationOptions",
+        "region": "europe-west3"
+      },
+      {
+        "source": "/verifyPasskeyRegistration",
+        "function": "verifyPasskeyRegistration",
+        "region": "europe-west3"
+      },
+      {
+        "source": "/generatePasskeyAuthenticationOptions",
+        "function": "generatePasskeyAuthenticationOptions",
+        "region": "europe-west3"
+      },
+      {
+        "source": "/verifyPasskeyAuthentication",
+        "function": "verifyPasskeyAuthentication",
+        "region": "europe-west3"
+      },
+      {
+        "source": "/testSMTPConnection",
+        "function": "testSMTPConnection",
+        "region": "europe-west3"
+      },
+      {
+        "source": "/sendContactFormEmail",
+        "function": "sendContactFormEmail",
+        "region": "europe-west3"
+      },
+      {
+        "source": "/createBlogPost**",
+        "function": "createBlogPost",
+        "region": "europe-west3"
+      },
+      {
+        "source": "/createBlogPost/**",
+        "function": "createBlogPost",
+        "region": "europe-west3"
+      },
+      {
+        "source": "/newsletterSubscribe",
+        "function": "newsletterSubscribe",
+        "region": "europe-west3"
+      },
+      {
+        "source": "/newsletterUnsubscribe",
+        "function": "newsletterUnsubscribe",
+        "region": "europe-west3"
+      },
+      {
+        "source": "/getBlogPost",
+        "function": "getBlogPosts",
+        "region": "europe-west3"
+      },
+      {
+        "source": "/getBlogPosts",
+        "function": "getBlogPosts",
+        "region": "europe-west3"
+      },
+      {
+        "source": "/getCategories",
+        "function": "getCategories",
+        "region": "europe-west3"
+      },
+      {
+        "source": "/manageCategories**",
+        "function": "manageCategories",
+        "region": "europe-west3"
+      },
+      {
+        "source": "/manageCategories/**",
+        "function": "manageCategories",
+        "region": "europe-west3"
+      },
+      {
+        "source": "/requestWaitlist",
+        "function": "requestWaitlist",
+        "region": "europe-west3"
+      },
+      {
+        "source": "/confirmWaitlist",
+        "function": "confirmWaitlist",
+        "region": "europe-west3"
+      },
+      {
+        "source": "/api/requestWaitlist",
+        "function": "requestWaitlist",
+        "region": "europe-west3"
+      },
+      {
+        "source": "/api/confirmWaitlist",
+        "function": "confirmWaitlist",
+        "region": "europe-west3"
+      },
+      {
+        "source": "/api/confirmWaitlist",
+        "function": "confirmWaitlist",
+        "region": "europe-west3"
+      },
+      {
+        "source": "/requestNewsletterSignup",
+        "function": "requestNewsletterSignup",
+        "region": "europe-west3"
+      },
+      {
+        "source": "/confirmNewsletterSignup",
+        "function": "confirmNewsletterSignup",
+        "region": "europe-west3"
+      },
+      {
+        "source": "/api/requestNewsletterSignup",
+        "function": "requestNewsletterSignup",
+        "region": "europe-west3"
+      },
+      {
+        "source": "/api/confirmNewsletterSignup",
+        "function": "confirmNewsletterSignup",
+        "region": "europe-west3"
+      },
+      {
+        "source": "/googleDriveStorageCallback",
+        "function": "googleDriveStorageCallback",
+        "region": "europe-west3"
+      },
+      {
+        "source": "/api/**",
+        "function": "api",
+        "region": "europe-west3"
+      },
+      {
+        "source": "**",
+        "destination": "/index.html"
+      }
+    ]
+  },
+  "storage": {
+    "rules": "storage.rules"
+  },
+  "functions": {
+    "predeploy": [
+      "npm --prefix \"$RESOURCE_DIR\" run build"
+    ]
+  },
+  "emulators": {
+    "auth": {
+      "port": 7311
+    },
+    "firestore": {
+      "port": 6311
+    },
+    "storage": {
+      "port": 7312
+    },
+    "ui": {
+      "enabled": false
+    },
+    "singleProjectMode": true,
+    "functions": {
+      "port": 5311
+    },
+    "hub": {
+      "port": 7321
+    },
+    "logging": {
+      "port": 7322
+    }
+  }
+}
