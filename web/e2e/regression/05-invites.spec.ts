@@ -1,6 +1,6 @@
 import { expect, test, type BrowserContext, type Page } from '@playwright/test';
 
-import { adminDelete, adminList, adminSet, callable, idToken, signedInContext, TENANT, USERS, verifyEmail, waitForApp } from './helpers';
+import { adminDelete, adminGet, adminList, adminSet, callable, idToken, signedInContext, TENANT, USERS, verifyEmail, waitForApp } from './helpers';
 
 const ENT = `tenants/${TENANT}/entitlements/plan`;
 const fullMembers = async () => (await adminList(`tenants/${TENANT}/members`)).filter((m) => m.data.role !== 'Guest').length;
@@ -15,10 +15,16 @@ const openInvite = async (page: Page) => {
 test.describe.serial('invites with seat limit', () => {
     let context: BrowserContext;
     let inviteId = '';
-    test.beforeAll(async ({ browser }) => { context = await signedInContext(browser); });
+    let original: Record<string, any> | null = null;
+    test.beforeAll(async ({ browser }) => {
+        original = await adminGet(ENT);
+        context = await signedInContext(browser);
+    });
     test.afterAll(async () => {
         await context?.close();
+        // Back to the seeded entitlement (other specs run on the same workspace).
         await adminDelete(ENT);
+        if (original) await adminSet(ENT, original);
         await adminDelete(`tenants/${TENANT}/members/${JSON.parse(Buffer.from((await idToken(USERS.outsider)).split('.')[1], 'base64url').toString()).user_id}`);
     });
 
@@ -48,7 +54,7 @@ test.describe.serial('invites with seat limit', () => {
 
     test('accepting is refused when all paid seats are used, allowed after adding a seat', async () => {
         const seats = await fullMembers();
-        await adminSet(ENT, { plan: 'team', workspaceType: 'team', status: 'active', memberLimit: 50, invitesAllowed: true, stripeSubscriptionId: 'sub_e2e', seats });
+        await adminSet(ENT, { plan: 'team', workspaceType: 'team', status: 'active', memberLimit: 50, invitesAllowed: true, stripeSubscriptionId: 'sub_e2e', seats, billingExempt: false });
         await verifyEmail(USERS.outsider);
         const token = await idToken(USERS.outsider);
         const refused = await callable('acceptWorkspaceInvite', { tenantId: TENANT, inviteId }, token);

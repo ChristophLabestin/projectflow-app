@@ -1,13 +1,15 @@
 import { expect, test, type BrowserContext } from '@playwright/test';
 
-import { adminDelete, adminSet, signedInContext, TENANT, waitForApp } from './helpers';
+import { adminDelete, adminGet, adminSet, signedInContext, TENANT, waitForApp } from './helpers';
 
 const ENT = `tenants/${TENANT}/entitlements/plan`;
 
 /** Free plan on the demo workspace: project limit, read-only project over the limit, no invites. */
 test.describe.serial('plan limits: Free', () => {
     let context: BrowserContext;
+    let original: Record<string, any> | null = null;
     test.beforeAll(async ({ browser }) => {
+        original = await adminGet(ENT);
         await adminSet(ENT, {
             plan: 'free', workspaceType: 'team', status: 'free', seats: 0, memberLimit: 1, projectLimit: 3, projectCount: 4,
             invitesAllowed: false, lockedProjectIds: ['p-old'], memberCount: 1, aiAddonSeats: 0, aiMemberIds: [],
@@ -16,7 +18,9 @@ test.describe.serial('plan limits: Free', () => {
     });
     test.afterAll(async () => {
         await context?.close();
+        // Back to the seeded entitlement (other specs run on the same workspace).
         await adminDelete(ENT);
+        if (original) await adminSet(ENT, original);
     });
 
     test('creating a fourth project shows the limit dialog', async () => {
