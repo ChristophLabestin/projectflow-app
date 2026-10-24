@@ -151,6 +151,13 @@ Backend-Callables (europe-west3, Firebase-Auth nötig → Landing nutzt Firebase
   live beobachten oder `?openSettings=billing` in der App). Erneuter Aufruf mit gleichen Werten liefert dieselbe offene
   Subscription (idempotent); geänderte Werte stornieren die offene. Unbezahlte Subscriptions verfallen nach 23 h bei Stripe und
   ändern am Workspace nichts.
+- **Neuer Team-Workspace beim Kauf** (2026-10-24): `createSubscriptionIntent({newWorkspace: {name, language?}, plan: 'team', interval, seats})`
+  reserviert eine Tenant-ID, startet ein 14-Tage-Test-Abo (Karte per SetupIntent, `intentType: 'setup'`) und liefert zusätzlich
+  `tenantId`. Der Workspace (Tenant, Owner, Entitlement) entsteht **erst im Webhook, sobald die Karte gespeichert** bzw. bezahlt ist;
+  vorher existiert nichts in ProjectFlow. Gleiche Werte erneut = dieselbe offene Subscription und Tenant-ID, andere Werte = alte
+  stornieren, neue reservieren (`billing_pending_workspaces/{uid}`, server-only). Abgebrochene Test-Abos storniert Stripe am Testende
+  (`missing_payment_method: cancel`). `getSubscriptionStatus({tenantId})` liefert bis dahin `{status: 'pending', active: false}`.
+  `createTeamWorkspace` bleibt für die App.
 - **Änderungen am bestehenden Abo laufen über dieselben Callables** (`change: true`): Intervallwechsel und KI-Plätze, anteilig und
   sofort abgerechnet (`proration_behavior: always_invoice`); Upgrades greifen erst nach Zahlung (`pending_if_incomplete`). Wird die
   hinterlegte Karte belastet, kommt `intentType: 'none'`; braucht es 3-D-Secure, `intentType: 'payment'` mit `clientSecret`.
