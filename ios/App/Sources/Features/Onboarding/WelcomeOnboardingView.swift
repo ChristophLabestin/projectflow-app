@@ -354,23 +354,22 @@ struct WelcomeOnboardingView: View {
             teamSize = mode == .solo ? "solo" : (teamSize == "solo" ? nil : teamSize)
         } label: {
             HStack(spacing: PFSpace.m) {
-                Image(systemName: icon).font(.system(size: 18, weight: .semibold)).foregroundStyle(PFColor.textMain)
+                Image(systemName: icon).font(.system(size: 18, weight: .semibold)).foregroundStyle(selected ? PFColor.onPrimary : PFColor.textMain)
                     .frame(width: 28)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(title).pfText(.rowTitle).foregroundStyle(PFColor.textMain)
-                    Text(hint).pfText(.meta).foregroundStyle(PFColor.textMuted).fixedSize(horizontal: false, vertical: true)
+                    Text(title).pfText(.rowTitle).foregroundStyle(selected ? PFColor.onPrimary : PFColor.textMain)
+                    Text(hint).pfText(.meta).foregroundStyle(selected ? PFColor.onPrimary.opacity(0.75) : PFColor.textMuted).fixedSize(horizontal: false, vertical: true)
                 }
                 Spacer(minLength: 0)
                 Image(systemName: selected ? "checkmark.circle.fill" : "circle")
                     .font(.system(size: 22, weight: .medium))
-                    .foregroundStyle(selected ? PFColor.textMain : PFColor.hairlineStrong)
+                    .foregroundStyle(selected ? PFColor.onPrimary : PFColor.hairlineStrong)
             }
             .padding(.horizontal, PFSpace.m)
             .padding(.vertical, 12)
             .frame(minHeight: 64)
-            // Selected sinks into the canvas (no outline); the others stay raised cards.
-            .background(selected ? .clear : PFColor.card, in: RoundedRectangle(cornerRadius: PFRadius.card, style: .continuous))
-            .pfSunken(selected, in: RoundedRectangle(cornerRadius: PFRadius.card, style: .continuous))
+            // Chosen option is inverted (web "selected"); glyphs inside flip with it.
+            .background(selected ? PFColor.primary : PFColor.card, in: RoundedRectangle(cornerRadius: PFRadius.card, style: .continuous))
             .pfElevation(selected ? .flat : .card, radius: PFRadius.card)
             .contentShape(.rect)
         }

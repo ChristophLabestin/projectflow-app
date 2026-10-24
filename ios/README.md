@@ -51,8 +51,13 @@ open `/admin/crashes`. Release = `MARKETING_VERSION`, build = `CURRENT_PROJECT_V
 
 ## Rules
 
-- Borderless like the web: inputs are a tinted fill (`PFColor.field`, `pfFieldSurface`), focus and selected choices sink in
-  (`PFColor.sunken` + inner shadow, `pfSunken`) — no borders, rings or outlines. Onboarding name uses the capture title field.
+- State surfaces like the web (STYLING §1.10/§1.11, `PFSurfaces.swift`), never a border, ring or outline:
+  **sunken** (`pfSunken`, `PFSunkenFill`: `PFColor.sunken` + inner shadow) for focused fields (`pfFieldSurface`, rest =
+  `PFColor.field`) and the current navigation/list item (dock tab, sidebar workspace, calendar day); **selected**
+  (inverted primary, glyphs flip to `onPrimary`, icon tiles `onPrimary` 14 %) for choices — option cards, chips,
+  segments, templates, theme; **menus/option sheets** (`pfMenuOption`): chosen option sunken + semibold + 3×14 primary
+  bar + check; floating panels `pfGlassPanel` (milky, borderless). Exempt: checkboxes/toggles, colour swatches, tab
+  underlines, error/drop states, status/priority markers. Onboarding name uses the capture title field.
 
 - **Native mechanics, custom look.** Sheets (`PFPresenter.present`, backed by SwiftUI `.sheet` + detents) and
   page navigation (`PFNavigator`, backed by `NavigationStack`, system bar hidden) are native SwiftUI so

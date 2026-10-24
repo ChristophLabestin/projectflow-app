@@ -51,15 +51,25 @@ public enum PFColor {
     public static let sheetSurface = Color(uiColor: UIColor { @Sendable traits in traits.userInterfaceStyle == .dark
         ? UIColor(hex: 0x0B0D11, alpha: 0.86) : UIColor(white: 1, alpha: 0.86) })
 
-    /// Input surface at rest (web `--color-surface-input`): a translucent tint, no border, readable on canvas,
-    /// cards and sheets alike.
-    public static let field = Color(uiColor: UIColor { @Sendable traits in traits.userInterfaceStyle == .dark
-        ? UIColor(white: 1, alpha: 0.06) : UIColor(white: 0, alpha: 0.045) })
-
-    /// Focus and selection (web `--color-surface-sunken`): the surface sinks in a little instead of getting a
-    /// ring or outline. Used with an inner shadow (`pfSunken`).
-    public static let sunken = Color(uiColor: UIColor { @Sendable traits in traits.userInterfaceStyle == .dark
-        ? UIColor(white: 0, alpha: 0.32) : UIColor(white: 0, alpha: 0.075) })
+    // State surfaces (web STYLING §1.10/§1.11: borderless / sunken / selected / glass).
+    /// Field at rest (web `surface-hover`): filled, no hairline.
+    public static let field = dynamic(0xEDEDEE, 0x1E242E)
+    /// Field under the pointer (web `--field-bg-hover`).
+    public static let fieldHover = dynamic(0xE9E9EB, 0x232A35)
+    /// Sunken (web `--sunken-bg`): focused field, current navigation/list item. Always with `sunkenShadow`.
+    public static let sunken = dynamic(0xE7E7EA, 0x12161C)
+    /// Inner shadow strength of sunken surfaces (light 5 %, dark 35 %).
+    public static let sunkenShadow = Color(uiColor: UIColor { @Sendable traits in traits.userInterfaceStyle == .dark
+        ? UIColor(white: 0, alpha: 0.35) : UIColor(white: 0, alpha: 0.05) })
+    /// Highlight inside glass menus: sinks into the glass (black 4.5 % light / 28 % dark).
+    public static let glassSunken = Color(uiColor: UIColor { @Sendable traits in traits.userInterfaceStyle == .dark
+        ? UIColor(white: 0, alpha: 0.28) : UIColor(white: 0, alpha: 0.045) })
+    /// Milky glass panel tint (white / card at 86 %).
+    public static let glassTint = Color(uiColor: UIColor { @Sendable traits in traits.userInterfaceStyle == .dark
+        ? UIColor(hex: 0x151920, alpha: 0.86) : UIColor(white: 1, alpha: 0.86) })
+    /// Fine light top edge of glass panels.
+    public static let glassEdge = Color(uiColor: UIColor { @Sendable traits in traits.userInterfaceStyle == .dark
+        ? UIColor(white: 1, alpha: 0.06) : UIColor(white: 1, alpha: 0.7) })
 
     public static let scrim = Color(uiColor: UIColor(white: 0, alpha: 0.35))
 
