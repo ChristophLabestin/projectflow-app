@@ -272,7 +272,7 @@ Formular-Eigentümers (opt-in).
 `formQuotaFor`, Zugriffs-Helfern, `responseExpiry`; Golden Fixtures `shared/fixtures/forms{Schema,Visibility,Submission,Quota}`;
 Regeln + Regeltests (inkl. Ausschluss aus dem Tenant-Catch-all), Indizes + TTL; Doc-Typen `web/types/forms.ts`;
 `formsService` (Quota-Abo, Legal speichern); Karte „Rechtliches“ in den Workspace-Einstellungen; Rechte
-`tenant.forms.create|manageAll`; Bereichs-Flag `forms` (aus, bis Paket 2 die Routen bringt). **Deploy offen:**
+`tenant.forms.create|manageAll`; Bereichs-Flag `forms` (aus, bis Paket 2 die Routen bringt). **Deployed 2026-10-24** (main `cea9a274`):
 `firestore:rules` + `firestore:indexes` (keine Functions in Paket 1).
 
 1. **Fundament** — `forms-logic` (+ Tests, Golden Fixtures), Datenmodell, Regeln/Indizes/TTL,
