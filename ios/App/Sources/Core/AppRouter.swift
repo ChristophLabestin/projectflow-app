@@ -28,6 +28,8 @@ enum AppRoute: Hashable {
     case insights(tenantId: String)
     case files(tenantId: String)
     case wiki(tenantId: String)
+    case flows(tenantId: String)
+    case flow(tenantId: String, flowId: String)
     case wikiPage(tenantId: String, docId: String, startEditing: Bool = false)
 }
 
@@ -112,6 +114,8 @@ final class AppRouter {
             open(.insights(tenantId: tenant), in: .projects)
         case "files", "media":
             open(.files(tenantId: tenant), in: .projects)
+        case "flows":
+            if parts.count >= 2 { open(.flow(tenantId: tenant, flowId: parts[1]), in: .projects) } else { open(.flows(tenantId: tenant), in: .projects) }
         case "wiki":
             if parts.count >= 2 { open(.wikiPage(tenantId: tenant, docId: parts[1]), in: .projects) } else { open(.wiki(tenantId: tenant), in: .projects) }
         case "notifications":

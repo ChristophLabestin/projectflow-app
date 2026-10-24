@@ -278,6 +278,8 @@ struct RouteDestination: View {
         case .insights(let tenantId): InsightsScreen(tenantId: tenantId)
         case .files(let tenantId): FilesScreen(tenantId: tenantId)
         case .wiki(let tenantId): WikiScreen(tenantId: tenantId)
+        case .flows(let tenantId): FlowsScreen(tenantId: tenantId)
+        case .flow(let tenantId, let flowId): FlowDetailScreen(tenantId: tenantId, flowId: flowId)
         case .wikiPage(let tenantId, let docId, let startEditing): WikiPageScreen(tenantId: tenantId, docId: docId, startEditing: startEditing)
         }
     }
