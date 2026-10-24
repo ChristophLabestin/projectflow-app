@@ -63,7 +63,8 @@ public extension View {
     }
 }
 
-public enum PFElevation: Sendable { case card, lifted, overlay }
+/// `flat`: no edge, no shadow (e.g. a selected card that sank into the canvas).
+public enum PFElevation: Sendable { case flat, card, lifted, overlay }
 
 struct PFElevationModifier: ViewModifier {
     let level: PFElevation
@@ -72,13 +73,15 @@ struct PFElevationModifier: ViewModifier {
 
     func body(content: Content) -> some View {
         let shape = RoundedRectangle(cornerRadius: radius, style: .continuous)
-        if scheme == .dark {
+        if level == .flat {
+            content
+        } else if scheme == .dark {
             content
                 .overlay { shape.strokeBorder(Color.white.opacity(level == .card ? 0.03 : 0.06), lineWidth: 1) }
                 .shadow(color: .black.opacity(level == .card ? 0 : 0.5), radius: level == .overlay ? 24 : 12, y: level == .overlay ? 12 : 6)
         } else {
             let (near, far, farRadius, farY): (Double, Double, CGFloat, CGFloat) = switch level {
-            case .card: (0.06, 0.07, 4, 2)
+            case .flat, .card: (0.06, 0.07, 4, 2)
             case .lifted: (0.06, 0.12, 12, 8)
             case .overlay: (0.06, 0.14, 16, 16)
             }

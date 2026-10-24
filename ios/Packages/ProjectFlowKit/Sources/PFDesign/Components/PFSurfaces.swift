@@ -156,3 +156,25 @@ public struct PFCardList<Content: View>: View {
         .pfCard()
     }
 }
+
+// MARK: - Borderless fields and sunken selection
+
+public extension View {
+    /// Input background without border: `PFColor.field` at rest, sunken (darker, inner shadow) while focused.
+    func pfFieldSurface(focused: Bool, cornerRadius: CGFloat = PFRadius.control) -> some View {
+        background {
+            RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                .fill((focused ? PFColor.sunken : PFColor.field)
+                    .shadow(.inner(color: .black.opacity(focused ? 0.10 : 0), radius: 2.5, y: 1)))
+        }
+    }
+
+    /// Selected choice (cards, chips, segments): the surface sinks in instead of an outline.
+    func pfSunken<S: Shape>(_ isOn: Bool, in shape: S) -> some View {
+        background {
+            if isOn {
+                shape.fill(PFColor.sunken.shadow(.inner(color: .black.opacity(0.10), radius: 3, y: 1)))
+            }
+        }
+    }
+}

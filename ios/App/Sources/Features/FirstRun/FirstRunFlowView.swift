@@ -176,12 +176,10 @@ struct FirstRunFlowView: View {
             }
             .padding(.horizontal, PFSpace.m)
             .frame(minHeight: 64)
-            .background(PFColor.card, in: RoundedRectangle(cornerRadius: PFRadius.card, style: .continuous))
-            .overlay {
-                RoundedRectangle(cornerRadius: PFRadius.card, style: .continuous)
-                    .strokeBorder(PFColor.textMain.opacity(selected ? 1 : 0), lineWidth: 2)
-            }
-            .pfElevation(.card, radius: PFRadius.card)
+            // Selected sinks into the canvas (no outline); the others stay raised cards.
+            .background(selected ? .clear : PFColor.card, in: RoundedRectangle(cornerRadius: PFRadius.card, style: .continuous))
+            .pfSunken(selected, in: RoundedRectangle(cornerRadius: PFRadius.card, style: .continuous))
+            .pfElevation(selected ? .flat : .card, radius: PFRadius.card)
             .contentShape(.rect)
         }
         .buttonStyle(.pfPressable)

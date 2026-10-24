@@ -115,7 +115,7 @@ struct WorkspaceSidebar: View {
             }
             .padding(.horizontal, PFSpace.s)
             .frame(minHeight: 44)
-            .background(selected ? PFColor.raised : .clear, in: .rect(cornerRadius: 12, style: .continuous))
+            .pfSunken(selected, in: .rect(cornerRadius: 12, style: .continuous))
             .contentShape(.rect)
         }
         .buttonStyle(.pfPressable)

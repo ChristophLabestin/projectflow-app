@@ -18,7 +18,7 @@ struct WelcomeOnboardingView: View {
     @State private var markCenter: CGPoint?
     @State private var name = ""
     @State private var photoURL = ""
-    /// The name field has focus (keyboard up) — reported by `PFTextField`.
+    /// The name field has focus (keyboard up).
     @State private var nameFocused = false
     @State private var isUploadingPhoto = false
     @State private var teamName = ""
@@ -229,12 +229,19 @@ struct WelcomeOnboardingView: View {
                     .transition(.scale(scale: 0.6, anchor: .topLeading).combined(with: .opacity))
             }
             heading(L10n.t("welcome.name.title"), L10n.t("welcome.name.subtitle"))
+            // The name is written like a task title in the capture sheet: big text, no field chrome.
+            CaptureTextField(text: $name, isFocused: $nameFocused, placeholder: L10n.t("welcome.name.placeholder"),
+                             highlights: [], submitLabel: .continue, onTapHighlight: { _ in }) {
+                if canContinue { primaryAction() }
+            }
+            .accessibilityLabel(L10n.t("welcome.name.label"))
+            .onAppear { if prefilledName.isEmpty && name.isEmpty { nameFocused = true } }
             identityCard
         }
         .animation(PFMotion.respecting(PFMotion.snappy), value: nameFocused)
     }
 
-    /// The person as others will see them: photo (optional, uploads and saves right away) and the name.
+    /// Profile photo (optional, uploads and saves right away).
     private var identityCard: some View {
         VStack(alignment: .leading, spacing: PFSpace.l) {
             Button { changePhoto() } label: {
@@ -258,16 +265,6 @@ struct WelcomeOnboardingView: View {
             .disabled(isUploadingPhoto || isBusy)
             .accessibilityLabel(L10n.t(photoURL.isEmpty ? "welcome.photo.add" : "profile.photo.change"))
             .accessibilityHint(L10n.t("welcome.optional"))
-
-            VStack(alignment: .leading, spacing: PFSpace.xs) {
-                Text(L10n.t("welcome.name.label")).pfText(.metaStrong).foregroundStyle(PFColor.textMuted)
-                PFTextField(L10n.t("welcome.name.placeholder"), text: $name, systemImage: "person", submitLabel: .continue,
-                            size: .large, autoFocus: prefilledName.isEmpty, isFocused: $nameFocused) {
-                    if canContinue { primaryAction() }
-                }
-                .textContentType(.name)
-                .textInputAutocapitalization(.words)
-            }
         }
         .padding(PFSpace.l)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -371,12 +368,10 @@ struct WelcomeOnboardingView: View {
             .padding(.horizontal, PFSpace.m)
             .padding(.vertical, 12)
             .frame(minHeight: 64)
-            .background(PFColor.card, in: RoundedRectangle(cornerRadius: PFRadius.card, style: .continuous))
-            .overlay {
-                RoundedRectangle(cornerRadius: PFRadius.card, style: .continuous)
-                    .strokeBorder(PFColor.textMain.opacity(selected ? 1 : 0), lineWidth: 2)
-            }
-            .pfElevation(.card, radius: PFRadius.card)
+            // Selected sinks into the canvas (no outline); the others stay raised cards.
+            .background(selected ? .clear : PFColor.card, in: RoundedRectangle(cornerRadius: PFRadius.card, style: .continuous))
+            .pfSunken(selected, in: RoundedRectangle(cornerRadius: PFRadius.card, style: .continuous))
+            .pfElevation(selected ? .flat : .card, radius: PFRadius.card)
             .contentShape(.rect)
         }
         .buttonStyle(.pfPressable)

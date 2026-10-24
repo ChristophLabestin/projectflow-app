@@ -80,11 +80,9 @@ private struct ThemeSwatch: View {
                 }
                 .frame(height: 96)
                 .clipShape(.rect(cornerRadius: PFRadius.card, style: .continuous))
-                .overlay {
-                    RoundedRectangle(cornerRadius: PFRadius.card, style: .continuous)
-                        .strokeBorder(PFColor.primary, lineWidth: isSelected ? 2.5 : 0)
-                }
-                .overlay { RoundedRectangle(cornerRadius: PFRadius.card, style: .continuous).strokeBorder(PFColor.hairline, lineWidth: isSelected ? 0 : 1) }
+                // Selected preview sits in a sunken well instead of an outline.
+                .padding(5)
+                .pfSunken(isSelected, in: .rect(cornerRadius: PFRadius.card + 5, style: .continuous))
                 Text(title).pfText(.buttonSmall).foregroundStyle(isSelected ? PFColor.textMain : PFColor.textMuted)
             }
             .frame(maxWidth: .infinity)
