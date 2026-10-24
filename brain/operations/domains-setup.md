@@ -41,7 +41,7 @@ Date: 2026-10-23 · Firebase project `projectflow-labestin` · Done by the user 
    ```
 No code change is needed for the endpoint itself: resource and metadata follow the called host (`MCP_RESOURCES` in `functions/src/oauth-core.ts`). The OAuth issuer stays `https://app.getprojectflow.com`. `https://mcp.getprojectflow.com/` (root) shows the app — harmless.
 
-## D) admin.getprojectflow.com → admin console site
+## D) admin.getprojectflow.com → admin console site (verbunden 2026-10-24, CNAME → projectflow-admin.web.app)
 Already prepared in code/config (2026-10-23): Auth authorized domain `admin.getprojectflow.com`, console auth domain = own host
 (`admin/src/lib/firebase.ts`, CSP `frame-src 'self'`), passkey origin allow-list (`ADMIN_CONSOLE_ORIGIN` in `functions/src/passkeys.ts`),
 old app links `/admin*` → `https://admin.getprojectflow.com` (`web/screens/AdminConsoleRedirect.tsx`).
