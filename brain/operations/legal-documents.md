@@ -41,10 +41,11 @@ Admin console → **Rechtsdokumente** (`https://admin.getprojectflow.com/legal`,
 
 ## Mail delivery
 
-Uses the system SMTP (`SMTP_*` env, `no-reply@getprojectflow.com`), ~3 mails/s
-(`LEGAL_MAIL_DELAY_MS`, default 300), batches of 100, 8-minute runs that resume via cursor.
-`LEGAL_MAIL_DRY_RUN=true` (or the emulator) only logs. Check the SMTP provider's daily limit before
-publishing to a large user base (Google Workspace ≈ 2,000/day).
+Uses `sendEmail()` → Amazon SES (type `legal`, see [email-ses.md](./email-ses.md)), ~3 mails/s
+(`LEGAL_MAIL_DELAY_MS`, default 300; SES pacing to the account's max send rate on top), batches of 100,
+8-minute runs that resume via cursor. Suppressed addresses (bounce/complaint) are skipped.
+`LEGAL_MAIL_DRY_RUN=true` (or the emulator) only logs. Check the SES daily quota (Account dashboard) before
+publishing to a large user base; in the SES sandbox only verified recipients receive mail.
 
 ## Initial setup / seed
 

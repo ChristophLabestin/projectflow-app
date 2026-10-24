@@ -55,6 +55,7 @@ export function renderPage(page: PageDef): string {
                 scripts: ['/src/js/main.ts', '/src/js/buy.ts'],
                 bodyClass: 'page-buy',
                 noindex: true,
+                chrome: 'focus',
             });
         case 'notFound':
             return layout({

@@ -1,126 +1,133 @@
 import { buyCopy } from '../content/buy';
 import { site } from '../content/site';
-import { icon } from './icons';
+import { icon, logo } from './icons';
 import { esc } from './layout';
-import { legalUrl, type Lang } from './pages';
+import { legalUrl, urlFor, type Lang } from './pages';
 
 /**
- * Checkout shell (/checkout, /en/checkout). Left: order panel (plan, interval, seats, AI add-on, total, due today),
- * collapsible on mobile. Right: account → workspace → payment as one calm accordion. src/js/buy.ts drives it;
- * everything is real form markup so it stays keyboard- and screen-reader-friendly.
+ * Checkout shell (/checkout, /en/checkout): slim top bar, step bar (Plan → Konto → Workspace → Zahlung), left the
+ * step's headline plus a recap of earlier choices, right the step's question and form. src/js/buy.ts swaps the
+ * panes; everything is real form markup so it stays keyboard- and screen-reader-friendly.
  */
 export const buyBody = (lang: Lang): string => {
     const c = buyCopy[lang];
     const p = site[lang].pricing;
     const team = p.plans.find((pl) => pl.key === 'team')!;
     const personal = p.plans.find((pl) => pl.key === 'personal')!;
+    const home = urlFor('home', lang);
     const copyJson = JSON.stringify({
         ...c,
         legal: { terms: legalUrl('terms', lang), privacy: legalUrl('privacy', lang) },
-        units: { perSeat: p.perSeat, perMonth: p.perMonth, billedYearly: p.billedYearly, billedMonthly: p.billedMonthly },
         prices: {
             personal: { month: personal.monthly, year: personal.yearly },
             team: { month: team.monthly, year: team.yearly },
-            ai: { month: p.addon.price, year: p.addon.price },
         },
     }).replace(/</g, '\\u003c');
 
-    const seg = (name: string, legend: string, options: { value: string; label: string; extra?: string }[], cls: string) => `
-        <fieldset class="co-seg ${cls}">
-            <legend class="sr-only">${esc(legend)}</legend>
-            ${options.map((o) => `<label><input type="radio" name="${name}" value="${o.value}"><span>${esc(o.label)}${o.extra ? ` <em>${esc(o.extra)}</em>` : ''}</span></label>`).join('')}
-        </fieldset>`;
+    const steps = (['plan', 'account', 'workspace', 'payment'] as const).map((id, i) => `
+            <li class="ck-stepper__item" data-stepper="${id}">
+                <span class="ck-stepper__dot" aria-hidden="true"><span>${i + 1}</span>${icon('check')}</span>
+                <span class="ck-stepper__label">${esc(c.stepNames[id])}</span>
+            </li>`).join('');
 
-    const step = (n: number, id: string, title: string, body: string) => `
-        <section class="co-step" id="step-${id}" data-step="${id}" aria-labelledby="step-${id}-title">
-            <header class="co-step__head">
-                <span class="co-step__num" aria-hidden="true"><span>${n}</span>${icon('check')}</span>
-                <div class="co-step__title">
-                    <h2 id="step-${id}-title">${esc(title)}</h2>
-                    <p class="co-step__summary" data-step-summary></p>
-                </div>
-                <button type="button" class="co-step__edit" data-edit="${id}" hidden>${esc(c.edit)}<span class="sr-only">: ${esc(title)}</span></button>
-            </header>
-            <div class="co-step__body" data-step-body hidden>${body}</div>
-        </section>`;
+    const planCard = (key: 'personal' | 'team', ic: 'user' | 'users') => `
+                    <label class="ck-option ck-option--plan">
+                        <input type="radio" name="plan" value="${key}">
+                        <span class="ck-option__radio" aria-hidden="true"></span>
+                        <span class="ck-option__icon">${icon(ic)}</span>
+                        <span class="ck-option__body">
+                            <b>${esc(c.plan[key].name)}</b>
+                            <small>${esc(c.plan[key].text)}</small>
+                        </span>
+                        <span class="ck-option__price"><b data-plan-amount="${key}"></b> ${esc(c.plan[key].unit)}</span>
+                    </label>`;
 
     const terms = esc(c.payment.terms)
         .replace('{terms}', `<a href="${legalUrl('terms', lang)}" target="_blank" rel="noopener">${esc(c.payment.termsLink)}</a>`)
         .replace('{privacy}', `<a href="${legalUrl('privacy', lang)}" target="_blank" rel="noopener">${esc(c.payment.privacyLink)}</a>`);
 
     return `
-<div class="co" data-buy>
+<div class="ck" data-buy>
     <script type="application/json" id="buy-copy">${copyJson}</script>
-    <noscript><p class="co-noscript">${lang === 'de' ? 'Für den Kauf wird JavaScript benötigt.' : 'JavaScript is required to purchase.'}</p></noscript>
+    <header class="ck-top">
+        <a class="ck-top__brand" href="${home}">${logo('ck-top__logo')}<span>ProjectFlow</span></a>
+        <a class="ck-top__back" href="${home}#pricing">${icon('arrowLeft')}${esc(c.back)}</a>
+    </header>
 
-    <aside class="co-order" aria-labelledby="co-title">
-        <details class="co-fold" data-order-fold open>
-            <summary class="co-fold__bar">
-                <span>${esc(c.order.toggle)}</span>
-                <b data-bar-total></b>
-                ${icon('chevronDown', 'co-fold__chev')}
-            </summary>
-            <div class="co-order__body">
-                <h1 class="co-eyebrow" id="co-title">${esc(c.title)}</h1>
-                ${seg('plan', c.order.plan, [{ value: 'personal', label: c.plan.personal.name }, { value: 'team', label: c.plan.team.name }], 'co-seg--plan')}
+    <nav class="ck-stepper" aria-label="${lang === 'de' ? 'Fortschritt' : 'Progress'}">
+        <ol>${steps}
+        </ol>
+    </nav>
 
-                <div class="co-hero">
-                    <p class="co-hero__name"><span data-plan-name></span><span class="co-badge" data-trial-badge hidden>${esc(c.summary.trialBadge)}</span></p>
-                    <p class="co-hero__text" data-plan-text></p>
-                    <p class="co-hero__price"><b data-unit-price></b><span data-unit-label></span></p>
+    <noscript><p class="ck-noscript">${lang === 'de' ? 'Für den Kauf wird JavaScript benötigt.' : 'JavaScript is required to purchase.'}</p></noscript>
+
+    <div class="ck-grid">
+        <section class="ck-intro" aria-live="polite">
+            <p class="ck-eyebrow" data-eyebrow></p>
+            <h1 class="ck-headline" data-headline></h1>
+            <p class="ck-lead" data-lead></p>
+            <div class="ck-recap" data-recap></div>
+            <p class="ck-intro__foot">${esc(c.plan.pricesNet)}</p>
+        </section>
+
+        <section class="ck-panel" aria-labelledby="ck-question">
+            <button type="button" class="ck-back" data-back hidden>${icon('arrowLeft')}${esc(c.backStep)}</button>
+            <h2 class="ck-question" id="ck-question" data-question tabindex="-1"></h2>
+            <form class="ck-form" data-buy-form novalidate>
+                <div class="ck-pane" data-pane="plan" hidden>
+                    <fieldset class="ck-options">
+                        <legend class="sr-only">${esc(c.stepNames.plan)}</legend>
+                        ${planCard('personal', 'user')}
+                        ${planCard('team', 'users')}
+                    </fieldset>
+                    <div class="ck-seats" data-seats hidden>
+                        <div class="ck-seats__text">
+                            <label for="ck-seats-input">${esc(c.plan.seats)}</label>
+                            <small>${esc(c.plan.seatsHint)}</small>
+                        </div>
+                        <div class="ck-counter">
+                            <button type="button" data-seat-step="-1" aria-label="${esc(c.plan.seatsLess)}">−</button>
+                            <input id="ck-seats-input" name="seats" type="number" min="1" max="50" step="1" inputmode="numeric" value="1">
+                            <button type="button" data-seat-step="1" aria-label="${esc(c.plan.seatsMore)}">+</button>
+                        </div>
+                    </div>
+                    <div class="ck-interval">
+                        <p class="ck-label" id="ck-interval-label">${esc(c.plan.intervalLabel)}</p>
+                        <div class="ck-seg" role="radiogroup" aria-labelledby="ck-interval-label">
+                            <label><input type="radio" name="interval" value="month"><span>${esc(c.plan.monthly)}</span></label>
+                            <label><input type="radio" name="interval" value="year"><span>${esc(c.plan.yearly)}</span></label>
+                        </div>
+                        <p class="ck-note" data-interval-note></p>
+                    </div>
+                    <div class="ck-plan-sum">
+                        <b data-sum-label></b>
+                        <span><b data-sum-amount></b> <span data-sum-unit></span></span>
+                    </div>
+                    <button type="button" class="ck-btn" data-next="plan">${esc(c.plan.nextPlan)}${icon('arrowRight')}</button>
+                    <p class="ck-fine">${esc(c.plan.checkLater)}</p>
                 </div>
 
-                ${seg('interval', c.order.billing, [{ value: 'month', label: c.plan.monthly }, { value: 'year', label: c.plan.yearly, extra: c.plan.save }], 'co-seg--interval')}
+                <div class="ck-pane" data-pane="account" hidden></div>
+                <div class="ck-pane" data-pane="workspace" hidden></div>
 
-                <dl class="co-lines" data-summary-lines></dl>
-                <p class="co-hint" data-seats-hint></p>
-
-                <label class="co-switch">
-                    <span class="co-switch__text">
-                        <b>${icon('sparkles')}${esc(c.summary.ai)} <span class="co-switch__price">+${p.addon.price}&nbsp;€ ${esc(p.addon.unit)}</span></b>
-                        <small data-ai-text></small>
-                    </span>
-                    <input type="checkbox" name="ai" role="switch">
-                    <span class="co-switch__track" aria-hidden="true"></span>
-                </label>
-
-                <div class="co-total">
-                    <p><span>${esc(c.summary.subtotal)}</span><b data-summary-total></b></p>
-                    <p class="co-total__vat">${esc(c.summary.vat)}</p>
+                <div class="ck-pane" data-pane="payment" hidden>
+                    <div class="ck-express" data-express></div>
+                    <p class="ck-or" data-or hidden><span>${esc(c.payment.orCard)}</span></p>
+                    <div class="ck-payment" data-payment-element><p class="ck-loading">${esc(c.payment.loading)}</p></div>
+                    <dl class="ck-totals" data-totals></dl>
+                    <label class="ck-check">
+                        <input type="checkbox" name="terms" required>
+                        <span>${terms}</span>
+                    </label>
+                    <p class="ck-error" data-pay-error role="alert" hidden></p>
+                    <button type="submit" class="ck-btn" data-pay><span>${esc(c.payment.submit)}</span>${icon('arrowRight')}</button>
+                    <p class="ck-fine" data-fine></p>
                 </div>
-                <div class="co-due">
-                    <p><span>${esc(c.summary.dueToday)}</span><b data-due-amount></b></p>
-                    <p class="co-due__note" data-due-note></p>
-                </div>
-                <p class="co-fine">${esc(c.summary.vatNote)}</p>
-            </div>
-        </details>
-        <ul class="co-trust">
-            <li>${icon('lock')}${esc(c.trust[0])}</li>
-            <li>${icon('calendar')}${esc(c.trust[1])}</li>
-            <li>${icon('file')}${esc(c.trust[2])}</li>
-        </ul>
-    </aside>
-
-    <div class="co-main">
-        <form class="co-steps" data-buy-form novalidate>
-            ${step(1, 'account', c.account.title, `<div data-account></div>`)}
-            ${step(2, 'workspace', c.workspace.title, `<div data-workspace></div>`)}
-            ${step(3, 'payment', c.payment.title, `
-                <p class="co-trial" data-trial hidden></p>
-                <div class="co-payment" data-payment-element><p class="co-loading">${esc(c.payment.loading)}</p></div>
-                <label class="co-check">
-                    <input type="checkbox" name="terms" required>
-                    <span>${terms}</span>
-                </label>
-                <p class="co-error" data-pay-error role="alert" hidden></p>
-                <button type="submit" class="btn btn--primary btn--lg co-submit" data-pay>${icon('lock')}<span>${esc(c.payment.submit)}</span></button>
-                <ul class="co-legal">
-                    <li data-term-text>${esc(c.payment.termYearly)}</li>
-                    <li>${esc(c.payment.cancelHint)}</li>
-                </ul>`)}
-        </form>
-        <section class="co-done" data-done hidden aria-live="polite"></section>
+            </form>
+            <div class="ck-done" data-done hidden></div>
+        </section>
     </div>
+
+    <a class="ck-help" href="mailto:hello@getprojectflow.com?subject=Checkout">${icon('help')}${esc(c.help)}</a>
 </div>`;
 };

@@ -48,7 +48,7 @@ These routes are rendered inside the authenticated app shell/layout.
 - Workspace suspended (`tenants/{id}.suspendedAt`): `WorkspaceProvider` replaces the app with a suspension notice (switch workspace / support / sign out). Platform banner `PlatformAnnouncement` sits below the TopBar.
 - [x] `/admin/*`, `/insights/onboarding` — moved to the **admin console** (`admin/`, see below); `AdminConsoleRedirect` sends old links to `VITE_ADMIN_CONSOLE_URL` (default `https://admin.getprojectflow.com`, `/insights/onboarding` → `/onboarding`).
 - [x] `/wiki`, `/wiki/:docId` — Workspace wiki (lazy `screens/wiki/WikiScreen`; full members, guests see a notice): page tree with drag & drop, favorites, search, templates, trash (`?view=trash`), Tiptap page editor with autosave, versions, AI, task links, backlinks. Concept `brain/plans/wiki-concept.md`. Sidebar entry via `WORKSPACE_AREAS.wiki`.
-- [x] `/flows`, `/flows/new` (`?template=&projectId=&back=`), `/flows/:flowId` — Flows (automations; lazy `screens/flows/FlowsScreen` + `FlowEditor`; full members, guests see a notice): list with toggle/status/usage, template gallery, step editor Wenn → Falls → Dann, preview + dry run, run log with retry. Concept `brain/plans/flows-concept.md`. Sidebar entry via `WORKSPACE_AREAS.flows`.
+- [x] `/flows` (home), `/flows/new` (start: `?start=text|template|blank&category=&projectId=`), `/flows/new/edit` (`?template=`/`?blank=1`/navigation state from "Flow aus Satz"), `/flows/:flowId` (`?tab=build|test|log`) — Flows (automations) in a shell like the wiki: lazy `screens/flows/FlowsLayout` with sidebar (all flows grouped by scope, search, status filter, "Neuer Flow", usage) and `<Outlet>` for `FlowsHome`, `FlowNew`, `FlowEditor`. Full members; guests see a notice. Concept `brain/plans/flows-concept.md`. Sidebar entry via `WORKSPACE_AREAS.flows`.
 - Consent gate: every signed-in route (incl. `/desktop/quick-access|capture|day|tray`) is wrapped in `LegalConsentGate`; contract `brain/plans/legal-consent-contract.md`.
 - [x] `/projects` — Projects list (SCSS refactor complete: cards/spotlight/suggestion/table/toolbars aligned to tokens + common components; company/startup projects are grouped separately with linked workstreams, and bottom lifecycle lists separate backlog/planning, paused, completed, and canceled projects)
 - [x] `/tasks` — Global tasks overview (SCSS refactor, common controls, board + modal alignment)
@@ -60,7 +60,7 @@ These routes are rendered inside the authenticated app shell/layout.
 - [x] `/files` — Documents: all files the user may see (list/grid, filters, trash, quota); `?file=<id>` opens a preview, `?type=image` presets the type filter (brain/plans/files-concept.md)
 - [x] `/media` — redirects to `/files?type=image` (media library merged into the file manager)
 - [x] `/project/:id/files` — project files tab (project, task and comment files)
-- [x] `/project/:id/flows` — project flows (same `FlowsScreen`, filtered to the project plus workspace flows)
+- [x] `/project/:id/flows` — Flows shell scoped to the project (sidebar: project + workspace flows; home with "Neuer Flow" for this project)
 - [x] `/profile` — User profile
 
 ### 2.2 Personal Tasks
@@ -194,6 +194,7 @@ auth chain and modules: `brain/plans/admin-console-concept.md`. All data via the
 - `/users` (`?uid=` opens the drawer) — all Auth accounts; drawer: account, workspaces, devices/passkeys, AI usage + connections, consent, activity; actions: data export, revoke sessions, lock/unlock (confirm + audit)
 - `/workspaces` (`?id=`) — all tenants with plan/status/MRR (billing contract §6); drawer: members, projects, Abo (Stripe link; "intern" via `setBillingExempt`), Flows, Sperre, AI policy (editable), machine writes, MCP grants, API tokens, activity
 - `/ai` — AI & MCP: usage/cost per user and workspace, all grants (disconnect), OAuth clients, API/MCP request log
+- `/email` — E-Mail (SES): bounce/complaint rates vs. thresholds, events per day, suppression list (add/allow again), test mail; shows a notice until the `email.*` backend is deployed
 - `/system` — announcement banner, Cloud Scheduler jobs, functions, hosting releases, AI pricing for the estimate, AI limits
 - `/crashes`, `/crashes/:id` — crash issues (trend, platform/release/status filter, stack, events, releases/devices, triage)
 - `/legal`, `/legal/:type` — legal documents (overview with acceptance rate + mail status; draft editor DE/EN, diff to current version, publish)

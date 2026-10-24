@@ -18,7 +18,8 @@ import { collection, getCountFromServer, query, where } from 'firebase/firestore
 import { db } from '../../services/firebase';
 import { useActivePlan } from '../../hooks/useEntitlements';
 import { PlanHint } from '../billing/PlanHint';
-import { planCopyKey } from '../../utils/billingPlans';
+import { planCopyKey, seatCap } from '../../utils/billingPlans';
+import { SeatUpsell } from '../billing/SeatUpsell';
 
 interface InviteToWorkspaceModalProps {
     isOpen: boolean;
@@ -75,6 +76,9 @@ export const InviteToWorkspaceModal = ({
         getCountFromServer(members).then((snap) => setFullMembers(snap.data().count)).catch(() => setFullMembers(null));
     }, [isOpen, activeWorkspace, memberLimit, invitesBlocked]);
     const memberLimitReached = memberLimit !== null && fullMembers !== null && fullMembers >= memberLimit && role !== 'Guest';
+    // Paid subscription: full members are capped at the purchased seats (contract §9); guests stay free.
+    const paidSeats = plan ? seatCap(plan) : null;
+    const seatsFull = paidSeats !== null && fullMembers !== null && fullMembers >= paidSeats && role !== 'Guest' && !memberLimitReached;
 
     const roles: { value: InvitableRole; label: string; hint: string }[] = useMemo(() => [
         { value: 'Member', label: t('workspace.role.Member'), hint: t('workspace.invite.roleHint.Member') },
@@ -89,7 +93,7 @@ export const InviteToWorkspaceModal = ({
 
     const emailValid = EMAIL_PATTERN.test(email.trim());
     const needsProject = role === 'Guest' && projectIds.length === 0;
-    const canSubmit = !isSaving && !needsProject && !invitesBlocked && !memberLimitReached && (kind === 'link' || emailValid);
+    const canSubmit = !isSaving && !needsProject && !invitesBlocked && !memberLimitReached && !seatsFull && (kind === 'link' || emailValid);
 
     const toggleProject = (projectId: string) => {
         setProjectIds((current) => (
@@ -183,6 +187,9 @@ export const InviteToWorkspaceModal = ({
                             icon="group"
                             message={t('billing.limit.members.inline').replace('{count}', String(fullMembers)).replace('{limit}', String(memberLimit))}
                         />
+                    )}
+                    {seatsFull && activeWorkspace && paidSeats !== null && (
+                        <SeatUpsell tenantId={activeWorkspace.id} seats={paidSeats} isOwner={isOwner} />
                     )}
                     <div className="invite-modal__segments" role="tablist">
                         {(['email', 'link'] as InvitationKind[]).map((option) => (

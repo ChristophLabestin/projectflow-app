@@ -130,21 +130,28 @@ export const validateFlow = (flow: FlowDefinition): string | null => {
             if (rule.ai.kind === 'choice' && ((rule.ai.choices || []).length < 2 || !(rule.ai.accept || []).length)) return 'flows.error.aiChoices';
         }
     }
-    const taskless = TASKLESS_TRIGGERS.has(flow.trigger.type);
     for (const action of flow.actions) {
-        const c = action.config || {};
-        if (taskless && (TASK_ACTIONS.has(action.type) || (action.type === 'create_task' && c.asSubtask))) return 'flows.error.tasklessAction';
-        if (action.type === 'comment' && !String(c.text || '').trim()) return 'flows.error.commentText';
-        if (action.type === 'notify' && !String(c.title || '').trim()) return 'flows.error.notifyTitle';
-        if ((action.type === 'notify' || (action.type === 'assign' && c.mode !== 'clear'))
-            && !(c.userIds || []).length && !(c.dynamic || []).length) return 'flows.error.people';
-        if (action.type === 'create_task' && !String(c.title || '').trim()) return 'flows.error.taskTitle';
-        if (action.type === 'create_task' && !c.asSubtask && !c.projectId && !flow.projectId
-            && (flow.trigger.type === 'schedule' || flow.trigger.type === 'manual')) return 'flows.error.taskProject';
-        if ((action.type === 'add_label' || action.type === 'remove_label') && !String(c.label || '').trim()) return 'flows.error.label';
-        if (action.type === 'move' && !c.projectId) return 'flows.error.moveProject';
-        if (action.type === 'ai' && c.mode === 'classify_label' && (c.options || []).length < 2) return 'flows.error.aiOptions';
-        if (action.type === 'delay' && (Number(c.minutes) < 15 || Number(c.minutes) > 43200)) return 'flows.error.delay';
+        const problem = validateAction(action, flow);
+        if (problem) return problem;
     }
+    return null;
+};
+
+/** Problem of one action (i18n key) or null; used for the "incomplete" badge on step cards. */
+export const validateAction = (action: FlowDefinition['actions'][number], flow: FlowDefinition): string | null => {
+    const taskless = TASKLESS_TRIGGERS.has(flow.trigger.type);
+    const c = action.config || {};
+    if (taskless && (TASK_ACTIONS.has(action.type) || (action.type === 'create_task' && c.asSubtask))) return 'flows.error.tasklessAction';
+    if (action.type === 'comment' && !String(c.text || '').trim()) return 'flows.error.commentText';
+    if (action.type === 'notify' && !String(c.title || '').trim()) return 'flows.error.notifyTitle';
+    if ((action.type === 'notify' || (action.type === 'assign' && c.mode !== 'clear'))
+        && !(c.userIds || []).length && !(c.dynamic || []).length) return 'flows.error.people';
+    if (action.type === 'create_task' && !String(c.title || '').trim()) return 'flows.error.taskTitle';
+    if (action.type === 'create_task' && !c.asSubtask && !c.projectId && !flow.projectId
+        && (flow.trigger.type === 'schedule' || flow.trigger.type === 'manual')) return 'flows.error.taskProject';
+    if ((action.type === 'add_label' || action.type === 'remove_label') && !String(c.label || '').trim()) return 'flows.error.label';
+    if (action.type === 'move' && !c.projectId) return 'flows.error.moveProject';
+    if (action.type === 'ai' && c.mode === 'classify_label' && (c.options || []).length < 2) return 'flows.error.aiOptions';
+    if (action.type === 'delay' && (Number(c.minutes) < 15 || Number(c.minutes) > 43200)) return 'flows.error.delay';
     return null;
 };

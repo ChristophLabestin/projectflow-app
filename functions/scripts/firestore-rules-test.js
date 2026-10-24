@@ -463,6 +463,8 @@ const run = async () => {
         await check('personal: owner cannot delete', 'deny', () => owner.doc('tenants/personal_ownerA').delete());
         await check('personal: no invitations', 'deny', () =>
             owner.doc('tenants/personal_ownerA/invitations/i1').set({ status: 'pending', invitedBy: 'ownerA', role: 'Guest', kind: 'link' }));
+        await check('owner cannot read billing log', 'deny', () => owner.doc(`${T}/billing_log/x`).get());
+        await check('owner cannot forge billing log', 'deny', () => owner.doc(`${T}/billing_log/x`).set({ action: 'seats' }));
         await check('member reads billing availability', 'allow', () => member.doc('billing_public/config').get());
         await check('owner cannot switch checkout on', 'deny', () => owner.doc('billing_public/config').set({ checkoutAvailable: true }));
         for (const path of ['billing_customers/tenantF', 'ai_user_keys/ownerA', 'billing_events/evt_1']) {

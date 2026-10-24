@@ -33,6 +33,16 @@ const BUILD_ID = new Date().toISOString().slice(0, 16);
 const SOURCEMAP_DIR = process.env.PF_SOURCEMAP_DIR
     || path.join(os.homedir(), 'Library', 'Application Support', 'ProjectFlow', 'sourcemaps');
 
+// Open tabs / desktop windows poll /version.json (no-cache via the `**` hosting header) and compare it with the
+// `__PF_BUILD__` they were built with, to pick up a new deploy (web/components/AppUpdateWatcher.tsx).
+const emitVersionFile = (): Plugin => ({
+    name: 'projectflow-version-file',
+    apply: 'build',
+    generateBundle() {
+        this.emitFile({ type: 'asset', fileName: 'version.json', source: JSON.stringify({ build: BUILD_ID }) });
+    }
+});
+
 const stashSourceMaps = (): Plugin => ({
     name: 'projectflow-stash-sourcemaps',
     apply: 'build',
@@ -61,7 +71,7 @@ export default defineConfig(({ mode }) => {
         port: 3000,
         host: '0.0.0.0',
       },
-      plugins: [react(), ...(isProd ? [requireFirebaseConfig(env), stashSourceMaps()] : [])],
+      plugins: [react(), ...(isProd ? [requireFirebaseConfig(env), stashSourceMaps(), emitVersionFile()] : [])],
       // Some deps/legacy code read process.env.*; resolve to an empty object instead of a runtime shim.
       // __PF_BUILD__ identifies the web build in legal consent records (platform web/desktop) and crash reports.
       define: { 'process.env': {}, __PF_BUILD__: JSON.stringify(BUILD_ID) },

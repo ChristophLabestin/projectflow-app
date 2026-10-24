@@ -1,7 +1,9 @@
 import * as functions from 'firebase-functions/v1';
 import { assertTenantActive } from './tenant-status';
 import * as admin from 'firebase-admin';
-import { sendEmail } from './email';
+import { EMAIL_SECRETS, getNotificationEmailTemplate, sendEmail } from './email';
+import { notificationUnsubscribeUrl } from './email-events';
+import { getLocale } from './email-locales';
 import { FieldValue } from 'firebase-admin/firestore';
 import { buildPushPayload, decideChannels, resolveNotificationPrefs } from './notification-prefs';
 
@@ -19,14 +21,6 @@ const getString = (value: unknown, fallback = ''): string => {
     const trimmed = value.trim();
     return trimmed.length > 0 ? trimmed : fallback;
 };
-
-const escapeHtml = (value: string): string =>
-    value
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#039;');
 
 const logDelivery = async (
     tenantId: string,
@@ -212,7 +206,7 @@ export const sendTestNotification = functions.region(REGION).https.onCall(async 
     };
 });
 
-export const onNotificationCreated = functions.region(REGION).firestore
+export const onNotificationCreated = functions.region(REGION).runWith({ secrets: EMAIL_SECRETS }).firestore
     .document('tenants/{tenantId}/notifications/{notificationId}')
     .onCreate(async (snapshot, context) => {
         const notification = snapshot.data();
@@ -259,19 +253,15 @@ export const onNotificationCreated = functions.region(REGION).firestore
             const subject = getString(notification.title, 'New Notification from ProjectFlow');
             const body = getString(notification.message, 'You have a new ProjectFlow update.');
 
-            // Basic HTML template
-            const html = `
-                <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
-                    <h2>${escapeHtml(subject)}</h2>
-                    <p>${escapeHtml(body)}</p>
-                    <p style="color: #666; font-size: 12px; margin-top: 20px;">
-                        Sent via ProjectFlow
-                    </p>
-                </div>
-            `;
+            const unsubscribeUrl = await notificationUnsubscribeUrl(userId, decision.category);
+            const html = getNotificationEmailTemplate(subject, body, {
+                appUrl: 'https://app.getprojectflow.com/',
+                settingsUrl: 'https://app.getprojectflow.com/?openSettings=notifications',
+                unsubscribeUrl,
+            }, getLocale(getString(userData.language)));
 
             // 3. Send Email
-            await sendEmail(email, subject, html, { tenantId });
+            await sendEmail(email, subject, html, { tenantId, type: 'notification', unsubscribeUrl: unsubscribeUrl || undefined });
             await logDelivery(tenantId, notificationId, userId, 'email', 'sent', 'Email notification sent.');
             console.log(`Email sent to ${email} for notification ${notificationId}`);
 

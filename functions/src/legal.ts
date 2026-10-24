@@ -3,7 +3,8 @@ import { onSchedule } from 'firebase-functions/v2/scheduler';
 import { FieldPath, FieldValue, Firestore, Timestamp } from 'firebase-admin/firestore';
 
 import { db } from './init';
-import { getSystemEmailTemplate, sendEmail } from './email';
+import { EMAIL_SECRETS, getSystemEmailTemplate, sendEmail } from './email';
+import { FUNCTIONS_SERVICE_ACCOUNT } from './email-logic';
 import {
     ACCEPTANCE_TYPES,
     AcceptedDocs,
@@ -365,7 +366,7 @@ const defaultSender: MailSender = async (to, subject, html) => {
         console.log(`[legal-mail:dry-run] to=${to} subject="${subject}" bytes=${html.length}`);
         return { dryRun: true };
     }
-    return sendEmail(to, subject, html);
+    return sendEmail(to, subject, html, { type: 'legal' });
 };
 
 /**
@@ -467,7 +468,7 @@ const runDueJobs = async () => {
 };
 
 /** Starts a job right after publish when it is already due. */
-export const onLegalMailJobCreated = functions.region(REGION).runWith({ timeoutSeconds: 540 })
+export const onLegalMailJobCreated = functions.region(REGION).runWith({ timeoutSeconds: 540, secrets: EMAIL_SECRETS })
     .firestore.document('legal_mail_jobs/{jobId}')
     .onCreate(async (snap) => {
         const result = await runLegalMailJob(db, snap.id);
@@ -476,6 +477,6 @@ export const onLegalMailJobCreated = functions.region(REGION).runWith({ timeoutS
 
 /** Picks up future-dated (effectiveAt) and unfinished jobs. */
 export const processLegalMailJobs = onSchedule(
-    { schedule: 'every 15 minutes', region: REGION, timeoutSeconds: 540, memory: '256MiB' },
+    { schedule: 'every 15 minutes', region: REGION, timeoutSeconds: 540, memory: '256MiB', secrets: EMAIL_SECRETS, serviceAccount: FUNCTIONS_SERVICE_ACCOUNT },
     async () => { await runDueJobs(); },
 );

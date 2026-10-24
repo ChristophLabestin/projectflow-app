@@ -5,7 +5,11 @@ export const EMAIL_CONTENT = {
         common: {
             orPasteLink: "or paste link",
             footerIgnore: "If you didn't request this email, you can safely ignore it.",
-            footerNoList: "Your email address has not been added to any lists."
+            footerNoList: "Your email address has not been added to any lists.",
+            notificationReason: "You receive this email because email notifications are on for this kind of activity.",
+            notificationSettings: "Notification settings",
+            unsubscribe: "Unsubscribe from these emails",
+            openApp: "Open ProjectFlow"
         },
         waitlist: {
             subject: "Secure your spot on the Waitlist",
@@ -32,7 +36,11 @@ export const EMAIL_CONTENT = {
         common: {
             orPasteLink: "oder Link einfügen",
             footerIgnore: "Wenn Sie diese E-Mail nicht angefordert haben, können Sie sie ignorieren.",
-            footerNoList: "Ihre E-Mail-Adresse wurde keinen Listen hinzugefügt."
+            footerNoList: "Ihre E-Mail-Adresse wurde keinen Listen hinzugefügt.",
+            notificationReason: "Sie erhalten diese E-Mail, weil E-Mail-Benachrichtigungen für diese Art von Aktivität aktiv sind.",
+            notificationSettings: "Benachrichtigungseinstellungen",
+            unsubscribe: "Diese E-Mails abbestellen",
+            openApp: "ProjectFlow öffnen"
         },
         waitlist: {
             subject: "Sichern Sie sich Ihren Platz auf der Warteliste",

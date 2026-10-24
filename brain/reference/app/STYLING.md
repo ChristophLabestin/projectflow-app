@@ -357,7 +357,7 @@ the page showing a second navigation column. Mechanism `web/context/SidebarPanel
 calls `useSidebarPanel({ key, title, icon, href?, actions? })` and portals its navigation into the returned
 slot; `null` (sidebar collapsed, mobile drawer closed, inside a project) → render it inline as fallback.
 Styles: `.snav-panel-slot`, `.snav-avatar--icon` in `_sidebar-navigator.scss`; the area provides an
-`--embedded` variant without card/header. In use: workspace wiki (`/wiki`). Apply to new areas and
+`--embedded` variant without card/header. In use: workspace wiki (`/wiki`), workspace flows (`/flows/*`: `FlowsSidebar` `--embedded`, header action „Neuer Flow“; `/project/:id/flows` keeps the list in the page). Apply to new areas and
 existing ones where it fits (Files, Flows, …).
 
 ## 6) Interaction Guidelines (UX Patterns)

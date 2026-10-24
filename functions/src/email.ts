@@ -2,7 +2,14 @@ import * as functions from 'firebase-functions/v1';
 import * as nodemailer from 'nodemailer';
 import * as dns from 'dns/promises';
 import * as net from 'net';
+import {
+  DeleteSuppressedDestinationCommand, GetAccountCommand, PutSuppressedDestinationCommand, SendEmailCommand, SESv2Client
+} from '@aws-sdk/client-sesv2';
 import { db } from './init';
+import {
+  EmailType, NON_TRANSACTIONAL, SendRateLimiter, backoffMs, isActiveSuppression, isRetryableSendError,
+  listUnsubscribeHeaders, normalizeEmail, sesTagValue, stripHtml, suppressionId
+} from './email-logic';
 const REGION = 'europe-west3'; // Frankfurt
 
 const ALLOWED_SMTP_PORTS = [25, 465, 587, 2525];
@@ -109,12 +116,32 @@ export const testSMTPConnection = functions.region(REGION).https.onCall(async (d
   }
 });
 
-type EmailSendOptions = {
+// ---------------------------------------------------------------------------
+// System mail: Amazon SES (API v2) with SMTP fallback. Runbook: brain/operations/email-ses.md
+// ---------------------------------------------------------------------------
+
+export { EMAIL_SECRETS } from './email-logic';
+
+export type EmailSendOptions = {
   tenantId?: string;
   fromEmail?: string;
+  /** SES tag `type`; also decides transactional vs. list mail. */
+  type?: EmailType;
+  replyTo?: string;
+  /** One-click unsubscribe URL (RFC 8058) for non-transactional mails. */
+  unsubscribeUrl?: string;
+  text?: string;
+};
+
+export type SendEmailResult = {
+  transport: 'ses' | 'smtp' | 'tenant-smtp' | 'suppressed';
+  messageId?: string;
 };
 
 const SYSTEM_FROM_EMAIL = 'no-reply@getprojectflow.com';
+const env = (name: string, fallback = '') => (process.env[name] || fallback).trim();
+const sesFrom = () => env('SES_FROM', 'ProjectFlow <notifications@mail.getprojectflow.com>');
+const replyToDefault = () => env('EMAIL_REPLY_TO', 'hello@getprojectflow.com');
 
 const getTenantSmtpConfig = async (tenantId?: string) => {
   if (!tenantId) {
@@ -144,157 +171,178 @@ const getTenantSmtpConfig = async (tenantId?: string) => {
   }
 };
 
-// Helper to create a reusable transporter
-const createTransporter = async (options?: EmailSendOptions) => {
-  const tenantSmtpConfig = await getTenantSmtpConfig(options?.tenantId);
-
-  const host = process.env.SMTP_HOST || 'smtp.gmail.com';
-  const port = parseInt(process.env.SMTP_PORT || '587');
-  const user = process.env.SMTP_USER || 'christoph@christophlabestin.de';
-  const pass = process.env.SMTP_PASS;
-
-  if (!tenantSmtpConfig && !pass) {
-    console.warn("SMTP Password not set! Emails will fail.");
-  }
-
-  const config = tenantSmtpConfig || {
-    host,
-    port,
-    secure: port === 465,
-    user,
-    pass
-  };
-
-  return {
-    transporter: nodemailer.createTransport({
-      host: config.host,
-      port: config.port,
-      secure: config.secure,
-      auth: {
-        user: config.user,
-        pass: config.pass
-      },
-      tls: {
-        rejectUnauthorized: true
-      }
-    }),
-    fromEmail: options?.fromEmail || tenantSmtpConfig?.fromEmail || SYSTEM_FROM_EMAIL
-  };
+const systemSmtpConfig = () => {
+  const port = parseInt(env('SMTP_PORT', '587'), 10) || 587;
+  return { host: env('SMTP_HOST'), port, secure: port === 465, user: env('SMTP_USER'), pass: env('SMTP_PASS'), fromEmail: env('SMTP_FROM', SYSTEM_FROM_EMAIL) };
 };
 
-export const sendEmail = async (to: string, subject: string, html: string, options?: EmailSendOptions) => {
-  const { transporter, fromEmail } = await createTransporter(options);
+const sendViaSmtp = async (
+  config: { host: string; port: number; secure: boolean; user: string; pass: string; fromEmail: string },
+  mail: { to: string; subject: string; html: string; text: string; replyTo: string; headers: { Name: string; Value: string }[] }
+) => {
+  if (!config.host || !config.pass) {
+    throw new Error('SMTP is not configured (SMTP_HOST / SMTP_PASS).');
+  }
+  const transporter = nodemailer.createTransport({
+    host: config.host,
+    port: config.port,
+    secure: config.secure,
+    auth: { user: config.user, pass: config.pass },
+    tls: { rejectUnauthorized: true }
+  });
+  const info = await transporter.sendMail({
+    from: `"ProjectFlow" <${config.fromEmail}>`,
+    to: mail.to,
+    replyTo: mail.replyTo,
+    subject: mail.subject,
+    html: mail.html,
+    text: mail.text,
+    headers: Object.fromEntries(mail.headers.map((h) => [h.Name, h.Value]))
+  });
+  return info.messageId as string;
+};
 
-  const mailOptions = {
-    from: `"ProjectFlow" <${fromEmail}>`,
-    to,
-    subject,
-    html
-  };
+let sesClient: SESv2Client | null = null;
+const limiter = new SendRateLimiter(parseFloat(env('SES_MAX_SEND_RATE', '1')) || 1);
+let rateCheckedAt = 0;
 
+const sesCredentials = () => {
+  const accessKeyId = env('AWS_SES_ACCESS_KEY_ID');
+  const secretAccessKey = env('AWS_SES_SECRET_ACCESS_KEY');
+  // Placeholder values keep deploys working before the real IAM key is set.
+  if (!accessKeyId || !secretAccessKey || accessKeyId === 'unset' || secretAccessKey === 'unset') return null;
+  return { accessKeyId, secretAccessKey };
+};
+
+const getSesClient = () => {
+  const credentials = sesCredentials();
+  if (!credentials) return null;
+  if (!sesClient) {
+    sesClient = new SESv2Client({ region: env('SES_REGION', 'eu-north-1'), credentials, maxAttempts: 1 });
+  }
+  return sesClient;
+};
+
+/** Paces to the account's max send rate (GetAccount, refreshed every 10 minutes). */
+const awaitSendSlot = async (client: SESv2Client) => {
+  if (Date.now() - rateCheckedAt > 10 * 60_000) {
+    rateCheckedAt = Date.now();
+    try {
+      const account = await client.send(new GetAccountCommand({}));
+      const rate = account.SendQuota?.MaxSendRate;
+      if (rate) limiter.setRate(rate);
+    } catch (error: any) {
+      console.warn('SES GetAccount failed, keeping send rate', error?.name);
+    }
+  }
+  const wait = limiter.reserve();
+  if (wait > 0) await new Promise((resolve) => setTimeout(resolve, wait));
+};
+
+const sendViaSes = async (
+  client: SESv2Client,
+  mail: { to: string; subject: string; html: string; text: string; replyTo: string; headers: { Name: string; Value: string }[]; type: EmailType }
+) => {
+  const configurationSet = env('SES_CONFIGURATION_SET', 'projectflow-default');
+  const command = new SendEmailCommand({
+    FromEmailAddress: sesFrom(),
+    Destination: { ToAddresses: [mail.to] },
+    ReplyToAddresses: mail.replyTo ? [mail.replyTo] : undefined,
+    ConfigurationSetName: configurationSet === 'none' ? undefined : configurationSet,
+    EmailTags: [
+      { Name: 'type', Value: sesTagValue(mail.type) },
+      { Name: 'category', Value: NON_TRANSACTIONAL.has(mail.type) ? 'list' : 'transactional' }
+    ],
+    Content: {
+      Simple: {
+        Subject: { Data: mail.subject, Charset: 'UTF-8' },
+        Body: { Html: { Data: mail.html, Charset: 'UTF-8' }, Text: { Data: mail.text, Charset: 'UTF-8' } },
+        Headers: mail.headers.length ? mail.headers : undefined
+      }
+    }
+  });
+  for (let attempt = 0; ; attempt++) {
+    await awaitSendSlot(client);
+    try {
+      const out = await client.send(command);
+      return out.MessageId;
+    } catch (error: any) {
+      if (attempt >= 3 || !isRetryableSendError(error)) throw error;
+      await new Promise((resolve) => setTimeout(resolve, backoffMs(attempt)));
+    }
+  }
+};
+
+/** Mirrors a manual change to the SES account-level suppression list (best effort, needs the IAM permissions in email-ses.md). */
+export const syncSesAccountSuppression = async (email: string, suppress: boolean, reason: 'BOUNCE' | 'COMPLAINT' = 'BOUNCE') => {
+  const client = getSesClient();
+  if (!client) return 'skipped';
   try {
-    const info = await transporter.sendMail(mailOptions);
-    console.log('Message sent to %s: %s', to, info.messageId);
-    return info;
+    if (suppress) {
+      await client.send(new PutSuppressedDestinationCommand({ EmailAddress: normalizeEmail(email), Reason: reason }));
+    } else {
+      await client.send(new DeleteSuppressedDestinationCommand({ EmailAddress: normalizeEmail(email) }));
+    }
+    return 'ok';
+  } catch (error: any) {
+    if (error?.name === 'NotFoundException') return 'ok';
+    console.warn('SES account suppression sync failed', error?.name);
+    return 'failed';
+  }
+};
+
+/** True when the address is on the suppression list (hard bounce, complaint, manual). */
+export const isEmailSuppressed = async (email: string): Promise<boolean> => {
+  try {
+    const snap = await db.collection('email_suppressions').doc(suppressionId(email)).get();
+    return isActiveSuppression(snap.data());
   } catch (error) {
-    console.error('Error sending email:', error);
+    console.warn('Suppression lookup failed, sending anyway', error);
+    return false;
+  }
+};
+
+/**
+ * Sends one system mail. Order: suppression list → tenant SMTP (workspace setting) →
+ * SES (default, EMAIL_TRANSPORT=ses) → system SMTP (EMAIL_TRANSPORT=smtp, or as sandbox
+ * fallback with EMAIL_SMTP_FALLBACK=true when SES rejects an unverified recipient).
+ */
+export const sendEmail = async (to: string, subject: string, html: string, options: EmailSendOptions = {}): Promise<SendEmailResult> => {
+  const recipient = normalizeEmail(to);
+  const type: EmailType = options.type || 'system';
+  if (await isEmailSuppressed(recipient)) {
+    console.log(`Email suppressed (type=${type}, id=${suppressionId(recipient).slice(0, 8)})`);
+    return { transport: 'suppressed' };
+  }
+  const headers = options.unsubscribeUrl ? listUnsubscribeHeaders(options.unsubscribeUrl) : [];
+  const mail = { to: recipient, subject, html, text: options.text || stripHtml(html), replyTo: options.replyTo || replyToDefault(), headers, type };
+
+  const tenantSmtp = await getTenantSmtpConfig(options.tenantId);
+  if (tenantSmtp) {
+    const messageId = await sendViaSmtp({ ...tenantSmtp, fromEmail: options.fromEmail || tenantSmtp.fromEmail }, mail);
+    return { transport: 'tenant-smtp', messageId };
+  }
+
+  const client = env('EMAIL_TRANSPORT', 'ses') === 'smtp' ? null : getSesClient();
+  if (!client) {
+    if (env('EMAIL_TRANSPORT', 'ses') !== 'smtp') console.warn('SES credentials missing, using system SMTP');
+    const messageId = await sendViaSmtp(systemSmtpConfig(), mail);
+    return { transport: 'smtp', messageId };
+  }
+  try {
+    const messageId = await sendViaSes(client, mail);
+    console.log(`SES sent type=${type} messageId=${messageId}`);
+    return { transport: 'ses', messageId };
+  } catch (error: any) {
+    const sandboxReject = error?.name === 'MessageRejected' && /not verified/i.test(String(error?.message || ''));
+    if (sandboxReject && env('EMAIL_SMTP_FALLBACK') === 'true') {
+      console.warn('SES sandbox rejected the recipient, falling back to SMTP');
+      const messageId = await sendViaSmtp(systemSmtpConfig(), mail);
+      return { transport: 'smtp', messageId };
+    }
+    console.error(`SES send failed type=${type}`, error?.name, error?.message);
     throw error;
   }
 };
 
-import { EMAIL_CONTENT, Language } from './email-locales';
-
-export const getSystemEmailTemplate = (
-  title: string,
-  body: string,
-  actionLink: string,
-  actionText: string,
-  language: Language = 'en'
-) => {
-  const t = EMAIL_CONTENT[language].common;
-
-  return `
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="color-scheme" content="light">
-  <meta name="supported-color-schemes" content="light">
-  <title>${title}</title>
-  <style>
-    :root { color-scheme: light; supported-color-schemes: light; }
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.5; color: #000000; margin: 0; padding: 0; background-color: #f9fafb; }
-    .container { max-width: 600px; margin: 40px auto; background: #ffffff; border-radius: 16px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); overflow: hidden; }
-    .header { padding: 40px 0; text-align: center; }
-    .logo { width: 48px; height: 48px; margin-bottom: 16px; border-radius: 12px; background: #000000; display: inline-flex; align-items: center; justify-content: center; color: #ffffff; font-weight: bold; font-size: 24px; }
-    .app-name { font-size: 18px; font-weight: 600; color: #000000; margin: 0; }
-    .content { padding: 0 40px 40px; text-align: center; }
-    .icon-shield { width: 64px; height: 64px; margin: 0 auto 24px; color: #000000; }
-    h1 { font-size: 30px; font-weight: 700; color: #000000; margin: 0 0 16px; letter-spacing: -0.5px; }
-    p { font-size: 16px; color: #000000; margin: 0 0 32px; line-height: 1.6; }
-    .button { display: inline-block; background-color: #000000; color: #ffffff; padding: 16px 32px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 16px; transition: opacity 0.2s; }
-    .button:hover { opacity: 0.9; }
-    .divider { display: flex; align-items: center; text-align: center; margin: 40px 0; color: #9ca3af; font-size: 12px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; }
-    .divider::before, .divider::after { content: ''; flex: 1; border-top: 1px solid #e5e7eb; }
-    .divider::before { margin-right: 16px; }
-    .divider::after { margin-left: 16px; }
-    .link-box { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px 16px; display: flex; align-items: center; margin-bottom: 40px; text-align: left; }
-    .link-text { flex: 1; font-family: monospace; font-size: 13px; color: #6b7280; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-right: 8px; }
-    .footer { border-top: 1px solid #f3f4f6; padding: 32px 40px; text-align: center; font-size: 12px; color: #9ca3af; line-height: 1.5; background: #fafafa; }
-    .footer p { margin: 8px 0; font-size: 12px; }
-    
-    /* Dark mode overrides to force light theme */
-    @media (prefers-color-scheme: dark) {
-      body { background-color: #f9fafb !important; color: #000000 !important; }
-      .container { background-color: #ffffff !important; color: #000000 !important; }
-      h1, .app-name, .icon-shield { color: #000000 !important; }
-      p { color: #000000 !important; }
-      .button { background-color: #000000 !important; color: #ffffff !important; }
-    }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <div class="header">
-      <div class="logo">P</div>
-      <div class="app-name">Project Flow</div>
-    </div>
-    
-    <div class="content">
-      <!-- Shield Icon SVG -->
-      <div class="icon-shield">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 100%; height: 100%;">
-          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
-          <path d="M9 12l2 2 4-4"></path>
-        </svg>
-      </div>
-
-      <h1>${title}</h1>
-      <p>${body}</p>
-      
-      <a href="${actionLink}" class="button">${actionText}</a>
-
-      <div class="divider">${t.orPasteLink}</div>
-
-      <div class="link-box">
-        <div class="link-text">${actionLink}</div>
-        <!-- Icon is a link because emails don't support JS copy-to-clipboard -->
-        <a href="${actionLink}" style="text-decoration: none; color: #9ca3af;">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" xmlns="http://www.w3.org/2000/svg">
-            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-          </svg>
-        </a>
-      </div>
-    </div>
-
-    <div class="footer">
-      <p>${t.footerIgnore}<br>${t.footerNoList}</p>
-      <p>&copy; ${new Date().getFullYear()} Project Flow Inc.<br>88 Colin P Kelly Jr St, San Francisco, CA 94107</p>
-    </div>
-  </div>
-</body>
-</html>
-    `;
-};
+export { getSystemEmailTemplate, getNotificationEmailTemplate, EMAIL_IMPRINT } from './email-template';

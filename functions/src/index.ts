@@ -14,6 +14,7 @@ import { acceptWorkspaceInvite, sendInvitation } from './invitations';
 import { requestWaitlist, confirmWaitlist } from './waitlist';
 import { requestNewsletterSignup, confirmNewsletterSignup } from './newsletter-public';
 import { sendContactFormEmail } from './contact';
+import { emailUnsubscribe, sesEvents } from './email-events';
 import { generateImage, editImage, runAiCapability } from './ai-service';
 import { aiAssist } from './ai-assist';
 import { aiApplyProposal, aiUndoProposal } from './ai-actions';
@@ -68,6 +69,8 @@ import {
 
 export {
     testSMTPConnection,
+    sesEvents,
+    emailUnsubscribe,
     newsletterSubscribe,
     newsletterUnsubscribe,
     api,
@@ -173,3 +176,5 @@ export {
     getSubscriptionStatus,
     onTenantCreatedBilling, onProjectCountBilling, onMemberWrittenBilling, billingSweep
 } from './billing';
+// Seat management (contract §9)
+export { previewSeatChange, changeSeats, getBillingOverview } from './billing-seats';

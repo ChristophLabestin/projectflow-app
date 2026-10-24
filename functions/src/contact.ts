@@ -1,7 +1,7 @@
 import * as functions from 'firebase-functions/v1';
 import * as crypto from 'crypto';
 import { FieldValue } from 'firebase-admin/firestore';
-import { sendEmail } from './email';
+import { EMAIL_SECRETS, sendEmail } from './email';
 import { corsMiddleware } from './corsConfig';
 import { db } from './init';
 
@@ -45,7 +45,7 @@ const consumeRateLimit = async (ip: string): Promise<boolean> => {
     });
 };
 
-export const sendContactFormEmail = functions.region(REGION).https.onRequest((req, res) => {
+export const sendContactFormEmail = functions.region(REGION).runWith({ secrets: EMAIL_SECRETS }).https.onRequest((req, res) => {
     return corsMiddleware(req, res, async () => {
         // Only allow POST
         if (req.method !== 'POST') {
@@ -100,7 +100,7 @@ export const sendContactFormEmail = functions.region(REGION).https.onRequest((re
             `;
 
             // Send email to admin
-            await sendEmail('hello@getprojectflow.com', subject, html);
+            await sendEmail('hello@getprojectflow.com', subject, html, { type: 'contact' });
 
             res.status(200).json({ success: true, message: 'Message sent successfully' });
 

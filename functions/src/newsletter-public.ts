@@ -1,6 +1,6 @@
 import * as functions from 'firebase-functions/v1';
 import * as admin from 'firebase-admin';
-import { sendEmail, getSystemEmailTemplate } from './email';
+import { EMAIL_SECRETS, sendEmail, getSystemEmailTemplate } from './email';
 import { EMAIL_CONTENT, getLocale } from './email-locales';
 import { corsMiddleware } from './corsConfig';
 import { FieldValue, Timestamp } from 'firebase-admin/firestore';
@@ -13,7 +13,7 @@ const generateCode = () => {
     return Math.random().toString(36).substring(2, 10).toUpperCase();
 };
 
-export const requestNewsletterSignup = functions.region(REGION).https.onRequest((req, res) => {
+export const requestNewsletterSignup = functions.region(REGION).runWith({ secrets: EMAIL_SECRETS }).https.onRequest((req, res) => {
     return corsMiddleware(req, res, async () => {
         // Only allow POST
         if (req.method !== 'POST') {
@@ -72,7 +72,7 @@ export const requestNewsletterSignup = functions.region(REGION).https.onRequest(
                 locale
             );
 
-            await sendEmail(email, subject, html);
+            await sendEmail(email, subject, html, { type: 'newsletter-optin' });
 
             res.status(200).json({ success: true, message: 'Confirmation email sent' });
 

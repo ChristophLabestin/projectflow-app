@@ -5,7 +5,7 @@
  */
 import { initializeApp, type FirebaseApp } from 'firebase/app';
 import {
-    browserLocalPersistence, createUserWithEmailAndPassword, getAuth, GoogleAuthProvider, onAuthStateChanged,
+    browserLocalPersistence, createUserWithEmailAndPassword, getAuth, GithubAuthProvider, GoogleAuthProvider, OAuthProvider, onAuthStateChanged,
     sendPasswordResetEmail, setPersistence, signInWithEmailAndPassword, signInWithPopup, signOut, updateProfile,
     type Auth,
 } from 'firebase/auth';
@@ -23,6 +23,7 @@ const firebaseConfig = {
 
 export type Plan = 'personal' | 'team';
 export type Interval = 'month' | 'year';
+export type OAuthKind = 'google' | 'apple' | 'github';
 
 export interface BuyUser { uid: string; email: string | null; name: string | null }
 export interface Workspace {
@@ -38,12 +39,14 @@ export interface Workspace {
 }
 export interface SummaryLine { label: string; quantity: number; unitAmount: number; amount: number }
 export interface Intent {
+    /** Set when the request created a pending new workspace (it only exists once the card is saved). */
+    tenantId?: string;
     subscriptionId: string;
     clientSecret: string;
     /** 'none' = an existing subscription was changed and the card on file was charged; nothing to confirm. */
     intentType: 'payment' | 'setup' | 'none';
     trialEnd?: string | number | null;
-    summary?: { currency: string; lines: SummaryLine[]; subtotal: number; total?: number; amountDue?: number; trialEnd?: string | number | null };
+    summary?: { currency: string; lines: SummaryLine[]; subtotal: number; discount?: number; tax?: number; total?: number; amountDue?: number; trialEnd?: string | number | null };
 }
 
 export interface SubscriptionStatus { status: string; plan?: string; active?: boolean }
@@ -53,13 +56,14 @@ export interface BuyApi {
     onUser(cb: (user: BuyUser | null) => void): void;
     signIn(email: string, password: string): Promise<void>;
     register(name: string, email: string, password: string): Promise<void>;
-    google(): Promise<void>;
+    oauth(kind: OAuthKind): Promise<void>;
     reset(email: string): Promise<void>;
     signOut(): Promise<void>;
     publishableKey(): Promise<string>;
     workspaces(language: string): Promise<Workspace[]>;
     createTeam(name: string, language: string): Promise<string>;
-    intent(input: { tenantId: string; plan: Plan; interval: Interval; aiAddon: boolean; language: string }): Promise<Intent>;
+    /** `newWorkspace` instead of `tenantId`: the backend reserves the workspace and creates it after card saving. */
+    intent(input: { tenantId?: string; newWorkspace?: { name: string; language?: string }; plan: Plan; interval: Interval; seats?: number; language: string }): Promise<Intent>;
     status(tenantId: string, plan: Plan): Promise<SubscriptionStatus>;
 }
 
@@ -80,7 +84,18 @@ function firebaseApi(): BuyApi {
             const cred = await createUserWithEmailAndPassword(auth, email, password);
             if (name) await updateProfile(cred.user, { displayName: name });
         },
-        google: async () => { await signInWithPopup(auth, new GoogleAuthProvider()); },
+        // Same providers as the app (Firebase Auth → Sign-in method): Google, Apple, GitHub.
+        oauth: async (kind) => {
+            let provider: GoogleAuthProvider | GithubAuthProvider | OAuthProvider;
+            if (kind === 'google') provider = new GoogleAuthProvider();
+            else if (kind === 'github') provider = new GithubAuthProvider();
+            else {
+                provider = new OAuthProvider('apple.com');
+                provider.addScope('email');
+                provider.addScope('name');
+            }
+            await signInWithPopup(auth, provider);
+        },
         reset: (email) => sendPasswordResetEmail(auth, email),
         signOut: () => signOut(auth),
         publishableKey: async () => (await call<{ publishableKey: string }>('getBillingConfig')).publishableKey,
@@ -90,7 +105,8 @@ function firebaseApi(): BuyApi {
         },
         createTeam: async (name, language) => (await call<{ tenantId: string }>('createTeamWorkspace', { name, language })).tenantId,
         // Personal targets the caller's own personal workspace (`personal: true`), Team a workspace they own.
-        intent: ({ tenantId, ...rest }) => call<Intent>('createSubscriptionIntent', rest.plan === 'personal' ? { personal: true, ...rest } : { tenantId, ...rest }),
+        intent: ({ tenantId, newWorkspace, ...rest }) => call<Intent>('createSubscriptionIntent',
+            rest.plan === 'personal' ? { personal: true, ...rest } : newWorkspace ? { newWorkspace, ...rest } : { tenantId, ...rest }),
         status: (tenantId, plan) => call<SubscriptionStatus>('getSubscriptionStatus', plan === 'personal' ? { personal: true } : { tenantId }),
     };
 }
@@ -111,24 +127,27 @@ function mockApi(): BuyApi {
         onUser: (cb) => { listener = cb; cb(user); },
         signIn: async (email) => { await wait(); set({ uid: 'demo', email, name: null }); },
         register: async (name, email) => { await wait(); set({ uid: 'demo', email, name }); },
-        google: async () => { await wait(); set({ uid: 'demo', email: 'demo@example.com', name: 'Demo' }); },
+        oauth: async () => { await wait(); set({ uid: 'demo', email: 'demo@example.com', name: 'Demo' }); },
         reset: async () => { await wait(); },
         signOut: async () => { set(null); },
         publishableKey: async () => '',
         workspaces: async () => { await wait(); return spaces; },
         createTeam: async (name) => { await wait(); spaces.push({ tenantId: 'team_new', name, workspaceType: 'team', status: 'trialing', memberCount: 1, trialEndsAt: new Date(Date.now() + 14 * 864e5).toISOString() }); return 'team_new'; },
-        intent: async ({ tenantId, plan, interval, aiAddon }) => {
+        intent: async ({ tenantId: id, newWorkspace, plan, interval, seats: wanted }) => {
             await wait();
+            // Pending new workspace: appears in the list as if the webhook had created it after card saving.
+            const tenantId = newWorkspace ? 'team_new' : id ?? '';
+            if (newWorkspace && !spaces.some((w) => w.tenantId === tenantId)) {
+                spaces.push({ tenantId, name: newWorkspace.name, workspaceType: 'team', status: 'trialing', memberCount: 1, trialEndsAt: new Date(Date.now() + 14 * 864e5).toISOString() });
+            }
             const ws = spaces.find((w) => w.tenantId === tenantId);
-            const seats = plan === 'team' ? ws?.memberCount ?? 1 : 1;
+            const seats = plan === 'team' ? Math.max(wanted ?? 1, ws?.memberCount ?? 1) : 1;
             const unit = plan === 'team' ? (interval === 'year' ? 120 : 12) : (interval === 'year' ? 48 : 5);
-            const ai = interval === 'year' ? 120 : 10;
             const lines: SummaryLine[] = [{ label: plan === 'team' ? 'Team' : 'Personal', quantity: seats, unitAmount: unit * 100, amount: unit * seats * 100 }];
-            if (aiAddon) lines.push({ label: 'KI-Paket', quantity: 1, unitAmount: ai * 100, amount: ai * 100 });
             const trialing = ws?.status === 'trialing';
             const subtotal = lines.reduce((sum, l) => sum + l.amount, 0);
             return {
-                subscriptionId: 'sub_demo', clientSecret: 'demo', intentType: trialing ? 'setup' : 'payment',
+                tenantId, subscriptionId: 'sub_demo', clientSecret: 'demo', intentType: trialing ? 'setup' : 'payment',
                 summary: { currency: 'eur', lines, subtotal, total: subtotal, amountDue: trialing ? 0 : subtotal, trialEnd: trialing ? ws?.trialEndsAt : null },
             };
         },

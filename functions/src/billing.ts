@@ -13,22 +13,22 @@ import { createCipheriv, createDecipheriv, createHash, randomBytes } from 'crypt
 import { db } from './init';
 import { ALLOWED_ORIGINS } from './corsConfig';
 import {
-    AI_ADDON_LOOKUP_KEYS, PERSONAL_LOOKUP_KEYS, PRICE_LOOKUP_KEYS, storageFor, aiEnabledFor,
+    AI_ADDON_LOOKUP_KEYS, PLAN_LIMITS, PERSONAL_LOOKUP_KEYS, PRICE_LOOKUP_KEYS, TEAM_MEMBER_LIMIT, TRIAL_DAYS, storageFor, aiEnabledFor,
     aiIncludedForStatus, initialEntitlement, isAiAddonLookupKey, isPersonalLookupKey, isTestKey, limitsFor, limitsForType,
     mapStripeStatus, paidPlanFor, personalWorkspaceId, planForType,
     memberLimitAllows, periodExpired, projectsToLock, seatQuantity,
     type BillingInterval, type BillingStatus, type PlanId, type PlanLimits, type WorkspaceType,
 } from './billing-logic';
 
-const REGION = 'europe-west3';
-const STRIPE_SECRETS = ['STRIPE_SECRET_KEY'];
+export const REGION = 'europe-west3';
+export const STRIPE_SECRETS = ['STRIPE_SECRET_KEY'];
 
-const entRef = (tenantId: string) => db.doc(`tenants/${tenantId}/entitlements/plan`);
-const customerRef = (tenantId: string) => db.doc(`billing_customers/${tenantId}`);
+export const entRef = (tenantId: string) => db.doc(`tenants/${tenantId}/entitlements/plan`);
+export const customerRef = (tenantId: string) => db.doc(`billing_customers/${tenantId}`);
 const aiKeyRef = (uid: string) => db.doc(`ai_user_keys/${uid}`);
 
 let stripeClient: Stripe | null = null;
-const getStripe = () => {
+export const getStripe = () => {
     const key = process.env.STRIPE_SECRET_KEY;
     if (!key) throw new functions.https.HttpsError('failed-precondition', 'billing-not-configured');
     // Live billing is an explicit owner decision (VAT, terms) — refuse live keys until then.
@@ -39,7 +39,7 @@ const getStripe = () => {
     return stripeClient;
 };
 
-const toMs = (value: unknown): number | null => {
+export const toMs = (value: unknown): number | null => {
     if (value instanceof Timestamp) return value.toMillis();
     if (typeof value === 'number') return value;
     if (typeof value === 'string') {
@@ -54,7 +54,7 @@ const toMs = (value: unknown): number | null => {
 export const loadPlanLimits = async (tenantId: string): Promise<PlanLimits> =>
     limitsFor((await entRef(tenantId).get()).data());
 
-const fullMemberRoles = async (tenantId: string) => {
+export const fullMemberRoles = async (tenantId: string) => {
     const snap = await db.collection(`tenants/${tenantId}/members`).select('role').get();
     return snap.docs.map((doc) => String(doc.data().role || 'Member'));
 };
@@ -65,8 +65,15 @@ export const assertCanAddMember = async (tenantId: string, role: string) => {
     if (!limits.invitesAllowed) throw new functions.https.HttpsError('failed-precondition', 'plan-invites-disabled');
     if (role === 'Guest') return;
     const roles = await fullMemberRoles(tenantId);
-    if (!memberLimitAllows(limits, roles.filter((r) => r !== 'Guest').length)) {
+    const fullMembers = roles.filter((r) => r !== 'Guest').length;
+    if (!memberLimitAllows(limits, fullMembers)) {
         throw new functions.https.HttpsError('failed-precondition', 'plan-member-limit');
+    }
+    // Paid subscription: full members are limited to the purchased seats (guests stay free).
+    const ent = (await entRef(tenantId).get()).data() || {};
+    if (ent.stripeSubscriptionId && LIVE_STATUSES.includes(String(ent.status)) && ent.billingExempt !== true
+        && fullMembers >= Number(ent.seats || 0)) {
+        throw new functions.https.HttpsError('failed-precondition', 'plan-seat-limit');
     }
 };
 
@@ -127,6 +134,7 @@ export const ownAiKeyFor = async (uid: string): Promise<string | null> => decryp
 export const AI_KEY_SECRETS = ['AI_KEY_ENCRYPTION_KEY'];
 
 const aiAccessCache = new Map<string, { at: number; value: AiAccess }>();
+export const clearAiAccessCache = () => aiAccessCache.clear();
 export type AiAccess = { mode: 'plan' } | { mode: 'own-key'; apiKey: string } | { mode: 'none' };
 
 /**
@@ -229,6 +237,65 @@ export const onProjectCountBilling = functions.region(REGION).firestore
         { merge: true });
     });
 
+const pendingWorkspaceRef = (uid: string) => db.doc(`billing_pending_workspaces/${uid}`);
+
+/** Creates the workspace bought on the purchase page (tenant, Owner, Team entitlement) — once, transactionally. */
+const createPurchasedWorkspace = async (tenantId: string, subscription: Stripe.Subscription) => {
+    const ownerUid = String(subscription.metadata?.ownerUid || '');
+    if (!ownerUid) return;
+    const user = await admin.auth().getUser(ownerUid);
+    const email = String(user.email || '').toLowerCase();
+    const tenantRef = db.doc(`tenants/${tenantId}`);
+    await db.runTransaction(async (tx) => {
+        if ((await tx.get(tenantRef)).exists) return;
+        const now = FieldValue.serverTimestamp();
+        tx.set(tenantRef, {
+            tenantId, name: String(subscription.metadata?.pendingWorkspaceName || 'Workspace').slice(0, 80),
+            ownerId: ownerUid, createdBy: ownerUid, createdAt: now, updatedAt: now,
+        });
+        tx.set(tenantRef.collection('members').doc(ownerUid), {
+            uid: ownerUid, role: 'Owner', roleIds: [], joinedAt: now,
+            displayName: user.displayName || email.split('@')[0] || 'User', email, photoURL: user.photoURL || '',
+        });
+        // Written with the tenant so onTenantCreatedBilling does not start a separate in-app trial;
+        // syncSubscription fills in the Stripe state right after.
+        tx.set(entRef(tenantId), {
+            plan: 'team', status: 'trialing', workspaceType: 'team', stripeSubscriptionId: subscription.id,
+            ...PLAN_LIMITS.team, projectCount: 0, lockedProjectIds: [], aiMemberIds: [], aiAddonSeats: 0, updatedAt: now,
+        });
+    });
+    await pendingWorkspaceRef(ownerUid).delete().catch(() => undefined);
+};
+
+/** Purchase-page subscription not yet confirmed: unpaid, or a trial without a saved card (SetupIntent not done). */
+export const isPendingPurchase = (subscription: Stripe.Subscription) =>
+    subscription.status === 'incomplete'
+    || (subscription.status === 'trialing' && !subscription.default_payment_method
+        && subscription.metadata?.source === 'purchase-page');
+
+/**
+ * Seat reductions are Stripe subscription schedules that switch quantities at the period end (no refunds).
+ * Returns the next phase's quantities, or null.
+ */
+export const scheduledChangeOf = async (subscription: Stripe.Subscription) => {
+    const scheduleId = typeof subscription.schedule === 'string' ? subscription.schedule : subscription.schedule?.id;
+    if (!scheduleId) return null;
+    const schedule = await getStripe().subscriptionSchedules.retrieve(scheduleId);
+    if (schedule.status !== 'active') return null;
+    const now = Math.floor(Date.now() / 1000);
+    const next = schedule.phases.find((phase) => phase.start_date > now);
+    if (!next) return null;
+    const priceOf = (entry: Stripe.SubscriptionSchedule.Phase.Item) => (typeof entry.price === 'string' ? entry.price : entry.price.id);
+    const lookupByPrice = new Map(subscription.items.data.map((entry) => [entry.price.id, entry.price.lookup_key]));
+    let seats = 0;
+    let aiAddonSeats = 0;
+    for (const entry of next.items) {
+        if (isAiAddonLookupKey(lookupByPrice.get(priceOf(entry)) || null)) aiAddonSeats += Number(entry.quantity || 0);
+        else seats += Number(entry.quantity || 0);
+    }
+    return { seats, aiAddonSeats, effectiveAt: Timestamp.fromMillis(next.start_date * 1000) };
+};
+
 /**
  * Add-on seats bought on the purchase page: keep existing assignments (first N), and give a free slot to the
  * owner first (personal workspaces: always the owner). The owner assigns the rest in the billing tab.
@@ -239,7 +306,7 @@ const aiAssignmentAfterPurchase = (current: Record<string, unknown>, seats: numb
     return assigned.slice(0, seats);
 };
 
-const syncSubscription = async (subscription: Stripe.Subscription, tenantHint?: string) => {
+export const syncSubscription = async (subscription: Stripe.Subscription, tenantHint?: string) => {
     let tenantId = tenantHint || String(subscription.metadata?.tenantId || '');
     const customerId = typeof subscription.customer === 'string' ? subscription.customer : subscription.customer.id;
     if (!tenantId) {
@@ -250,17 +317,30 @@ const syncSubscription = async (subscription: Stripe.Subscription, tenantHint?: 
         console.warn('[billing] subscription without tenant', subscription.id);
         return;
     }
+    // Checkout with a new workspace (contract §8): the tenant only comes into existence once the card is saved
+    // or the first payment succeeded; until then (or if abandoned) nothing exists in ProjectFlow.
+    if (!(await db.doc(`tenants/${tenantId}`).get()).exists) {
+        if (!subscription.metadata?.pendingWorkspaceName || isPendingPurchase(subscription) || !LIVE_STATUSES.includes(subscription.status)) {
+            if (subscription.metadata?.ownerUid && !LIVE_STATUSES.includes(subscription.status) && subscription.status !== 'incomplete') {
+                await pendingWorkspaceRef(String(subscription.metadata.ownerUid)).delete().catch(() => undefined);
+            }
+            return;
+        }
+        await createPurchasedWorkspace(tenantId, subscription);
+    }
     const items = subscription.items.data;
     const addonItem = items.find((entry) => isAiAddonLookupKey(entry.price?.lookup_key));
     const item = items.find((entry) => entry !== addonItem) || items[0];
     const mapped = mapStripeStatus(subscription.status, isPersonalLookupKey(item?.price?.lookup_key) ? 'personal' : 'team');
     const current = (await entRef(tenantId).get()).data() || {};
     const drivesWorkspace = current.stripeSubscriptionId === subscription.id;
-    // Own purchase page (default_incomplete): an unpaid subscription changes nothing until it is paid; when Stripe
-    // expires it after 23 h only the pending marker is cleared.
-    if (!drivesWorkspace && (subscription.status === 'incomplete' || subscription.status === 'incomplete_expired')) {
+    // Own purchase page: an unpaid subscription (default_incomplete) or a trial subscription whose card was never
+    // confirmed changes nothing; it only becomes the workspace's subscription once paid / once a card is saved.
+    // Expired or canceled pending subscriptions just clear the marker.
+    const pending = isPendingPurchase(subscription);
+    if (!drivesWorkspace && (pending || subscription.status === 'incomplete_expired' || subscription.status === 'canceled')) {
         await customerRef(tenantId).set({
-            pendingSubscriptionId: subscription.status === 'incomplete' ? subscription.id : FieldValue.delete(),
+            pendingSubscriptionId: pending ? subscription.id : FieldValue.delete(),
             updatedAt: FieldValue.serverTimestamp(),
         }, { merge: true });
         return;
@@ -285,6 +365,7 @@ const syncSubscription = async (subscription: Stripe.Subscription, tenantHint?: 
         graceEndsAt: null,
         cancelAtPeriodEnd: Boolean(subscription.cancel_at_period_end),
         currentPeriodEnd: item?.current_period_end ? Timestamp.fromMillis(item.current_period_end * 1000) : null,
+        scheduledChange: mapped.plan === 'free' ? null : await scheduledChangeOf(subscription),
         // Add-on quantity can also shrink in the portal: keep the first N assignments.
         ...(mapped.plan === 'free' ? {} : {
             aiAddonSeats: Number(addonItem?.quantity || 0),
@@ -293,28 +374,6 @@ const syncSubscription = async (subscription: Stripe.Subscription, tenantHint?: 
     });
 };
 
-/** Sets the AI add-on quantity on the subscription (adds/removes the item as needed). */
-const setAddonQuantity = async (stripe: Stripe, subscriptionId: string, quantity: number) => {
-    const subscription = await stripe.subscriptions.retrieve(subscriptionId);
-    const addonItem = subscription.items.data.find((entry) => isAiAddonLookupKey(entry.price?.lookup_key));
-    if (addonItem && quantity === addonItem.quantity) return;
-    if (addonItem && quantity === 0) {
-        await stripe.subscriptionItems.del(addonItem.id, { proration_behavior: 'create_prorations' });
-        return;
-    }
-    if (addonItem) {
-        await stripe.subscriptionItems.update(addonItem.id, { quantity, proration_behavior: 'create_prorations' });
-        return;
-    }
-    if (quantity === 0) return;
-    const teamItem = subscription.items.data[0];
-    const interval: BillingInterval = teamItem?.price?.recurring?.interval === 'month' ? 'month' : 'year';
-    const prices = await stripe.prices.list({ lookup_keys: [AI_ADDON_LOOKUP_KEYS[interval]], active: true, limit: 1 });
-    if (!prices.data[0]) throw new functions.https.HttpsError('failed-precondition', 'billing-price-missing');
-    await stripe.subscriptionItems.create({
-        subscription: subscriptionId, price: prices.data[0].id, quantity, proration_behavior: 'create_prorations',
-    });
-};
 
 /**
  * Internal/comp workspaces (owner decision 2026-10-23): Team scope incl. AI for all members, no payment.
@@ -349,6 +408,8 @@ const PERSONAL_NAMES: Record<string, string> = { de: 'Mein Workspace', en: 'My w
 export const createPersonalWorkspace = async (uid: string, language?: string) => {
     const tenantId = personalWorkspaceId(uid);
     const tenantRef = db.doc(`tenants/${tenantId}`);
+    // Fast path (called on every purchase-page sign-in): no auth lookup or transaction when it exists.
+    if ((await tenantRef.get()).exists) return { tenantId, created: false };
     const user = await admin.auth().getUser(uid);
     const email = String(user.email || '').toLowerCase();
     const limits = limitsForType('free', 'personal');
@@ -393,7 +454,7 @@ export const ensurePersonalWorkspace = functions.region(REGION).https.onCall(asy
 
 // --- Callables ---
 
-const requireOwner = async (tenantId: unknown, context: functions.https.CallableContext) => {
+export const requireOwner = async (tenantId: unknown, context: functions.https.CallableContext) => {
     const uid = context.auth?.uid;
     if (!uid) throw new functions.https.HttpsError('unauthenticated', 'Authentication required.');
     if (typeof tenantId !== 'string' || !tenantId.trim()) {
@@ -411,18 +472,22 @@ const resolveOrigin = (requested: unknown) =>
         ? requested
         : process.env.APP_URL || 'https://app.getprojectflow.com';
 
-const INVOICE_FOOTER = 'ProjectFlow · Christoph Labestin · Frühlingsstraße 8 · 84082 Laberweinting · hello@getprojectflow.com';
+// Kleinunternehmerregelung (§ 19 UStG, owner 2026-10-24): no VAT, no Stripe Tax; the note is on every invoice.
+export const INVOICE_FOOTER = [
+    'ProjectFlow · Christoph Labestin · Frühlingsstraße 8 · 84082 Laberweinting · hello@getprojectflow.com',
+    'Gemäß § 19 UStG wird keine Umsatzsteuer berechnet. / No VAT is charged under the German small business scheme (§ 19 UStG).',
+].join('\n');
 /** "PF" + 6 chars derived from the tenant id (Stripe: 3–12 uppercase letters/digits, unique per customer). */
 const invoicePrefixFor = (tenantId: string) =>
     `PF${createHash('sha256').update(tenantId).digest('hex').slice(0, 6).toUpperCase()}`;
 
-const ensureCustomer = async (stripe: Stripe, tenantId: string, uid: string) => {
+const ensureCustomer = async (stripe: Stripe, tenantId: string, uid: string, nameOverride?: string) => {
     const existing = (await customerRef(tenantId).get()).data();
     if (existing?.customerId) return String(existing.customerId);
     const [user, tenant] = await Promise.all([admin.auth().getUser(uid), db.doc(`tenants/${tenantId}`).get()]);
     const customer = await stripe.customers.create({
         email: user.email || undefined,
-        name: String(tenant.data()?.name || 'ProjectFlow workspace'),
+        name: String(nameOverride || tenant.data()?.name || 'ProjectFlow workspace'),
         metadata: { tenantId, ownerUid: uid },
         // Invoice prefix/footer via API: the dashboard does not save them before account activation.
         invoice_prefix: invoicePrefixFor(tenantId),
@@ -512,8 +577,8 @@ export const personalAiKey = functions.region(REGION).runWith({ secrets: AI_KEY_
 });
 
 /**
- * Assigns the AI add-on (10 €/user/month) to full members; the Stripe add-on quantity follows the list.
- * Team/Organization with a subscription only.
+ * Assigns purchased AI add-on seats (10 €/user/month) to full members. Never changes the Stripe quantity
+ * (owner decision 2026-10-24: no automatic seat purchases); buy/reduce seats with changeSeats.
  */
 export const setAiAddonMembers = functions.region(REGION).runWith({ secrets: STRIPE_SECRETS })
     .https.onCall(async (data, context) => {
@@ -531,17 +596,23 @@ export const setAiAddonMembers = functions.region(REGION).runWith({ secrets: STR
         if (requested.some((uid) => !fullMembers.has(uid))) {
             throw new functions.https.HttpsError('invalid-argument', 'ai-addon-invalid-member');
         }
-        await setAddonQuantity(getStripe(), String(ent.stripeSubscriptionId), requested.length);
-        await entRef(tenantId).set({
-            aiMemberIds: requested, aiAddonSeats: requested.length, updatedAt: FieldValue.serverTimestamp(),
-        }, { merge: true });
+        // Assignment only within purchased AI seats; buying more is an explicit, confirmed seat change (changeSeats).
+        if (requested.length > Number(ent.aiAddonSeats || 0)) {
+            throw new functions.https.HttpsError('failed-precondition', 'ai-addon-no-free-seat');
+        }
+        await entRef(tenantId).set({ aiMemberIds: requested, updatedAt: FieldValue.serverTimestamp() }, { merge: true });
         aiAccessCache.clear();
         return { aiMemberIds: requested };
     });
 
 // --- Own purchase page (Stripe Payment Element, contract §8) ---
 
-type PurchaseInput = { tenantId: string; uid: string; type: WorkspaceType; interval: BillingInterval; aiAddonSeats: number };
+type PurchaseInput = {
+    tenantId: string; uid: string; type: WorkspaceType; interval: BillingInterval; aiAddonSeats: number;
+    /** Requested seats (≥ full members); undefined = full members. */
+    seats?: number;
+    seatsGiven: boolean; aiGiven: boolean;
+};
 
 /** Validates the request: owner only, plan follows the workspace type, AI add-on 0..members (personal: 0..1). */
 const resolvePurchase = async (data: any, context: functions.https.CallableContext): Promise<PurchaseInput> => {
@@ -556,11 +627,16 @@ const resolvePurchase = async (data: any, context: functions.https.CallableConte
     }
     if (ent.billingExempt === true) throw new functions.https.HttpsError('failed-precondition', 'billing-exempt');
     const interval: BillingInterval = data?.interval === 'month' ? 'month' : 'year';
-    const maxAi = type === 'personal' ? 1 : seatQuantity(await fullMemberRoles(tenantId));
+    const members = seatQuantity(await fullMemberRoles(tenantId));
+    const maxAi = type === 'personal' ? 1 : members;
     // `aiAddon: true` = one AI add-on for the owner (landing page); `aiAddonSeats` = explicit count.
     const requestedAi = typeof data?.aiAddon === 'boolean' && data?.aiAddonSeats === undefined ? (data.aiAddon ? 1 : 0) : Number(data?.aiAddonSeats) || 0;
     const aiAddonSeats = Math.min(maxAi, Math.max(0, Math.floor(requestedAi)));
-    return { tenantId, uid, type, interval, aiAddonSeats };
+    const seats = type === 'personal' ? 1 : Math.min(TEAM_MEMBER_LIMIT, Math.max(members, Math.floor(Number(data?.seats) || members)));
+    return {
+        tenantId, uid, type, interval, aiAddonSeats: Math.min(aiAddonSeats, seats), seats,
+        seatsGiven: data?.seats !== undefined, aiGiven: data?.aiAddon !== undefined || data?.aiAddonSeats !== undefined,
+    };
 };
 
 const purchaseItems = async (stripe: Stripe, input: PurchaseInput) => {
@@ -570,11 +646,12 @@ const purchaseItems = async (stripe: Stripe, input: PurchaseInput) => {
     const planPrice = prices.data.find((price) => price.lookup_key === planKey);
     const addonPrice = prices.data.find((price) => price.lookup_key === addonKey);
     if (!planPrice || !addonPrice) throw new functions.https.HttpsError('failed-precondition', 'billing-price-missing');
-    // Seats are not chosen by the buyer: they follow the full members (guests are free).
-    const seats = input.type === 'personal' ? 1 : seatQuantity(await fullMemberRoles(input.tenantId));
+    // Seats: at least the full members (guests are free); the buyer may book more up front.
+    const seats = input.type === 'personal' ? 1 : (input.seats ?? 1);
+    // The add-on entry is always returned (quantity 0 = none) so changes know the add-on price of the interval.
     return [
         { price: planPrice.id, quantity: seats },
-        ...(input.aiAddonSeats > 0 ? [{ price: addonPrice.id, quantity: input.aiAddonSeats }] : []),
+        { price: addonPrice.id, quantity: input.aiAddonSeats },
     ];
 };
 
@@ -609,13 +686,25 @@ const invoiceSummary = (invoice: Stripe.Invoice | null | undefined, trialEnd?: n
     })),
 } : null;
 
-const LIVE_STATUSES = ['active', 'trialing', 'past_due'];
+export /** For changes of a live subscription: quantities not explicitly requested stay as they are. */
+const keepCurrent = (subscription: Stripe.Subscription, target: { price: string; quantity: number }[], input: PurchaseInput) => {
+    const addonItem = subscription.items.data.find((entry) => isAiAddonLookupKey(entry.price?.lookup_key));
+    const planItem = subscription.items.data.find((entry) => entry !== addonItem);
+    const [planTarget, addonTarget] = target;
+    const plan = { price: planTarget.price, quantity: input.seatsGiven ? planTarget.quantity : Number(planItem?.quantity || planTarget.quantity) };
+    if (input.aiGiven || !addonItem) return [plan, addonTarget];
+    // Same AI quantity on the target interval's add-on price.
+    return [plan, { price: addonTarget.price, quantity: Number(addonItem.quantity || 0) }];
+};
+
+export const LIVE_STATUSES = ['active', 'trialing', 'past_due'];
 
 /** Item changes from an existing subscription to the requested plan items (interval switch, AI seats). */
 const changeItemsFor = (subscription: Stripe.Subscription, target: { price: string; quantity: number }[]) => {
     const planItem = subscription.items.data.find((entry) => !isAiAddonLookupKey(entry.price?.lookup_key));
     const addonItem = subscription.items.data.find((entry) => isAiAddonLookupKey(entry.price?.lookup_key));
-    const [planTarget, addonTarget] = target;
+    const [planTarget, rawAddon] = target;
+    const addonTarget = rawAddon && rawAddon.quantity > 0 ? rawAddon : undefined;
     const items: Stripe.SubscriptionUpdateParams.Item[] = [
         planItem ? { id: planItem.id, price: planTarget.price, quantity: planTarget.quantity } : planTarget,
     ];
@@ -640,7 +729,7 @@ export const previewSubscription = functions.region(REGION).runWith({ secrets: S
         if (ent.stripeSubscriptionId && LIVE_STATUSES.includes(String(ent.status))) {
             // Change of an existing subscription: prorated preview of what is charged now.
             const subscription = await stripe.subscriptions.retrieve(String(ent.stripeSubscriptionId));
-            const change = changeItemsFor(subscription, target);
+            const change = changeItemsFor(subscription, keepCurrent(subscription, target, input));
             const preview = change.unchanged ? null : await stripe.invoices.createPreview({
                 customer,
                 subscription: subscription.id,
@@ -656,7 +745,7 @@ export const previewSubscription = functions.region(REGION).runWith({ secrets: S
         const preview = await stripe.invoices.createPreview({
             customer,
             subscription_details: {
-                items: target,
+                items: target.filter((entry) => entry.quantity > 0),
                 ...(trialEnd ? { trial_end: trialEnd } : {}),
             },
             ...(promotion ? { discounts: [{ promotion_code: promotion }] } : {}),
@@ -673,18 +762,81 @@ export const previewSubscription = functions.region(REGION).runWith({ secrets: S
  * client secret with the Payment Element; the webhook activates the plan. Reuses an identical pending
  * subscription (idempotent), cancels a different pending one.
  */
+/**
+ * Purchase page with a NEW team workspace: reserve a tenant id, start a trial subscription (card via SetupIntent);
+ * the workspace is created by the webhook only once the card is saved. Same values again reuse the pending one.
+ */
+const createNewWorkspaceIntent = async (data: any, context: functions.https.CallableContext) => {
+    const uid = context.auth?.uid;
+    if (!uid) throw new functions.https.HttpsError('unauthenticated', 'Authentication required.');
+    if (data?.plan && data.plan !== 'team') throw new functions.https.HttpsError('failed-precondition', 'plan-workspace-type-mismatch');
+    const name = typeof data?.newWorkspace?.name === 'string' && data.newWorkspace.name.trim()
+        ? data.newWorkspace.name.trim().slice(0, 80) : 'Workspace';
+    const language = data?.newWorkspace?.language === 'en' ? 'en' : 'de';
+    const interval: BillingInterval = data?.interval === 'month' ? 'month' : 'year';
+    const seats = Math.min(TEAM_MEMBER_LIMIT, Math.max(1, Math.floor(Number(data?.seats) || 1)));
+    const stripe = getStripe();
+    const expand = ['latest_invoice.confirmation_secret', 'pending_setup_intent'];
+    const result = (subscription: Stripe.Subscription, tenantId: string) => {
+        const invoice = subscription.latest_invoice as Stripe.Invoice | null;
+        const setup = subscription.pending_setup_intent as Stripe.SetupIntent | null;
+        const summary = invoiceSummary(invoice, subscription.trial_end ?? null);
+        return {
+            tenantId, subscriptionId: subscription.id, intentType: setup ? 'setup' : 'payment',
+            clientSecret: setup?.client_secret || invoice?.confirmation_secret?.client_secret || null,
+            change: false, trialEnd: subscription.trial_end ?? null, invoice: summary, summary,
+        };
+    };
+
+    const pending = (await pendingWorkspaceRef(uid).get()).data();
+    if (pending?.subscriptionId) {
+        const existing = await stripe.subscriptions.retrieve(String(pending.subscriptionId), { expand }).catch(() => null);
+        const same = existing && isPendingPurchase(existing) && pending.name === name && pending.interval === interval && pending.seats === seats;
+        if (existing && same) return result(existing, String(pending.tenantId));
+        if (existing && isPendingPurchase(existing)) await stripe.subscriptions.cancel(existing.id).catch(() => undefined);
+    }
+
+    const tenantId = db.collection('tenants').doc().id; // reserved, not created
+    const [customer, prices] = await Promise.all([
+        ensureCustomer(stripe, tenantId, uid, name),
+        stripe.prices.list({ lookup_keys: [PRICE_LOOKUP_KEYS[interval]], active: true, limit: 1 }),
+    ]);
+    if (!prices.data[0]) throw new functions.https.HttpsError('failed-precondition', 'billing-price-missing');
+    const subscription = await stripe.subscriptions.create({
+        customer,
+        items: [{ price: prices.data[0].id, quantity: seats }],
+        payment_behavior: 'default_incomplete',
+        payment_settings: { save_default_payment_method: 'on_subscription' },
+        trial_period_days: TRIAL_DAYS,
+        trial_settings: { end_behavior: { missing_payment_method: 'cancel' } },
+        metadata: { tenantId, ownerUid: uid, pendingWorkspaceName: name, language, source: 'purchase-page' },
+        expand,
+    });
+    await Promise.all([
+        pendingWorkspaceRef(uid).set({ tenantId, name, interval, seats, subscriptionId: subscription.id, createdAt: FieldValue.serverTimestamp() }),
+        customerRef(tenantId).set({ pendingSubscriptionId: subscription.id, updatedAt: FieldValue.serverTimestamp() }, { merge: true }),
+    ]);
+    return result(subscription, tenantId);
+};
+
 export const createSubscriptionIntent = functions.region(REGION).runWith({ secrets: STRIPE_SECRETS })
     .https.onCall(async (data, context) => {
+        if (data?.newWorkspace) return createNewWorkspaceIntent(data, context);
         const input = await resolvePurchase(data, context);
         const stripe = getStripe();
         const ent = (await entRef(input.tenantId).get()).data() || {};
-        const customer = await ensureCustomer(stripe, input.tenantId, input.uid);
-        const items = await purchaseItems(stripe, input);
+        // Independent Stripe/Firestore calls in parallel (the purchase page waits on this call).
+        const [customer, items, promotion, customerDoc] = await Promise.all([
+            ensureCustomer(stripe, input.tenantId, input.uid),
+            purchaseItems(stripe, input),
+            resolvePromotion(stripe, data?.promotionCode),
+            customerRef(input.tenantId).get(),
+        ]);
         if (ent.stripeSubscriptionId && LIVE_STATUSES.includes(String(ent.status))) {
             // Upgrade/downgrade on the same page: interval switch and AI seats, prorated and invoiced now.
             // Seats follow members automatically. Upgrades only apply once paid (pending_if_incomplete).
             const current = await stripe.subscriptions.retrieve(String(ent.stripeSubscriptionId));
-            const change = changeItemsFor(current, items);
+            const change = changeItemsFor(current, keepCurrent(current, items, input));
             if (change.unchanged) {
                 return { subscriptionId: current.id, intentType: 'none', clientSecret: null, change: true, trialEnd: current.trial_end ?? null, invoice: null, summary: null };
             }
@@ -707,7 +859,6 @@ export const createSubscriptionIntent = functions.region(REGION).runWith({ secre
                 summary,
             };
         }
-        const promotion = await resolvePromotion(stripe, data?.promotionCode);
         const trialEnd = trialEndFor(ent);
         const expand = ['latest_invoice.confirmation_secret', 'pending_setup_intent'];
 
@@ -727,29 +878,32 @@ export const createSubscriptionIntent = functions.region(REGION).runWith({ secre
             };
         };
 
-        const pendingId = (await customerRef(input.tenantId).get()).data()?.pendingSubscriptionId;
+        const newItems = items.filter((entry) => entry.quantity > 0);
+        const pendingId = customerDoc.data()?.pendingSubscriptionId;
         if (typeof pendingId === 'string') {
             const pending = await stripe.subscriptions.retrieve(pendingId, { expand }).catch(() => null);
-            const same = pending && pending.status === 'incomplete' && !promotion
-                && pending.items.data.length === items.length
-                && items.every((wanted) => pending.items.data.some((have) => have.price.id === wanted.price && have.quantity === wanted.quantity));
+            const same = pending && isPendingPurchase(pending) && !promotion
+                && pending.items.data.length === newItems.length
+                && newItems.every((wanted) => pending.items.data.some((have) => have.price.id === wanted.price && have.quantity === wanted.quantity));
             if (pending && same) return toResult(pending);
-            if (pending && pending.status === 'incomplete') await stripe.subscriptions.cancel(pending.id).catch(() => undefined);
+            if (pending && isPendingPurchase(pending)) await stripe.subscriptions.cancel(pending.id).catch(() => undefined);
         }
 
         const subscription = await stripe.subscriptions.create({
             customer,
-            items,
+            items: newItems,
             payment_behavior: 'default_incomplete',
+            // Abandoned trial checkout (no card confirmed): Stripe cancels it at the trial end instead of invoicing.
+            ...(trialEnd ? { trial_settings: { end_behavior: { missing_payment_method: 'cancel' as const } } } : {}),
             payment_settings: { save_default_payment_method: 'on_subscription' },
             metadata: { tenantId: input.tenantId, source: 'purchase-page' },
             ...(trialEnd ? { trial_end: trialEnd } : {}),
             ...(promotion ? { discounts: [{ promotion_code: promotion }] } : {}),
             expand,
         });
-        // A trial subscription is already `trialing` (not incomplete) and drives the workspace via the webhook.
+        // Pending until paid (incomplete) or until the trial's card is saved (SetupIntent); the webhook then switches it over.
         await customerRef(input.tenantId).set({
-            pendingSubscriptionId: subscription.status === 'incomplete' ? subscription.id : FieldValue.delete(),
+            pendingSubscriptionId: isPendingPurchase(subscription) ? subscription.id : FieldValue.delete(),
             updatedAt: FieldValue.serverTimestamp(),
         }, { merge: true });
         return toResult(subscription);
@@ -818,6 +972,12 @@ export const createTeamWorkspace = functions.region(REGION).https.onCall(async (
 
 /** Polled by the success page until the webhook has applied the purchase. */
 export const getSubscriptionStatus = functions.region(REGION).https.onCall(async (data, context) => {
+    // New workspace from the purchase page that does not exist yet (card not saved / webhook not through).
+    if (context.auth?.uid && typeof data?.tenantId === 'string' && !(await db.doc(`tenants/${data.tenantId}`).get()).exists) {
+        const pending = (await pendingWorkspaceRef(context.auth.uid).get()).data();
+        if (pending && pending.tenantId === data.tenantId) return { status: 'pending', plan: 'team', interval: pending.interval, aiAddonSeats: 0, active: false };
+        throw new functions.https.HttpsError('not-found', 'Workspace not found.');
+    }
     const { tenantId } = await requireOwner(data?.personal === true && context.auth?.uid ? personalWorkspaceId(context.auth.uid) : data?.tenantId, context);
     const e = (await entRef(tenantId).get()).data() || {};
     return {
@@ -892,8 +1052,8 @@ export const stripeWebhook = functions.region(REGION)
 
 // --- Seats ---
 
-/** Subscription quantity follows the number of full members (guests are free). */
-export const onMemberWrittenBilling = functions.region(REGION).runWith({ secrets: STRIPE_SECRETS }).firestore
+/** Member count, pooled storage and AI assignment follow members; the paid seat quantity does not. */
+export const onMemberWrittenBilling = functions.region(REGION).firestore
     .document('tenants/{tenantId}/members/{memberId}')
     .onWrite(async (change, context) => {
         const before = change.before.exists ? String(change.before.data()?.role || 'Member') : null;
@@ -911,23 +1071,13 @@ export const onMemberWrittenBilling = functions.region(REGION).runWith({ secrets
             await entRef(tenantId).set({ aiMemberIds: FieldValue.arrayRemove(memberId) }, { merge: true });
             aiAccessCache.delete(memberId);
         }
-        if (ent?.plan === 'team' || ent?.plan === 'organization') {
-            const fullMembers = (await fullMemberRoles(tenantId)).filter((role) => role !== 'Guest').length;
-            await entRef(tenantId).set(storageFor(ent.plan, fullMembers), { merge: true });
-        }
-        if (!ent?.stripeSubscriptionId || !['active', 'trialing', 'past_due'].includes(String(ent.status))) return;
-        if (!process.env.STRIPE_SECRET_KEY) return;
-        const stripe = getStripe();
-        const subscription = await stripe.subscriptions.retrieve(String(ent.stripeSubscriptionId));
-        const item = subscription.items.data.find((entry) => !isAiAddonLookupKey(entry.price?.lookup_key));
-        const quantity = seatQuantity(await fullMemberRoles(tenantId));
-        if (item && item.quantity !== quantity) {
-            await stripe.subscriptionItems.update(item.id, { quantity, proration_behavior: 'create_prorations' });
-        }
-        if (dropAi) await setAddonQuantity(stripe, subscription.id, assigned.length - 1);
+        // Seats are purchased explicitly (changeSeats); members joining or leaving never change the Stripe
+        // quantity (owner decision 2026-10-24). Keep the member count and pooled storage current.
+        const fullMembers = (await fullMemberRoles(tenantId)).filter((role) => role !== 'Guest').length;
         await entRef(tenantId).set({
-            seats: quantity,
-            ...(dropAi ? { aiAddonSeats: assigned.length - 1 } : {}),
+            memberCount: fullMembers,
+            ...(ent?.plan === 'team' || ent?.plan === 'organization'
+                ? storageFor(ent.plan, Math.max(fullMembers, Number(ent.seats || 0))) : {}),
             updatedAt: FieldValue.serverTimestamp(),
         }, { merge: true });
     });

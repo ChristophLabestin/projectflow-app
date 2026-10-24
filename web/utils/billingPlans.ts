@@ -39,6 +39,10 @@ export type Entitlements = {
     projectCount: number;
     lockedProjectIds: string[];
     hasSubscription: boolean;
+    /** Full members (server-maintained). */
+    memberCount: number;
+    /** Pending seat reduction at the period end (contract §9). */
+    scheduledChange: { seats: number; aiAddonSeats: number; effectiveAt: Date | null } | null;
 };
 
 const toDate = (value: unknown): Date | null => {
@@ -74,6 +78,14 @@ export const parseEntitlements = (data: Record<string, unknown> | undefined): En
         projectCount: Number(data?.projectCount || 0),
         lockedProjectIds: Array.isArray(data?.lockedProjectIds) ? (data.lockedProjectIds as string[]) : [],
         hasSubscription: Boolean(data?.stripeSubscriptionId),
+        memberCount: Number(data?.memberCount || 0),
+        scheduledChange: data?.scheduledChange && typeof data.scheduledChange === 'object'
+            ? {
+                seats: Number((data.scheduledChange as Record<string, unknown>).seats || 0),
+                aiAddonSeats: Number((data.scheduledChange as Record<string, unknown>).aiAddonSeats || 0),
+                effectiveAt: toDate((data.scheduledChange as Record<string, unknown>).effectiveAt),
+            }
+            : null,
     };
 };
 
@@ -123,3 +135,7 @@ export const toPlanState = (ent: Entitlements): PlanState => ({
 /** Locale key variant for plan copy: personal workspaces upgrade to "Personal", team workspaces to "Team". */
 export const planCopyKey = (ent: Pick<Entitlements, 'workspaceType'> | null | undefined, key: string) =>
     ent?.workspaceType === 'personal' ? `${key}.personal` : key;
+
+/** Paid subscription caps full members at the purchased seats (guests are free); null = no seat cap. */
+export const seatCap = (ent: Entitlements) =>
+    ent.hasSubscription && ['active', 'trialing', 'past_due'].includes(ent.status) && ent.status !== 'exempt' ? ent.seats : null;

@@ -4,9 +4,6 @@ Last updated: 2026-06-04
 
 ## Issue List
 
-- Billing E2E not yet possible: no Stripe test key in Secret Manager (found 2026-10-23).
-  - Impact: `createBillingCheckout`, `createBillingPortal`, `stripeWebhook`, `onMemberWrittenBilling` are not deployed; the billing tab shows "Billing is not set up yet" on checkout.
-  - Status: waiting for the owner (`firebase functions:secrets:set STRIPE_SECRET_KEY`, then steps in [plans/billing-implementation.md](./plans/billing-implementation.md)). ProjectFlow initiative for billing not created: `PROJECTFLOW_API_TOKEN` missing.
 - Task/project reminders are stored but never delivered (found 2026-10-22).
   - Impact: `reminders[]` / `reminderAt` set in the task workbench or project overview never trigger a push or email; `functions/src/scheduler.ts` has no reminder job.
   - Status: open; planned as a Phase 0 backend prerequisite in [plans/ios-app-concept.md](./plans/ios-app-concept.md) §9.4 (recipients decided 2026-10-22: creator by default, assignees optional — concept §12.3).

@@ -18,7 +18,7 @@ import type {
     FlowTrigger,
     FlowTriggerType,
 } from '../../services/domain/automationsService';
-import { TASKLESS_TRIGGERS, TASK_ACTIONS, WEEKDAYS } from './flowText';
+import { ACTION_ICONS, TASKLESS_TRIGGERS, TASK_ACTIONS, TRIGGER_ICONS, WEEKDAYS } from './flowText';
 
 type T = (key: string) => string;
 
@@ -146,6 +146,76 @@ export const defaultTriggerConfig = (type: FlowTriggerType): FlowTrigger['config
     return {};
 };
 
+/** Trigger tiles grouped by kind; the chosen one shows its explanation. */
+export const TRIGGER_GROUPS: { key: string; types: FlowTriggerType[] }[] = [
+    { key: 'tasks', types: ['task.created', 'task.status_changed', 'task.assigned', 'comment.created', 'subtask.completed'] },
+    { key: 'time', types: ['task.due', 'task.overdue', 'schedule'] },
+    { key: 'more', types: ['project.member_added', 'file.uploaded', 'manual'] },
+];
+
+export const TriggerPicker: React.FC<{ t: T; value?: FlowTriggerType; onPick: (type: FlowTriggerType) => void }> = ({ t, value, onPick }) => (
+    <div className="flow-picker">
+        {TRIGGER_GROUPS.map((group) => (
+            <div key={group.key} className="flow-picker__group">
+                <span className="flow-picker__label">{t(`flows.picker.trigger.${group.key}`)}</span>
+                <div className="flow-picker__grid" role="radiogroup">
+                    {group.types.map((type) => (
+                        <button key={type} type="button" role="radio" aria-checked={value === type}
+                            className={`flow-tile ${value === type ? 'is-active' : ''}`.trim()} onClick={() => onPick(type)}>
+                            <span className="flow-tile__icon material-symbols-outlined" aria-hidden="true">{TRIGGER_ICONS[type]}</span>
+                            <span className="flow-tile__title">{t(`flows.trigger.${type}`)}</span>
+                        </button>
+                    ))}
+                </div>
+            </div>
+        ))}
+        {value && <p className="flow-hint">{t(`flows.triggerHint.${value}`)}</p>}
+    </div>
+);
+
+export const ACTION_GROUPS: { key: string; types: FlowActionType[] }[] = [
+    { key: 'task', types: ['set_status', 'assign', 'set_field', 'add_label', 'remove_label', 'move'] },
+    { key: 'communicate', types: ['notify', 'comment', 'create_task'] },
+    { key: 'smart', types: ['ai', 'delay'] },
+];
+
+/** Action tiles; actions that need a task are hidden for taskless triggers. */
+export const ActionPicker: React.FC<{ t: T; triggerType: FlowTriggerType; onPick: (type: FlowActionType) => void; onCancel?: () => void }> = ({ t, triggerType, onPick, onCancel }) => {
+    const allowed = new Set(availableActions(triggerType));
+    return (
+        <div className="flow-picker flow-picker--actions">
+            <div className="flow-picker__head">
+                <strong>{t('flows.picker.action.title')}</strong>
+                {onCancel && (
+                    <button type="button" className="flow-icon-button" onClick={onCancel} aria-label={t('flows.picker.cancel')}>
+                        <span className="material-symbols-outlined">close</span>
+                    </button>
+                )}
+            </div>
+            {ACTION_GROUPS.map((group) => {
+                const types = group.types.filter((type) => allowed.has(type));
+                if (!types.length) return null;
+                return (
+                    <div key={group.key} className="flow-picker__group">
+                        <span className="flow-picker__label">{t(`flows.picker.action.${group.key}`)}</span>
+                        <div className="flow-picker__grid">
+                            {types.map((type) => (
+                                <button key={type} type="button" className="flow-tile flow-tile--wide" onClick={() => onPick(type)}>
+                                    <span className="flow-tile__icon material-symbols-outlined" aria-hidden="true">{ACTION_ICONS[type]}</span>
+                                    <span className="flow-tile__text">
+                                        <span className="flow-tile__title">{t(`flows.action.${type}`)}</span>
+                                        <span className="flow-tile__hint">{t(`flows.actionHint.${type}`)}</span>
+                                    </span>
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                );
+            })}
+        </div>
+    );
+};
+
 export const TriggerEditor: React.FC<{ opts: FlowEditorOptions; trigger: FlowTrigger; onChange: (trigger: FlowTrigger) => void }> = ({ opts, trigger, onChange }) => {
     const { t, members } = opts;
     const config = trigger.config || {};
@@ -154,13 +224,10 @@ export const TriggerEditor: React.FC<{ opts: FlowEditorOptions; trigger: FlowTri
     const statusOptions = [{ value: '', label: t('flows.any') }, ...options(STATUSES, (s) => t(`flows.status.${s}`))];
     return (
         <div className="flow-fields">
-            <Field label={t('flows.trigger.label')} wide>
-                <Select
-                    value={trigger.type}
-                    options={options(TRIGGER_TYPES, (type) => t(`flows.trigger.${type}`))}
-                    onChange={(value) => onChange({ type: value as FlowTriggerType, config: defaultTriggerConfig(value as FlowTriggerType) })}
-                />
-            </Field>
+            <div className="flow-field flow-field--wide">
+                <TriggerPicker t={t} value={trigger.type}
+                    onPick={(type) => type !== trigger.type && onChange({ type, config: defaultTriggerConfig(type) })} />
+            </div>
             {trigger.type === 'task.status_changed' && (
                 <>
                     <Field label={t('flows.trigger.from')}>
@@ -496,12 +563,7 @@ export const ActionEditor: React.FC<{
     const c = action.config || {};
     const set = (patch: Record<string, unknown>) => onChange({ ...action, config: { ...c, ...patch } });
     const taskless = TASKLESS_TRIGGERS.has(triggerType);
-    const typeSelect = (
-        <Field label={t('flows.action.label')} wide>
-            <Select value={action.type} options={options(availableActions(triggerType), (type) => t(`flows.action.${type}`))}
-                onChange={(v) => onChange({ ...action, type: v as FlowActionType, config: defaultActionConfig(v as FlowActionType, null, t) })} />
-        </Field>
-    );
+    const typeSelect = null;
     const projectOptions = projects.map((p) => ({ value: p.id, label: p.title }));
 
     let body: React.ReactNode = null;
