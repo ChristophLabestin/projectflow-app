@@ -33,3 +33,21 @@ Header über die ganze Seite; einheitliche Abstände (eine Rhythmus-Skala).
 - GSAP + ScrollTrigger wie die Story; jede Szene als eigene Funktion in `src/js/home.ts` (oder `src/js/scenes/*`).
 - Gepinnte Szenen nur ≥ 900 px; mobil kurze, nicht gepinnte Varianten (eine Animation pro Sektion beim Erscheinen).
 - Performance-Budget: keine zusätzlichen Libraries, Bilder nur als SVG/HTML-UI, Lighthouse bleibt bei 100.
+
+## Überarbeitung nach kritischem Review (2026-10-24, umgesetzt)
+
+Verdikt: „ja, mit Änderungen“. Zu viele gepinnte Szenen hintereinander (Scroll-Müdigkeit), Wiederholung der Story
+(Board, Geräte), fehlender Vertrauensblock, Preise dürfen nicht animieren. Umgesetzt wird:
+
+- Reihenfolge: Story → Für wen → KI & MCP → Apps → Funktionen → Vertrauen (neu) → Preise → FAQ → Abschluss.
+- Genau **eine** weitere gepinnte Szene: KI & MCP (≥ 900 px, scrubbed: Prompt tippt → Tool-Aufruf → Karte landet →
+  „via MCP“-Protokoll → Rechte-Badge). Alles andere frei scrollend oder einmal beim Erscheinen.
+- Für wen: Rollen-Tabs (echte Tabs, Pfeiltasten), rechts vorgerenderte Mini-Boards je Rolle, Crossfade; Klick + sanftes
+  Auto-Weiterschalten beim Durchscrollen (nicht bei reduced motion).
+- Apps: kompakt, Story zeigt das iPhone schon; bestehende Szene bleibt, nur dezente Parallaxe.
+- Funktionen: Bento mit Mini-UIs, die einmal abspielen; Endzustand ist statisches HTML/CSS.
+- Vertrauen: ruhiger Streifen mit echten Fakten (Daten in der EU, Passkeys & Rollen, Export, Made in Germany) –
+  keine erfundenen Testimonials.
+- Preise: unverändert ruhig, keine hochzählenden Zahlen. FAQ: natives `<details>`, zweispaltig.
+- Abschluss: Karten fliegen frei (ohne Pin) zum Logo zusammen; mobil einfaches Einblenden.
+- Gestrichen: Fortschrittslinie, Wort-Einblendung überall, Drei-Geräte-Reise, Preis-Count-up.

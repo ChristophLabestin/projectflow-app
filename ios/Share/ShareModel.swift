@@ -21,6 +21,8 @@ final class ShareModel {
     var url: URL?
     /// Extra text shared next to the title/URL.
     var details = ""
+    /// Shared photos and files (max 5, each ≤ 50 MB): attached to the new task.
+    var files: [FirestoreWriter.SharedFile] = []
     var target: Target = .personal
     var phase: Phase = .editing
     private(set) var projects: [TodaySnapshot.ProjectRef] = []
@@ -56,6 +58,10 @@ final class ShareModel {
             if pageTitle == nil, let value = item.attributedTitle?.string.trimmingCharacters(in: .whitespacesAndNewlines), !value.isEmpty { pageTitle = value }
             if foundText == nil, let value = item.attributedContentText?.string.trimmingCharacters(in: .whitespacesAndNewlines), !value.isEmpty { foundText = value }
             for provider in item.attachments ?? [] {
+                if files.count < 5, let file = await Self.loadFile(from: provider) {
+                    files.append(file)
+                    continue
+                }
                 if foundURL == nil, provider.hasItemConformingToTypeIdentifier(UTType.url.identifier) {
                     foundURL = await Self.loadURL(from: provider)
                 }
@@ -70,6 +76,26 @@ final class ShareModel {
             foundText = nil
         }
         compose(url: foundURL, text: foundText, pageTitle: pageTitle)
+        // Only files shared: the first name (without extension) is a good task title.
+        if title.isEmpty, let first = files.first { title = String((first.name as NSString).deletingPathExtension.prefix(200)) }
+    }
+
+    /// Images and documents (not links or plain text) become uploads.
+    private nonisolated static func loadFile(from provider: NSItemProvider) async -> FirestoreWriter.SharedFile? {
+        let types = provider.registeredContentTypes
+        guard let type = types.first(where: { $0.conforms(to: .image) || $0.conforms(to: .pdf) || $0.conforms(to: .movie)
+            || ($0.conforms(to: .data) && !$0.conforms(to: .url) && !$0.conforms(to: .plainText) && !$0.conforms(to: .text)) }) else { return nil }
+        let suggested = provider.suggestedName
+        return await withCheckedContinuation { continuation in
+            _ = provider.loadFileRepresentation(for: type, openInPlace: false) { url, _, _ in
+                guard let url, let data = try? Data(contentsOf: url), data.count <= 50 * 1024 * 1024 else {
+                    continuation.resume(returning: nil)
+                    return
+                }
+                let name = suggested.map { $0.contains(".") ? $0 : "\($0).\(type.preferredFilenameExtension ?? "bin")" } ?? url.lastPathComponent
+                continuation.resume(returning: FirestoreWriter.SharedFile(name: name, mimeType: type.preferredMIMEType ?? "application/octet-stream", data: data))
+            }
+        }
     }
 
     private func compose(url: URL?, text: String?, pageTitle: String?) {
@@ -155,7 +181,20 @@ final class ShareModel {
         }
         let html = descriptionHTML
         do {
-            try await FirestoreWriter(credentials: credentials).createTask(title: trimmed, descriptionHTML: html, target: writerTarget)
+            let writer = FirestoreWriter(credentials: credentials)
+            let taskId = try await writer.createTask(title: trimmed, descriptionHTML: html, target: writerTarget)
+            // Shared files: attached to the task in a project; personal tasks have no file parent, so they go to the workspace.
+            for file in files {
+                switch writerTarget {
+                case let .project(tenantId, projectId):
+                    let parent: [String: Any] = ["type": "task", "id": taskId, "projectId": projectId, "rootType": "task", "rootId": taskId, "title": trimmed]
+                    try? await writer.upload(file, tenantId: tenantId, parent: parent, projectId: projectId)
+                case .personal:
+                    let parent: [String: Any] = ["type": "workspace", "id": credentials.tenantId, "projectId": NSNull(),
+                                                 "rootType": "workspace", "rootId": credentials.tenantId, "title": trimmed]
+                    try? await writer.upload(file, tenantId: credentials.tenantId, parent: parent, projectId: nil)
+                }
+            }
             rememberTarget()
             phase = .saved
             await finish(after: .milliseconds(900))

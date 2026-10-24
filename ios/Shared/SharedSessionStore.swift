@@ -14,6 +14,7 @@ nonisolated struct SharedSessionCredentials: Codable, Hashable, Sendable {
     var emulatorHost: String?
     var authPort: Int?
     var firestorePort: Int?
+    var functionsPort: Int?
 
     var isEmulator: Bool { emulatorHost != nil }
 }

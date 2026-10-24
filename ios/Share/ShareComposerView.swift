@@ -38,6 +38,7 @@ struct ShareComposerView: View {
                 .padding(.horizontal, PFSpace.page)
 
             if let url = model.url { linkCard(url) }
+            if !model.files.isEmpty { filesCard }
             if !model.details.isEmpty {
                 Text(model.details)
                     .pfText(.meta)
@@ -79,6 +80,24 @@ struct ShareComposerView: View {
             Spacer(minLength: 0)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+    }
+
+    private var filesCard: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            ForEach(Array(model.files.enumerated()), id: \.offset) { _, file in
+                HStack(spacing: PFSpace.s) {
+                    Image(systemName: file.mimeType.hasPrefix("image/") ? "photo" : "doc").font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(PFColor.textMuted)
+                    Text(file.name).pfText(.metaStrong).foregroundStyle(PFColor.textMain).lineLimit(1)
+                    Spacer(minLength: 0)
+                    Text(ByteCountFormatter.string(fromByteCount: Int64(file.data.count), countStyle: .file)).pfText(.caption).foregroundStyle(PFColor.textMuted)
+                }
+            }
+        }
+        .padding(PFSpace.s)
+        .pfCard(radius: PFRadius.control)
+        .padding(.horizontal, PFSpace.page)
+        .accessibilityElement(children: .combine)
     }
 
     private func linkCard(_ url: URL) -> some View {

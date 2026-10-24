@@ -332,6 +332,7 @@ function storyScene(mobile: boolean) {
         start: 'top top',
         end: () => `+=${actLen() * ACTS}`,
         pin: true,
+        refreshPriority: 2, // measured before the MCP pin (1) and all other triggers (0)
         scrub: 0.5,
         animation: tl,
         invalidateOnRefresh: true,
@@ -406,37 +407,150 @@ function storyScene(mobile: boolean) {
     };
 }
 
+/* ==================================================================== roles (tabs) */
+
+/** Role tabs: click and arrow keys always work; with motion they also advance gently while the section scrolls by. */
+function roleTabs(): ((i: number) => void) | undefined {
+    const root = $('[data-roles]');
+    if (!root) return undefined;
+    const tabs = $$<HTMLButtonElement>('[data-role-tab]', root);
+    const panels = $$('[data-role-panel]', root);
+    const boards = $$('[data-role-board]', root);
+    let current = 0;
+    const select = (i: number, focus = false) => {
+        current = i;
+        tabs.forEach((t, n) => {
+            t.setAttribute('aria-selected', String(n === i));
+            t.tabIndex = n === i ? 0 : -1;
+        });
+        panels.forEach((p, n) => { p.hidden = n !== i; });
+        boards.forEach((b, n) => b.classList.toggle('is-on', n === i));
+        if (focus) tabs[i].focus();
+    };
+    tabs.forEach((t, n) => {
+        t.addEventListener('click', () => { root.dataset.touched = '1'; select(n); });
+        t.addEventListener('keydown', (e) => {
+            const step = e.key === 'ArrowDown' || e.key === 'ArrowRight' ? 1 : e.key === 'ArrowUp' || e.key === 'ArrowLeft' ? -1 : 0;
+            if (!step) return;
+            e.preventDefault();
+            root.dataset.touched = '1';
+            select((current + step + tabs.length) % tabs.length, true);
+        });
+    });
+    return (i: number) => { if (!root.dataset.touched && i !== current) select(i); };
+}
+
+function rolesScroll(select: (i: number) => void) {
+    const root = $('[data-roles]');
+    if (!root) return;
+    const count = $$('[data-role-tab]', root).length;
+    ScrollTrigger.create({
+        trigger: root, start: 'top 55%', end: 'bottom 45%',
+        onUpdate: (self) => select(Math.min(count - 1, Math.floor(self.progress * count))),
+    });
+}
+
 /* ==================================================================== MCP scene */
 
-function mcpScene() {
+/** Elements of the MCP scene and their start state (prompt hidden, call/result/card/log out, read-only). */
+function mcpParts() {
     const root = $('[data-mcp]');
-    if (!root) return;
-    const prompt = $('[data-mcp-prompt]', root)!;
-    const text = prompt.textContent ?? '';
-    const call = $('[data-mcp-call]', root);
-    const result = $('[data-mcp-result]', root);
-    const card = $('[data-mcp-card]', root);
-    const count = $('[data-mcp-count]', root);
-    gsap.set([call, result], { autoAlpha: 0, y: 8 });
-    gsap.set(card, { autoAlpha: 0, x: -40, scale: 0.96 });
-    if (count) count.textContent = '2';
-    prompt.textContent = '';
-    ScrollTrigger.create({
-        trigger: root, start: 'top 70%', once: true,
-        onEnter: () => {
-            let i = 0;
-            const id = window.setInterval(() => {
-                prompt.textContent = text.slice(0, ++i);
-                if (i < text.length) return;
-                window.clearInterval(id);
-                gsap.timeline()
-                    .to(call, { autoAlpha: 1, y: 0, duration: motion.dur3, ease: motion.ease }, 0.2)
-                    .to(result, { autoAlpha: 1, y: 0, duration: motion.dur3, ease: motion.ease }, 0.9)
-                    .to(card, { autoAlpha: 1, x: 0, scale: 1, duration: motion.dur4, ease: motion.easeSpring }, 1.1)
-                    .call(() => { if (count) count.textContent = '3'; }, undefined, 1.2);
-            }, 28);
+    if (!root) return null;
+    const parts = {
+        root,
+        chars: $$('.ch', root),
+        call: $('[data-mcp-call]', root)!,
+        result: $('[data-mcp-result]', root)!,
+        card: $('[data-mcp-card]', root)!,
+        log: $('[data-mcp-log]', root)!,
+        write: $('[data-mcp-write]', root)!,
+        count: $('[data-mcp-count]', root),
+    };
+    gsap.set(parts.chars, { opacity: 0 });
+    gsap.set([parts.call, parts.result, parts.log], { autoAlpha: 0, y: 8 });
+    gsap.set(parts.card, { autoAlpha: 0, x: -40, scale: 0.96 });
+    return parts;
+}
+
+/** Desktop: the one pinned scene after the story – scroll types the prompt, the tool call runs, the card lands. */
+function mcpPinned() {
+    const section = $('[data-mcp-section]');
+    const p = mcpParts();
+    if (!section || !p) return undefined;
+    section.classList.add('is-pinned');
+    const tl = gsap.timeline({ defaults: { ease: 'power2.out' } })
+        .to(p.chars, { opacity: 1, duration: 0.02, stagger: 0.02 }, 0)
+        .to(p.call, { autoAlpha: 1, y: 0, duration: 0.25 })
+        .to(p.result, { autoAlpha: 1, y: 0, duration: 0.25 }, '+=0.15')
+        .to(p.card, { autoAlpha: 1, x: 0, scale: 1, duration: 0.35, ease: 'back.out(1.6)' }, '<+0.1')
+        .to(p.log, { autoAlpha: 1, y: 0, duration: 0.25 }, '+=0.1')
+        .to({}, { duration: 0.3 });
+    const st = ScrollTrigger.create({
+        trigger: section, start: () => `top top+=${HEADER}`, end: '+=140%',
+        pin: true, scrub: 0.5, animation: tl, invalidateOnRefresh: true,
+        refreshPriority: 1, // created after the reveal triggers below it; must be measured first
+        onUpdate: (self) => {
+            p.write.classList.toggle('is-on', self.progress > 0.55);
+            if (p.count) p.count.textContent = self.progress > 0.62 ? '3' : '2';
         },
     });
+    return () => { st.kill(); tl.kill(); section.classList.remove('is-pinned'); };
+}
+
+/** Phones/tablets: plays once when the scene scrolls in (no pin). */
+function mcpOnce() {
+    const p = mcpParts();
+    if (!p) return undefined;
+    if (p.count) p.count.textContent = '2';
+    const tl = gsap.timeline({ paused: true, defaults: { ease: motion.ease } })
+        .to(p.chars, { opacity: 1, duration: 0.01, stagger: 0.028 }, 0)
+        .to(p.call, { autoAlpha: 1, y: 0, duration: motion.dur3 }, '+=0.2')
+        .to(p.result, { autoAlpha: 1, y: 0, duration: motion.dur3 }, '+=0.4')
+        .call(() => p.write.classList.add('is-on'))
+        .to(p.card, { autoAlpha: 1, x: 0, scale: 1, duration: motion.dur4, ease: motion.easeSpring }, '<+0.2')
+        .call(() => { if (p.count) p.count.textContent = '3'; })
+        .to(p.log, { autoAlpha: 1, y: 0, duration: motion.dur3 }, '+=0.2');
+    const st = ScrollTrigger.create({ trigger: p.root, start: 'top 70%', once: true, onEnter: () => tl.play() });
+    return () => { st.kill(); tl.kill(); };
+}
+
+/* ==================================================================== apps, features, closing */
+
+/** Desktop: the two app cards drift a little against each other while scrolling. */
+function appsDrift() {
+    const els = $$('[data-drift]');
+    const tweens = els.map((el) => gsap.fromTo(el, { y: 24 * Number(el.dataset.drift) }, {
+        y: -24 * Number(el.dataset.drift), ease: 'none',
+        scrollTrigger: { trigger: el, start: 'top bottom', end: 'bottom top', scrub: true },
+    }));
+    return () => tweens.forEach((t) => { t.scrollTrigger?.kill(); t.kill(); gsap.set(t.targets(), { clearProps: 'transform' }); });
+}
+
+/** Feature tiles play their mini UI once (CSS transitions from the start state to the static end state). */
+function playOnce() {
+    ScrollTrigger.batch('[data-play]', {
+        start: 'top 80%', once: true,
+        onEnter: (els) => els.forEach((el, i) => window.setTimeout(() => el.classList.add('is-played'), i * 120)),
+    });
+}
+
+/** Desktop: fragments around the closing logo fly into it as the card scrolls up – the hero's noise, ordered. */
+function ctaConverge() {
+    const mark = $('[data-converge]');
+    if (!mark) return undefined;
+    const frags = $$('.cta__frag', mark);
+    const logoEl = $('.cta__logo', mark);
+    const tl = gsap.timeline({
+        scrollTrigger: { trigger: mark.closest('.cta') ?? mark, start: 'top 85%', end: 'center 55%', scrub: 0.6 },
+    });
+    frags.forEach((f, i) => {
+        const a = (i * 45 + 20) * (Math.PI / 180);
+        const r = 220 + (i % 3) * 40;
+        tl.fromTo(f, { x: Math.cos(a) * r, y: Math.sin(a) * r, rotation: (i % 2 ? 1 : -1) * 14, opacity: 1 },
+            { x: 0, y: 0, rotation: 0, scale: 0.4, opacity: 0, ease: 'power2.in' }, i * 0.03);
+    });
+    if (logoEl) tl.fromTo(logoEl, { scale: 0.86, opacity: 0.4 }, { scale: 1, opacity: 1, ease: 'power2.out' }, 0.15);
+    return () => { tl.scrollTrigger?.kill(); tl.kill(); gsap.set([...frags, logoEl], { clearProps: 'all' }); };
 }
 
 /* ==================================================================== pricing + shortcuts */
@@ -529,6 +643,8 @@ function reveals() {
     });
 }
 
+const selectRole = roleTabs();
+
 if (prefersMotion()) {
     gsap.registerPlugin(ScrollTrigger);
     ScrollTrigger.config({ ignoreMobileResize: true });
@@ -536,7 +652,20 @@ if (prefersMotion()) {
     const mm = gsap.matchMedia();
     mm.add('(min-width: 1000px)', () => storyScene(false));
     mm.add('(max-width: 999px)', () => storyScene(true));
-    mcpScene();
+    // Scenes below the story are set up when the browser is idle after the first paint (keeps the main thread
+    // free during load). After the story exactly one more pinned scene (MCP, desktop); the rest scrolls freely.
+    const later = () => {
+        mm.add('(min-width: 1000px)', () => {
+            const cleanups = [mcpPinned(), appsDrift(), ctaConverge()];
+            return () => cleanups.forEach((c) => c?.());
+        });
+        mm.add('(max-width: 999px)', () => mcpOnce());
+        if (selectRole) rolesScroll(selectRole);
+        playOnce();
+        ScrollTrigger.refresh();
+    };
+    if ('requestIdleCallback' in window) window.requestIdleCallback(later, { timeout: 1500 });
+    else setTimeout(later, 400);
     shortcutsScene();
     spotlights();
     reveals();
