@@ -3,7 +3,7 @@ import type { HandlerMap } from '../types';
 import { AdminInputError, int, str, toMs } from '../types';
 import { plain } from './content';
 import {
-    CampaignInputError, LISTS, LIST_STATUSES, campaignReadyErrors, isList, matchesAudience, newsletterEmailHtml, normalizeAudience,
+    CampaignInputError, LISTS, applyPlaceholders, LIST_STATUSES, campaignReadyErrors, isList, matchesAudience, newsletterEmailHtml, normalizeAudience,
     normalizeCampaignInput, parseEmail, renderMarkdown, subscriberId, toLang, variantFor,
 } from '../../platform-newsletter/logic';
 import type { ListId, SubscriberDoc } from '../../platform-newsletter/logic';
@@ -300,10 +300,13 @@ export const newsletterHandlers: HandlerMap = {
             let c;
             try { c = normalizeCampaignInput(raw); } catch (error: any) { throw new AdminInputError(error.message); }
             const { lang, variant } = variantFor(c, toLang(params?.lang));
+            // Placeholders like in the real send: `sampleName`, else the {{name|Fallback}} fallback.
+            const vars = { name: str(params?.sampleName, 120) };
+            const subject = applyPlaceholders(variant.subject, vars, false);
             return {
                 lang,
-                subject: variant.subject,
-                html: newsletterEmailHtml({ subject: variant.subject, preheader: variant.preheader, bodyHtml: renderMarkdown(variant.markdown), lang, list: c.audience.list, unsubscribeUrl: '#' }),
+                subject,
+                html: newsletterEmailHtml({ subject, preheader: variant.preheader, bodyHtml: applyPlaceholders(renderMarkdown(variant.markdown), vars), lang, list: c.audience.list, unsubscribeUrl: '#' }),
             };
         },
     },

@@ -46,7 +46,7 @@ Campaign   = { id, title, status, defaultLang, variants, audience, scheduledAt, 
 | `newsletter.campaigns.get` | `{ id }` | `{ campaign, problems: [{ subscriberId, status, error }] }` | none |
 | `newsletter.campaigns.save` | `{ id?, title, defaultLang, variants: { de?: {subject, preheader, markdown}, en?: … }, audience }` | `{ id }` – nur Entwürfe | mutation |
 | `newsletter.campaigns.delete` | `{ id }` | `{ ok }` – nur draft/canceled | mutation |
-| `newsletter.campaigns.preview` | `{ id \| campaign, lang? }` | `{ lang, subject, html }` (für iframe `srcdoc`, sandbox) | none |
+| `newsletter.campaigns.preview` | `{ id \| campaign, lang?, sampleName? }` | `{ lang, subject, html }` (Platzhalter ersetzt: `sampleName`, sonst Fallback) (für iframe `srcdoc`, sandbox) | none |
 | `newsletter.campaigns.test` | `{ id, emails: string[1..5], lang? }` | `{ results: [{ email, lang, transport, messageId }] }` Betreff „[Test] …“, ohne Listenpflicht | mutation |
 | `newsletter.campaigns.schedule` | `{ id, at?: ms }` | ohne `at`/≤ 5 s: sofort, erste Tranche inline → `{ status, recipients, run }`; sonst `{ status: 'scheduled', recipients }` | mutation |
 | `newsletter.campaigns.unschedule` | `{ id }` | `{ ok }` scheduled → draft | mutation |
