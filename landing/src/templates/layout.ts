@@ -87,9 +87,9 @@ const header = (page: PageDef, t: SiteCopy): string => {
     const other = otherLang(page.lang);
     const navItems = [
         ['story', t.nav.story],
+        ['mcp', t.nav.ai],
         ['apps', t.nav.apps],
         ['pricing', t.nav.pricing],
-        ['mcp', t.nav.ai],
     ];
     const docsUrl = urlFor('docsMcp', page.lang);
     const navList = navItems.map(([id, label]) => `<li><a href="${anchor(id)}">${esc(label)}</a></li>`).join('')
@@ -148,7 +148,7 @@ const footer = (page: PageDef, t: SiteCopy): string => {
             <a class="brand" href="${home}" aria-label="${esc(t.a11y.home)}">${logo('brand__logo')}<span class="brand__name">ProjectFlow</span></a>
             <p>${esc(t.footer.tagline)}</p>
         </div>
-        ${col(t.footer.product, [[`${base}/#story`, f.story], [`${base}/#more`, f.features], [`${base}/#pricing`, f.pricing], [`${base}/#mcp`, f.ai], [`${base}/#faq`, f.faq], [urlFor('docsMcp', page.lang), f.docs]])}
+        ${col(t.footer.product, [[`${base}/#story`, f.story], [`${base}/#more`, f.features], [`${base}/#pricing`, f.pricing], [`${base}/#mcp`, f.ai], [`${base}/#faq`, f.faq], [urlFor('docsMcp', page.lang), f.docs], [urlFor('waitlist', page.lang), f.waitlist]])}
         ${col(t.footer.platforms, [[links.app, f.web], [links.download, f.desktop], [`${base}/#platforms`, f.ios]])}
         ${col(t.footer.legal, [[legalUrl('imprint', page.lang), f.imprint], [legalUrl('privacy', page.lang), f.privacy], [legalUrl('terms', page.lang), f.terms]])}
     </div>

@@ -31,6 +31,7 @@
 	<key>ITSAppUsesNonExemptEncryption</key><false/>
 	<key>NSSupportsLiveActivities</key><true/>
 	<key>NSSupportsLiveActivitiesFrequentUpdates</key><false/>
+	<key>NSCameraUsageDescription</key><string>ProjectFlow nutzt die Kamera, um Fotos direkt an Aufgaben und Projekte anzuhängen.</string>
 	<key>NSCalendarsFullAccessUsageDescription</key><string>ProjectFlow zeigt freie Zeit zwischen deinen Terminen in der Wochenplanung an. Termine verlassen dein Gerät nicht.</string>
 	<key>NSUserActivityTypes</key><array><string>de.christophlabestin.projectflow.task</string></array>
 	<key>UIApplicationSceneManifest</key>

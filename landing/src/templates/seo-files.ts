@@ -5,7 +5,7 @@ import { APP_URL, MCP_URL, SITE_URL, pages, urlFor, type PageDef } from './pages
  * Files generated at build time from the page list and the site copy, so they never drift:
  * sitemap.xml (indexable pages with hreflang) and llms.txt (https://llmstxt.org – a Markdown map for LLMs).
  */
-const INDEXABLE: PageDef['kind'][] = ['home', 'imprint', 'privacy', 'terms', 'docsMcp'];
+const INDEXABLE: PageDef['kind'][] = ['home', 'imprint', 'privacy', 'terms', 'docsMcp', 'waitlist'];
 
 export const sitemapXml = (lastmod: string): string => {
     const entries = pages.filter((p) => INDEXABLE.includes(p.kind)).map((p) => {

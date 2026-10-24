@@ -100,8 +100,10 @@ const story = (t: SiteCopy, lang: Lang) => {
 
 const mcp = (t: SiteCopy, lang: Lang) => {
     const m = t.mcp;
+    // The prompt is always in the DOM (readable without JS); the scene reveals it character by character.
+    const prompt = Array.from(m.prompt).map((ch) => `<span class="ch">${esc(ch)}</span>`).join('');
     return `
-<section class="section mcp" id="mcp" aria-labelledby="mcp-title">
+<section class="section mcp" id="mcp" aria-labelledby="mcp-title" data-mcp-section>
     <div class="container mcp__grid">
         <div class="mcp__copy" data-reveal>
             <p class="eyebrow">${esc(m.eyebrow)}</p>
@@ -114,14 +116,18 @@ const mcp = (t: SiteCopy, lang: Lang) => {
         <div class="mcp__scene" aria-hidden="true" data-mcp>
             <div class="agent">
                 <p class="agent__head">${icon('sparkles')}${esc(m.agent)}</p>
-                <p class="agent__prompt" data-mcp-prompt>${esc(m.prompt)}</p>
+                <p class="agent__prompt" data-mcp-prompt>${prompt}<i class="caret"></i></p>
                 <p class="agent__call" data-mcp-call><span class="mono">${esc(m.call)}</span><em>projectflow</em></p>
                 <p class="agent__result" data-mcp-result>${icon('check')}${esc(m.result)}</p>
             </div>
             <div class="mini-board">
-                <p class="scol__head"><i class="dot dot--open"></i>${esc(m.column)}<em data-mcp-count>3</em></p>
+                <div class="mini-board__head">
+                    <p class="scol__head"><i class="dot dot--open"></i>${esc(m.column)}<em data-mcp-count>3</em></p>
+                    <p class="perm" data-mcp-perm><span>${esc(m.perms)}</span><b class="perm__opt is-on">${esc(m.permRead)}</b><b class="perm__opt" data-mcp-write>${esc(m.permWrite)}</b></p>
+                </div>
                 <div class="mcp-card mcp-card--new" data-mcp-card>${check()}<span><b>${esc(m.card)}</b><span class="scard__meta"><i class="prio prio--high"></i>iOS 2.0</span></span><span class="agent-tag">${icon('sparkles')}</span></div>
                 ${t.story.cards.filter((c) => c.col === 0).slice(0, 2).map((c) => `<div class="mcp-card">${check()}<span><b>${esc(c.title)}</b><span class="scard__meta"><i class="prio prio--${c.prio}"></i>${esc(c.project)}</span></span></div>`).join('')}
+                <p class="mcp-log" data-mcp-log>${icon('sparkles')}${esc(m.log)}</p>
             </div>
         </div>
     </div>
@@ -130,24 +136,35 @@ const mcp = (t: SiteCopy, lang: Lang) => {
 
 /* ------------------------------------------------------------------ audience, apps, pricing */
 
-const audience = (t: SiteCopy) => `
-<section class="section audience" id="teams" aria-labelledby="teams-title">
-    <div class="container">
-        <header class="sec-head" data-reveal>
-            <p class="eyebrow">${esc(t.audience.eyebrow)}</p>
-            <h2 class="sec-title" id="teams-title">${headline(t.audience.title)}</h2>
-        </header>
-        <ul class="audience__grid">
-            ${t.audience.items.map((it) => `
-            <li class="audience__item" data-reveal data-spot>
-                <span class="more__icon">${icon(it.icon as IconName)}</span>
-                <h3>${esc(it.title)}</h3>
+const audience = (t: SiteCopy) => {
+    const a = t.audience;
+    const card = (c: (typeof a.boards)[number][number]) => `
+                    <div class="role-card"><i class="prio prio--${c.prio}"></i><span><b>${esc(c.title)}</b><small>${esc(c.project)}</small></span><em>${esc(c.tag)}</em></div>`;
+    return `
+<section class="section audience" id="teams" aria-labelledby="teams-title" data-roles>
+    <div class="container audience__grid">
+        <div class="audience__copy">
+            <header data-reveal>
+                <p class="eyebrow">${esc(a.eyebrow)}</p>
+                <h2 class="sec-title" id="teams-title">${headline(a.title)}</h2>
+            </header>
+            <div class="role-tabs" role="tablist" aria-label="${esc(a.eyebrow)}" data-reveal>
+                ${a.items.map((it, i) => `<button type="button" role="tab" id="role-tab-${i}" aria-controls="role-panel-${i}" aria-selected="${i === 0}" tabindex="${i === 0 ? 0 : -1}" data-role-tab="${i}">${icon(it.icon as IconName)}<span>${esc(it.title)}</span></button>`).join('')}
+            </div>
+            ${a.items.map((it, i) => `
+            <div class="role-panel" role="tabpanel" id="role-panel-${i}" aria-labelledby="role-tab-${i}" data-role-panel="${i}"${i === 0 ? '' : ' hidden'}>
                 <p>${esc(it.text)}</p>
                 <ul class="ticks">${it.points.map((p) => `<li>${icon('check')}${esc(p)}</li>`).join('')}</ul>
-            </li>`).join('')}
-        </ul>
+            </div>`).join('')}
+        </div>
+        <div class="role-stage" aria-hidden="true" data-reveal>
+            ${a.boards.map((b, i) => `
+            <div class="role-board${i === 0 ? ' is-on' : ''}" data-role-board="${i}">${b.map(card).join('')}
+            </div>`).join('')}
+        </div>
     </div>
 </section>`;
+};
 
 const apps = (t: SiteCopy) => {
     const a = t.apps;
@@ -162,7 +179,7 @@ const apps = (t: SiteCopy) => {
             <p class="sec-text">${esc(a.text)}</p>
         </header>
         <div class="apps__grid">
-            <article class="app-card app-card--desktop" data-reveal data-spot>
+            <article class="app-card app-card--desktop" data-reveal data-spot data-drift="-1">
                 <div class="app-card__copy">
                     <h3>${icon('monitor')}${esc(a.desktop.title)}</h3>
                     <p>${esc(a.desktop.text)}</p>
@@ -173,7 +190,7 @@ const apps = (t: SiteCopy) => {
                 <p class="fineprint">${esc(a.desktop.note)}</p>
                 <a class="btn btn--primary" href="${links.download}">${icon('download')}${esc(a.desktop.cta)}</a>
             </article>
-            <article class="app-card app-card--iphone" data-reveal data-spot>
+            <article class="app-card app-card--iphone" data-reveal data-spot data-drift="1">
                 <div class="app-card__copy">
                     <h3>${icon('phone')}${esc(a.iphone.title)}</h3>
                     <p>${esc(a.iphone.text)}</p>
@@ -242,16 +259,45 @@ const pricing = (t: SiteCopy, lang: Lang) => {
 </section>`;
 };
 
-const more = (t: SiteCopy) => `
+const more = (t: SiteCopy, lang: Lang) => {
+    const items = t.more.items;
+    const de = lang === 'de';
+    // One small, true-to-the-app UI per tile; it plays once when the tile scrolls in (see playOnce in home.ts).
+    const minis: Record<string, string> = {
+        layers: `<ul class="mini-subtasks">${(de ? ['Wireframes', 'Copy prüfen', 'Freigabe einholen'] : ['Wireframes', 'Review copy', 'Get sign-off']).map((x, i) => `<li style="--i:${i}">${check()}<span>${esc(x)}</span></li>`).join('')}</ul>`,
+        sparkles: `<p class="mini-ai"><span class="mini-ai__text">${de ? 'Kunde wünscht kürzere Ladezeiten und ein klareres Onboarding …' : 'Client wants faster load times and a clearer onboarding …'}</span><span class="mini-ai__chip">${icon('sparkles')}${de ? 'Zusammengefasst: 2 Unteraufgaben' : 'Summarised: 2 subtasks'}</span></p>`,
+        flag: `<div class="mini-sprint"><p><b>Sprint 14</b><span>68&nbsp;%</span></p><i class="mini-sprint__bar"><i></i></i><p class="mini-sprint__meta">${de ? '17 von 25 erledigt' : '17 of 25 done'}</p></div>`,
+        sun: `<div class="mini-focus"><span class="mini-focus__ring"><svg viewBox="0 0 36 36"><circle cx="18" cy="18" r="15"></circle><circle class="mini-focus__arc" cx="18" cy="18" r="15"></circle></svg></span><span><b>${de ? 'Im Fokus' : 'In focus'}</b><small>24:13</small></span></div>`,
+    };
+    return `
 <section class="section more" id="more" aria-labelledby="more-title">
     <div class="container">
         <header class="more__head" data-reveal>
             <p class="eyebrow">${esc(t.more.eyebrow)}</p>
             <h2 class="sec-title" id="more-title">${headline(t.more.title)}</h2>
         </header>
-        <ul class="more__grid">
-            ${t.more.items.map((it) => `<li class="more__item" data-reveal data-spot><span class="more__icon">${icon(it.icon as IconName)}</span><h3>${esc(it.title)}</h3><p>${esc(it.text)}</p></li>`).join('')}
+        <ul class="bento">
+            ${items.map((it, i) => `<li class="bento__tile bento__tile--${i}" data-reveal data-spot data-play>
+                <div class="bento__ui" aria-hidden="true">${minis[it.icon] ?? ''}</div>
+                <h3>${icon(it.icon as IconName)}${esc(it.title)}</h3>
+                <p>${esc(it.text)}</p>
+            </li>`).join('')}
         </ul>
+    </div>
+</section>`;
+};
+
+const trust = (t: SiteCopy, lang: Lang) => `
+<section class="section trust" id="trust" aria-labelledby="trust-title">
+    <div class="container">
+        <header class="trust__head" data-reveal>
+            <p class="eyebrow">${esc(t.trust.eyebrow)}</p>
+            <h2 class="sec-title" id="trust-title">${esc(t.trust.title)}</h2>
+        </header>
+        <ul class="trust__list" data-reveal>
+            ${t.trust.items.map((it) => `<li><span class="trust__icon">${icon(it.icon as IconName)}</span><h3>${esc(it.title)}</h3><p>${esc(it.text)}</p></li>`).join('')}
+        </ul>
+        <p class="trust__more"><a href="${legalUrl('privacy', lang)}">${esc(t.trust.more)}${icon('arrowRight')}</a></p>
     </div>
 </section>`;
 
@@ -278,7 +324,10 @@ const cta = (t: SiteCopy) => `
 <section class="cta" aria-labelledby="cta-title">
     <div class="container">
         <div class="cta__card theme-dark" data-reveal data-spot>
-            <div class="cta__mark" aria-hidden="true">${logo('cta__logo')}</div>
+            <div class="cta__mark" aria-hidden="true" data-converge>
+                ${Array.from({ length: 8 }, (_, i) => `<i class="cta__frag" style="--i:${i}"></i>`).join('')}
+                ${logo('cta__logo')}
+            </div>
             <div>
                 <h2 class="sec-title" id="cta-title">${headline(t.cta.title)}</h2>
                 <p>${esc(t.cta.text)}</p>
@@ -292,4 +341,4 @@ const cta = (t: SiteCopy) => `
 </section>`;
 
 export const homeBody = (t: SiteCopy, lang: Lang): string =>
-    [story(t, lang), audience(t), apps(t), mcp(t, lang), more(t), pricing(t, lang), faq(t, lang), cta(t)].join('\n');
+    [story(t, lang), audience(t), mcp(t, lang), apps(t), more(t, lang), trust(t, lang), pricing(t, lang), faq(t, lang), cta(t)].join('\n');

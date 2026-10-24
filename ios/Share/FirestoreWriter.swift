@@ -20,7 +20,9 @@ nonisolated struct FirestoreWriter: Sendable {
 
     // MARK: Public
 
-    func createTask(title: String, descriptionHTML: String?, target: Target) async throws {
+    /// Creates the task and returns its id (for attaching shared files).
+    @discardableResult
+    func createTask(title: String, descriptionHTML: String?, target: Target) async throws -> String {
         let token = try await idToken()
         let documentId = Self.autoId()
         let documentPath: String
@@ -63,6 +65,57 @@ nonisolated struct FirestoreWriter: Sendable {
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
         _ = try await send(request)
+        return documentId
+    }
+
+    // MARK: Files (same callables as the app, over the callable HTTP protocol)
+
+    struct SharedFile: Sendable {
+        let name: String
+        let mimeType: String
+        let data: Data
+    }
+
+    /// Uploads a file through `createTenantFileUploadSession` → signed target → `finalizeTenantFileUpload`
+    /// (`brain/plans/files-concept.md`), attached to `parent`.
+    func upload(_ file: SharedFile, tenantId: String, parent: [String: Any], projectId: String?) async throws {
+        let token = try await idToken()
+        var session: [String: Any] = [
+            "tenantId": tenantId, "module": "files", "entityType": parent["type"] ?? "task", "entityId": parent["id"] ?? "",
+            "fileName": file.name, "mimeType": file.mimeType, "sizeBytes": file.data.count, "parent": parent,
+        ]
+        if let projectId { session["projectId"] = projectId }
+        guard let created = try await callFunction("createTenantFileUploadSession", session, token: token) as? [String: Any],
+              let draftId = created["uploadDraftId"] as? String,
+              let target = created["uploadTarget"] as? [String: Any],
+              let urlString = target["url"] as? String, let url = URL(string: urlString) else { throw WriterError.server(0) }
+        var put = URLRequest(url: url)
+        put.httpMethod = (target["method"] as? String) ?? "PUT"
+        for (key, value) in (target["headers"] as? [String: String]) ?? [:] { put.setValue(value, forHTTPHeaderField: key) }
+        let (body, response) = try await URLSession.shared.upload(for: put, from: file.data)
+        let status = (response as? HTTPURLResponse)?.statusCode ?? 0
+        guard (200..<300).contains(status) else { throw WriterError.server(status) }
+        var providerResult: [String: Any] = ["status": status, "responseBody": String(bytes: body, encoding: .utf8) ?? ""]
+        if let parsed = try? JSONSerialization.jsonObject(with: body) as? [String: Any] { parsed.forEach { providerResult[$0.key] = $0.value } }
+        _ = try await callFunction("finalizeTenantFileUpload", ["tenantId": tenantId, "uploadDraftId": draftId, "providerResult": providerResult], token: token)
+    }
+
+    /// Firebase callable protocol: POST `{ data }` → `{ result }`.
+    private func callFunction(_ name: String, _ data: [String: Any], token: String) async throws -> Any? {
+        let base: String
+        if let host = credentials.emulatorHost, let port = credentials.functionsPort {
+            base = "http://\(host):\(port)/\(credentials.projectId)/europe-west3"
+        } else {
+            base = "https://europe-west3-\(credentials.projectId).cloudfunctions.net"
+        }
+        guard let url = URL(string: "\(base)/\(name)") else { throw WriterError.network }
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.httpBody = try JSONSerialization.data(withJSONObject: ["data": data])
+        let response = try await send(request)
+        return (try? JSONSerialization.jsonObject(with: response) as? [String: Any])?["result"]
     }
 
     // MARK: Token exchange

@@ -8,7 +8,7 @@ const {
 
 // Run: npm run test:rules (from functions/). Every check runs even if an
 // earlier one fails, so a single run shows the full picture.
-const PROJECT_ID = 'demo-projectflow';
+const PROJECT_ID = process.env.RULES_TEST_PROJECT || 'demo-projectflow';
 const RULES_PATH = process.env.RULES_PATH || path.resolve(__dirname, '../../firestore.rules');
 
 const T = 'tenants/tenantA';
@@ -520,6 +520,17 @@ const run = async () => {
         // Removed Finance V2 module: its data stays in Firestore but is closed to clients.
         await check('owner cannot read legacy finance data', 'deny', () => owner.doc(`${T}/finance_accounts/acc1`).get());
         await check('member cannot write legacy finance data', 'deny', () => member.doc(`${T}/finance_journal/j1`).set({ amount: 1 }));
+
+        // Platform waitlist/newsletter: server only, old public intake collections closed.
+        await check('anon cannot write legacy waitlist', 'deny', () => anon.doc('waitlist/a@b.de').set({ email: 'a@b.de' }));
+        await check('anon cannot write legacy newsletter', 'deny', () => anon.doc('newsletter/a@b.de').set({ email: 'a@b.de' }));
+        await check('anon cannot create platform subscriber', 'deny', () => anon.doc('platform_subscribers/x').set({ email: 'a@b.de' }));
+        await check('member cannot read platform subscribers', 'deny', () => owner.doc('platform_subscribers/x').get());
+        await check('member cannot read consent log', 'deny', () => owner.doc('platform_subscribers/x/consent_log/y').get());
+        await check('member cannot read opt-in tokens', 'deny', () => owner.doc('platform_optin_tokens/x').get());
+        await check('member cannot read campaigns', 'deny', () => owner.doc('platform_campaigns/x').get());
+        await check('member cannot write campaign sends', 'deny', () => owner.doc('platform_campaigns/x/sends/y').set({ status: 'sent' }));
+        await check('nobody reads the emulator outbox', 'deny', () => owner.doc('dev_outbox/x').get());
     } finally {
         await testEnv.cleanup();
     }

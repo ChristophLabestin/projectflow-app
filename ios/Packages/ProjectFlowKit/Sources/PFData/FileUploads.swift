@@ -23,12 +23,14 @@ public enum FileUploadError: LocalizedError {
 public enum FileUploads {
     // swiftlint:disable:next function_parameter_count
     public static func upload(tenantId: String, module: String, entityType: String, entityId: String, projectId: String? = nil,
-                              fileName: String, mimeType: String, data: Data) async throws -> UploadedTenantFile {
+                              fileName: String, mimeType: String, data: Data, parent: [String: Any]? = nil) async throws -> UploadedTenantFile {
         var session: [String: Any] = [
             "tenantId": tenantId, "module": module, "entityType": entityType, "entityId": entityId,
             "fileName": fileName, "mimeType": mimeType, "sizeBytes": data.count,
         ]
         if let projectId { session["projectId"] = projectId }
+        // Files manager (`brain/plans/files-concept.md`): the object the file belongs to (rights, listing, "jump to").
+        if let parent { session["parent"] = parent }
         guard let created = try await PFCallables.call("createTenantFileUploadSession", session) as? [String: Any],
               let draftId = created["uploadDraftId"] as? String,
               let target = created["uploadTarget"] as? [String: Any],

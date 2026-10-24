@@ -22,6 +22,8 @@
 				<key>NSExtensionActivationSupportsText</key><true/>
 				<key>NSExtensionActivationSupportsWebURLWithMaxCount</key><integer>1</integer>
 				<key>NSExtensionActivationSupportsWebPageWithMaxCount</key><integer>1</integer>
+				<key>NSExtensionActivationSupportsImageWithMaxCount</key><integer>5</integer>
+				<key>NSExtensionActivationSupportsFileWithMaxCount</key><integer>5</integer>
 			</dict>
 		</dict>
 	</dict>

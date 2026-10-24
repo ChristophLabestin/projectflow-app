@@ -21,8 +21,10 @@ const FUNCTION_MODULES: Record<string, string[]> = {
     './categories': ['getCategories', 'manageCategories'],
     './notifications': ['onNotificationCreated', 'sendTestNotification'],
     './invitations': ['acceptWorkspaceInvite', 'sendInvitation'],
-    './waitlist': ['requestWaitlist', 'confirmWaitlist'],
-    './newsletter-public': ['requestNewsletterSignup', 'confirmNewsletterSignup'],
+    // Platform waitlist + newsletter (double opt-in, campaigns): brain/plans/newsletter-concept.md
+    './platform-newsletter/public': ['requestWaitlist', 'requestNewsletterSignup', 'confirmOptin'],
+    './platform-newsletter/app': ['platformNewsletterPreference'],
+    './platform-newsletter/dispatch': ['platformNewsletterDispatch'],
     './contact': ['sendContactFormEmail'],
     './email-events': ['emailUnsubscribe', 'sesEvents'],
     './ai-service': ['generateImage', 'editImage', 'runAiCapability'],

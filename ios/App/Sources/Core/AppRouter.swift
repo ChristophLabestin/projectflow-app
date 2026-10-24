@@ -26,6 +26,11 @@ enum AppRoute: Hashable {
     /// Workspace areas (activity feed: whole workspace or one project).
     case activity(tenantId: String, projectId: String?)
     case insights(tenantId: String)
+    case files(tenantId: String)
+    case wiki(tenantId: String)
+    case flows(tenantId: String)
+    case flow(tenantId: String, flowId: String)
+    case wikiPage(tenantId: String, docId: String, startEditing: Bool = false)
 }
 
 /// Navigation state: selected tab, one stack per tab (+ search), focus room, deep links.
@@ -92,6 +97,8 @@ final class AppRouter {
                 open(.task(TaskRef(tenantId: tenant, projectId: projectId, taskId: parts[3])), in: .work)
             } else if parts.count >= 4, parts[2] == "initiatives" {
                 open(.initiative(tenantId: tenant, projectId: projectId, initiativeId: parts[3]), in: .projects)
+            } else if parts.count >= 4, parts[2] == "wiki" {
+                open(.wikiPage(tenantId: tenant, docId: parts[3]), in: .projects)
             } else if parts.count >= 3, parts[2] == "activity" {
                 open(.activity(tenantId: tenant, projectId: projectId), in: .projects)
             } else {
@@ -105,6 +112,12 @@ final class AppRouter {
             open(.activity(tenantId: tenant, projectId: nil), in: .projects)
         case "insights":
             open(.insights(tenantId: tenant), in: .projects)
+        case "files", "media":
+            open(.files(tenantId: tenant), in: .projects)
+        case "flows":
+            if parts.count >= 2 { open(.flow(tenantId: tenant, flowId: parts[1]), in: .projects) } else { open(.flows(tenantId: tenant), in: .projects) }
+        case "wiki":
+            if parts.count >= 2 { open(.wikiPage(tenantId: tenant, docId: parts[1]), in: .projects) } else { open(.wiki(tenantId: tenant), in: .projects) }
         case "notifications":
             select(.inbox)
         case "focus":

@@ -33,6 +33,10 @@ Benachrichtigungs-Mails → List-Unsubscribe (RFC 8058) → emailUnsubscribe →
 
 Mail-Typen (SES-Tag `type`, Tag `category` = `transactional`/`list`): `invitation`, `notification` (list),
 `legal`, `waitlist`, `newsletter` (list, für spätere Rundmails), `newsletter-optin`, `contact`, `admin`, `system`.
+Plattform-Newsletter (`functions/src/platform-newsletter`, Konzept `brain/plans/newsletter-concept.md`): Kampagnenmails als
+`newsletter` mit `options.tags.campaign` (zusätzlicher SES-Tag) → `sesEvents` zählt auf `platform_campaigns/{id}.stats.ses.*`;
+Abmeldelink über `emailUnsubscribe` mit Scope `newsletter:<list>[:<campaignId>]`; aktive Suppression setzt Abonnenten auf
+`bounced`. Drosselung: SES-Rate + `NEWSLETTER_DAILY_CAP` (Standard 150) / `NEWSLETTER_MAX_PER_RUN`.
 Neue Absender-Funktionen brauchen `runWith({ secrets: EMAIL_SECRETS })` bzw. `secrets: EMAIL_SECRETS` (v2),
 sonst fehlen die Keys zur Laufzeit und der Versand fällt auf SMTP zurück.
 

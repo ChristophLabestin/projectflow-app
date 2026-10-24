@@ -276,6 +276,11 @@ struct RouteDestination: View {
         case .designCatalog: DesignCatalogScreen()
         case .activity(let tenantId, let projectId): ActivityScreen(tenantId: tenantId, projectId: projectId)
         case .insights(let tenantId): InsightsScreen(tenantId: tenantId)
+        case .files(let tenantId): FilesScreen(tenantId: tenantId)
+        case .wiki(let tenantId): WikiScreen(tenantId: tenantId)
+        case .flows(let tenantId): FlowsScreen(tenantId: tenantId)
+        case .flow(let tenantId, let flowId): FlowDetailScreen(tenantId: tenantId, flowId: flowId)
+        case .wikiPage(let tenantId, let docId, let startEditing): WikiPageScreen(tenantId: tenantId, docId: docId, startEditing: startEditing)
         }
     }
 }

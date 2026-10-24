@@ -4,6 +4,7 @@ import { contentHandlers } from './modules/content';
 import { crashHandlers } from './modules/crashes';
 import { emailHandlers } from './modules/email';
 import { legalHandlers } from './modules/legal';
+import { newsletterHandlers } from './modules/newsletter';
 import { opsHandlers } from './modules/ops';
 import { overviewHandlers } from './modules/overview';
 import { peopleHandlers } from './modules/people';
@@ -18,4 +19,5 @@ export const handlers: HandlerMap = {
     ...opsHandlers,
     ...billingHandlers,
     ...emailHandlers,
+    ...newsletterHandlers,
 };

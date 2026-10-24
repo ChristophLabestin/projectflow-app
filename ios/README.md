@@ -111,7 +111,15 @@ show a hint, not an error. QA without a key: `-pfAiFake`.
 `Features/Workspace`: Activity feed (`tenants/{t}/activity`, workspace and per project; contract
 `brain/plans/activity-events-contract.md`), Insights (`insights_daily/latest`, `refreshWorkspaceInsights`, weekly report via
 `generateWeeklyInsightsReport`). Routes `.activity`/`.insights`, web links `/activity`, `/insights`, `/project/:id/activity`.
-Copy for these areas comes from the web locales (`ActivityWebStrings`, generated). Files, Wiki and Flows join the same row.
+Files (`brain/plans/files-concept.md`): `PFData/FilesData.swift` (`FilesStore` parent/workspace listeners, signed URLs,
+upload with `parent`, trash/restore, quota), `Features/Files` (attachments card in task detail and the project "Dateien" tab,
+Quick Look preview, camera/photos/Files pickers, overview at `/files`); the share extension attaches shared photos/files to the
+task it creates (callables over REST). Wiki (`brain/plans/wiki-concept.md`): `PFData/WikiData.swift` (tree store, chunked body, `bodyRev`-checked save with the
+web's derived fields, create, task links), `Features/Wiki` (tree + search, native renderer for the Tiptap JSON, checklists
+toggle in place, tap-to-edit as Markdown-light text with locked `⟦n⟧` placeholders for blocks iOS can't edit, @-mentions of
+people, task "Docs" card, project tab "Wiki"). Flows (`brain/plans/flows-concept.md`): `PFData/FlowsData.swift` + `Features/Workspace/FlowsScreen.swift`: list with trigger →
+actions, status and on/off switch (`setAutomationEnabled`), detail with "Jetzt ausführen" (`runAutomation`, asks for a task
+when the actions need one), run log with retry (`retryAutomationRun`). Creating/editing stays web-only (hint on screen). Copy for these areas comes from the web locales (`ActivityWebStrings`, generated). Files, Wiki and Flows join the same row.
 
 ## Startup template seed data
 
