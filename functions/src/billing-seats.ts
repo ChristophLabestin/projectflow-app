@@ -9,7 +9,7 @@
 import * as functions from 'firebase-functions/v1';
 import { FAST_START } from './runtime-options';
 import { FieldValue } from 'firebase-admin/firestore';
-import Stripe = require('stripe');
+import type Stripe = require('stripe');
 
 import { db } from './init';
 import { AI_ADDON_LOOKUP_KEYS, TEAM_MEMBER_LIMIT, isAiAddonLookupKey, type BillingInterval } from './billing-logic';
