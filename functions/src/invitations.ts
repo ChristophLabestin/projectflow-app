@@ -5,7 +5,7 @@ import { FieldValue } from 'firebase-admin/firestore';
 import { EMAIL_SECRETS, sendEmail, getSystemEmailTemplate } from './email';
 import { EMAIL_CONTENT, getLocale } from './email-locales';
 import { ALLOWED_ORIGINS } from './corsConfig';
-import { assertCanAddMember, loadPlanLimits } from './billing';
+import { assertCanAddMember, loadPlanLimits, seatCheckInTx } from './billing';
 import { memberRef } from './tenant-id';
 
 const db = admin.firestore();
@@ -165,7 +165,12 @@ export const acceptWorkspaceInvite = functions.region(REGION).runWith(FAST_START
         const rank: Record<string, number> = { Guest: 0, Member: 1, Admin: 2, Owner: 3 };
         const role = existingRole && (rank[existingRole] ?? 1) >= (rank[inviteRole] ?? 1) ? existingRole : inviteRole;
 
+        // Seat/plan check inside the transaction (security review M4); guests are free.
+        const becomesFullMember = role !== 'Guest' && (existingRole === null || existingRole === 'Guest');
+        const seat = becomesFullMember ? await seatCheckInTx(tx, tenantId) : null;
+
         const now = FieldValue.serverTimestamp();
+        if (seat) tx.set(seat.ref, { memberCount: seat.memberCount }, { merge: true });
         tx.set(memberDoc, {
             uid,
             role,

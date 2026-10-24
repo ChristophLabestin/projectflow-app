@@ -79,6 +79,61 @@ export const assertCanAddMember = async (tenantId: string, role: string) => {
     }
 };
 
+/**
+ * Seat/plan check for a new full member INSIDE a transaction (security review M4): reads the entitlement and the
+ * current full members via the transaction; the caller writes `memberCount` (returned) so concurrent joins
+ * conflict on the entitlement doc and are retried instead of both passing. Call after the caller's other reads.
+ */
+export const seatCheckInTx = async (tx: FirebaseFirestore.Transaction, tenantId: string) => {
+    const [entSnap, members] = await Promise.all([
+        tx.get(entRef(tenantId)),
+        tx.get(db.collection(`tenants/${tenantId}/members`).where('role', 'in', ['Owner', 'Admin', 'Member'])),
+    ]);
+    const ent = entSnap.data();
+    const limits = limitsFor(ent);
+    if (!limits.invitesAllowed) throw new functions.https.HttpsError('failed-precondition', 'plan-invites-disabled');
+    const fullMembers = members.size;
+    if (!memberLimitAllows(limits, fullMembers)) throw new functions.https.HttpsError('failed-precondition', 'plan-member-limit');
+    if (ent?.stripeSubscriptionId && LIVE_STATUSES.includes(String(ent.status)) && ent.billingExempt !== true
+        && fullMembers >= Number(ent.seats || 0)) {
+        throw new functions.https.HttpsError('failed-precondition', 'plan-seat-limit');
+    }
+    return { ref: entRef(tenantId), memberCount: fullMembers + 1 };
+};
+
+/**
+ * Role changes of workspace members by Owner/Admin (same authority as the rules' canManageMemberRole).
+ * Guest → full member runs the seat check; the rules deny that transition for clients.
+ */
+export const setWorkspaceMemberRole = functions.region(REGION).https.onCall(async (data, context) => {
+    const uid = context.auth?.uid;
+    if (!uid) throw new functions.https.HttpsError('unauthenticated', 'Authentication required.');
+    const tenantId = typeof data?.tenantId === 'string' ? data.tenantId : '';
+    const targetUid = typeof data?.uid === 'string' ? data.uid : '';
+    const toRole = String(data?.role || '');
+    if (!/^[A-Za-z0-9_-]{1,128}$/.test(tenantId) || !/^[A-Za-z0-9_-]{1,128}$/.test(targetUid)) {
+        throw new functions.https.HttpsError('invalid-argument', 'tenantId and uid are required.');
+    }
+    if (!['Admin', 'Member', 'Guest'].includes(toRole)) throw new functions.https.HttpsError('invalid-argument', 'invalid-role');
+    const callerRef = db.doc(`tenants/${tenantId}/members/${uid}`);
+    const targetRef = db.doc(`tenants/${tenantId}/members/${targetUid}`);
+    await db.runTransaction(async (tx) => {
+        const [caller, target] = await Promise.all([tx.get(callerRef), tx.get(targetRef)]);
+        const callerRole = String(caller.data()?.role || '');
+        const fromRole = String(target.data()?.role || '');
+        if (!target.exists) throw new functions.https.HttpsError('not-found', 'Member not found.');
+        if (!['Owner', 'Admin'].includes(callerRole) || fromRole === 'Owner'
+            || (callerRole !== 'Owner' && (fromRole === 'Admin' || toRole === 'Admin'))) {
+            throw new functions.https.HttpsError('permission-denied', 'Insufficient workspace role.');
+        }
+        if (fromRole === toRole) return;
+        const seat = fromRole === 'Guest' ? await seatCheckInTx(tx, tenantId) : null;
+        tx.update(targetRef, { role: toRole, updatedAt: FieldValue.serverTimestamp() });
+        if (seat) tx.set(seat.ref, { memberCount: seat.memberCount }, { merge: true });
+    });
+    return { ok: true };
+});
+
 /** Server AI for `uid` in this workspace: trial/grace for everyone, otherwise the AI add-on per user. */
 export const memberHasAi = async (tenantId: string, uid: string) => aiEnabledFor((await entRef(tenantId).get()).data(), uid);
 
@@ -967,6 +1022,14 @@ export const createTeamWorkspace = functions.region(REGION).runWith(FAST_START).
     const now = FieldValue.serverTimestamp();
     const batch = db.batch();
     batch.set(tenantRef, { tenantId: tenantRef.id, name, ownerId: uid, createdBy: uid, createdAt: now, updatedAt: now });
+    // Entitlement written with the tenant (no window without plan doc; the trigger then skips).
+    const trial = initialEntitlement(Date.now(), Date.now(), 'team');
+    batch.set(entRef(tenantRef.id), {
+        plan: trial.plan, status: trial.status, workspaceType: 'team', ...limitsForType('team', 'team'),
+        aiIncluded: true, trialEndsAt: trial.trialEndsAtMs ? Timestamp.fromMillis(trial.trialEndsAtMs) : null,
+        seats: 0, billingInterval: null, projectCount: 0, lockedProjectIds: [], aiMemberIds: [], aiAddonSeats: 0,
+        memberCount: 1, ...storageFor('team', 1), flowsQuota: 'seat', updatedAt: now,
+    });
     batch.set(tenantRef.collection('members').doc(uid), {
         uid, role: 'Owner', roleIds: [], joinedAt: now,
         displayName: user.displayName || email.split('@')[0] || 'User', email, photoURL: user.photoURL || '',

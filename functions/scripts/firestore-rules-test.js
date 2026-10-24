@@ -40,6 +40,8 @@ const seedData = async (testEnv) => {
         await set('tenants/personal_ownerA', { tenantId: 'personal_ownerA', name: 'Mein Workspace', ownerId: 'ownerA', workspaceType: 'personal' });
         await set('tenants/personal_ownerA/members/ownerA', { uid: 'ownerA', role: 'Owner' });
         await set('tenants/personal_ownerA/entitlements/plan', { plan: 'personal', workspaceType: 'personal', invitesAllowed: false, memberLimit: 1, projectLimit: null });
+        await set('tenants/tenantNoEnt', { tenantId: 'tenantNoEnt', name: 'No ent', ownerId: 'ownerA' });
+        await set('tenants/tenantNoEnt/members/ownerA', { uid: 'ownerA', role: 'Owner' });
         // Billing: a Free workspace at its project limit with one locked project.
         await set('tenants/tenantF', { tenantId: 'tenantF', name: 'Free', ownerId: 'ownerA' });
         await set('tenants/tenantF/members/ownerA', { uid: 'ownerA', role: 'Owner' });
@@ -469,6 +471,19 @@ const run = async () => {
             owner.doc('tenants/personal_ownerA/invitations/i1').set({ status: 'pending', invitedBy: 'ownerA', role: 'Guest', kind: 'link' }));
         await check('owner cannot read billing log', 'deny', () => owner.doc(`${T}/billing_log/x`).get());
         await check('owner cannot forge billing log', 'deny', () => owner.doc(`${T}/billing_log/x`).set({ action: 'seats' }));
+        // Security review M4: no client path to a new full member around the seat check.
+        await check('admin cannot create a member directly', 'deny', () =>
+            admin.doc(`${T}/members/newUser`).set({ uid: 'newUser', role: 'Member' }));
+        await check('owner cannot create a member directly', 'deny', () =>
+            owner.doc(`${T}/members/newUser`).set({ uid: 'newUser', role: 'Member' }));
+        await check('owner cannot promote a guest to member', 'deny', () =>
+            owner.doc(`${T}/members/guestA`).update({ role: 'Member' }));
+        await check('owner can still change member to admin', 'allow', () =>
+            owner.doc(`${T}/members/memberA`).update({ role: 'Admin' }));
+        await check('owner can demote admin back to member', 'allow', () =>
+            owner.doc(`${T}/members/memberA`).update({ role: 'Member' }));
+        await check('no invitations without an entitlement doc', 'deny', () =>
+            owner.doc('tenants/tenantNoEnt/invitations/i1').set({ status: 'pending', invitedBy: 'ownerA', role: 'Member', kind: 'link' }));
         await check('member reads billing availability', 'allow', () => member.doc('billing_public/config').get());
         await check('owner cannot switch checkout on', 'deny', () => owner.doc('billing_public/config').set({ checkoutAvailable: true }));
         for (const path of ['billing_customers/tenantF', 'ai_user_keys/ownerA', 'billing_events/evt_1']) {

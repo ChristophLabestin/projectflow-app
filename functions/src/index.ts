@@ -77,7 +77,7 @@ const FUNCTION_MODULES: Record<string, string[]> = {
     // Billing (Stripe test mode, plan entitlements): brain/plans/billing-implementation.md
     './billing': [
         'createBillingCheckout', 'createBillingPortal', 'stripeWebhook', 'personalAiKey', 'setAiAddonMembers', 'ensurePersonalWorkspace',
-        'previewSubscription', 'createSubscriptionIntent', 'getBillingConfig', 'listBillingWorkspaces', 'createTeamWorkspace',
+        'previewSubscription', 'createSubscriptionIntent', 'getBillingConfig', 'listBillingWorkspaces', 'createTeamWorkspace', 'setWorkspaceMemberRole',
         'getSubscriptionStatus', 'onTenantCreatedBilling', 'onProjectCountBilling', 'onMemberWrittenBilling', 'billingSweep'
     ],
     // Seat management (contract §9)
