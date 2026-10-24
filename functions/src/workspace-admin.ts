@@ -1,4 +1,6 @@
 import * as crypto from 'crypto';
+import { resolvePublicHost } from './email';
+import { isAllowedSmtpPort } from './email-logic';
 import { assertTenantActive } from './tenant-status';
 import * as functions from 'firebase-functions/v1';
 
@@ -272,6 +274,17 @@ export const saveWorkspaceSmtpConfig = functions.region(REGION).https.onCall(asy
     const tenantId = normalizeString(data?.tenantId);
     const actorId = await requireWorkspaceOwner(tenantId, context);
     const smtpConfig = normalizeSmtpConfig(data?.smtpConfig);
+    // SSRF guard (audit M9): only public hosts on mail ports; sendEmail() checks again and pins the IP.
+    if (smtpConfig.host) {
+        const host = String(smtpConfig.host);
+        if (host.length > 255 || !isAllowedSmtpPort(smtpConfig.port)) {
+            throw new functions.https.HttpsError('invalid-argument', 'SMTP port must be one of 25, 465, 587, 2525');
+        }
+        await resolvePublicHost(host).catch((error) => {
+            if (error instanceof functions.https.HttpsError) throw error;
+            throw new functions.https.HttpsError('invalid-argument', 'SMTP host could not be resolved.');
+        });
+    }
 
     await db.collection('tenants').doc(tenantId).collection('secrets').doc(SMTP_SECRET_ID).set({
         ...smtpConfig,
