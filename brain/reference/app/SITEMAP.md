@@ -204,7 +204,9 @@ auth chain and modules: `brain/plans/admin-console-concept.md`. All data via the
 - `/legal`, `/legal/:type` — legal documents (overview with acceptance rate + mail status; draft editor DE/EN, diff to current version, publish)
 - `/onboarding` — onboarding survey aggregates
 - `/blog`, `/blog/:id` (`new`) — platform blog `blog_posts` + categories
-- `/newsletter` — leads: newsletter subscribers/pending/legacy, waitlist, contact form (audited read, delete)
+- `/newsletter` — platform newsletter (contract `brain/plans/newsletter-contract.md`): tabs Übersicht / Abonnenten (filter list+status, search, drawer with memberships + consent log, resend opt-in, unsubscribe, GDPR delete, add via DOI, list export) / Kampagnen
+- `/newsletter/campaigns/:id` (`new`) — campaign editor DE/EN (subject, preheader, Markdown), live preview (server renderer, sandboxed iframe), audience with live count, test send, send now (typed confirmation) / schedule, unschedule, cancel, stats
+- `/leads` — legacy leads (old newsletter/waitlist collections) + contact form; button to migrate legacy into the newsletter
 - `/audit` — admin audit log
 - `/mcp-access` — Admin-MCP: kill switch, URL + connect guide, pending confirmation codes, connections, clients, MCP audit
 - `/oauth/consent?request=` — Admin-MCP consent (re-auth with TOTP); `/mcp`, `/oauth/*`, `/.well-known/oauth-*` are Hosting rewrites to `adminMcp`/`adminOAuth`

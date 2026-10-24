@@ -297,6 +297,15 @@
         "VITE_EMULATOR_AUTH_PORT=9841 VITE_EMULATOR_FIRESTORE_PORT=8841 VITE_EMULATOR_STORAGE_PORT=9842 VITE_EMULATOR_FUNCTIONS_PORT=5841 VITE_E2E_AUTO_LOGIN_EMAIL=demo@projectflow.test VITE_E2E_AUTO_LOGIN_PASSWORD=projectflow-demo npm --prefix web run dev:emulator -- --port 3143 --strictPort"
       ],
       "port": 3143
+    },
+    {
+      "name": "admin-emulator-alt",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": [
+        "-c",
+        "cd admin && VITE_USE_FIREBASE_EMULATORS=true VITE_EMULATOR_AUTH_PORT=7311 VITE_EMULATOR_FUNCTIONS_PORT=5311 npx vite --mode emulator --port 3144 --strictPort"
+      ],
+      "port": 3144
     }
   ]
 }
