@@ -474,7 +474,7 @@ function start(root: HTMLElement, c: any) {
         if (state.user && !state.workspaces.length) state.workspaces = await loadWorkspaces().catch(() => []);
         const ws = state.workspaces.find((w) => w.tenantId === doneTenant);
         const interval = (doneStatus?.interval as Interval | undefined) ?? state.interval;
-        const ai = doneStatus ? (doneStatus.aiAddonSeats ?? 0) > 0 : state.ai;
+        const ai = doneStatus?.aiAddonSeats !== undefined ? doneStatus.aiAddonSeats > 0 : state.ai;
         const trialEnd = state.intent?.summary?.trialEnd ?? state.intent?.trialEnd ?? (ws?.status === 'trialing' ? ws.trialEndsAt : null);
         const statusText = !doneStatus?.active ? c.done.statusPending
             : doneStatus.status === 'trialing' && trialEnd ? c.done.statusTrial.replace('{d}', date(trialEnd)) : c.done.statusActive;
