@@ -791,7 +791,7 @@
     gap: 12px;
     align-items: start;
     padding: 14px;
-    border: 1px solid var(--color-surface-border);
+    border: 0;
     border-radius: var(--radius-lg);
     background: var(--color-surface-hover);
 
@@ -1496,7 +1496,7 @@
         padding: 8px 16px;
         background: rgba(255, 255, 255, 0.2);
         border-radius: var(--radius-full);
-        border: 1px solid rgba(255, 255, 255, 0.3);
+        border: 0;
     }
 }
 
@@ -1617,7 +1617,7 @@
 }
 
 .create-project__github-connect {
-    border: 1px solid var(--color-surface-border);
+    border: 0;
     width: 100%;
     padding: 14px 16px;
     border-radius: var(--radius-lg);
@@ -1684,7 +1684,7 @@
     flex-direction: column;
     gap: 12px;
     padding: 14px 16px;
-    border: 1px solid var(--color-surface-border);
+    border: 0;
     border-radius: var(--radius-control);
     background: var(--color-surface-hover);
 }
@@ -1756,7 +1756,7 @@
     background: var(--color-surface-hover);
     border-radius: var(--radius-lg);
     box-shadow: none;
-    border: 1px solid var(--color-surface-border);
+    border: 0;
     transition: border-color var(--transition-fast), background var(--transition-fast);
 
     @include tokens.sunken-field;

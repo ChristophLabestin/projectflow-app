@@ -87,7 +87,7 @@
     gap: 0.5rem;
     min-width: 0;
     padding: 0.5rem 0.85rem;
-    border: 1px solid color-mix(in srgb, var(--color-surface-border) 40%, transparent);
+    border: 0;
     border-radius: var(--radius-xl);
     background-color: rgba(var(--color-surface-bg-rgb), 0.5);
     backdrop-filter: blur(8px);
@@ -185,7 +185,7 @@ button.project-overview-compact-hero__fact {
     align-items: center;
     gap: 0.15rem;
     padding: 0.25rem;
-    border: 1px solid color-mix(in srgb, var(--color-surface-border) 40%, transparent);
+    border: 0;
     border-radius: var(--radius-lg);
     background: rgba(var(--color-surface-bg-rgb), 0.6);
     backdrop-filter: blur(12px);
@@ -335,7 +335,7 @@ a.project-overview__company-context-chip:hover {
     align-items: center;
     gap: 0.4rem;
     padding: 0.32rem 0.6rem;
-    border: 1px solid color-mix(in srgb, var(--color-surface-border) 78%, transparent);
+    border: 0;
     border-radius: var(--radius-pill, 999px);
     background: transparent;
     color: var(--color-text-muted);
@@ -405,7 +405,7 @@ a.project-overview__company-context-chip:hover {
     flex-direction: column;
     gap: 1.25rem;
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03), 0 1px 3px rgba(0, 0, 0, 0.02);
-    border: 1px solid color-mix(in srgb, var(--color-surface-border) 40%, transparent);
+    border: 0;
     transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 
     &:hover {
@@ -486,7 +486,7 @@ a.project-overview__company-context-chip:hover {
     align-self: center;
     white-space: nowrap;
     min-height: 1.75rem;
-    border: 1px solid rgba(var(--color-primary-rgb), 0.34);
+    border: 0;
     border-radius: var(--radius-control);
     background: var(--color-primary);
     color: var(--color-primary-text);
@@ -687,7 +687,7 @@ a.project-overview__company-context-chip:hover {
 .project-overview__company-secondary-button {
     justify-self: end;
     min-height: 1.95rem;
-    border: 1px solid var(--color-surface-border);
+    border: 0;
     border-radius: var(--radius-control);
     background: transparent;
     color: var(--color-text-main);
@@ -871,7 +871,7 @@ a.project-overview__company-context-chip:hover {
     gap: 0.35rem;
     max-width: 100%;
     padding: 0.3rem 0.6rem;
-    border: 1px solid var(--color-surface-border);
+    border: 0;
     border-radius: var(--radius-full);
     background: var(--color-surface-card);
     color: var(--color-text-muted);
@@ -1114,7 +1114,7 @@ a.project-overview__company-context-chip:hover {
 .startup-workstreams-modal__list {
     display: flex;
     flex-direction: column;
-    border: 1px solid var(--color-surface-border);
+    border: 0;
     border-radius: var(--radius-md);
     overflow: hidden;
 }
@@ -1219,7 +1219,7 @@ a.project-overview__company-context-chip:hover {
 
 .startup-workstreams-modal__drawer {
     min-height: 24rem;
-    border: 1px solid var(--color-surface-border);
+    border: 0;
     border-radius: var(--radius-md);
     padding: 1rem;
     background: var(--color-surface-bg);
@@ -1665,7 +1665,7 @@ a.project-overview__company-context-chip:hover {
 
     .startup-brief-wizard__rail-btn {
         padding: 0.4rem 0.6rem;
-        border: 1px solid var(--color-surface-border);
+        border: 0;
     }
 
     .startup-brief-wizard__rail-text {
@@ -1781,7 +1781,7 @@ a.project-overview__company-context-chip:hover {
     gap: 0.35rem;
     padding: 0;
     border-radius: var(--radius-md);
-    border: 1px solid rgba(var(--color-primary-rgb), 0.35);
+    border: 0;
     background: rgba(var(--color-primary-rgb), 0.12);
     color: var(--color-primary);
     transition: background-color var(--transition-fast), border-color var(--transition-fast), transform var(--transition-fast);
@@ -2242,7 +2242,7 @@ a.project-overview__company-context-chip:hover {
     width: 100%;
     background-color: var(--color-surface-card); // bg-white dark:bg-surface-card
     border-radius: var(--radius-lg); // rounded-2xl
-    border: 1px solid var(--color-surface-border);
+    border: 0;
     box-shadow: var(--shadow-sm);
     position: relative;
     overflow: visible;
@@ -2257,7 +2257,7 @@ a.project-overview__company-context-chip:hover {
         align-items: center;
         gap: 0.18rem;
         padding: 0.18rem;
-        border: 1px solid color-mix(in srgb, var(--color-surface-border) 82%, transparent);
+        border: 0;
         border-radius: var(--radius-md);
         background: rgba(var(--color-surface-card-rgb), 0.9);
         box-shadow: var(--shadow-sm);
@@ -2588,7 +2588,7 @@ a.project-overview__company-context-chip:hover {
                     .popover-content {
                         margin: 0;
                         background-color: var(--color-surface-card);
-                        border: 1px solid var(--color-surface-border);
+                        border: 0;
                         border-radius: var(--radius-md);
                         padding: 0.72rem 0.8rem;
                         box-shadow: var(--shadow-lg);
@@ -2780,7 +2780,7 @@ a.project-overview__company-context-chip:hover {
             min-height: 0;
             margin: -4.7rem 1.15rem 1.15rem;
             padding: 1rem;
-            border: 1px solid color-mix(in srgb, var(--color-surface-border) 90%, transparent);
+            border: 0;
             border-radius: var(--radius-lg);
             background: rgba(var(--color-surface-card-rgb), 0.96);
             box-shadow: var(--shadow-lg);
@@ -2857,7 +2857,7 @@ a.project-overview__company-context-chip:hover {
                     min-width: 2.35rem;
                     height: 2.35rem;
                     padding: 0;
-                    border: 1px solid color-mix(in srgb, var(--color-surface-border) 72%, transparent);
+                    border: 0;
                     background: rgba(var(--color-surface-card-rgb), 0.82);
                     box-shadow: none;
                 }
@@ -3166,7 +3166,7 @@ a.project-overview__company-context-chip:hover {
         min-width: 0;
         min-height: 4.15rem;
         padding: 0.58rem 0.62rem;
-        border: 1px solid color-mix(in srgb, var(--color-surface-border) 72%, transparent);
+        border: 0;
         border-radius: var(--radius-md);
         border-left: 1px solid color-mix(in srgb, var(--color-surface-border) 72%, transparent);
         background: rgba(var(--color-surface-card-rgb), 0.72);
@@ -3693,7 +3693,7 @@ button.project-next-action-card__primary.is-warning:hover {
     width: 100%;
     padding: 1.5rem;
     overflow: hidden;
-    border: 1px solid color-mix(in srgb, var(--color-surface-border) 60%, transparent);
+    border: 0;
     border-radius: var(--radius-xl);
     background: var(--color-surface-card);
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.02);
@@ -5498,7 +5498,7 @@ button.project-next-action-card__primary.is-warning:hover {
     padding: 0.2rem;
     border-radius: var(--radius-md);
     background: var(--color-surface-hover);
-    border: 1px solid var(--color-surface-border);
+    border: 0;
 }
 
 .initiatives-view-btn {
@@ -7129,7 +7129,7 @@ button.project-next-action-card__primary.is-warning:hover {
 }
 
 .project-control-card__action.btn--secondary {
-    border: 1px solid rgba(var(--color-surface-hover-rgb), 0.95);
+    border: 0;
     background: rgba(var(--color-surface-hover-rgb), 0.42);
     box-shadow: none;
 }
@@ -7140,31 +7140,31 @@ button.project-next-action-card__primary.is-warning:hover {
 }
 
 .project-control-card__action--pause.btn--secondary {
-    border: 1px solid rgba(var(--color-warning-rgb), 0.28);
+    border: 0;
     background: rgba(var(--color-warning-rgb), 0.14);
     color: var(--color-warning);
-    box-shadow: inset 0 0 0 1px rgba(var(--color-warning-rgb), 0.08);
+    box-shadow: none;
 }
 
 .project-control-card__action--pause.btn--secondary:hover:not(:disabled) {
     border-color: rgba(var(--color-warning-rgb), 0.42);
     background: rgba(var(--color-warning-rgb), 0.2);
     color: var(--color-warning);
-    box-shadow: inset 0 0 0 1px rgba(var(--color-warning-rgb), 0.12);
+    box-shadow: none;
 }
 
 .project-control-card__action--cancel.btn--secondary {
-    border: 1px solid rgba(var(--color-error-rgb), 0.28);
+    border: 0;
     background: rgba(var(--color-error-rgb), 0.12);
     color: var(--color-error);
-    box-shadow: inset 0 0 0 1px rgba(var(--color-error-rgb), 0.08);
+    box-shadow: none;
 }
 
 .project-control-card__action--cancel.btn--secondary:hover:not(:disabled) {
     border-color: rgba(var(--color-error-rgb), 0.42);
     background: rgba(var(--color-error-rgb), 0.18);
     color: var(--color-error);
-    box-shadow: inset 0 0 0 1px rgba(var(--color-error-rgb), 0.12);
+    box-shadow: none;
 }
 
 .project-control-card__pause-strip {
@@ -7773,7 +7773,7 @@ button.project-next-action-card__primary.is-warning:hover {
     gap: 0.35rem;
     padding: 0.28rem;
     overflow-x: auto;
-    border: 1px solid var(--color-surface-border);
+    border: 0;
     border-radius: var(--radius-lg);
     background: var(--color-surface-card);
     scrollbar-width: none;
@@ -7849,7 +7849,7 @@ button.project-next-action-card__primary.is-warning:hover {
     align-items: center;
     gap: 0.2rem;
     padding: 0.25rem;
-    border: 1px solid color-mix(in srgb, var(--color-surface-border) 60%, transparent);
+    border: 0;
     border-radius: var(--radius-control);
     background: rgba(var(--color-surface-card-rgb), 0.6);
     box-shadow: var(--shadow-sm);
@@ -7963,7 +7963,7 @@ button.project-next-action-card__primary.is-warning:hover {
     flex-direction: column;
     gap: 0.45rem;
     padding: 0.78rem 0.85rem;
-    border: 1px solid var(--color-surface-border);
+    border: 0;
     border-radius: var(--radius-lg);
     background: var(--color-surface-card);
     box-shadow: var(--shadow-sm);
@@ -8004,7 +8004,7 @@ button.project-next-action-card__primary.is-warning:hover {
     flex-direction: column;
     gap: 0.65rem;
     padding: 0.85rem;
-    border: 1px solid var(--color-surface-border);
+    border: 0;
     border-radius: var(--radius-lg);
     background: var(--color-surface-card);
 }
@@ -8037,7 +8037,7 @@ button.project-next-action-card__primary.is-warning:hover {
     gap: 0.55rem;
     align-items: center;
     padding: 0.62rem 0.72rem;
-    border: 1px solid var(--color-surface-border);
+    border: 0;
     border-radius: var(--radius-md);
     background: rgba(var(--color-surface-hover-rgb), 0.35);
 }
@@ -8089,7 +8089,7 @@ button.project-next-action-card__primary.is-warning:hover {
     flex-direction: column;
     gap: 0.45rem;
     padding: 0.78rem;
-    border: 1px solid var(--color-surface-border);
+    border: 0;
     border-radius: var(--radius-lg);
     background: var(--color-surface-card);
 
@@ -8122,7 +8122,7 @@ button.project-next-action-card__primary.is-warning:hover {
 .project-overview-panel .execution-card-shell--flows,
 .project-overview-panel .execution-card-shell--issues {
     padding: 0.85rem;
-    border: 1px solid var(--color-surface-border);
+    border: 0;
     border-radius: var(--radius-lg);
     background: var(--color-surface-card);
     box-shadow: var(--shadow-sm);

@@ -473,7 +473,7 @@ html.dark .switch-track.active {
 /* --- Legacy / Global Overrides during migration --- */
 .app-card {
   background: var(--color-surface-card);
-  border: 1px solid color-mix(in srgb, var(--color-surface-border) 60%, transparent);
+  border: 0;
   border-radius: var(--radius-xl);
   box-shadow: var(--shadow-sm);
   transition: box-shadow var(--motion-duration-base) var(--motion-ease-out),
@@ -563,7 +563,7 @@ html.dark .switch-track.active {
   background: var(--color-surface-card);
   border-radius: var(--radius-xl);
   box-shadow: var(--shadow-sm);
-  border: 1px solid color-mix(in srgb, var(--color-surface-border) 40%, transparent);
+  border: 0;
   transition: all var(--transition-normal);
 }
 
@@ -669,24 +669,24 @@ html.dark .switch-track.active {
   background: rgba(255, 255, 255, 0.7);
   backdrop-filter: blur(12px) saturate(180%);
   -webkit-backdrop-filter: blur(12px) saturate(180%);
-  border: 1px solid rgba(255, 255, 255, 0.3);
+  border: 0;
 }
 
 html.dark .glass-card {
   background: rgba(21, 25, 32, 0.6);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 0;
 }
 
 .glass-strong {
   background: rgba(255, 255, 255, 0.65);
   backdrop-filter: blur(24px) saturate(180%);
   -webkit-backdrop-filter: blur(24px) saturate(180%);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  border: 0;
 }
 
 html.dark .glass-strong {
   background: rgba(2, 6, 23, 0.65);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 0;
 }
 
 .perspective-1000 {

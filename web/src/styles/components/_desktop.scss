@@ -328,7 +328,7 @@ html.is-desktop.desktop-window-capture {
     width: 100%;
     display: flex;
     flex-direction: column;
-    border: 1px solid var(--color-surface-border);
+    border: 0;
     border-radius: 16px;
     background: var(--color-surface-card);
     box-shadow: 0 24px 60px -20px rgba(0, 0, 0, 0.45), 0 2px 8px rgba(0, 0, 0, 0.12);
@@ -382,7 +382,7 @@ html.is-desktop.desktop-window-capture {
     gap: 4px;
     height: 26px;
     padding: 0 10px;
-    border: 1px solid var(--color-surface-border);
+    border: 0;
     border-radius: 999px;
     background: var(--color-surface-hover);
     color: var(--color-text-muted);
@@ -513,7 +513,7 @@ html.is-desktop.desktop-window-palette {
     max-height: 100%;
     display: flex;
     flex-direction: column;
-    border: 1px solid var(--color-surface-border);
+    border: 0;
     border-radius: 16px;
     background: var(--color-surface-card);
     box-shadow: 0 24px 60px -20px rgba(0, 0, 0, 0.45), 0 2px 8px rgba(0, 0, 0, 0.12);
@@ -626,7 +626,7 @@ html.is-desktop.desktop-window-palette {
 
     kbd {
         padding: 1px 5px;
-        border: 1px solid var(--color-surface-border);
+        border: 0;
         border-radius: 4px;
         background: color-mix(in srgb, var(--color-surface-hover) 50%, var(--color-surface-card));
         font: inherit;
@@ -813,7 +813,7 @@ html.is-desktop.desktop-window-day #root {
 .desktop-day-window__action {
     flex-shrink: 0;
     padding: 4px 10px;
-    border: 1px solid var(--color-surface-border);
+    border: 0;
     border-radius: 999px;
     background: transparent;
     color: var(--color-text-main);
@@ -849,7 +849,7 @@ html.is-desktop.desktop-window-day #root {
     min-width: 120px;
     height: 36px;
     padding: 0 12px;
-    border: 1px solid var(--color-surface-border);
+    border: 0;
     border-radius: var(--radius-md);
     background: var(--color-surface-hover);
     color: var(--color-text-main);
@@ -869,7 +869,7 @@ html.is-desktop.desktop-window-day #root {
     width: 220px;
     height: 36px;
     padding: 0 10px;
-    border: 1px solid var(--color-surface-border);
+    border: 0;
     border-radius: var(--radius-md);
     background: var(--color-surface-hover);
     color: var(--color-text-main);
@@ -909,7 +909,7 @@ html.is-desktop.desktop-window-tray {
     min-height: 0;
     display: flex;
     flex-direction: column;
-    border: 1px solid var(--color-surface-border);
+    border: 0;
     border-radius: 14px;
     background: var(--color-surface-card);
     box-shadow: 0 18px 48px -18px rgba(0, 0, 0, 0.45), 0 2px 6px rgba(0, 0, 0, 0.1);
@@ -1005,7 +1005,7 @@ html.is-desktop.desktop-window-tray {
     padding: 12px 14px;
     border-radius: 12px;
     background: var(--color-surface-hover);
-    border: 1px solid var(--color-surface-border);
+    border: 0;
 }
 
 .tray-panel__focus--active {
@@ -1158,7 +1158,7 @@ html.is-desktop.desktop-window-tray {
 }
 
 .tray-panel__secondary {
-    border: 1px solid var(--color-surface-border);
+    border: 0;
     background: var(--color-surface-hover);
     color: var(--color-text-main);
 
@@ -1175,7 +1175,7 @@ html.is-desktop.desktop-window-tray {
     gap: 8px;
     margin: 8px 10px 0;
     padding: 8px 12px;
-    border: 1px solid var(--color-surface-border);
+    border: 0;
     border-radius: 10px;
     background: transparent;
     color: var(--color-text-main);
@@ -1219,7 +1219,7 @@ html.is-desktop.desktop-window-tray {
     margin: 8px 10px 0;
     padding: 0 10px;
     height: 38px;
-    border: 1px solid var(--color-surface-border);
+    border: 0;
     border-radius: 10px;
     background: var(--color-surface-hover);
 

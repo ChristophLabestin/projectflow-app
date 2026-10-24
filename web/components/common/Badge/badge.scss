@@ -13,7 +13,7 @@
     // Base neutral
     background-color: var(--control-bg, var(--color-surface-hover));
     color: var(--color-text-main);
-    border: 1px solid var(--color-surface-border);
+    border: 0;
 
     &--neutral {
         // Default styles apply

@@ -12,7 +12,7 @@
     gap: 0.75rem;
     padding: 1.5rem;
     border-radius: var(--radius-2xl);
-    border: 1px solid color-mix(in srgb, var(--color-surface-border) 60%, transparent);
+    border: 0;
     background: var(--color-surface-hover);
 }
 
@@ -58,7 +58,7 @@
     align-items: center;
     gap: 0.25rem;
     padding: 0.35rem;
-    border: 1px solid color-mix(in srgb, var(--color-surface-border) 60%, transparent);
+    border: 0;
     border-radius: var(--radius-full);
     background: var(--color-surface-hover);
 }

@@ -27,7 +27,7 @@
     &:hover,
     &.is-open {
         background: var(--color-surface-hover);
-        border-color: var(--color-surface-border);
+        border-color: transparent;
     }
 
     &:active {
@@ -109,7 +109,7 @@
 
 .project-switcher__panel {
     overflow: hidden;
-    border: 1px solid var(--color-surface-border);
+    border: 0;
     border-radius: var(--radius-xl);
     background: var(--color-surface-card);
     box-shadow: var(--shadow-lg);
@@ -127,7 +127,7 @@
     gap: 0.5rem;
     min-height: 2.375rem;
     padding: 0 0.75rem;
-    border: 1px solid var(--color-surface-border);
+    border: 0;
     border-radius: var(--radius-md);
     background: var(--color-surface-hover);
     color: var(--color-text-muted);
