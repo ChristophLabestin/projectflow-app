@@ -1,4 +1,8 @@
 User-agent: *
 Allow: /
+Disallow: /checkout
+Disallow: /en/checkout
 
 Sitemap: https://getprojectflow.com/sitemap.xml
+
+# Map of this site for language models: https://getprojectflow.com/llms.txt
