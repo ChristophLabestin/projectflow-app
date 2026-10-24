@@ -123,3 +123,29 @@ Jeder Nutzer hat genau **einen persönlichen Workspace**, auch wer nur in ein Te
   den persönlichen Workspace als „Persönlich“, Upgrade-Weg im Billing-Tab („Personal buchen“).
 - Admin-MRR: `personal` = 5 € (Monat) bzw. 4 € (Jahr) + `aiAddonSeats × 10`.
 
+## 8. Eigene Kaufseite (Stripe Payment Element, Owner 2026-10-24)
+Kein Redirect zu Stripe Checkout: die Landing baut eine eigene Kaufseite mit dem **Payment Element** (PCI SAQ A).
+Backend-Callables (europe-west3, Firebase-Auth nötig → Landing nutzt Firebase Auth desselben Projekts; Domain
+`getprojectflow.com` muss in Firebase Auth → Authorized domains stehen):
+
+| Callable | Eingabe | Ausgabe |
+|---|---|---|
+| `previewSubscription` | `{tenantId \| personal: true, plan?, interval: 'month'\|'year', aiAddonSeats?, promotionCode?}` | `{plan, interval, aiAddonSeats, trialEnd, invoice}` |
+| `createSubscriptionIntent` | wie oben | `{subscriptionId, intentType: 'payment'\|'setup', clientSecret, trialEnd, invoice}` |
+
+- `invoice` = `{currency, subtotal, discount, tax, total, lines: [{description, quantity, amount}]}` in Cent; `tax` ist bis zur
+  USt-Entscheidung 0 (Platzhalter).
+- Nur der Owner. `personal: true` = eigener persönlicher Workspace. `plan` optional; passt er nicht zum Workspace-Typ →
+  `plan-workspace-type-mismatch`. Plätze wählt niemand: Team = Zahl der Vollmitglieder (Gäste frei), Personal = 1.
+  `aiAddonSeats`: 0 … Mitglieder (Personal 0 … 1); gekaufte KI-Plätze gehen zuerst an den Owner, den Rest weist der Owner im
+  Billing-Tab zu (`setAiAddonMembers`; die Menge folgt dort der Zuweisung).
+- Ablauf: Seite ruft `createSubscriptionIntent` → `stripe.confirmPayment` (bzw. `confirmSetup` bei `intentType: 'setup'`, wenn ein
+  Team-Test noch > 48 h läuft: Abrechnung erst ab Testende) mit `return_url` → Webhook aktiviert den Plan (`entitlements/plan`
+  live beobachten oder `?openSettings=billing` in der App). Erneuter Aufruf mit gleichen Werten liefert dieselbe offene
+  Subscription (idempotent); geänderte Werte stornieren die offene. Unbezahlte Subscriptions verfallen nach 23 h bei Stripe und
+  ändern am Workspace nichts.
+- Publishable Key (`pk_test_…`) kommt aus der Landing-Konfiguration (`VITE_STRIPE_PUBLISHABLE_KEY`), nicht vom Backend.
+- Fehlercodes zusätzlich: `billing-exempt`, `billing-promotion-invalid`, `billing-already-subscribed` (Änderungen am bestehenden
+  Abo: Plätze automatisch, KI-Paket über `setAiAddonMembers`, Intervall/Kündigung/Zahlungsmethode/Rechnungen über das Portal).
+- Rechnungen: Präfix `PF` + 6 Zeichen je Kunde, Fußzeile mit Anschrift (per API gesetzt).
+
