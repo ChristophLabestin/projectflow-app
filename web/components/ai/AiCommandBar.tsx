@@ -86,11 +86,14 @@ export const AiCommandBar: React.FC<AiCommandBarProps> = ({ variant = 'overlay',
             setInput('');
             setImage(null);
             void snap(image, text);
+            requestAnimationFrame(() => inputRef.current?.focus());
             return;
         }
         if (!text.trim()) return;
         setInput('');
         void send(text);
+        // Clicking a suggestion moves focus to the button: keep the input ready for the follow-up.
+        requestAnimationFrame(() => inputRef.current?.focus());
     };
 
     const pickImage = (file: File | null | undefined) => {
