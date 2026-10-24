@@ -17,6 +17,8 @@
 // 3. Onboarding finished and the currently published privacy/terms versions accepted (no welcome, gate or consent dialog).
 // 4. User + workspace carry `isReviewAccount: true` so stats/admin views can filter them out.
 // 5. No platform admin claim, no access beyond its own workspace.
+// 6. Billing exempt (Team, never trial → Free; same as billing-exempt.mjs) and in-app AI off for the review workspace.
+//    The account's personal workspace (personal_{uid}) is left untouched.
 // Production uses Application Default Credentials (gcloud auth application-default login).
 
 import { createRequire } from 'node:module';
@@ -282,14 +284,39 @@ const acceptLegalDocuments = async (uid) => {
     return Object.fromEntries(Object.entries(docs).map(([type, entry]) => [type, entry.version]));
 };
 
+// Same logic as functions/scripts/billing-exempt.mjs / the admin console (applyPlan with billingExempt).
+const applyBillingExemption = async () => {
+    let billing;
+    try {
+        billing = require(join(functionsDir, 'lib', 'billing.js'));
+    } catch {
+        throw new Error('functions/lib is missing — run `npm run build` in functions/ first.');
+    }
+    await billing.setBillingExempt(TID, true, 'script:create-review-account');
+    await db.collection('admin_audit').add({
+        action: 'billing.exempt', target: `tenants/${TID}`, summary: 'on (review account rebuild)',
+        actor: 'script:create-review-account', createdAt: Timestamp.now(),
+    });
+};
+
 const rebuildWorkspace = async (uid) => {
     const tenantRef = db.doc(`tenants/${TID}`);
     const existing = await tenantRef.get();
     if (existing.exists && existing.data()?.ownerId !== uid) {
         throw new Error(`tenants/${TID} exists and belongs to someone else — refusing to touch it.`);
     }
-    // Fresh demo data on every run (dates are relative to today).
+    // Fresh demo data on every run (dates are relative to today). Only ws-app-review is rebuilt — the account's
+    // personal workspace (personal_{uid}, billing contract §7) is never touched.
     if (existing.exists) await db.recursiveDelete(tenantRef);
+
+    // Billing: the review workspace is exempt (never trial → Free, no read-only projects). Written BEFORE the
+    // tenant doc so onTenantCreatedBilling finds a plan and does not start a 14-day trial over it.
+    await applyBillingExemption();
+    // In-app AI stays off for the review (explicit, so a rollout default cannot switch it on).
+    await db.doc(`tenants/${TID}/ai_config/policy`).set({
+        enabled: true, allowGuests: false, allowDeleteScopes: false, allowPersonalTokens: false,
+        inAppEnabled: false, inAppAi: false, updatedAt: Timestamp.now(), updatedBy: 'script:create-review-account',
+    });
 
     const people = [{ uid, email: EMAIL, displayName: DISPLAY_NAME, role: 'Owner' }, ...TEAM];
     const nameOf = (id) => people.find((person) => person.uid === id)?.displayName || '';
@@ -391,6 +418,8 @@ const main = async () => {
     const projectCount = await rebuildWorkspace(uid);
     console.log(`Review account ${EMAIL} (uid ${uid}) ready: workspace "${WORKSPACE_NAME}" (${TID}) with ${projectCount} projects.`);
     console.log(`Accepted legal versions: ${JSON.stringify(accepted)}`);
+    const plan = (await db.doc(`tenants/${TID}/entitlements/plan`).get()).data() || {};
+    console.log(`Billing: plan=${plan.plan} status=${plan.status} billingExempt=${plan.billingExempt === true}; in-app AI off.`);
     console.log(rotated
         ? `New password written to ${SECRET_FILE} (not printed).`
         : `Password unchanged (stored in ${SECRET_FILE}); pass --rotate-password to replace it.`);

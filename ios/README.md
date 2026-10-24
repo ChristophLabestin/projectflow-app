@@ -90,6 +90,15 @@ version in `pf.announcement.dismissed`). Contract: admin-console iOS note, `brai
 new projects are pre-checked. Onboarding asks "Allein oder im Team?" (team → new team workspace + invite step); the
 workspace switcher lists "Persönlich" above "Teams". No purchase UI (App Store 3.1.1).
 
+## In-app AI (✦ KI)
+
+Contract: side-session note `ios-in-app-ai-contract.md` (web `web/components/ai/`). `PFData/AiAssist.swift` streams `aiAssist`
+(SSE; write and assist), applies/undoes action cards and reads `getWorkspaceAiPolicy` (`AppModel.showsInAppAi`, no guests).
+UI in `Features/AI`: "Frag ProjectFlow" sheet (✦ on Today, task and project top bars; `projectflow://ask?q=` and the
+`AskProjectFlowIntent` Siri shortcut), field assist (✦ in the description format bar and the comment keyboard toolbar,
+hidden while typing, back after 800 ms) and "✦ KI" rewrites in the edit menu of a selection (replace + undo). Plan refusals
+show a hint, not an error. QA without a key: `-pfAiFake`.
+
 ## Startup template seed data
 
 `App/Resources/StartupSeeds.json` holds the content of the `startup_company_formation` template (tracks,

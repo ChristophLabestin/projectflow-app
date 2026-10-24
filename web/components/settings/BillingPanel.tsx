@@ -8,7 +8,7 @@ import { useCheckoutAvailable, useEntitlements } from '../../hooks/useEntitlemen
 import { resetOwnAiKeyCheck } from '../../hooks/useAiAccess';
 import { auth, db } from '../../services/firebase';
 import {
-    billingErrorKey, createBillingCheckout, createBillingPortal, personalAiKey, type PersonalAiKeyStatus, setAiAddonMembers,
+    billingErrorKey, checkoutPageUrl, createBillingPortal, personalAiKey, type PersonalAiKeyStatus, setAiAddonMembers,
 } from '../../services/billingService';
 import {
     AI_ADDON_PRICE, type BillingInterval, FREE_PROJECT_LIMIT, PERSONAL_PRICE, PERSONAL_STORAGE_GB, TEAM_MEMBER_LIMIT, TEAM_PRICE, daysLeft,
@@ -68,8 +68,10 @@ export const BillingPanel: React.FC<BillingPanelProps> = ({ tenantId, role }) =>
     const redirect = async (kind: 'checkout' | 'portal') => {
         setBusy(kind);
         try {
+            // Purchases run on our own page on the landing (/checkout, Stripe Payment Element); the hosted
+            // Stripe Checkout (createBillingCheckout) stays in billingService as a fallback.
             const url = kind === 'checkout'
-                ? await createBillingCheckout(tenantId, interval, language)
+                ? checkoutPageUrl({ tenantId, plan: ent?.workspaceType === 'personal' ? 'personal' : 'team', interval, language })
                 : await createBillingPortal(tenantId, language);
             window.location.assign(url);
         } catch (error) {

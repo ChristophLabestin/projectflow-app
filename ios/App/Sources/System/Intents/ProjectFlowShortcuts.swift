@@ -69,5 +69,14 @@ struct ProjectFlowShortcuts: AppShortcutsProvider {
             shortTitle: "Erfassen öffnen",
             systemImageName: "square.and.pencil"
         )
+        AppShortcut(
+            intent: AskProjectFlowIntent(),
+            phrases: [
+                "Frag \(.applicationName)",
+                "Ask \(.applicationName)",
+            ],
+            shortTitle: "Frag ProjectFlow",
+            systemImageName: "sparkles"
+        )
     }
 }

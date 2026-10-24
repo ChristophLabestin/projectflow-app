@@ -398,6 +398,9 @@ extension TaskDetailScreen {
 struct DescriptionToolbar: View {
     let controller: RichEditorController
     let onLink: () -> Void
+    /// ✦ field assist (in-app AI); nil when AI is off. Hidden while typing, back after 800 ms (web `CARET_SPARK_DELAY_MS`).
+    var onAi: (() -> Void)?
+    @State private var showsSpark = false
 
     var body: some View {
         HStack(spacing: 6) {
@@ -408,11 +411,28 @@ struct DescriptionToolbar: View {
             formatButton("list.number", label: L10n.t("taskDetail.format.numbers"), active: controller.block == .ol) { controller.toggleList(ordered: true) }
             formatButton("link", label: L10n.t("taskDetail.format.link"), active: controller.currentLink != nil) { onLink() }
             Spacer(minLength: 0)
+            // In the free space before "close keyboard", so nothing shifts when it fades in and out.
+            if let onAi, showsSpark {
+                Button(action: onAi) {
+                    Text("✦").font(.system(size: 15, weight: .semibold)).foregroundStyle(PFColor.textMuted)
+                        .frame(width: 36, height: 36).contentShape(.rect)
+                }
+                .buttonStyle(.pfPressable)
+                .accessibilityLabel(L10n.t("ai.open"))
+                .transition(.opacity)
+            }
             formatButton("keyboard.chevron.compact.down", label: L10n.t("taskDetail.format.done"), active: false) { controller.resign() }
         }
         .padding(PFSpace.xs)
         .background(PFColor.card, in: .rect(cornerRadius: 26, style: .continuous))
         .pfElevation(.lifted, radius: 26)
+        .task(id: controller.revision) {
+            guard onAi != nil else { return }
+            withAnimation(PFMotion.respecting(PFMotion.fast)) { showsSpark = false }
+            try? await Task.sleep(for: .milliseconds(800))
+            guard !Task.isCancelled else { return }
+            withAnimation(PFMotion.respecting(PFMotion.fast)) { showsSpark = true }
+        }
     }
 
     /// iPhone Duo outer display: the bar hides behind this side-column button while typing.

@@ -186,7 +186,8 @@ const apps = (t: SiteCopy) => {
 </section>`;
 };
 
-const pricing = (t: SiteCopy) => {
+const pricing = (t: SiteCopy, lang: Lang) => {
+    const buy = lang === 'de' ? '/checkout' : '/en/checkout';
     const p = t.pricing;
     const price = (plan: (typeof p.plans)[number], yearly: boolean) => (yearly ? plan.yearly : plan.monthly);
     return `
@@ -205,7 +206,8 @@ const pricing = (t: SiteCopy) => {
         <ul class="plans">
             ${p.plans.map((plan) => {
                 const featured = plan.key === 'team';
-                const href = plan.key === 'org' ? 'mailto:hello@getprojectflow.com?subject=ProjectFlow%20Organization' : links.register;
+                const href = plan.key === 'org' ? 'mailto:hello@getprojectflow.com?subject=ProjectFlow%20Organization'
+                    : plan.key === 'free' ? links.register : `${buy}?plan=${plan.key}&interval=year`;
                 const amount = plan.key === 'org'
                     ? `<span class="plan__from">${esc(p.from)}</span> <b>${plan.yearly}&nbsp;${p.currency}</b>`
                     : `<b data-price data-monthly="${plan.monthly}" data-yearly="${plan.yearly}">${price(plan, true)}&nbsp;${p.currency}</b>`;
@@ -220,7 +222,7 @@ const pricing = (t: SiteCopy) => {
                 </div>
                 <p class="plan__price">${amount}</p>
                 <p class="plan__unit">${unit}</p>
-                <a class="btn ${featured ? 'btn--primary' : 'btn--ghost'}" href="${href}">${esc(plan.cta)}${icon('arrowRight')}</a>
+                <a class="btn ${featured ? 'btn--primary' : 'btn--ghost'}" href="${href}"${plan.key === 'personal' || plan.key === 'team' ? ' data-buy-link' : ''}>${esc(plan.cta)}${icon('arrowRight')}</a>
                 <ul class="ticks">${plan.features.map((f) => `<li>${icon('check')}${esc(f)}</li>`).join('')}</ul>
             </li>`;
             }).join('')}
@@ -294,4 +296,4 @@ const cta = (t: SiteCopy) => `
 </section>`;
 
 export const homeBody = (t: SiteCopy, lang: Lang): string =>
-    [story(t, lang), audience(t), apps(t), mcp(t, lang), more(t), pricing(t), faq(t, lang), cta(t)].join('\n');
+    [story(t, lang), audience(t), apps(t), mcp(t, lang), more(t), pricing(t, lang), faq(t, lang), cta(t)].join('\n');

@@ -41,6 +41,8 @@ final class AppRouter {
     var pendingURL: URL?
     /// Opens the capture composer (`projectflow://capture`, Control Center, Action Button). Set by `AppIntentBridge`.
     @ObservationIgnored var onCapture: ((CaptureContext) -> Void)?
+    /// "Frag ProjectFlow" requested from outside (`projectflow://ask?q=…`, App Intent); MainShell opens the sheet.
+    var pendingAsk: String?
     /// `/invite/<tenantId>/<inviteId>` waiting to be shown (Onboarding feature presents the accept sheet).
     var pendingInvite: InviteLink?
 
@@ -100,6 +102,8 @@ final class AppRouter {
             let items = components?.queryItems
             onCapture?(CaptureContext(projectId: items?.first(where: { $0.name == "project" })?.value,
                                       initialText: items?.first(where: { $0.name == "text" })?.value))
+        case "ask":
+            pendingAsk = components?.queryItems?.first(where: { $0.name == "q" })?.value ?? ""
         case "catalog":
             #if DEBUG
             open(.designCatalog, in: .today)

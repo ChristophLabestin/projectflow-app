@@ -1,5 +1,6 @@
 import SwiftUI
 import PFDesign
+import PFData
 import PFDomain
 import PFModel
 
@@ -31,8 +32,10 @@ struct TodayTopBar: View {
                 // iPhone: capture, then account. Duo outer display (stacked rail): account on top, capture below it.
                 if sideRegion > 0 {
                     accountButton
+                    if model.showsInAppAi { askButton }
                     captureButton
                 } else {
+                    if model.showsInAppAi { askButton }
                     captureButton
                     accountButton
                 }
@@ -40,6 +43,11 @@ struct TodayTopBar: View {
         }
         .padding(.horizontal, PFSpace.page)
         .padding(.vertical, 6)
+    }
+
+    /// ✦ "Frag ProjectFlow" about the day.
+    private var askButton: some View {
+        AiSparkButton { AiAsk.present(model: model, context: AiAskContext(surface: "today")) }
     }
 
     private var captureButton: some View {

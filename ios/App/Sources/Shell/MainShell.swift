@@ -1,5 +1,6 @@
 import SwiftUI
 import PFDesign
+import PFData
 import PFModel
 
 /// Signed-in shell: one custom navigator per tab (kept alive), the floating dock, the focus bar
@@ -103,6 +104,13 @@ struct MainShell: View {
         .animation(PFMotion.respecting(PFMotion.normal), value: model.network.isOnline)
         .animation(PFMotion.respecting(PFMotion.snappy), value: model.announcements.visible)
         .task { model.announcements.start() }
+        // "Frag ProjectFlow" from Siri/Shortcuts (`projectflow://ask`): open the ✦ sheet about the day.
+        .onChange(of: router.pendingAsk) { _, question in
+            guard let question else { return }
+            router.pendingAsk = nil
+            guard model.showsInAppAi else { return }
+            AiAsk.present(model: model, context: AiAskContext(surface: "today"), question: question.isEmpty ? nil : question)
+        }
     }
 
     @ViewBuilder

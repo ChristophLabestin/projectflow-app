@@ -289,7 +289,9 @@ struct PersonalTaskScreen: View {
     @ViewBuilder
     private var floating: some View {
         if isEditingDescription {
-            DescriptionToolbar(controller: editor, onLink: presentLink)
+            DescriptionToolbar(controller: editor, onLink: presentLink,
+                               onAi: model.showsInAppAi ? { AiEditorBridge.presentFieldAssist(editor, model: model, itemTitle: task?.title, projectTitle: nil) } : nil)
+                .onAppear { AiEditorBridge.attach(editor, model: model, itemTitle: task?.title) }
         } else if !keyboardVisible, sideRegion == 0, let task {
             if task.isCompleted {
                 PFButton(L10n.t("common.reopen"), systemImage: "arrow.uturn.backward", kind: .secondary, size: .large, fullWidth: true) {

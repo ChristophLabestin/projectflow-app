@@ -1,5 +1,5 @@
 export type Lang = 'de' | 'en';
-export type PageKind = 'home' | 'imprint' | 'privacy' | 'terms' | 'docsMcp' | 'notFound';
+export type PageKind = 'home' | 'imprint' | 'privacy' | 'terms' | 'docsMcp' | 'buy' | 'notFound';
 
 export interface PageDef {
     kind: PageKind;
@@ -36,6 +36,8 @@ const allPages: PageDef[] = [
     { kind: 'terms', lang: 'en', url: '/en/terms', file: 'en/terms/index.html' },
     { kind: 'docsMcp', lang: 'de', url: '/docs/mcp', file: 'docs/mcp/index.html' },
     { kind: 'docsMcp', lang: 'en', url: '/en/docs/mcp', file: 'en/docs/mcp/index.html' },
+    { kind: 'buy', lang: 'de', url: '/checkout', file: 'checkout/index.html' },
+    { kind: 'buy', lang: 'en', url: '/en/checkout', file: 'en/checkout/index.html' },
     { kind: 'notFound', lang: 'de', url: '/404', file: '404.html' },
 ];
 

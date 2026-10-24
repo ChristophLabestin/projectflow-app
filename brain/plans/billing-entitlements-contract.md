@@ -125,15 +125,22 @@ Jeder Nutzer hat genau **einen persönlichen Workspace**, auch wer nur in ein Te
 
 ## 8. Eigene Kaufseite (Stripe Payment Element, Owner 2026-10-24)
 Kein Redirect zu Stripe Checkout: die Landing baut eine eigene Kaufseite mit dem **Payment Element** (PCI SAQ A).
+Route (Entscheidung User 2026-10-24): **`https://getprojectflow.com/checkout`** bzw. **`/en/checkout`**. Die App verlinkt dorthin mit
+`?tenant=<tenantId>&plan=team|personal&interval=month|year[&ai=1]` (`checkoutPageUrl` in `web/services/billingService.ts`);
+der gehostete Stripe Checkout (`createBillingCheckout`) bleibt nur als Fallback im Code.
 Backend-Callables (europe-west3, Firebase-Auth nötig → Landing nutzt Firebase Auth desselben Projekts; Domain
 `getprojectflow.com` muss in Firebase Auth → Authorized domains stehen):
 
 | Callable | Eingabe | Ausgabe |
 |---|---|---|
 | `previewSubscription` | `{tenantId \| personal: true, plan?, interval: 'month'\|'year', aiAddonSeats?, promotionCode?}` | `{plan, interval, aiAddonSeats, trialEnd, invoice}` |
-| `createSubscriptionIntent` | wie oben | `{subscriptionId, intentType: 'payment'\|'setup', clientSecret, trialEnd, invoice}` |
+| `createSubscriptionIntent` | wie oben (`aiAddon: boolean` = 1 KI-Platz für den Owner, alternativ `aiAddonSeats`) | `{subscriptionId, intentType: 'payment'\|'setup'\|'none', clientSecret, change, trialEnd, summary}` |
+| `getBillingConfig` | – (ohne Auth) | `{publishableKey, checkoutAvailable, mode}` |
+| `listBillingWorkspaces` | `{language?}` | eigene Workspaces (Owner, persönlicher wird bei Bedarf angelegt): `[{tenantId, name, workspaceType, plan, status, billingInterval, memberCount, aiAddonSeats, trialEndsAt, billingExempt, hasSubscription}]` |
+| `createTeamWorkspace` | `{name, language?}` | `{tenantId}` (Team-Test startet per Trigger) |
+| `getSubscriptionStatus` | `{tenantId \| personal: true}` | `{status, plan, interval, aiAddonSeats, active}` (Erfolgsseite pollt) |
 
-- `invoice` = `{currency, subtotal, discount, tax, total, lines: [{description, quantity, amount}]}` in Cent; `tax` ist bis zur
+- `summary` (= `invoice`) = `{currency, subtotal, discount, tax, total, amountDue, trialEnd, lines: [{label, quantity, unitAmount, amount}]}` in Cent, netto; `tax` ist bis zur
   USt-Entscheidung 0 (Platzhalter).
 - Nur der Owner. `personal: true` = eigener persönlicher Workspace. `plan` optional; passt er nicht zum Workspace-Typ →
   `plan-workspace-type-mismatch`. Plätze wählt niemand: Team = Zahl der Vollmitglieder (Gäste frei), Personal = 1.
@@ -144,8 +151,11 @@ Backend-Callables (europe-west3, Firebase-Auth nötig → Landing nutzt Firebase
   live beobachten oder `?openSettings=billing` in der App). Erneuter Aufruf mit gleichen Werten liefert dieselbe offene
   Subscription (idempotent); geänderte Werte stornieren die offene. Unbezahlte Subscriptions verfallen nach 23 h bei Stripe und
   ändern am Workspace nichts.
-- Publishable Key (`pk_test_…`) kommt aus der Landing-Konfiguration (`VITE_STRIPE_PUBLISHABLE_KEY`), nicht vom Backend.
-- Fehlercodes zusätzlich: `billing-exempt`, `billing-promotion-invalid`, `billing-already-subscribed` (Änderungen am bestehenden
-  Abo: Plätze automatisch, KI-Paket über `setAiAddonMembers`, Intervall/Kündigung/Zahlungsmethode/Rechnungen über das Portal).
+- **Änderungen am bestehenden Abo laufen über dieselben Callables** (`change: true`): Intervallwechsel und KI-Plätze, anteilig und
+  sofort abgerechnet (`proration_behavior: always_invoice`); Upgrades greifen erst nach Zahlung (`pending_if_incomplete`). Wird die
+  hinterlegte Karte belastet, kommt `intentType: 'none'`; braucht es 3-D-Secure, `intentType: 'payment'` mit `clientSecret`.
+  Plätze folgen weiter den Mitgliedern; Kündigen, Zahlungsmethode und Rechnungen bleiben im Portal.
+- Fehlercodes zusätzlich: `billing-exempt`, `billing-promotion-invalid`. `publishableKey` setzt
+  `node functions/scripts/billing-config.mjs --publishable-key pk_test_…`.
 - Rechnungen: Präfix `PF` + 6 Zeichen je Kunde, Fußzeile mit Anschrift (per API gesetzt).
 

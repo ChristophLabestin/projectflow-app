@@ -18,6 +18,8 @@ struct CommentsSection: View {
 
     @Environment(AppModel.self) private var model
     @State private var draft = ""
+    /// ✦ in the keyboard toolbar: hidden while typing, back after an 800 ms pause (web `CARET_SPARK_DELAY_MS`).
+    @State private var showsSpark = false
     @State private var isSending = false
     @SwiftUI.FocusState private var focused: Bool
 
@@ -170,6 +172,22 @@ struct CommentsSection: View {
                     .padding(.horizontal, 14)
                     .padding(.vertical, 10)
                     .background(PFColor.raised, in: .rect(cornerRadius: 20, style: .continuous))
+                    .toolbar {
+                        ToolbarItemGroup(placement: .keyboard) {
+                            if focused, model.showsInAppAi, showsSpark {
+                                Spacer()
+                                Button { presentAiAssist() } label: {
+                                    Text("✦").font(.system(size: 16, weight: .semibold)).foregroundStyle(PFColor.textMuted)
+                                }
+                                .accessibilityLabel(L10n.t("ai.open"))
+                            }
+                        }
+                    }
+                    .task(id: "\(draft.count)|\(focused)") {
+                        showsSpark = false
+                        try? await Task.sleep(for: .milliseconds(800))
+                        if !Task.isCancelled { showsSpark = true }
+                    }
                 Button(action: send) {
                     Image(systemName: "arrow.up")
                         .font(.system(size: 15, weight: .bold))
@@ -222,4 +240,12 @@ struct CommentsSection: View {
             }
         }
     }
+
+    private func presentAiAssist() {
+        let text = draft
+        model.presenter.present(detents: [.fit]) {
+            AiFieldAssistSheet(field: .comment, text: text) { result in draft = result }
+        }
+    }
+
 }
