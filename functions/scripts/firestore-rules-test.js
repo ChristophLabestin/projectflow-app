@@ -233,6 +233,10 @@ const run = async () => {
         await check('guest cannot take over project ownerId', 'deny', () => guest.doc(PROJECT).update({ ownerId: 'guestA' }));
         await check('guest cannot change project memberIds', 'deny', () =>
             guest.doc(PROJECT).update({ memberIds: ['ownerA', 'guestA', 'outsiderA'] }));
+        // Audit 2026-10-24 H4: the flows quota override is platform-admin only.
+        await check('workspace admin cannot raise tenant limits', 'deny', () => admin.doc(T).update({ limits: { automations: { runsPerMonth: 1e9 } } }));
+        await check('owner cannot set isReviewAccount', 'deny', () => owner.doc(T).update({ isReviewAccount: true }));
+        await check('admin renames the workspace', 'allow', () => admin.doc(T).update({ name: 'Tenant A renamed' }));
         await check('nobody can move a project to another tenant', 'deny', () => owner.doc(PROJECT).update({ tenantId: 'tenantB' }));
         await check('guest edits project content', 'allow', () => guest.doc(PROJECT).update({ title: 'Guest edit' }));
         await check('project owner transfers ownership', 'allow', () => member.doc(MEMBER_PROJECT).update({ ownerId: 'adminA' }));

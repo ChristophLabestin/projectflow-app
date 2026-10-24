@@ -5,6 +5,7 @@ import { EMAIL_SECRETS, sendEmail, getSystemEmailTemplate } from './email';
 import { EMAIL_CONTENT, getLocale } from './email-locales';
 import { ALLOWED_ORIGINS } from './corsConfig';
 import { assertCanAddMember, loadPlanLimits } from './billing';
+import { memberRef } from './tenant-id';
 
 const db = admin.firestore();
 const REGION = 'europe-west3';
@@ -21,7 +22,7 @@ const escapeHtml = (value: string) => value
     .replace(/"/g, '&quot;');
 
 const getMemberRole = async (tenantId: string, uid: string): Promise<string | null> => {
-    const snap = await db.doc(`tenants/${tenantId}/members/${uid}`).get();
+    const snap = await memberRef(tenantId, uid).get();
     return snap.exists ? String(snap.data()?.role || 'Member') : null;
 };
 
@@ -119,11 +120,11 @@ export const acceptWorkspaceInvite = functions.region(REGION).https.onCall(async
     const email = String(userRecord.email || token.email || '').toLowerCase();
 
     const inviteRef = db.doc(`tenants/${tenantId}/invitations/${inviteId}`);
-    const memberRef = db.doc(`tenants/${tenantId}/members/${uid}`);
+    const memberDoc = memberRef(tenantId, uid);
     const tenantRef = db.doc(`tenants/${tenantId}`);
 
     // Plan check (Free: no invitations; Team: up to 50 full members). Guests are free.
-    const [preInvite, preMember] = await Promise.all([inviteRef.get(), memberRef.get()]);
+    const [preInvite, preMember] = await Promise.all([inviteRef.get(), memberDoc.get()]);
     const preInviteRole = INVITABLE_ROLES.includes(preInvite.data()?.role) ? String(preInvite.data()?.role) : 'Member';
     const preRole = preMember.exists ? String(preMember.data()?.role || 'Member') : null;
     if (preInvite.exists && (preRole === null || (preRole === 'Guest' && preInviteRole !== 'Guest'))) {
@@ -131,7 +132,7 @@ export const acceptWorkspaceInvite = functions.region(REGION).https.onCall(async
     }
 
     const result = await db.runTransaction(async (tx) => {
-        const [inviteSnap, memberSnap, tenantSnap] = await Promise.all([tx.get(inviteRef), tx.get(memberRef), tx.get(tenantRef)]);
+        const [inviteSnap, memberSnap, tenantSnap] = await Promise.all([tx.get(inviteRef), tx.get(memberDoc), tx.get(tenantRef)]);
         const invite = inviteSnap.data();
         if (!inviteSnap.exists || !invite || !tenantSnap.exists) {
             throw new functions.https.HttpsError('not-found', 'Invitation not found.');
@@ -164,7 +165,7 @@ export const acceptWorkspaceInvite = functions.region(REGION).https.onCall(async
         const role = existingRole && (rank[existingRole] ?? 1) >= (rank[inviteRole] ?? 1) ? existingRole : inviteRole;
 
         const now = FieldValue.serverTimestamp();
-        tx.set(memberRef, {
+        tx.set(memberDoc, {
             uid,
             role,
             roleIds: memberSnap.data()?.roleIds || [],

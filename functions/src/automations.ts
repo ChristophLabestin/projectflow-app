@@ -65,6 +65,7 @@ import {
     subjectTaskId
 } from './automation-logic';
 import { localDateKey } from './tz-utils';
+import { memberRef } from './tenant-id';
 
 const REGION = 'europe-west3';
 const ALREADY_EXISTS = 6;
@@ -183,7 +184,7 @@ const emptyContext = (trigger: string, projectId: string | null, taskId: string 
 
 const memberRole = async (tenantId: string, uid: string): Promise<Role | null> => {
     if (!uid) return null;
-    const snap = await db.doc(`tenants/${tenantId}/members/${uid}`).get();
+    const snap = await memberRef(tenantId, uid).get();
     const role = snap.exists ? snap.data()?.role : null;
     return role === 'Owner' || role === 'Admin' || role === 'Member' || role === 'Guest' ? role : null;
 };
@@ -195,7 +196,7 @@ const adminIdsOf = async (tenantId: string): Promise<string[]> => {
 
 const filterMembers = async (tenantId: string, uids: string[]): Promise<string[]> => {
     if (uids.length === 0) return [];
-    const refs = uids.map((uid) => db.doc(`tenants/${tenantId}/members/${uid}`));
+    const refs = uids.map((uid) => memberRef(tenantId, uid));
     const snaps = await db.getAll(...refs);
     return snaps.filter((snap) => snap.exists && snap.data()?.role !== 'Guest').map((snap) => snap.id);
 };

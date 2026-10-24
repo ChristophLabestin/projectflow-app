@@ -6,6 +6,7 @@ import { notificationUnsubscribeUrl } from './email-events';
 import { getLocale } from './email-locales';
 import { FieldValue } from 'firebase-admin/firestore';
 import { buildPushPayload, decideChannels, resolveNotificationPrefs } from './notification-prefs';
+import { memberRef } from './tenant-id';
 
 const auth = admin.auth();
 const db = admin.firestore();
@@ -53,7 +54,7 @@ const requireTenantAccess = async (tenantId: string, context: CallableContext): 
         throw new functions.https.HttpsError('invalid-argument', 'tenantId is required.');
     }
 
-    const membership = await db.collection('tenants').doc(tenantId).collection('members').doc(uid).get();
+    const membership = await memberRef(tenantId, uid).get();
     if (!membership.exists) {
         throw new functions.https.HttpsError('permission-denied', 'You do not have access to this workspace.');
     }

@@ -31,6 +31,7 @@ import { createProposal, MAX_PROPOSALS_PER_TURN } from './ai-actions';
 import { callApi, compact, summarizeProject } from './ai-tools/api';
 import { normalizeSnapInput, runSnap, SnapInputError } from './ai-snap';
 import { normalizeLanguage } from './ai-capabilities';
+import { isValidTenantId } from './tenant-id';
 
 const REGION = 'europe-west3';
 /** Emulator: any local dev port may call (dev-e2e runs on custom ports). */
@@ -230,6 +231,7 @@ export const aiAssist = onRequest({
     try {
         if (!capability) throw new HttpError(400, 'Unknown capability.', 'invalid-argument');
         if (!tenantId) throw new HttpError(400, 'tenantId is required.', 'invalid-argument');
+        if (!isValidTenantId(tenantId)) throw new HttpError(400, 'tenantId is invalid.', 'invalid-argument');
         const auth = await authenticate(req);
         uid = auth.uid;
         const { role, monthlyLimit } = await authorizeWorkspace(tenantId, uid);

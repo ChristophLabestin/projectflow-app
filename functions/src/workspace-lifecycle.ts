@@ -2,6 +2,7 @@ import * as functions from 'firebase-functions/v1';
 import { FieldValue } from 'firebase-admin/firestore';
 
 import { db } from './init';
+import { memberRef } from './tenant-id';
 
 const REGION = 'europe-west3';
 
@@ -29,8 +30,8 @@ export const transferWorkspaceOwnership = functions.region(REGION).https.onCall(
     if (newOwnerId === uid) throw new functions.https.HttpsError('invalid-argument', 'You already own this workspace.');
 
     const tenantRef = db.doc(`tenants/${tenantId}`);
-    const currentRef = db.doc(`tenants/${tenantId}/members/${uid}`);
-    const nextRef = db.doc(`tenants/${tenantId}/members/${newOwnerId}`);
+    const currentRef = memberRef(tenantId, uid);
+    const nextRef = memberRef(tenantId, newOwnerId);
 
     await db.runTransaction(async (tx) => {
         const [tenant, current, next] = await Promise.all([tx.get(tenantRef), tx.get(currentRef), tx.get(nextRef)]);
@@ -66,7 +67,7 @@ export const deleteWorkspace = functions.region(REGION).runWith({ timeoutSeconds
     const confirmName = requireString(data?.confirmName, 'confirmName');
 
     const tenantRef = db.doc(`tenants/${tenantId}`);
-    const [tenant, member] = await Promise.all([tenantRef.get(), db.doc(`tenants/${tenantId}/members/${uid}`).get()]);
+    const [tenant, member] = await Promise.all([tenantRef.get(), memberRef(tenantId, uid).get()]);
     if (!tenant.exists) throw new functions.https.HttpsError('not-found', 'Workspace not found.');
     if (tenant.data()?.workspaceType === 'personal') {
         throw new functions.https.HttpsError('failed-precondition', 'personal-not-deletable');

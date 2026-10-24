@@ -6,6 +6,7 @@ import { FieldValue } from 'firebase-admin/firestore';
 import { shouldTouchLastUsed } from './ai-access';
 import { isAiToken, resolveAiToken } from './ai-tokens';
 import { checkMachineLegalConsent, type MachineConsentResult } from './legal-machine-access';
+import { memberRef } from './tenant-id';
 
 /**
  * Hash a token using SHA-256 (must match client-side implementation)
@@ -189,6 +190,6 @@ export const getAuthToken = (req: any): string => {
  * Returns the member role of `uid` in `tenantId`, or null when not a member.
  */
 export const getWorkspaceMemberRole = async (tenantId: string, uid: string): Promise<string | null> => {
-    const snap = await db.doc(`tenants/${tenantId}/members/${uid}`).get();
+    const snap = await memberRef(tenantId, uid).get();
     return snap.exists ? String(snap.data()?.role || 'Member') : null;
 };

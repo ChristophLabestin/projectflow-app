@@ -1,6 +1,7 @@
 import * as functions from 'firebase-functions/v1';
 
 import { db } from './init';
+import { isValidTenantId } from './tenant-id';
 
 /**
  * Workspace suspension (admin console, `tenants/{id}.suspendedAt`). Firestore rules close client access;
@@ -14,6 +15,8 @@ export const SUSPENDED_MESSAGE = 'This workspace is suspended. Contact support@g
 
 export const isTenantSuspended = async (tenantId: string): Promise<boolean> => {
     if (!tenantId) return false;
+    // Not a single id segment (path injection, see tenant-id.ts): never an active workspace.
+    if (!isValidTenantId(tenantId)) return true;
     const hit = cache.get(tenantId);
     if (hit && Date.now() - hit.at < CACHE_MS) return hit.suspended;
     const snap = await db.collection('tenants').doc(tenantId).get();

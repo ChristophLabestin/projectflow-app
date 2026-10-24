@@ -2,6 +2,7 @@ import * as functions from 'firebase-functions/v1';
 import * as admin from 'firebase-admin';
 
 import { db } from './init';
+import { memberRef } from './tenant-id';
 
 const REGION = 'europe-west3';
 
@@ -25,7 +26,7 @@ export const deleteProject = functions.region(REGION).https.onCall(async (data, 
     const projectRef = db.doc(`tenants/${tenantId}/projects/${projectId}`);
     const [project, member] = await Promise.all([
         projectRef.get(),
-        db.doc(`tenants/${tenantId}/members/${uid}`).get(),
+        memberRef(tenantId, uid).get(),
     ]);
     if (!project.exists) throw new functions.https.HttpsError('not-found', 'Project not found.');
     if (!member.exists) throw new functions.https.HttpsError('permission-denied', 'Not a member of this workspace.');
