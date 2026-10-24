@@ -85,14 +85,17 @@ export const limitsForType = (plan: PlanId, type: WorkspaceType): PlanLimits =>
 export const aiIncludedForStatus = (plan: PlanId, status: string) =>
     plan !== 'free' && (status === 'trialing' || status === 'grace' || status === 'exempt');
 
-/** Effective limits; a missing entitlement doc means a legacy workspace in grace (= Team, AI for all). */
+/**
+ * Effective limits. A missing entitlement doc is treated as Free without AI (safe default, security review M4/C1,
+ * 2026-10-24): every workspace gets its doc at creation (trigger, callables) — none exists without one.
+ */
 export const limitsFor = (doc: Record<string, unknown> | undefined | null): PlanLimits => {
     const plan = doc?.plan;
     if (plan === 'free' || plan === 'team' || plan === 'organization' || plan === 'personal') {
         const type: WorkspaceType = doc?.workspaceType === 'personal' ? 'personal' : 'team';
         return { ...limitsForType(plan, type), aiIncluded: aiIncludedForStatus(plan, String(doc?.status || '')) };
     }
-    return { ...PLAN_LIMITS.team, aiIncluded: true };
+    return { ...PLAN_LIMITS.free, aiIncluded: false };
 };
 
 /** Server AI for this user in this workspace (caller must already know uid is a full member). */

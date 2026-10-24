@@ -4,6 +4,7 @@ import { APP_ORIGIN, APP_URL, IS_DEV, appUrlFor, isAppUrl } from '../config';
 import { IPC, type DesktopCommandEvent, type DesktopWindowState, type TitleBarTheme, type WindowKind } from '../contract';
 import { hardenAppContents, openExternalSafe } from '../security';
 import { attachSplash, finishSplash, finishSplashSoon } from './splash';
+import { localPageUrl } from '../localPages';
 import { getSettings, updateSettings, visibleBounds } from '../store';
 import { currentLanguage, labels } from '../labels';
 
@@ -113,14 +114,12 @@ export const showMainWindow = () => {
 };
 
 const showOfflinePage = (win: BrowserWindow) => {
-    void win.loadFile(path.join(__dirname, '..', 'assets', 'offline.html'), {
-        query: {
-            url: APP_URL.toString(),
-            title: labels().offlineTitle,
-            body: labels().offlineBody,
-            retry: labels().offlineRetry
-        }
-    });
+    void win.loadURL(localPageUrl('offline.html', {
+        url: APP_URL.toString(),
+        title: labels().offlineTitle,
+        body: labels().offlineBody,
+        retry: labels().offlineRetry
+    }));
 };
 
 const attachContextMenu = (contents: WebContents) => {

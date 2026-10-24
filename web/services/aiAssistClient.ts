@@ -47,7 +47,11 @@ export interface AiChatMessage { role: 'user' | 'assistant'; content: string }
 
 export type AiAssistRequest =
     | { capability: 'write'; tenantId: string; input: AiWriteInput }
-    | { capability: 'assist'; tenantId: string; messages: AiChatMessage[]; context: AiContextEnvelope };
+    | { capability: 'assist'; tenantId: string; messages: AiChatMessage[]; context: AiContextEnvelope }
+    | { capability: 'snap'; tenantId: string; input: { image: string; note?: string; projectId?: string }; context: AiContextEnvelope };
+
+export type AiSnapKind = 'bug' | 'error' | 'mockup' | 'whiteboard' | 'note' | 'other';
+export interface AiSnapResult { kind: AiSnapKind; confidence?: number; summary?: string }
 
 export interface AiProposalPreview {
     id: string;
@@ -61,6 +65,7 @@ export interface AiStreamHandlers {
     onProposal?: (proposal: AiProposalPreview) => void;
     onContext?: (context: Record<string, unknown>) => void;
     onStep?: (step: { tool: string }) => void;
+    onSnap?: (result: AiSnapResult) => void;
     signal?: AbortSignal;
 }
 
@@ -127,6 +132,8 @@ export const streamAiAssist = async (request: AiAssistRequest, handlers: AiStrea
                     handlers.onContext?.(payload);
                 } else if (event === 'step') {
                     handlers.onStep?.(payload);
+                } else if (event === 'snap') {
+                    handlers.onSnap?.(payload);
                 } else if (event === 'proposal') {
                     handlers.onProposal?.(payload);
                 } else if (event === 'done') {

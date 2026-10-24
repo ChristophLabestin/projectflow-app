@@ -6,6 +6,7 @@ import { handleAuthCallback } from './features/externalAuth';
 import { spotlightActivityPath } from './features/spotlight';
 import { captureScreenshotToTask } from './features/screenshot';
 import { togglePalette } from './windows/paletteWindow';
+import { toggleAssist } from './windows/assistWindow';
 import { refreshTouchBar } from './features/focus';
 import { initPreferences, launchedHidden } from './features/preferences';
 import { stopCalendar } from './features/calendar';
@@ -50,6 +51,10 @@ const handleDeepLinkPath = (target: string | null) => {
     }
     if (target === '/desktop/command/palette') {
         togglePalette();
+        return;
+    }
+    if (target === '/desktop/command/assist') {
+        toggleAssist();
         return;
     }
     if (target === '/desktop/command/screenshot') {

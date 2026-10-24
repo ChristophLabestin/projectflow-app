@@ -65,13 +65,40 @@ service firebase.storage {
       allow write: if false;
     }
 
-    // Other tenant-scoped storage (project assets, media, etc.). Non-guest members only.
-    match /tenants/{tenantId}/{segment}/{allPaths=**} {
-      allow read: if segment != 'files' && isFullMember(tenantId);
-      allow create, update: if segment != 'files' && isFullMember(tenantId) &&
-        request.resource.size < 25 * 1024 * 1024 &&
+    // Suspended workspaces (admin console) are closed for direct storage access too.
+    // Costs one Firestore read; with the member lookup that is the 2 reads Storage rules allow.
+    function tenantActive(tenantId) {
+      return firestore.get(/databases/(default)/documents/tenants/$(tenantId)).data.get('suspendedAt', null) == null;
+    }
+
+    function canWriteMedia(tenantId, maxBytes) {
+      return isFullMember(tenantId) && tenantActive(tenantId) &&
+        request.resource.size < maxBytes &&
         isAllowedContentType();
-      allow delete: if segment != 'files' && isFullMember(tenantId);
+    }
+
+    // Direct SDK access is limited to these segments (audit 2026-10-24, M3); everything else under
+    // tenants/{t}/ — including module objects written via signed URLs — is closed (default deny).
+    // Quotas apply to the Cloud Functions upload pipeline; these direct paths keep tight size caps.
+
+    // Project media and assets (media library, project overview).
+    match /tenants/{tenantId}/projects/{allPaths=**} {
+      allow read: if isFullMember(tenantId) && tenantActive(tenantId);
+      allow create, update: if canWriteMedia(tenantId, 25 * 1024 * 1024);
+      allow delete: if isFullMember(tenantId) && tenantActive(tenantId);
+    }
+
+    // Personal media inside a workspace: only its owner.
+    match /tenants/{tenantId}/users/{userId}/{allPaths=**} {
+      allow read, delete: if authed() && request.auth.uid == userId && isFullMember(tenantId) && tenantActive(tenantId);
+      allow create, update: if authed() && request.auth.uid == userId && canWriteMedia(tenantId, 25 * 1024 * 1024);
+    }
+
+    // Invoice logos (images, max 5 MB).
+    match /tenants/{tenantId}/invoices/logos/{allPaths=**} {
+      allow read, delete: if isFullMember(tenantId) && tenantActive(tenantId);
+      allow create, update: if isFullMember(tenantId) && tenantActive(tenantId) &&
+        request.resource.size < 5 * 1024 * 1024 && isImageType();
     }
 
     // Users may only read/write their own avatar namespace (images, max 5 MB).

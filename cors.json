@@ -20,7 +20,8 @@
             "Content-Disposition",
             "Content-Length",
             "Content-Range",
-            "Access-Control-Allow-Origin"
+            "Access-Control-Allow-Origin",
+            "x-goog-content-length-range"
         ],
         "maxAgeSeconds": 3600
     }

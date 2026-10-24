@@ -8,11 +8,11 @@ export const BRIDGE_VERSION = 1;
 export const CAPABILITIES = [
     'titlebar', 'app-menu', 'popout', 'badge', 'tray', 'notifications', 'language',
     'preferences', 'quick-capture', 'notification-actions', 'day-flow', 'file-drop', 'calendar', 'recents', 'windows',
-    'tray-panel', 'external-auth', 'spotlight', 'open-in-browser', 'updates', 'offline-cache', 'command-palette', 'screenshot'
+    'tray-panel', 'external-auth', 'spotlight', 'open-in-browser', 'updates', 'offline-cache', 'command-palette', 'screenshot', 'assist'
 ] as const;
 export type DesktopCapability = typeof CAPABILITIES[number];
 
-export type WindowKind = 'main' | 'quick-access' | 'capture' | 'day' | 'secondary' | 'tray' | 'palette';
+export type WindowKind = 'main' | 'quick-access' | 'capture' | 'day' | 'secondary' | 'tray' | 'palette' | 'assist';
 
 /** Commands from menus, tray, dock, jump list and shortcuts; routed by the web app's DesktopBridge. */
 export type DesktopCommand =
@@ -49,7 +49,7 @@ export interface DesktopPreferences {
     quickAccessShortcut: string | null;
     paletteShortcut: string | null;
     screenshotShortcut: string | null;
-    /** Global shortcut that brings ProjectFlow to the front with the AI panel (⌘J) open. */
+    /** Global shortcut for the AI pop-out (⌘J command bar above any app). */
     aiShortcut: string | null;
     dayStartEnabled: boolean;
     dayCloseEnabled: boolean;
@@ -147,8 +147,14 @@ export const IPC = {
     updateStateChanged: 'pf:update-state-changed',
     updateAction: 'pf:update-action',
     splashDone: 'pf:splash-done',
-    clearOfflineCache: 'pf:clear-offline-cache'
+    clearOfflineCache: 'pf:clear-offline-cache',
+    assist: 'pf:assist'
 } as const;
+
+/** AI pop-out: `open` (optionally with a Snap image data URL), `capture-screen` (pop-out only) → data URL | null. */
+export type AssistRequest =
+    | { action: 'open'; image?: string; prompt?: string }
+    | { action: 'capture-screen' };
 
 /** Shell actions offered by the menu bar panel. */
 export type AppAction = 'show-main' | 'quick-access' | 'capture' | 'settings' | 'day-close' | 'quit';

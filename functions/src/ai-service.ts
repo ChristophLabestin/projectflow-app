@@ -21,6 +21,14 @@ const AI_MONTHLY_TOKEN_LIMIT = Number(process.env.AI_MONTHLY_TOKEN_LIMIT) || 1_0
 const AI_MONTHLY_IMAGE_LIMIT = Number(process.env.AI_MONTHLY_IMAGE_LIMIT) || 50;
 
 type AiQuotaKind = keyof typeof AI_DAILY_LIMITS;
+/** Whose key pays: the platform key (`server`) or the caller's own OpenAI key (BYOK). */
+export type AiQuotaMode = 'server' | 'own-key';
+
+/** BYOK still has a generous per-user abuse limit per day (own costs, but our compute and rate). */
+const OWN_KEY_DAILY_LIMITS: Record<AiQuotaKind, number> = {
+    text: Number(process.env.AI_OWN_KEY_DAILY_TEXT_LIMIT) || 1000,
+    image: Number(process.env.AI_OWN_KEY_DAILY_IMAGE_LIMIT) || 100
+};
 
 const quotaRefs = (uid: string) => {
     const now = new Date().toISOString();
@@ -34,18 +42,31 @@ const quotaRefs = (uid: string) => {
     };
 };
 
-export const consumeAiQuota = async (uid: string, kind: AiQuotaKind) => {
-    // Plan gate (brain/plans/billing-implementation.md): Free = own OpenAI key only, not metered.
-    const access = await resolveAiAccess(uid);
-    if (access.mode === 'none') throw new functions.https.HttpsError('failed-precondition', 'ai-not-enabled');
-    if (access.mode === 'own-key') return;
+/**
+ * Daily (and monthly) limits per user. `mode` comes from the caller's key decision (aiAssist: the tenant gate);
+ * without it the plan gate decides (brain/plans/billing-implementation.md: Free = own OpenAI key only).
+ * Own-key requests count against a separate, generous daily limit and skip the monthly token/image caps.
+ */
+export const consumeAiQuota = async (uid: string, kind: AiQuotaKind, mode?: AiQuotaMode) => {
+    let resolved = mode;
+    if (!resolved) {
+        const access = await resolveAiAccess(uid);
+        if (access.mode === 'none') throw new functions.https.HttpsError('failed-precondition', 'ai-not-enabled');
+        resolved = access.mode === 'own-key' ? 'own-key' : 'server';
+    }
+    const ownKey = resolved === 'own-key';
+    const field = ownKey ? `ownKey_${kind}` : kind;
+    const limit = ownKey ? OWN_KEY_DAILY_LIMITS[kind] : AI_DAILY_LIMITS[kind];
     const { day, month, daily, monthly } = quotaRefs(uid);
-    const limit = AI_DAILY_LIMITS[kind];
 
     const denied = await db.runTransaction(async (tx) => {
         const [daySnap, monthSnap] = await Promise.all([tx.get(daily), tx.get(monthly)]);
-        const used = Number(daySnap.data()?.[kind] || 0);
+        const used = Number(daySnap.data()?.[field] || 0);
         if (used >= limit) return `Daily AI ${kind} limit of ${limit} requests reached. Try again tomorrow.`;
+        if (ownKey) {
+            tx.set(daily, { uid, day, [field]: used + 1, updatedAt: FieldValue.serverTimestamp() }, { merge: true });
+            return null;
+        }
         if (kind === 'text' && Number(monthSnap.data()?.tokens || 0) >= AI_MONTHLY_TOKEN_LIMIT) {
             return `Monthly AI token limit of ${AI_MONTHLY_TOKEN_LIMIT.toLocaleString('en')} reached.`;
         }

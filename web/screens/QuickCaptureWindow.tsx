@@ -4,7 +4,8 @@ import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { usePinnedTasks } from '../context/PinnedTasksContext';
 import { useWorkspace } from '../context/WorkspaceContext';
-import { desktopWindowKind, getDesktopBridge } from '../services/desktop';
+import { desktopWindowKind, getDesktopBridge, hasDesktopCapability } from '../services/desktop';
+import { useInAppAi } from '../hooks/useInAppAi';
 import { attachFilesToItem, canAttachToItem, createCapturedTask, filesFromPayload } from '../services/desktopActions';
 import { getSharedProjects, getUserProjects } from '../services/domain/projectsService';
 import { isProjectActiveForGlobalSignals } from '../services/healthService';
@@ -41,6 +42,20 @@ export const QuickCaptureWindow = () => {
     const [state, setState] = useState<CaptureState>({ kind: 'idle' });
     // Screenshot → task (shell shortcut): uploaded to the task after it is saved.
     const [attachments, setAttachments] = useState<File[]>([]);
+    const { enabled: aiEnabled } = useInAppAi();
+    // Snap: hand the screenshot to the AI pop-out (kind → task proposals) instead of typing a title.
+    const snapImage = aiEnabled && hasDesktopCapability('assist') ? attachments.find((file) => /^image\/(png|jpeg|webp)$/.test(file.type)) : undefined;
+    const analyseWithAi = async () => {
+        if (!snapImage || !bridge?.assist) return;
+        const image = await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(String(reader.result));
+            reader.onerror = () => reject(reader.error);
+            reader.readAsDataURL(snapImage);
+        });
+        await bridge.assist({ action: 'open', image, prompt: value.trim() || undefined });
+        setAttachments([]);
+    };
     const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     const loadProjects = useCallback(async () => {
@@ -222,6 +237,12 @@ export const QuickCaptureWindow = () => {
                                 <span className="material-symbols-outlined">image</span>
                                 {t('desktop.capture.screenshot')}
                                 <span className="material-symbols-outlined">close</span>
+                            </button>
+                        )}
+                        {snapImage && (
+                            <button type="button" className="quick-capture__chip quick-capture__chip--toggle quick-capture__chip--ai" onClick={() => void analyseWithAi()}>
+                                <span aria-hidden="true">✦</span>
+                                {t('desktop.capture.analyse')}
                             </button>
                         )}
                         <button

@@ -12,6 +12,22 @@ import './ai-ds.scss';
 const announceChange = (projectId: string, taskId?: string) =>
     window.dispatchEvent(new CustomEvent(AI_DATA_CHANGED_EVENT, { detail: { projectId, taskId } }));
 
+/** Long new values are shown in full (exactly what will be written), folded until expanded. */
+const LONG_VALUE = 240;
+const FullValue: React.FC<{ text: string }> = ({ text }) => {
+    const { t } = useLanguage();
+    const [expanded, setExpanded] = useState(false);
+    if (text.length <= LONG_VALUE && !text.includes('\n')) return <span className="ai-card__to">{text}</span>;
+    return (
+        <span className={`ai-card__to ai-card__long${expanded ? ' is-expanded' : ''}`}>
+            <span className="ai-card__long-text">{text}</span>
+            <button type="button" className="ai-card__more" aria-expanded={expanded} onClick={() => setExpanded((value) => !value)}>
+                {expanded ? t('ai.card.showLess') : t('ai.card.showAll').replace('{count}', String(text.length))}
+            </button>
+        </span>
+    );
+};
+
 type State = 'pending' | 'applying' | 'applied' | 'undoing' | 'undone' | 'dismissed' | 'error';
 
 const formatValue = (value: unknown, t: (key: string) => string): string => {
@@ -25,9 +41,11 @@ export interface AiActionCardProps {
     /** Demo/testing: replace the real callables (style guide). */
     onApply?: () => Promise<{ canUndo: boolean; createdId: string | null }>;
     onUndo?: () => Promise<unknown>;
+    /** After a successful apply (Snap attaches its image to the created task). */
+    onApplied?: (createdId: string | null) => void;
 }
 
-export const AiActionCard: React.FC<AiActionCardProps> = ({ proposal, onApply, onUndo }) => {
+export const AiActionCard: React.FC<AiActionCardProps> = ({ proposal, onApply, onUndo, onApplied }) => {
     const { t } = useLanguage();
     const [state, setState] = useState<State>('pending');
     const [canUndo, setCanUndo] = useState(false);
@@ -43,6 +61,7 @@ export const AiActionCard: React.FC<AiActionCardProps> = ({ proposal, onApply, o
             setCreatedId(result.createdId);
             setState('applied');
             announceChange(proposal.target.projectId, proposal.target.taskId);
+            onApplied?.(result.createdId);
         } catch (caught: any) {
             setError(caught?.message || t('ai.error.internal'));
             setState('error');
@@ -91,7 +110,7 @@ export const AiActionCard: React.FC<AiActionCardProps> = ({ proposal, onApply, o
                                 {'from' in change && (
                                     <><span className="ai-card__from">{formatValue(change.from, t)}</span><span aria-hidden="true"> → </span></>
                                 )}
-                                <span className="ai-card__to">{formatValue(change.to, t)}</span>
+                                {typeof change.to === 'string' && change.to ? <FullValue text={change.to} /> : <span className="ai-card__to">{formatValue(change.to, t)}</span>}
                             </dd>
                         </div>
                     );

@@ -1,4 +1,5 @@
 import * as functions from 'firebase-functions/v1';
+import { FAST_START } from './runtime-options';
 import { onSchedule } from 'firebase-functions/v2/scheduler';
 import { FieldPath, FieldValue, Firestore, Timestamp } from 'firebase-admin/firestore';
 
@@ -266,7 +267,7 @@ export const acceptLegalDocumentsCore = async (
     });
 };
 
-export const acceptLegalDocuments = functions.region(REGION).https.onCall(async (data, context) => {
+export const acceptLegalDocuments = functions.region(REGION).runWith(FAST_START).https.onCall(async (data, context) => {
     if (!context.auth) throw new functions.https.HttpsError('unauthenticated', 'Authentication required.');
     return acceptLegalDocumentsCore(db, context.auth.uid, parseClient(data));
 });
@@ -291,7 +292,7 @@ export const declineLegalDocuments = functions.region(REGION).https.onCall(async
 // Public read endpoint: GET /api/legal[/<type>]?lang=de|en&version=n
 // ---------------------------------------------------------------------------
 
-export const legalDocument = functions.region(REGION).https.onRequest(async (req, res) => {
+export const legalDocument = functions.region(REGION).runWith(FAST_START).https.onRequest(async (req, res) => {
     res.set('Access-Control-Allow-Origin', '*');
     if (req.method === 'OPTIONS') {
         res.set('Access-Control-Allow-Methods', 'GET');

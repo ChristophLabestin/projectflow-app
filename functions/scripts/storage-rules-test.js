@@ -30,6 +30,9 @@ const main = async () => {
     await testEnv.clearFirestore();
     await testEnv.withSecurityRulesDisabled(async (context) => {
         const db = context.firestore();
+        await db.doc('tenants/tenantA').set({ tenantId: 'tenantA', name: 'A', ownerId: 'ownerA' });
+        await db.doc('tenants/tenantS').set({ tenantId: 'tenantS', name: 'S', ownerId: 'ownerS', suspendedAt: new Date() });
+        await db.doc('tenants/tenantS/members/ownerS').set({ uid: 'ownerS', role: 'Owner' });
         await db.doc('tenants/tenantA/members/ownerA').set({ uid: 'ownerA', role: 'Owner' });
         await db.doc('tenants/tenantA/members/memberA').set({ uid: 'memberA', role: 'Member' });
         await db.doc('tenants/tenantA/members/guestA').set({ uid: 'guestA', role: 'Guest' });
@@ -58,6 +61,9 @@ const main = async () => {
     // Seed objects via admin context.
     await testEnv.withSecurityRulesDisabled(async (context) => {
         await context.storage().ref('tenants/tenantA/projects/p1/seed.png').put(png, { contentType: 'image/png' });
+        await context.storage().ref('tenants/tenantA/users/memberA/seed.png').put(png, { contentType: 'image/png' });
+        await context.storage().ref('tenants/tenantA/media/legacy.png').put(png, { contentType: 'image/png' });
+        await context.storage().ref('tenants/tenantS/projects/p1/seed.png').put(png, { contentType: 'image/png' });
     });
 
     const seedPath = 'tenants/tenantA/projects/p1/seed.png';
@@ -107,6 +113,30 @@ const main = async () => {
     await check('member can delete', () => assertSucceeds(file(st('memberA'), 'tenants/tenantA/projects/p1/m.png').delete()));
     await check('guest cannot delete', () => assertFails(file(st('guestA'), seedPath).delete()));
     await check('outsider cannot delete', () => assertFails(file(st('outsider'), seedPath).delete()));
+
+    // Audit 2026-10-24, M3: allowlisted segments, default deny, suspended workspaces closed.
+    await check('member writes own personal media', () =>
+        assertSucceeds(upload(st('memberA'), 'tenants/tenantA/users/memberA/b.png', png, 'image/png')));
+    await check('owner cannot read someone else\'s personal media', () =>
+        assertFails(file(st('ownerA'), 'tenants/tenantA/users/memberA/seed.png').getMetadata()));
+    await check('owner cannot write into someone else\'s personal media', () =>
+        assertFails(upload(st('ownerA'), 'tenants/tenantA/users/memberA/x.png', png, 'image/png')));
+    await check('member uploads invoice logo', () =>
+        assertSucceeds(upload(st('memberA'), 'tenants/tenantA/invoices/logos/logo.png', png, 'image/png')));
+    await check('invoice logo must be an image', () =>
+        assertFails(upload(st('memberA'), 'tenants/tenantA/invoices/logos/logo.pdf', png, 'application/pdf')));
+    await check('member cannot write invoices root', () =>
+        assertFails(upload(st('memberA'), 'tenants/tenantA/invoices/x.png', png, 'image/png')));
+    await check('member cannot read unlisted segment (signed-URL module objects)', () =>
+        assertFails(file(st('memberA'), 'tenants/tenantA/media/legacy.png').getMetadata()));
+    await check('member cannot write unlisted segment', () =>
+        assertFails(upload(st('memberA'), 'tenants/tenantA/anything/x.png', png, 'image/png')));
+    await check('member cannot delete in unlisted segment', () =>
+        assertFails(file(st('memberA'), 'tenants/tenantA/media/legacy.png').delete()));
+    await check('suspended workspace: owner cannot read', () =>
+        assertFails(file(st('ownerS'), 'tenants/tenantS/projects/p1/seed.png').getMetadata()));
+    await check('suspended workspace: owner cannot upload', () =>
+        assertFails(upload(st('ownerS'), 'tenants/tenantS/projects/p1/y.png', png, 'image/png')));
 
     await check('user can upload own avatar', () =>
         assertSucceeds(upload(st('u1'), 'users/u1/avatar.png', png, 'image/png')));
