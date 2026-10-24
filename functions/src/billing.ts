@@ -17,7 +17,7 @@ import {
     AI_ADDON_LOOKUP_KEYS, PLAN_LIMITS, PERSONAL_LOOKUP_KEYS, PRICE_LOOKUP_KEYS, TEAM_MEMBER_LIMIT, TRIAL_DAYS, storageFor, aiEnabledFor,
     aiIncludedForStatus, initialEntitlement, isAiAddonLookupKey, isPersonalLookupKey, isTestKey, limitsFor, limitsForType,
     mapStripeStatus, paidPlanFor, personalWorkspaceId, planForType,
-    memberLimitAllows, periodExpired, projectsToLock, seatQuantity, trialStartMs,
+    memberLimitAllows, normalizeCheckoutConsent, periodExpired, projectsToLock, seatQuantity, trialStartMs,
     type BillingInterval, type BillingStatus, type PlanId, type PlanLimits, type WorkspaceType,
 } from './billing-logic';
 import { memberRef } from './tenant-id';
@@ -607,14 +607,26 @@ export const createBillingPortal = functions.region(REGION).runWith(FAST_START).
         const customerId = (await customerRef(tenantId).get()).data()?.customerId;
         if (!customerId) throw new functions.https.HttpsError('failed-precondition', 'billing-no-customer');
         const stripe = getStripe();
-        const plan = (await entRef(tenantId).get()).data()?.workspaceType === 'personal' ? 'personal' : 'team';
+        const ent = (await entRef(tenantId).get()).data() || {};
+        const plan = ent.workspaceType === 'personal' ? 'personal' : 'team';
         const configs = await stripe.billingPortal.configurations.list({ active: true, limit: 100 });
         const configuration = configs.data.find((entry) => entry.metadata?.plan === plan)?.id;
+        const returnUrl = `${resolveOrigin(data?.origin)}/?openSettings=billing`;
+        // Cancellation button (§ 312k BGB, "Verträge hier kündigen"): opens the portal directly in its cancel flow.
+        const cancelFlow = data?.flow === 'cancel' && typeof ent.stripeSubscriptionId === 'string' && !ent.cancelAtPeriodEnd
+            && LIVE_STATUSES.includes(String(ent.status));
         const session = await stripe.billingPortal.sessions.create({
             ...(configuration ? { configuration } : {}),
             customer: String(customerId),
-            return_url: `${resolveOrigin(data?.origin)}/?openSettings=billing`,
+            return_url: returnUrl,
             locale: data?.language === 'de' ? 'de' : 'auto',
+            ...(cancelFlow ? {
+                flow_data: {
+                    type: 'subscription_cancel' as const,
+                    subscription_cancel: { subscription: String(ent.stripeSubscriptionId) },
+                    after_completion: { type: 'redirect' as const, redirect: { return_url: returnUrl } },
+                },
+            } : {}),
         });
         return { url: session.url };
     });
@@ -967,6 +979,47 @@ export const createSubscriptionIntent = functions.region(REGION).runWith(FAST_ST
             updatedAt: FieldValue.serverTimestamp(),
         }, { merge: true });
         return toResult(subscription);
+    });
+
+/**
+ * Purchase page: records the checkout consent (AGB/privacy + express request to start before the withdrawal period
+ * ends, § 356 Abs. 4 / § 357a Abs. 2 BGB) right before the card/payment is confirmed. The page refuses to confirm
+ * without it. Stored on the Stripe subscription (metadata) and as proof in billing_consents (server-only).
+ */
+export const recordCheckoutConsent = functions.region(REGION).runWith(FAST_START).runWith({ secrets: STRIPE_SECRETS })
+    .https.onCall(async (data, context) => {
+        const uid = context.auth?.uid;
+        if (!uid) throw new functions.https.HttpsError('unauthenticated', 'Authentication required.');
+        const consent = normalizeCheckoutConsent(data);
+        if (!consent) throw new functions.https.HttpsError('failed-precondition', 'checkout-consent-required');
+        const subscriptionId = typeof data?.subscriptionId === 'string' ? data.subscriptionId : '';
+        if (!/^sub_[A-Za-z0-9]+$/.test(subscriptionId)) throw new functions.https.HttpsError('invalid-argument', 'subscriptionId is invalid');
+        const stripe = getStripe();
+        const subscription = await stripe.subscriptions.retrieve(subscriptionId).catch(() => null);
+        if (!subscription) throw new functions.https.HttpsError('not-found', 'billing-subscription-missing');
+        const tenantId = String(subscription.metadata?.tenantId || '');
+        // New team workspace: the tenant does not exist yet, the pending purchase belongs to the caller.
+        const pending = subscription.metadata?.ownerUid === uid
+            || (await pendingWorkspaceRef(uid).get()).data()?.subscriptionId === subscriptionId;
+        if (!pending) await requireOwner(tenantId, context);
+        const termsVersion = (await db.doc('legal_documents/terms').get()).data()?.currentVersion ?? null;
+        const acceptedAtMs = Date.now();
+        await Promise.all([
+            stripe.subscriptions.update(subscriptionId, {
+                metadata: {
+                    consentTextVersion: String(consent.textVersion),
+                    consentTermsVersion: termsVersion == null ? '' : String(termsVersion),
+                    consentEarlyStart: 'true',
+                    consentAt: new Date(acceptedAtMs).toISOString(),
+                },
+            }),
+            db.collection('billing_consents').add({
+                uid, tenantId, subscriptionId, source: 'purchase-page',
+                terms: true, earlyStart: true, textVersion: consent.textVersion, termsVersion, lang: consent.lang,
+                acceptedAt: Timestamp.fromMillis(acceptedAtMs),
+            }),
+        ]);
+        return { ok: true, textVersion: consent.textVersion };
     });
 
 // --- Purchase page helpers (landing /checkout, contract §8) ---

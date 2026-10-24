@@ -31,7 +31,7 @@ export const BillingPanel: React.FC<BillingPanelProps> = ({ tenantId, role }) =>
     const checkoutAvailable = useCheckoutAvailable();
     const [searchParams] = useSearchParams();
     const [interval, setBillingInterval] = useState<BillingInterval>('year');
-    const [busy, setBusy] = useState<'checkout' | 'portal' | 'key' | 'ai' | null>(null);
+    const [busy, setBusy] = useState<'checkout' | 'portal' | 'cancel' | 'key' | 'ai' | null>(null);
     const [members, setMembers] = useState<{ uid: string; name: string }[]>([]);
     const [aiSelection, setAiSelection] = useState<string[] | null>(null);
     const uid = auth.currentUser?.uid || null;
@@ -66,14 +66,14 @@ export const BillingPanel: React.FC<BillingPanelProps> = ({ tenantId, role }) =>
         showError(key ? t(key) : String((error as Error)?.message || t('billing.errors.generic')));
     };
 
-    const redirect = async (kind: 'checkout' | 'portal') => {
+    const redirect = async (kind: 'checkout' | 'portal' | 'cancel') => {
         setBusy(kind);
         try {
             // Purchases run on our own page on the landing (/checkout, Stripe Payment Element); the hosted
             // Stripe Checkout (createBillingCheckout) stays in billingService as a fallback.
             const url = kind === 'checkout'
                 ? checkoutPageUrl({ tenantId, plan: ent?.workspaceType === 'personal' ? 'personal' : 'team', interval, language })
-                : await createBillingPortal(tenantId, language);
+                : await createBillingPortal(tenantId, language, kind === 'cancel' ? 'cancel' : undefined);
             window.location.assign(url);
         } catch (error) {
             fail(error);
@@ -187,7 +187,13 @@ export const BillingPanel: React.FC<BillingPanelProps> = ({ tenantId, role }) =>
                 {ent.hasSubscription && (
                     <div className="billing-settings__actions">
                         {isOwner
-                            ? <Button variant="secondary" onClick={() => void redirect('portal')} isLoading={busy === 'portal'}>{t('billing.manage')}</Button>
+                            ? <>
+                                <Button variant="secondary" onClick={() => void redirect('portal')} isLoading={busy === 'portal'}>{t('billing.manage')}</Button>
+                                {/* § 312k BGB: labelled cancellation button, opens the Stripe portal directly in its cancel flow. */}
+                                {!ent.cancelAtPeriodEnd && ['active', 'trialing', 'past_due'].includes(ent.status) && (
+                                    <Button variant="ghost" onClick={() => void redirect('cancel')} isLoading={busy === 'cancel'}>{t('billing.cancelContract')}</Button>
+                                )}
+                            </>
                             : <p className="billing-settings__muted">{t('billing.ownerOnly')}</p>}
                     </div>
                 )}

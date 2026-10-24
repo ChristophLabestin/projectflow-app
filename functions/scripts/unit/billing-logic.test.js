@@ -84,3 +84,12 @@ test('storage per plan: Free 1 GB, Personal 25 GB, Team 10 GB/seat (min 25), Org
     assert.equal(billing.storageFor('team', 4).maxFileBytes, 250 * 1024 ** 2);
     assert.equal(billing.storageFor('free', 1).maxFileBytes, 50 * 1024 ** 2);
 });
+
+test('checkout consent needs both boxes and records the text version', () => {
+    assert.equal(billing.normalizeCheckoutConsent(undefined), null);
+    assert.equal(billing.normalizeCheckoutConsent({ terms: true }), null);
+    assert.equal(billing.normalizeCheckoutConsent({ terms: true, earlyStart: 'yes' }), null);
+    assert.deepEqual(billing.normalizeCheckoutConsent({ terms: true, earlyStart: true, lang: 'en' }),
+        { terms: true, earlyStart: true, textVersion: billing.CHECKOUT_CONSENT_VERSION, lang: 'en' });
+    assert.equal(billing.normalizeCheckoutConsent({ terms: true, earlyStart: true }).lang, 'de');
+});

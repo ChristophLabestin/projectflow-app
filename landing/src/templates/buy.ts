@@ -45,6 +45,10 @@ export const buyBody = (lang: Lang): string => {
     const terms = esc(c.payment.terms)
         .replace('{terms}', `<a href="${legalUrl('terms', lang)}" target="_blank" rel="noopener">${esc(c.payment.termsLink)}</a>`)
         .replace('{privacy}', `<a href="${legalUrl('privacy', lang)}" target="_blank" rel="noopener">${esc(c.payment.privacyLink)}</a>`);
+    // The cancellation policy (Widerrufsbelehrung) is Annex 1 of the AGB (heading id from legal-markdown slug, AGB v4).
+    const withdrawalUrl = `${legalUrl('terms', lang)}#${lang === 'de' ? 'anlage-1-widerrufsbelehrung' : 'annex-1-withdrawal-policy'}`;
+    const earlyStart = esc(c.payment.earlyStart)
+        .replace('{withdrawal}', `<a href="${withdrawalUrl}" target="_blank" rel="noopener">${esc(c.payment.withdrawalLink)}</a>`);
 
     return `
 <div class="ck" data-buy>
@@ -118,6 +122,10 @@ export const buyBody = (lang: Lang): string => {
                     <label class="ck-check">
                         <input type="checkbox" name="terms" required>
                         <span>${terms}</span>
+                    </label>
+                    <label class="ck-check">
+                        <input type="checkbox" name="earlyStart" required>
+                        <span>${earlyStart}</span>
                     </label>
                     <p class="ck-error" data-pay-error role="alert" hidden></p>
                     <button type="submit" class="ck-btn" data-pay><span>${esc(c.payment.submit)}</span>${icon('arrowRight')}</button>

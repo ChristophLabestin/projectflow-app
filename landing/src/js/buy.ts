@@ -24,7 +24,7 @@ function start(root: HTMLElement, c: any) {
     const seatText = (n: number) => (n === 1 ? c.payment.seatOne : c.payment.seats.replace('{n}', String(n)));
     const clampSeats = (n: number) => Math.min(50, Math.max(1, Math.round(Number.isFinite(n) ? n : 1)));
     const date = (v: string | number | null | undefined) => (v ? new Date(v).toLocaleDateString(lang === 'de' ? 'de-DE' : 'en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : '');
-    const errorText = (e: any) => c.errors[e?.code] ?? c.errors[String(e?.message ?? '').replace(/^.*?(billing-[a-z-]+).*$/, '$1')] ?? c.errors.generic;
+    const errorText = (e: any) => c.errors[e?.code] ?? c.errors[e?.message] ?? c.errors[String(e?.message ?? '').replace(/^.*?(billing-[a-z-]+).*$/, '$1')] ?? c.errors.generic;
     const svg = (name: string) => iconSvg[name] ?? '';
 
     const params = new URLSearchParams(location.search);
@@ -328,7 +328,17 @@ function start(root: HTMLElement, c: any) {
     const payError = $('[data-pay-error]');
     const terms = $<HTMLInputElement>('input[name="terms"]');
     const showPayError = (text: string) => { payError.hidden = false; payError.textContent = text; };
+    const earlyStart = $<HTMLInputElement>('input[name="earlyStart"]');
     terms.addEventListener('change', () => { if (terms.checked) payError.hidden = true; });
+    earlyStart.addEventListener('change', () => { if (earlyStart.checked && terms.checked) payError.hidden = true; });
+    /** Both boxes ticked? Otherwise shows the error, focuses the first open box and returns false. */
+    const consentGiven = () => {
+        const missing = !terms.checked ? terms : !earlyStart.checked ? earlyStart : null;
+        if (!missing) return true;
+        showPayError(missing === terms ? c.errors.termsRequired : c.errors.earlyStartRequired);
+        missing.focus();
+        return false;
+    };
 
     const loadStripe = () => new Promise<any>((resolve, reject) => {
         if ((window as any).Stripe) { resolve((window as any).Stripe); return; }
@@ -423,6 +433,8 @@ function start(root: HTMLElement, c: any) {
         const { error: submitError } = await elements.submit();
         if (submitError) throw submitError;
         const intent = await intentReq!;
+        // The consent is stored server-side before anything is confirmed; without it nothing is charged.
+        await api.consent(intent.subscriptionId, lang).catch((e) => { throw new Error(errorText(e)); });
         const fn = intent.intentType === 'setup' ? stripe.confirmSetup : stripe.confirmPayment;
         const { error } = await fn.call(stripe, { elements, clientSecret: intent.clientSecret, confirmParams: { return_url: returnUrl() }, redirect: 'if_required' });
         if (error) throw error;
@@ -478,7 +490,7 @@ function start(root: HTMLElement, c: any) {
             const expressEl = elements.create('expressCheckout', { buttonHeight: 52, buttonType: { applePay: 'subscribe', googlePay: 'subscribe' } });
             expressEl.on('ready', ({ availablePaymentMethods }: any) => { or.hidden = !availablePaymentMethods; express.hidden = !availablePaymentMethods; });
             expressEl.on('click', (event: any) => {
-                if (!terms.checked) { showPayError(c.errors.termsRequired); terms.focus(); return; }
+                if (!consentGiven()) return;
                 event.resolve();
             });
             expressEl.on('confirm', async () => {
@@ -506,7 +518,7 @@ function start(root: HTMLElement, c: any) {
     form.addEventListener('submit', async (event) => {
         event.preventDefault();
         if (state.current !== 'payment') return;
-        if (!terms.checked) { showPayError(c.errors.termsRequired); terms.focus(); return; }
+        if (!consentGiven()) return;
         const btn = $<HTMLButtonElement>('[data-pay]');
         const label = $('span', btn);
         btn.disabled = true;
@@ -514,6 +526,7 @@ function start(root: HTMLElement, c: any) {
         payError.hidden = true;
         try {
             if (api.mock || state.intent?.intentType === 'none') {
+                if (state.intent) await api.consent(state.intent.subscriptionId, lang).catch((e) => { throw new Error(errorText(e)); });
                 await new Promise((r) => window.setTimeout(r, 700));
                 void showDone(paidTenant(), 'succeeded');
                 return;

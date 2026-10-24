@@ -60,6 +60,8 @@ export interface BuyApi {
     /** `newWorkspace` instead of `tenantId`: the backend reserves the workspace and creates it after card saving. */
     intent(input: { tenantId?: string; newWorkspace?: { name: string; language?: string }; plan: Plan; interval: Interval; seats?: number; language: string }): Promise<Intent>;
     status(tenantId: string, plan: Plan): Promise<SubscriptionStatus>;
+    /** Checkout consent (AGB + early start, § 356 Abs. 4 BGB); must succeed before the payment is confirmed. */
+    consent(subscriptionId: string, language: string): Promise<void>;
 }
 
 const toUser = (u: { uid: string; email: string | null; displayName: string | null } | null): BuyUser | null =>
@@ -120,6 +122,9 @@ function firebaseApi(): BuyApi {
         intent: ({ tenantId, newWorkspace, ...rest }) => call<Intent>('createSubscriptionIntent',
             rest.plan === 'personal' ? { personal: true, ...rest } : newWorkspace ? { newWorkspace, ...rest } : { tenantId, ...rest }),
         status: (tenantId, plan) => call<SubscriptionStatus>('getSubscriptionStatus', plan === 'personal' ? { personal: true } : { tenantId }),
+        consent: async (subscriptionId, language) => {
+            await call('recordCheckoutConsent', { subscriptionId, terms: true, earlyStart: true, lang: language });
+        },
     };
 }
 
@@ -164,6 +169,7 @@ function mockApi(): BuyApi {
             };
         },
         status: async () => { await wait(800); return { status: 'active', active: true }; },
+        consent: async () => { await wait(200); },
     };
 }
 

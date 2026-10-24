@@ -122,6 +122,10 @@ const de = {
         terms: 'Ich akzeptiere die {terms} und habe die {privacy} zur Kenntnis genommen.',
         termsLink: 'Allgemeinen Geschäftsbedingungen',
         privacyLink: 'Datenschutzerklärung',
+        // Consumers: express request + acknowledgement (§ 356 Abs. 4, § 357a Abs. 2 BGB). Changing it → bump
+        // CHECKOUT_CONSENT_VERSION in functions/src/billing-logic.ts.
+        earlyStart: 'Ich verlange ausdrücklich, dass ProjectFlow sofort, also vor Ablauf der Widerrufsfrist, bereitgestellt wird. Mir ist bekannt, dass ich bei einem Widerruf für die bis dahin erbrachte Leistung anteiligen Wertersatz schulde und mein Widerrufsrecht bei vollständiger Vertragserfüllung erlischt ({withdrawal}).',
+        withdrawalLink: 'Widerrufsbelehrung',
         submit: 'Zahlungspflichtig abonnieren',
         processing: 'Wird verarbeitet …',
         fineMonthly: 'Monatlich abgerechnet. Kündigung zum Laufzeitende.',
@@ -159,6 +163,8 @@ const de = {
         'billing-already-subscribed': 'Dieser Workspace hat den Plan bereits gebucht.',
         'billing-exempt': 'Dieser Workspace ist von der Abrechnung ausgenommen.',
         termsRequired: 'Bitte bestätige AGB und Datenschutzerklärung.',
+        earlyStartRequired: 'Bitte bestätige den sofortigen Beginn vor Ablauf der Widerrufsfrist.',
+        'checkout-consent-required': 'Bitte bestätige beide Kästchen über dem Bezahlknopf.',
         nameRequired: 'Bitte gib dem Workspace einen Namen.',
     } as Record<string, string>,
 };
@@ -283,6 +289,8 @@ const en: BuyCopy = {
         terms: 'I accept the {terms} and have read the {privacy}.',
         termsLink: 'terms and conditions',
         privacyLink: 'privacy policy',
+        earlyStart: 'I expressly request that ProjectFlow be provided immediately, i.e. before the withdrawal period ends. I acknowledge that if I withdraw, I owe a proportionate amount for the service provided until then, and that my right of withdrawal expires once the contract has been fully performed ({withdrawal}).',
+        withdrawalLink: 'cancellation policy',
         submit: 'Subscribe with obligation to pay',
         processing: 'Processing …',
         fineMonthly: 'Billed monthly. Cancel effective at the end of the term.',
@@ -320,6 +328,8 @@ const en: BuyCopy = {
         'billing-already-subscribed': 'This workspace already has this plan.',
         'billing-exempt': 'This workspace is exempt from billing.',
         termsRequired: 'Please confirm the terms and privacy policy.',
+        earlyStartRequired: 'Please confirm the immediate start before the withdrawal period ends.',
+        'checkout-consent-required': 'Please tick both boxes above the payment button.',
         nameRequired: 'Please give the workspace a name.',
     },
 };

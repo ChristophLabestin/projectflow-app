@@ -141,6 +141,7 @@ Backend-Callables (europe-west3, Firebase-Auth nötig → Landing nutzt Firebase
 | `listBillingWorkspaces` | `{language?}` | eigene Workspaces (Owner, persönlicher wird bei Bedarf angelegt): `[{tenantId, name, workspaceType, plan, status, billingInterval, memberCount, aiAddonSeats, trialEndsAt, billingExempt, hasSubscription}]` |
 | `createTeamWorkspace` | `{name, language?}` | `{tenantId}` (Team-Test startet per Trigger) |
 | `getSubscriptionStatus` | `{tenantId \| personal: true}` | `{status, plan, interval, aiAddonSeats, active}` (Erfolgsseite pollt) |
+| `recordCheckoutConsent` | `{subscriptionId, terms: true, earlyStart: true, lang}` | `{ok, textVersion}`; Pflicht vor `confirmPayment`/`confirmSetup` (Zustimmung sofortiger Beginn, § 356 Abs. 4 BGB) → Stripe-Metadaten `consent*` + `billing_consents` (server-only); sonst `checkout-consent-required` |
 
 - `summary` (= `invoice`) = `{currency, subtotal, discount, tax, total, amountDue, trialEnd, lines: [{label, quantity, unitAmount, amount}]}` in Cent, netto; `tax` ist 0
   (Kleinunternehmerregelung § 19 UStG; Hinweis steht auf jeder Rechnung).
@@ -164,6 +165,8 @@ Backend-Callables (europe-west3, Firebase-Auth nötig → Landing nutzt Firebase
   sofort abgerechnet (`proration_behavior: always_invoice`); Upgrades greifen erst nach Zahlung (`pending_if_incomplete`). Wird die
   hinterlegte Karte belastet, kommt `intentType: 'none'`; braucht es 3-D-Secure, `intentType: 'payment'` mit `clientSecret`.
   Plätze folgen weiter den Mitgliedern; Kündigen, Zahlungsmethode und Rechnungen bleiben im Portal.
+- Kündigungsbutton (§ 312k BGB): `createBillingPortal({tenantId, flow: 'cancel'})` öffnet das Portal direkt im Kündigungsablauf
+  (`flow_data.subscription_cancel`), Web: „Verträge hier kündigen“ im Billing-Tab.
 - Fehlercodes zusätzlich: `billing-exempt`, `billing-promotion-invalid`. `publishableKey` setzt
   `node functions/scripts/billing-config.mjs --publishable-key pk_test_…`.
 - Rechnungen: Präfix `PF` + 6 Zeichen je Kunde, Fußzeile mit Anschrift (per API gesetzt).

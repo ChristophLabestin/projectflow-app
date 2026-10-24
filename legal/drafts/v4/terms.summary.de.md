@@ -1,0 +1,2 @@
+- Bezahlpläne neu geregelt: Preise (Personal, Team, KI-Paket), Zahlung, Laufzeit, automatische Verlängerung, Kündigung jederzeit zum Ende des Abrechnungszeitraums (Schaltfläche „Verträge hier kündigen“), Plätze, Preisänderungen, Zahlungsverzug und Daten nach Ende eines Bezahlplans (Abschnitt 7).
+- ProjectFlow steht jetzt auch Verbrauchern offen: Widerrufsrecht mit Widerrufsbelehrung und Muster-Widerrufsformular (Abschnitt 8, Anlagen 1 und 2) sowie verbraucherspezifische Regeln zu Gewährleistung, Haftung, Änderungen und Gerichtsstand.

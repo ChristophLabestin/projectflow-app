@@ -172,3 +172,18 @@ export const trialStartMs = (clientCreatedMs: number | null, serverMs: number) =
 
 /** Only test keys are accepted until the owner switches to live billing. */
 export const isTestKey = (key: string | undefined) => typeof key === 'string' && /^(sk|rk)_test_/.test(key);
+
+/**
+ * Purchase-page consent (landing /checkout): AGB/privacy + the consumer's express request to start before the
+ * withdrawal period ends, with the acknowledgement of its effect (§ 356 Abs. 4, § 357a Abs. 2 BGB). Bump the
+ * version whenever the checkbox wording in landing/src/content/buy.ts changes (texts: legal/drafts/terms-v4.*.md).
+ */
+export const CHECKOUT_CONSENT_VERSION = 1;
+
+export type CheckoutConsent = { terms: true; earlyStart: true; textVersion: number; lang: 'de' | 'en' };
+
+/** Both boxes must be ticked; returns null otherwise. */
+export const normalizeCheckoutConsent = (data: any): CheckoutConsent | null => {
+    if (data?.terms !== true || data?.earlyStart !== true) return null;
+    return { terms: true, earlyStart: true, textVersion: CHECKOUT_CONSENT_VERSION, lang: data?.lang === 'en' ? 'en' : 'de' };
+};

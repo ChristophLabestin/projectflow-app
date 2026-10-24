@@ -3136,6 +3136,7 @@ const de = {
     'billing.facts.members': "Bis zu {limit} Mitglieder, externe Gäste kostenlos",
     'billing.facts.aiOwnKey': "KI mit eigenem OpenAI-Schlüssel",
     'billing.manage': "Abrechnung verwalten",
+    'billing.cancelContract': "Verträge hier kündigen",
     'billing.ownerOnly': "Nur der Workspace-Owner kann den Plan ändern.",
     'billing.upgrade.title': "Auf Team upgraden",
     'billing.upgrade.subtitle': "Für Teams bis {limit} Mitglieder. Jedes Mitglied ist ein Platz; externe Gäste sind kostenlos.",

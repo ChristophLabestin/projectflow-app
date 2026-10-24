@@ -19,6 +19,11 @@ Details: [plans/billing-implementation.md](../plans/billing-implementation.md), 
       Bei Überschreiten der Umsatzgrenze: Stripe Tax/`automatic_tax` einbauen und `tax` in der Vorschau befüllen.
 - [ ] Widerrufsbelehrung (digitale Dienstleistung, Zustimmung zum vorzeitigen Beginn) und AGB-Abschnitt Entgelte/Laufzeit/Kündigung,
       Kaufformulierungen auf `/checkout` („zahlungspflichtig bestellen“), Datenschutz um Stripe ergänzen (`/admin/legal`).
+      → Entwurf AGB v4 (DE/EN, inkl. Widerrufsbelehrung + Muster-Widerrufsformular) in `legal/drafts/v4/`, offene Punkte in
+      `legal/drafts/v4/REVIEW.md` (⚠ Prüfen) – wartet auf Freigabe des Owners/Anwalts. Gebaut (2026-10-24, nicht deployt):
+      Checkout-Checkbox „sofortiger Beginn“ + `recordCheckoutConsent` (Nachweis), Button „Verträge hier kündigen“ im Billing-Tab.
+- [ ] § 312k BGB vollständig: öffentliche Kündigungsseite ohne Login, „jetzt kündigen“, Bestätigungs-E-Mail; § 312f: Vertragsbestätigung
+      mit AGB + Widerrufsbelehrung per E-Mail; Jahresabo für Verbraucher nach 12 Monaten monatlich kündbar (§ 309 Nr. 9).
 
 ## Technik
 - [ ] `minInstances: 1` für `listBillingWorkspaces` und `createSubscriptionIntent` (Kaltstart heute 3–7 s), ggf. `getSubscriptionStatus`.

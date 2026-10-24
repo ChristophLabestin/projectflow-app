@@ -1,0 +1,2 @@
+- Paid plans now covered in detail: prices (Personal, Team, AI add-on), payment, term, automatic renewal, cancellation at any time effective at the end of the billing period (“Cancel contracts here” button), seats, price changes, late payment and data after a paid plan ends (section 7).
+- ProjectFlow is now also open to consumers: right of withdrawal with withdrawal policy and model withdrawal form (section 8, Annexes 1 and 2) plus consumer-specific rules on warranty, liability, changes and jurisdiction.

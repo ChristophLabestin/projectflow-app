@@ -3136,6 +3136,7 @@ const en = {
     'billing.facts.members': "Up to {limit} members, external guests free",
     'billing.facts.aiOwnKey': "AI with your own OpenAI key",
     'billing.manage': "Manage billing",
+    'billing.cancelContract': "Cancel contracts here",
     'billing.ownerOnly': "Only the workspace owner can change the plan.",
     'billing.upgrade.title': "Upgrade to Team",
     'billing.upgrade.subtitle': "For teams up to {limit} members. Each member is a seat; external guests are free.",

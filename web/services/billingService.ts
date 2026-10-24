@@ -20,9 +20,10 @@ export const checkoutPageUrl = (input: { tenantId: string; plan: 'team' | 'perso
 };
 
 /** Opens the Stripe Customer Portal (owner only). */
-export const createBillingPortal = async (tenantId: string, language: string) => {
-    const call = httpsCallable<{ tenantId: string; origin: string; language: string }, { url: string }>(functions, 'createBillingPortal');
-    return (await call({ tenantId, origin: window.location.origin, language })).data.url;
+/** `flow: 'cancel'` opens the portal directly in its cancellation flow (§ 312k BGB button). */
+export const createBillingPortal = async (tenantId: string, language: string, flow?: 'cancel') => {
+    const call = httpsCallable<{ tenantId: string; origin: string; language: string; flow?: 'cancel' }, { url: string }>(functions, 'createBillingPortal');
+    return (await call({ tenantId, origin: window.location.origin, language, ...(flow ? { flow } : {}) })).data.url;
 };
 
 /** Creates (idempotently) the caller's personal workspace personal_{uid}; call after every sign-in (contract §7). */
