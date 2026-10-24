@@ -26,6 +26,7 @@ enum AppRoute: Hashable {
     /// Workspace areas (activity feed: whole workspace or one project).
     case activity(tenantId: String, projectId: String?)
     case insights(tenantId: String)
+    case files(tenantId: String)
 }
 
 /// Navigation state: selected tab, one stack per tab (+ search), focus room, deep links.
@@ -105,6 +106,8 @@ final class AppRouter {
             open(.activity(tenantId: tenant, projectId: nil), in: .projects)
         case "insights":
             open(.insights(tenantId: tenant), in: .projects)
+        case "files", "media":
+            open(.files(tenantId: tenant), in: .projects)
         case "notifications":
             select(.inbox)
         case "focus":

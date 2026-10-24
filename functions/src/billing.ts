@@ -8,7 +8,7 @@ import * as functions from 'firebase-functions/v1';
 import { FAST_START } from './runtime-options';
 import * as admin from 'firebase-admin';
 import { FieldValue, Timestamp } from 'firebase-admin/firestore';
-import Stripe = require('stripe');
+import type Stripe = require('stripe'); // loaded lazily in getStripe (cold start)
 import { createCipheriv, createDecipheriv, createHash, randomBytes } from 'crypto';
 
 import { db } from './init';
@@ -37,7 +37,7 @@ export const getStripe = () => {
     if (!isTestKey(key) && process.env.BILLING_ALLOW_LIVE !== 'true') {
         throw new functions.https.HttpsError('failed-precondition', 'billing-live-key-refused');
     }
-    stripeClient = stripeClient || new Stripe(key);
+    stripeClient = stripeClient || new (require('stripe') as typeof Stripe)(key);
     return stripeClient;
 };
 

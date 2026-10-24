@@ -1,10 +1,13 @@
 import * as functions from 'firebase-functions/v1';
-import * as nodemailer from 'nodemailer';
+import type * as Nodemailer from 'nodemailer';
 import * as dns from 'dns/promises';
 import * as net from 'net';
-import {
-  DeleteSuppressedDestinationCommand, GetAccountCommand, PutSuppressedDestinationCommand, SendEmailCommand, SESv2Client
-} from '@aws-sdk/client-sesv2';
+import type * as SesV2 from '@aws-sdk/client-sesv2';
+
+// Heavy SDKs load on first send, not at module load (cold start of every importer).
+const nodemailer = (): typeof Nodemailer => require('nodemailer');
+const sesSdk = (): typeof SesV2 => require('@aws-sdk/client-sesv2');
+type SESv2Client = SesV2.SESv2Client;
 import { db } from './init';
 import {
   ALLOWED_SMTP_PORTS, EmailType, NON_TRANSACTIONAL, isAllowedSmtpPort, isPrivateIp, SendRateLimiter, backoffMs, isActiveSuppression, isRetryableSendError,
@@ -54,7 +57,7 @@ export const testSMTPConnection = functions.region(REGION).https.onCall(async (d
   const resolvedIp = await resolvePublicHost(host);
 
   try {
-    const transporter = nodemailer.createTransport({
+    const transporter = nodemailer().createTransport({
       host: resolvedIp,
       port: smtpPort,
       secure: !!secure,
@@ -152,7 +155,7 @@ const sendViaSmtp = async (
   if (!config.host || !config.pass) {
     throw new Error('SMTP is not configured (SMTP_HOST / SMTP_PASS).');
   }
-  const transporter = nodemailer.createTransport({
+  const transporter = nodemailer().createTransport({
     host: pinnedIp || config.host,
     port: config.port,
     secure: config.secure,
@@ -190,7 +193,7 @@ const getSesClient = () => {
   const credentials = sesCredentials();
   if (!credentials) return null;
   if (!sesClient) {
-    sesClient = new SESv2Client({ region: env('SES_REGION', 'eu-north-1'), credentials, maxAttempts: 1 });
+    sesClient = new (sesSdk().SESv2Client)({ region: env('SES_REGION', 'eu-north-1'), credentials, maxAttempts: 1 });
   }
   return sesClient;
 };
@@ -200,7 +203,7 @@ const awaitSendSlot = async (client: SESv2Client) => {
   if (Date.now() - rateCheckedAt > 10 * 60_000) {
     rateCheckedAt = Date.now();
     try {
-      const account = await client.send(new GetAccountCommand({}));
+      const account = await client.send(new (sesSdk().GetAccountCommand)({}));
       const rate = account.SendQuota?.MaxSendRate;
       if (rate) limiter.setRate(rate);
     } catch (error: any) {
@@ -216,7 +219,7 @@ const sendViaSes = async (
   mail: { to: string; subject: string; html: string; text: string; replyTo: string; headers: { Name: string; Value: string }[]; type: EmailType }
 ) => {
   const configurationSet = env('SES_CONFIGURATION_SET', 'projectflow-default');
-  const command = new SendEmailCommand({
+  const command = new (sesSdk().SendEmailCommand)({
     FromEmailAddress: sesFrom(),
     Destination: { ToAddresses: [mail.to] },
     ReplyToAddresses: mail.replyTo ? [mail.replyTo] : undefined,
@@ -251,9 +254,9 @@ export const syncSesAccountSuppression = async (email: string, suppress: boolean
   if (!client) return 'skipped';
   try {
     if (suppress) {
-      await client.send(new PutSuppressedDestinationCommand({ EmailAddress: normalizeEmail(email), Reason: reason }));
+      await client.send(new (sesSdk().PutSuppressedDestinationCommand)({ EmailAddress: normalizeEmail(email), Reason: reason }));
     } else {
-      await client.send(new DeleteSuppressedDestinationCommand({ EmailAddress: normalizeEmail(email) }));
+      await client.send(new (sesSdk().DeleteSuppressedDestinationCommand)({ EmailAddress: normalizeEmail(email) }));
     }
     return 'ok';
   } catch (error: any) {

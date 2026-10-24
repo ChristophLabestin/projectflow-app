@@ -111,7 +111,10 @@ show a hint, not an error. QA without a key: `-pfAiFake`.
 `Features/Workspace`: Activity feed (`tenants/{t}/activity`, workspace and per project; contract
 `brain/plans/activity-events-contract.md`), Insights (`insights_daily/latest`, `refreshWorkspaceInsights`, weekly report via
 `generateWeeklyInsightsReport`). Routes `.activity`/`.insights`, web links `/activity`, `/insights`, `/project/:id/activity`.
-Copy for these areas comes from the web locales (`ActivityWebStrings`, generated). Files, Wiki and Flows join the same row.
+Files (`brain/plans/files-concept.md`): `PFData/FilesData.swift` (`FilesStore` parent/workspace listeners, signed URLs,
+upload with `parent`, trash/restore, quota), `Features/Files` (attachments card in task detail and the project "Dateien" tab,
+Quick Look preview, camera/photos/Files pickers, overview at `/files`); the share extension attaches shared photos/files to the
+task it creates (callables over REST). Copy for these areas comes from the web locales (`ActivityWebStrings`, generated). Files, Wiki and Flows join the same row.
 
 ## Startup template seed data
 

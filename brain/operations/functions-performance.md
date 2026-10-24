@@ -19,6 +19,12 @@ Status 2026-10-24. Project `projectflow-labestin`, region `europe-west3`.
    passkeys (4), desktop auth (2), billing callables (9), seats (3), invitations (2),
    legal accept + document (2), `mcp`, `oauth`, OAuth consent (2), AI proposals (2). In-place memory
    update, no delete. Billed only while running.
+3. **Lazy SDKs in shared modules**: `billing.ts`/`billing-seats.ts` load `stripe` in `getStripe()`,
+   `email.ts` loads `@aws-sdk/client-sesv2` and `nodemailer` on first send (`import type` + `require`
+   in a small loader). Every importer of billing/email (aiAssist, mcpServer, invitations, …) no longer
+   loads them. Files loaded per instance: aiAssist 1191 → 856, mcpServer 1087 → 752, billing 811 → 605.
+   SDKs a function really uses (simplewebauthn in passkeys, openai/zod in aiAssist, MCP SDK in
+   mcpServer) stay as they are: lazy loading there only moves the cost into the first request.
 
 ## Measurement
 Method: `POST {"data":{}}` without auth to the callable URL (read-only, rejected after the module
@@ -49,6 +55,12 @@ Every instance logs one `{"message":"coldStart","target",nodeBootMs,initMs,modul
 | invitations (gen 1, 1 GB) | 310–940 | 460–700 | 370–660 |
 | aiAssist (gen 2, 512 MiB, 1 vCPU) | 790 | 690 | 1740 |
 | mcpServer (gen 2, 512 MiB, 1 vCPU) | 890 | 760 | 1680 |
+After step 3 (lazy SDKs), own-module load in prod: billing callables 165–225 ms (was 280–490),
+acceptWorkspaceInvite 181 (was 370–660), aiAssist 895 (was 1740), mcpServer 980 (was 1680),
+passkeys 810–1320 (unchanged, needs simplewebauthn). In-process total for billing/invitations ≈ 1.3–1.5 s,
+dominated by node boot + init (~1.1 s). Same-moment client check: createSubscriptionIntent cold
+1.98–2.62 s vs untouched 256 MB functions 4.1–5.5 s.
+
 Plus ~0.5–1 s platform time before node starts. Prod is ~10× slower than a laptop for the same
 module graph (sandboxed file system: many small `require` file reads), so fewer files matters as much as fewer SDKs.
 
@@ -56,13 +68,21 @@ module graph (sandboxed file system: many small `require` file reads), so fewer 
 - Add the export name to `FUNCTION_MODULES` under its module (the unit test fails otherwise; a
   missing name is not deployed and `firebase deploy` would offer to delete the live function).
 - User-facing gen 1 callables/HTTP: `functions.region(REGION).runWith(FAST_START)`.
+- Shared modules (billing, email, anything many functions import) must not load heavy SDKs at
+  module level: `import type X from 'sdk'` plus `require('sdk')` inside the function that needs it
+  (see `getStripe()` in `billing.ts`, `sesSdk()` in `email.ts`).
 - Keep module top level cheap: no network calls, no client construction that needs secrets;
   create SDK clients inside the handler or lazily (`let client; const getClient = () => client ??= new X()`).
 
 ## Open options (not done)
 - Deploy the remaining ~100 functions so they also pick up the lazy map (they keep the old
   full-bundle code until their next deploy).
-- Lazy loading of heavy SDKs inside handlers: @simplewebauthn/server (passkeys), openai + mcp-sdk + zod (aiAssist, mcpServer), stripe.
-- esbuild bundling of `lib/` (fewer file reads; touches the deploy pipeline).
+- esbuild bundling: **tried and rejected (2026-10-24)**. One bundle of `lib/` (10 MB, lazy CJS
+  closures, static loader map) ran correctly and exported the same functions, but in an isolated prod
+  trial (temporary codebase `perftrial`, gen 1, 1 GB, since deleted) it was slower for billing
+  (~900 ms vs <100 ms) and mcpServer (median 1100 vs 655 ms), equal for aiAssist and only faster for
+  passkeys (median 510 vs 830–930 ms). Parsing the large file costs more than the saved file reads.
+  Per-function bundles might help passkeys only; not worth the deploy-pipeline change. If bundling
+  is revisited: mark `../service-account.json` external so a local key is never inlined.
 - 2nd gen migration (delete + create, needs a migration plan) and `minInstances` for launch —
   only after a decision by the user/orchestrator.
