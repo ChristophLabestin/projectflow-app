@@ -662,6 +662,18 @@
       ]
     },
     {
+      "collectionGroup": "submission_hashes",
+      "fieldPath": "expireAt",
+      "ttl": true,
+      "indexes": []
+    },
+    {
+      "collectionGroup": "form_uploads",
+      "fieldPath": "expireAt",
+      "ttl": true,
+      "indexes": []
+    },
+    {
       "collectionGroup": "ai_tokens",
       "fieldPath": "expireAt",
       "ttl": true,

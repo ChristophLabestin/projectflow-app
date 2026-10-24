@@ -473,6 +473,15 @@ dock (32 px tiles: home, recent/pinned projects, "new"; current one sunken — h
 - Put publishing, links, tokens, and embed data behind a Share/Access mode instead of mixing them into the primary editing canvas.
 - Project creation should open with compact project-type selection and then stay name-first and optional after the required basics; do not ask users to choose between manual creation and AI generation in the wizard. Type, module, startup workstream, member, and visibility choices should share the same selection-card contract with equal-height rows, readable wrapped descriptions, and copy lengths that stay roughly balanced inside a grid. Team assignment and visibility rules are separate decisions and should live in separate steps; never auto-select a workspace group when the user chooses group visibility. Use one user-facing project purpose field; do not ask for a separate goal/objective later in the wizard. For company projects, setup workstreams belong in their own quiet checklist step before module selection; avoid oversized cards, heavy panels, and prominent seed-count chips there. Startup/company founding context is prompted from the project overview after creation, not collected in the create wizard. Timeline fields use flat grids and rows; cover images, GitHub, and resource links belong in overview/settings surfaces after creation.
 
+## 6.2.1) Public form theme (Forms, 2026-10-24)
+
+- The respondent-facing form renderer (`web/components/forms/renderer/form-renderer.scss`) does **not** use app tokens: every colour,
+  radius, font and spacing comes from `--form-*` custom properties set by `formThemeStyle` from the form's theme (presets in
+  `components/forms/theme/formThemes.ts`). That keeps the full user theme working on `/f/:token`, in embeds and the preview.
+- Fonts for forms are self-hosted `@fontsource-variable/*` packages loaded on demand — never a font CDN (DSGVO).
+- The builder itself (`screens/forms/forms.scss`) follows the app rules: borderless cards with `--shadow-sm`, `tokens.selected` for
+  mode tabs/presets/audience choices, `tokens.sunken-field` on focus; the dashed "add question" row is an allowed add affordance.
+
 ## 6.3) Project Lifecycle Recovery Pattern
 
 - Project pause/resume and project canceling must be explicit actions in the project overview controls, not normal status select options.

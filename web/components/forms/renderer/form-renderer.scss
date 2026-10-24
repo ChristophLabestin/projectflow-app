@@ -1,0 +1,614 @@
+// Public form renderer (brain/plans/forms-concept.md §6–7). Respondent-facing: every colour, radius and
+// font comes from the form theme via `--form-*` custom properties (set by formThemeStyle), never from
+// app tokens, so the full theme applies on /f/:token, in the builder preview and in the app.
+
+.pf-form {
+    min-height: 100%;
+    padding: 48px 16px 32px;
+    background: var(--form-bg);
+    color: var(--form-text);
+    font-family: var(--form-font);
+    font-size: 16px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+
+    *,
+    *::before,
+    *::after {
+        box-sizing: border-box;
+    }
+
+    a {
+        color: inherit;
+        text-decoration: underline;
+        text-underline-offset: 2px;
+    }
+
+    &--embedded {
+        min-height: 0;
+        padding: 0;
+        background: transparent;
+    }
+
+    &--in-app {
+        min-height: 0;
+        padding: 24px 0;
+        border-radius: var(--form-radius);
+    }
+}
+
+.pf-form__card {
+    width: 100%;
+    max-width: 680px;
+    background: var(--form-surface);
+    border-radius: var(--form-radius);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04), 0 12px 32px rgba(0, 0, 0, 0.06);
+    overflow: hidden;
+
+    .pf-form--embedded & {
+        box-shadow: none;
+    }
+}
+
+.pf-form__cover {
+    height: 160px;
+    background-size: cover;
+    background-position: center;
+}
+
+.pf-form__head {
+    padding: 32px 32px 0;
+}
+
+.pf-form__logo {
+    display: block;
+    max-height: 48px;
+    max-width: 180px;
+    margin-bottom: 20px;
+    object-fit: contain;
+}
+
+.pf-form__title {
+    margin: 0;
+    font-size: 28px;
+    line-height: 1.2;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+}
+
+.pf-form__description {
+    margin: 12px 0 0;
+    color: var(--form-muted);
+    white-space: pre-line;
+}
+
+.pf-form__body {
+    padding: 28px 32px 32px;
+    display: flex;
+    flex-direction: column;
+    gap: var(--form-gap);
+}
+
+.pf-form__step {
+    margin: 0;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--form-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.pf-form__section-head {
+    h2 {
+        margin: 0;
+        font-size: 20px;
+        font-weight: 650;
+    }
+
+    p {
+        margin: 6px 0 0;
+        color: var(--form-muted);
+        white-space: pre-line;
+    }
+}
+
+.pf-form__field {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.pf-form__label {
+    font-weight: 600;
+}
+
+.pf-form__required {
+    color: var(--form-accent);
+}
+
+.pf-form__hint {
+    margin: -2px 0 0;
+    font-size: 14px;
+    color: var(--form-muted);
+}
+
+.pf-form__statement {
+    padding: 16px 18px;
+    border-radius: var(--form-radius-sm);
+    background: var(--form-accent-soft);
+
+    .pf-form__hint {
+        margin-top: 4px;
+    }
+}
+
+.pf-form__statement-title {
+    margin: 0;
+    white-space: pre-line;
+}
+
+// Inputs: three field styles chosen by the theme.
+.pf-form__input {
+    width: 100%;
+    font: inherit;
+    color: var(--form-text);
+    background: var(--form-field);
+    border: 0;
+    border-radius: var(--form-radius-sm);
+    padding: 12px 14px;
+    outline: none;
+    transition: background-color 0.15s ease, box-shadow 0.15s ease;
+    appearance: none;
+
+    &::placeholder {
+        color: var(--form-muted);
+        opacity: 0.8;
+    }
+
+    &:hover {
+        background: var(--form-field-hover);
+    }
+
+    &:focus {
+        box-shadow: var(--form-sunken-shadow), 0 0 0 2px var(--form-accent);
+    }
+
+    &--area {
+        min-height: 120px;
+        resize: vertical;
+    }
+
+    &--inline {
+        margin-top: 8px;
+    }
+
+    .pf-form--underline & {
+        background: transparent;
+        border-radius: 0;
+        padding-left: 0;
+        padding-right: 0;
+        box-shadow: inset 0 -1px 0 var(--form-muted);
+
+        &:focus {
+            box-shadow: inset 0 -2px 0 var(--form-accent);
+        }
+    }
+
+    .pf-form--filled &:focus {
+        box-shadow: 0 0 0 2px var(--form-accent);
+    }
+
+    .has-error & {
+        box-shadow: 0 0 0 2px var(--form-danger);
+    }
+}
+
+.pf-form__select {
+    background-image: linear-gradient(45deg, transparent 50%, var(--form-muted) 50%), linear-gradient(135deg, var(--form-muted) 50%, transparent 50%);
+    background-position: calc(100% - 20px) 50%, calc(100% - 14px) 50%;
+    background-size: 6px 6px;
+    background-repeat: no-repeat;
+    padding-right: 40px;
+}
+
+.pf-form__number {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+
+    .pf-form__input {
+        max-width: 240px;
+    }
+}
+
+.pf-form__unit {
+    color: var(--form-muted);
+}
+
+.pf-form__input--date {
+    max-width: 260px;
+}
+
+// Choices
+.pf-form__choices {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.pf-form__choice {
+    position: relative;
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 12px 14px;
+    border-radius: var(--form-radius-sm);
+    background: var(--form-field);
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+
+    &:hover {
+        background: var(--form-field-hover);
+    }
+
+    &.is-checked {
+        background: var(--form-accent-soft);
+    }
+
+    input {
+        position: absolute;
+        opacity: 0;
+        width: 1px;
+        height: 1px;
+    }
+
+    &:focus-within {
+        box-shadow: 0 0 0 2px var(--form-accent);
+    }
+
+    &--other {
+        flex-direction: column;
+        gap: 0;
+        cursor: default;
+    }
+
+    &--consent {
+        background: transparent;
+        padding: 0;
+
+        &:hover,
+        &.is-checked {
+            background: transparent;
+        }
+    }
+}
+
+.pf-form__choice-other-toggle {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    cursor: pointer;
+}
+
+.pf-form__mark {
+    flex: 0 0 auto;
+    width: 20px;
+    height: 20px;
+    margin-top: 2px;
+    border: 2px solid var(--form-muted);
+    background: var(--form-surface);
+    transition: background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+
+    &--dot {
+        border-radius: 50%;
+    }
+
+    &--box {
+        border-radius: 6px;
+    }
+
+    .is-checked > &,
+    .is-checked > .pf-form__choice-other-toggle > &,
+    input:checked + & {
+        border-color: var(--form-accent);
+        background: var(--form-accent);
+        box-shadow: inset 0 0 0 3px var(--form-surface);
+    }
+}
+
+// Rating and scale
+.pf-form__rating {
+    display: flex;
+    gap: 4px;
+}
+
+.pf-form__star {
+    border: 0;
+    background: none;
+    padding: 2px;
+    color: var(--form-muted);
+    cursor: pointer;
+    border-radius: var(--form-radius-sm);
+
+    &.is-on {
+        color: var(--form-accent);
+    }
+
+    &:focus-visible {
+        outline: 2px solid var(--form-accent);
+        outline-offset: 2px;
+    }
+}
+
+.pf-form__scale-row {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.pf-form__scale-step {
+    flex: 1 1 0;
+    min-width: 40px;
+    height: 44px;
+    border: 0;
+    border-radius: var(--form-radius-sm);
+    background: var(--form-field);
+    color: var(--form-text);
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+
+    &:hover {
+        background: var(--form-field-hover);
+    }
+
+    &.is-on {
+        background: var(--form-accent);
+        color: var(--form-accent-text);
+    }
+
+    &:focus-visible {
+        outline: 2px solid var(--form-accent);
+        outline-offset: 2px;
+    }
+}
+
+.pf-form__scale-labels {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 6px;
+    font-size: 13px;
+    color: var(--form-muted);
+}
+
+// Files
+.pf-form__files {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.pf-form__file {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 14px;
+    border-radius: var(--form-radius-sm);
+    background: var(--form-field);
+}
+
+.pf-form__file-name {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.pf-form__file-size {
+    color: var(--form-muted);
+    font-size: 14px;
+}
+
+.pf-form__dropzone {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 64px;
+    border-radius: var(--form-radius-sm);
+    border: 2px dashed var(--form-muted);
+    color: var(--form-muted);
+    font-weight: 600;
+    cursor: pointer;
+
+    input {
+        position: absolute;
+        opacity: 0;
+        width: 1px;
+        height: 1px;
+    }
+
+    &:hover,
+    &:focus-within {
+        border-color: var(--form-accent);
+        color: var(--form-accent);
+    }
+
+    &.is-busy {
+        cursor: progress;
+    }
+}
+
+.pf-form__link-button {
+    border: 0;
+    background: none;
+    color: var(--form-muted);
+    font: inherit;
+    font-size: 14px;
+    text-decoration: underline;
+    cursor: pointer;
+}
+
+// Messages and actions
+.pf-form__error {
+    margin: 0;
+    font-size: 14px;
+    color: var(--form-danger);
+}
+
+.pf-form__banner {
+    margin: 0;
+    padding: 12px 14px;
+    border-radius: var(--form-radius-sm);
+    background: var(--form-field);
+    color: var(--form-danger);
+    font-weight: 600;
+}
+
+.pf-form__privacy {
+    margin: 0;
+    font-size: 13px;
+    color: var(--form-muted);
+}
+
+.pf-form__actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 4px;
+}
+
+.pf-form__button {
+    border: 0;
+    border-radius: var(--form-radius-sm);
+    padding: 12px 22px;
+    min-height: 46px;
+    background: var(--form-accent);
+    color: var(--form-accent-text);
+    font: inherit;
+    font-weight: 650;
+    cursor: pointer;
+    transition: opacity 0.15s ease, transform 0.15s ease;
+
+    &:hover:not(:disabled) {
+        opacity: 0.9;
+    }
+
+    &:active:not(:disabled) {
+        transform: translateY(1px);
+    }
+
+    &:disabled {
+        opacity: 0.6;
+        cursor: progress;
+    }
+
+    &:focus-visible {
+        outline: 2px solid var(--form-accent);
+        outline-offset: 3px;
+    }
+
+    &--ghost {
+        background: var(--form-field);
+        color: var(--form-text);
+    }
+}
+
+.pf-form__done {
+    padding: 32px;
+
+    h2 {
+        margin: 0 0 8px;
+        font-size: 22px;
+    }
+
+    p {
+        margin: 0;
+        color: var(--form-muted);
+        white-space: pre-line;
+    }
+}
+
+.pf-form__hp {
+    position: absolute;
+    left: -10000px;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+}
+
+.pf-form__footer {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 6px 16px;
+    font-size: 13px;
+    color: var(--form-muted);
+
+    .pf-form--embedded & {
+        padding: 12px 0 4px;
+    }
+}
+
+.pf-form__brand {
+    font-weight: 600;
+}
+
+// Full-page states (paused, closed, not found)
+.pf-form__state {
+    padding: 32px;
+
+    h1 {
+        margin: 0 0 8px;
+        font-size: 22px;
+    }
+
+    p {
+        margin: 0;
+        color: var(--form-muted);
+    }
+}
+
+@media (max-width: 600px) {
+    .pf-form {
+        padding: 0 0 24px;
+    }
+
+    .pf-form__card {
+        border-radius: 0;
+        box-shadow: none;
+    }
+
+    .pf-form__head {
+        padding: 24px 20px 0;
+    }
+
+    .pf-form__body {
+        padding: 20px 20px 24px;
+    }
+
+    .pf-form__title {
+        font-size: 24px;
+    }
+
+    .pf-form__actions {
+        position: sticky;
+        bottom: 0;
+        padding: 12px 0 0;
+        background: var(--form-surface);
+
+        .pf-form__button {
+            flex: 1;
+        }
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .pf-form * {
+        transition: none !important;
+    }
+}

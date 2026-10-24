@@ -47,6 +47,8 @@ const seedData = async (testEnv) => {
         await set(`${T}/form_themes/themeA`, { name: 'Brand' });
         await set(`${T}/forms_usage/2026-10`, { responses: 1 });
         await set('public_forms/tok', { tenantId: 'tenantA', formId: 'formB' });
+        await set(`${T}/form_uploads/u1`, { formId: 'formB', status: 'pending' });
+        await set('platform_secrets/forms', { secret: 'x' });
         await set('tenants/personal_ownerA', { tenantId: 'personal_ownerA', name: 'Mein Workspace', ownerId: 'ownerA', workspaceType: 'personal' });
         await set('tenants/personal_ownerA/members/ownerA', { uid: 'ownerA', role: 'Owner' });
         await set('tenants/personal_ownerA/entitlements/plan', { plan: 'personal', workspaceType: 'personal', invitesAllowed: false, memberLimit: 1, projectLimit: null });
@@ -573,6 +575,14 @@ const run = async () => {
         await check('member cannot write forms usage', 'deny', () => member.doc(`${T}/forms_usage/2026-10`).set({ responses: 0 }));
         await check('nobody reads public form index', 'deny', () => owner.doc('public_forms/tok').get());
         await check('anon cannot read public form index', 'deny', () => anon.doc('public_forms/tok').get());
+        await check('owner cannot read pending form uploads', 'deny', () => owner.doc(`${T}/form_uploads/u1`).get());
+        await check('admin cannot read pending form uploads', 'deny', () => admin.doc(`${T}/form_uploads/u1`).get());
+        await check('member cannot list pending form uploads', 'deny', () => member.collection(`${T}/form_uploads`).get());
+        await check('member cannot write pending form uploads', 'deny', () => member.doc(`${T}/form_uploads/u2`).set({ formId: 'formA' }));
+        await check('owner cannot delete pending form uploads', 'deny', () => owner.doc(`${T}/form_uploads/u1`).delete());
+        await check('anon cannot write pending form uploads', 'deny', () => anon.doc(`${T}/form_uploads/u3`).set({ formId: 'formA' }));
+        await check('nobody reads server secrets', 'deny', () => owner.doc('platform_secrets/forms').get());
+        await check('nobody writes server secrets', 'deny', () => owner.doc('platform_secrets/forms').set({ secret: 'y' }));
 
         // Workspace legal details (shown on public forms).
         await fresh();

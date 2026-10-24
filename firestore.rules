@@ -244,6 +244,9 @@ service cloud.firestore {
     match /public_rate_limits/{id} { allow read, write: if false; }
     // Public form index by share token (brain/plans/forms-concept.md §4): served by getPublicForm only.
     match /public_forms/{token} { allow read, write: if false; }
+
+    // Server-only signing secrets (form session tokens, daily IP-hash salt).
+    match /platform_secrets/{id} { allow read, write: if false; }
     // Platform waitlist + newsletter (brain/plans/newsletter-contract.md): only Cloud Functions / adminApi.
     match /platform_subscribers/{id} {
       allow read, write: if false;
@@ -485,6 +488,11 @@ service cloud.firestore {
         allow write: if false;
       }
 
+      // Pending public form uploads (TTL 24 h): server-only.
+      match /form_uploads/{uploadId} {
+        allow read, write: if false;
+      }
+
       match /forms_usage/{monthId} {
         allow read: if isFullMember(tenantId);
         allow write: if false;
@@ -675,7 +683,7 @@ service cloud.firestore {
         // Guests may read/update docs addressed to them.
         allow read, update: if isTenantMember(tenantId) &&
           ('userId' in resource.data) && resource.data.userId == request.auth.uid &&
-          !(subcollection.matches('finance_.*') || subcollection in ['secrets', 'api_tokens', 'ai_audit', 'ai_config', 'ai_usage', 'ai_credits', 'file_upload_drafts', 'notifications', 'notificationDeliveryLogs', 'activity', 'insights_daily', 'insights_reports', 'automations', 'automation_runs', 'automation_usage', 'automation_throttle', 'suspension_log', 'billing_log', 'forms', 'form_themes', 'forms_usage']);
+          !(subcollection.matches('finance_.*') || subcollection in ['secrets', 'api_tokens', 'ai_audit', 'ai_config', 'ai_usage', 'ai_credits', 'file_upload_drafts', 'notifications', 'notificationDeliveryLogs', 'activity', 'insights_daily', 'insights_reports', 'automations', 'automation_runs', 'automation_usage', 'automation_throttle', 'suspension_log', 'billing_log', 'forms', 'form_themes', 'forms_usage', 'form_uploads']);
         allow read, write: if canAccessTenant(tenantId) &&
           !(
             subcollection.matches('finance_.*') ||
@@ -709,7 +717,8 @@ service cloud.firestore {
               'automation_throttle',
               'forms',
               'form_themes',
-              'forms_usage'
+              'forms_usage',
+              'form_uploads'
             ]
           );
       }

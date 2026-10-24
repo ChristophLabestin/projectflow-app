@@ -30,6 +30,9 @@ const FUNCTION_MODULES: Record<string, string[]> = {
     './ai-service': ['generateImage', 'editImage', 'runAiCapability'],
     './ai-assist': ['aiAssist'],
     './ai-actions': ['aiApplyProposal', 'aiUndoProposal'],
+    // Forms (brain/plans/forms-api-contract.md): callables + public HTTP endpoints
+    './forms': ['createForm', 'saveFormDraft', 'publishForm', 'setFormStatus', 'regenerateFormLink', 'duplicateForm', 'deleteForm', 'setFormEditors', 'createFormAssetUpload', 'getFormForMember', 'submitFormAsMember'],
+    './forms-public': ['getPublicForm', 'createPublicFormUpload', 'submitPublicForm'],
     './initiative-feedback': ['getInitiativeFeedbackForm', 'saveInitiativeFeedbackConfig', 'submitInitiativeFeedback'],
     './project-intake': ['getProjectIntakeForm', 'saveProjectIntakeConfig', 'submitProjectIntake'],
     './scheduler': ['autoStartSprints', 'dailyHealthSnapshots'],

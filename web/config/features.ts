@@ -8,8 +8,8 @@ export const WORKSPACE_AREAS = {
     documents: true,
     wiki: true,
     flows: true,
-    // Forms (brain/plans/forms-concept.md): flips to true with package 2 (builder + /forms routes).
-    forms: false,
+    // Forms (brain/plans/forms-concept.md): builder + /forms routes since package 2.
+    forms: true,
 } as const;
 
 export type WorkspaceArea = keyof typeof WORKSPACE_AREAS;

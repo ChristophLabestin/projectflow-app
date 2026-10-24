@@ -62,6 +62,20 @@ const stashSourceMaps = (): Plugin => ({
     }
 });
 
+// Public forms (/f/:token) have their own lean entry form.html; Firebase Hosting rewrites /f/** to it.
+// Dev and preview servers get the same rewrite here.
+const publicFormRewrite = (): Plugin => {
+    const rewrite = (req: { url?: string }, _res: unknown, next: () => void) => {
+        if (req.url && /^\/f\/[^/?#]+\/?(\?.*)?$/.test(req.url)) req.url = `/form.html${req.url.includes('?') ? req.url.slice(req.url.indexOf('?')) : ''}`;
+        next();
+    };
+    return {
+        name: 'projectflow-public-form-rewrite',
+        configureServer(server) { server.middlewares.use(rewrite); },
+        configurePreviewServer(server) { server.middlewares.use(rewrite); }
+    };
+};
+
 export default defineConfig(({ mode }) => {
     const isProd = mode === 'production';
     const env = loadEnv(mode, __dirname, 'VITE_');
@@ -71,7 +85,7 @@ export default defineConfig(({ mode }) => {
         port: 3000,
         host: '0.0.0.0',
       },
-      plugins: [react(), ...(isProd ? [requireFirebaseConfig(env), stashSourceMaps(), emitVersionFile()] : [])],
+      plugins: [react(), publicFormRewrite(), ...(isProd ? [requireFirebaseConfig(env), stashSourceMaps(), emitVersionFile()] : [])],
       // Some deps/legacy code read process.env.*; resolve to an empty object instead of a runtime shim.
       // __PF_BUILD__ identifies the web build in legal consent records (platform web/desktop) and crash reports.
       define: { 'process.env': {}, __PF_BUILD__: JSON.stringify(BUILD_ID) },
@@ -90,6 +104,10 @@ export default defineConfig(({ mode }) => {
         sourcemap: isProd ? 'hidden' : false,
         chunkSizeWarningLimit: 900,
         rollupOptions: {
+          input: {
+            main: path.resolve(__dirname, 'index.html'),
+            form: path.resolve(__dirname, 'form.html'),
+          },
           output: {
             manualChunks(id) {
               if (id.includes('commonjsHelpers.js')) return 'commonjs-helpers';
@@ -220,6 +238,18 @@ export default defineConfig(({ mode }) => {
 
               // LanguageContext pulls in firebase auth/data services; keep it out of the
               // locale chunk (and in the default chunk) to avoid circular chunks.
+              // Public forms (/f/:token): keep the respondent page free of Firebase and app dictionaries.
+              if (
+                id.includes('/web/form/') ||
+                id.includes('/web/locales/forms/') ||
+                id.includes('/web/components/forms/renderer/') ||
+                id.includes('/web/components/forms/theme/') ||
+                id.includes('/web/services/forms/') ||
+                id.includes('/web/utils/formsLogic.ts')
+              ) {
+                return 'public-form';
+              }
+
               if (id.includes('/web/locales/')) {
                 return 'app-i18n';
               }

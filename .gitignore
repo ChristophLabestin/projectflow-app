@@ -196,3 +196,6 @@ functions/.secret.local
 .predeploy-smoke-admin.log
 admin/test-results
 .firebase-admin-smoke-emulators.log
+
+# Forms emulator test runner (functions/scripts/run-forms-test.js)
+.firebase.forms-test.json

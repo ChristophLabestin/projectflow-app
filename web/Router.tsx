@@ -78,6 +78,9 @@ const FlowsLayout = React.lazy(() => import('./screens/flows/FlowsLayout').then(
 const FlowsHome = React.lazy(() => import('./screens/flows/FlowsHome').then((module) => ({ default: module.FlowsHome })));
 const FlowNew = React.lazy(() => import('./screens/flows/FlowNew').then((module) => ({ default: module.FlowNew })));
 const FlowEditor = React.lazy(() => import('./screens/flows/FlowEditor').then((module) => ({ default: module.FlowEditor })));
+const FormsScreen = React.lazy(() => import('./screens/forms/FormsScreen').then((module) => ({ default: module.FormsScreen })));
+const FormBuilderScreen = React.lazy(() => import('./screens/forms/FormBuilderScreen').then((module) => ({ default: module.FormBuilderScreen })));
+const FormFillScreen = React.lazy(() => import('./screens/forms/FormFillScreen').then((module) => ({ default: module.FormFillScreen })));
 const WikiScreen = React.lazy(() => import('./screens/wiki/WikiScreen').then((module) => ({ default: module.WikiScreen })));
 const ProjectMilestones = React.lazy(() => import('./screens/ProjectMilestones').then((module) => ({ default: module.ProjectMilestones })));
 const MarketingLayout = React.lazy(() => import('./screens/marketing/MarketingLayout').then((module) => ({ default: module.MarketingLayout })));
@@ -289,6 +292,10 @@ export const AppRouter = () => {
                             <Route path="new/edit" element={withRouteSuspense(<FlowEditor />)} />
                             <Route path=":flowId" element={withRouteSuspense(<FlowEditor />)} />
                         </Route>
+                        <Route path="/forms" element={withRouteSuspense(<FormsScreen />)} />
+                        <Route path="/forms/fill/:token" element={withRouteSuspense(<FormFillScreen />)} />
+                        <Route path="/forms/:formId/edit" element={withRouteSuspense(<FormBuilderScreen />)} />
+                        <Route path="/forms/:formId/fill" element={withRouteSuspense(<FormFillScreen />)} />
                         <Route path="/profile" element={<Profile />} />
 
                         <Route path="/personal-tasks" element={<PersonalTasksPage />} />

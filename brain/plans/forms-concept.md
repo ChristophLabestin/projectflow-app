@@ -1,6 +1,6 @@
 # Forms — konfigurierbare Formulare für ProjectFlow (Konzept)
 
-Stand 2026-10-24 · Status: **freigegeben 2026-10-24; Paket 1 (Fundament) umgesetzt**, Paket 2 offen ·
+Stand 2026-10-24 · Status: **freigegeben 2026-10-24; Pakete 1 + 2 umgesetzt**, Paket 3 offen ·
 UI-Name **Formulare / Forms**, Code und Firestore `forms`.
 
 ## 0. Owner-Entscheidungen (Interview 2026-10-24)
@@ -286,6 +286,15 @@ Regeln + Regeltests (inkl. Ausschluss aus dem Tenant-Catch-all), Indizes + TTL; 
    (Bedingungen auf Antwortwerte, Vorlage „Antwort → Aufgabe mit Zuweisung“), Retention-Jobs.
 4. **KI + iOS** — `formDraft`, `formResponseSummary`, KI-Einordnung beim Eingang; iOS ansehen/teilen/
    pausieren/Push/natives Ausfüllen.
+
+*Paket 2 erledigt (2026-10-25):* Functions `forms.ts` (11 Callables), `forms-public.ts` (`getPublicForm`, `createPublicFormUpload`,
+`submitPublicForm` mit Prüfkette), `forms-server.ts`/`forms-helpers.ts` (Session-Token, Spam-Heuristik, Sanitizer), Tests
+`test:forms` (Emulator, 23 Fälle) + Unit + Regeln; Vertrag [forms-api-contract.md](./forms-api-contract.md). Web: Liste mit
+Vorlagen (`/forms`), Builder (`/forms/:id/edit`: Fragen, Design mit 8 Presets + vollem Theme + 10 selbst gehosteten Schriften,
+Einstellungen, Teilen mit Link/QR/Embed/Status/Mitbearbeitern, Vorschau, Autosave), schlanker Einstieg `/f/:token`
+(`web/form.html`, ~77 kB gz), In-App-Ausfüllen `/forms/fill/:token`. **Offen/Folgeaufgaben:** Uploads bei „Nur Workspace“-
+Formularen (kein Member-Upload-Endpunkt), Aufräum-Job verwaister Upload-Objekte (`cleanupFormUploads`, Paket 3), Antworten-
+Ansicht + Stats + Export (Paket 3).
 
 **v2:** „Eine Frage pro Bildschirm“, Abschnittssprünge/Verzweigung, Vorbelegung per URL-Parameter
 (versteckte Felder, z. B. `?kunde=`), Umzug des Initiative-Feedbacks auf Forms (Weiterleitung alter

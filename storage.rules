@@ -65,6 +65,13 @@ service firebase.storage {
       allow write: if false;
     }
 
+    // Public form assets (logo, cover, background): readable by anyone, written only via signed URLs
+    // from Cloud Functions (createFormAssetUpload).
+    match /public/forms/{tenantId}/{formId}/assets/{file} {
+      allow read: if true;
+      allow write: if false;
+    }
+
     // Suspended workspaces (admin console) are closed for direct storage access too.
     // Costs one Firestore read; with the member lookup that is the 2 reads Storage rules allow.
     function tenantActive(tenantId) {

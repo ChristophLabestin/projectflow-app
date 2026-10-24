@@ -255,6 +255,12 @@ No feature should implement an isolated file picker/upload flow outside of this 
 - `InviteToWorkspaceModal`: invite by email or link, with role (Member/Guest, plus Admin for the Owner) and optional/required projects. Use it for every invite entry point (Team, Project Overview, Project Team manager).
 - `context/WorkspaceContext.tsx` (`useWorkspace`): active workspace, list, pending invitations, `switchWorkspace`, `createWorkspace`. Gates the app until the workspace is resolved.
 
+## Forms (`web/components/forms/`, 2026-10-24)
+- `renderer/FormRenderer` — renders a form schema in the classic layout (one page per visible section) with the full form theme (`--form-*` variables only, `form-renderer.scss`); used by `/f/:token`, the builder preview and in-app filling. Client validation via `validateSubmission`, honeypot, iframe height via `postMessage({type:'pf-form-height'})`. `FormFieldInput` = one control per field type. Respondent strings live in `web/locales/forms/{en,de}.ts` (not the app dictionaries).
+- `theme/formThemes` — presets, curated self-hosted fonts (`@fontsource-variable/*`, no CDN), `resolveFormTheme`, `formThemeStyle`, WCAG contrast check.
+- `builder/QuestionsEditor` (sections + dense rows, inline `FieldEditor`, type picker), `ConditionEditor` ("show only if", earlier fields only), `ThemeEditor`, `FormSettingsPanel`, `FormSharePanel` (link, QR, embed snippet, status, editors), `formFactory` (ids, default fields, templates), `formErrors`.
+- Screens `screens/forms/FormsScreen`, `FormBuilderScreen`, `FormFillScreen` (styles `forms.scss`).
+
 ## Shared logic (`web/utils/`, golden fixtures)
 
 Pure, React/Firebase-free modules that the web app and the iOS app (`PFDomain`) both implement. Behaviour is pinned by `shared/fixtures/<module>/*.json` (`{name, input, expected}`); `shared/fixtures/README.md` documents every input/output field. Vitest runs all fixtures (`utils/__tests__/goldenFixtures.test.ts`); regenerate with `node shared/fixtures/generate.mjs` after an intentional change and review the diff.
