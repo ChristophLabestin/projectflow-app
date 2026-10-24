@@ -1,7 +1,8 @@
 /**
  * In-app assistant endpoint (`aiAssist`, Gen2, Server-Sent Events). Concept: brain/plans/in-app-ai-concept.md.
  *
- * POST { tenantId, capability: 'write' | 'assist', language, input | messages + context }
+ * POST { tenantId, capability: 'write' | 'assist' | 'snap', language, input | messages + context }
+ * Snap: input { image: data URL, note?, projectId? } → `snap` event (kind, summary) + one `proposal` per task draft.
  * Authorization: Bearer <Firebase ID token>
  *
  * Events: `context` (resolved chips), `step` (tool call), `delta` (text), `done` (credits), `error`.
@@ -28,6 +29,8 @@ import {
 import { AI_TOOLS, findTool, parseToolArgs, serializeToolResult, toOpenAiTools, ToolError, type ToolContext } from './ai-tools/registry';
 import { createProposal, MAX_PROPOSALS_PER_TURN } from './ai-actions';
 import { callApi, compact, summarizeProject } from './ai-tools/api';
+import { normalizeSnapInput, runSnap, SnapInputError } from './ai-snap';
+import { normalizeLanguage } from './ai-capabilities';
 
 const REGION = 'europe-west3';
 /** Emulator: any local dev port may call (dev-e2e runs on custom ports). */
@@ -158,9 +161,40 @@ const runAssist = async (body: any, ctx: ToolContext, send: Send, signal: AbortS
     return usage;
 };
 
+const runSnapCapability = async (body: any, ctx: ToolContext, send: Send, ownKey?: string): Promise<ModelUsage> => {
+    const input = normalizeSnapInput(body.input);
+    const language = normalizeLanguage(body.language);
+    const context = normalizeContext(body.context, body.language);
+    const currentProjectId = input.projectId || context.entity?.projectId || context.projectId || (context.entity?.kind === 'project' ? context.entity.id : undefined);
+    const listed = await callApi(ctx.idToken, 'GET', '/projects', { tenantId: ctx.tenantId });
+    const projects = (listed.status < 400 ? listed.payload?.projects || [] : [])
+        .filter((project: any) => !['Completed', 'Canceled'].includes(project.status))
+        .map((project: any) => ({ id: String(project.id), title: String(project.title || '') }));
+    if (currentProjectId && !projects.some((project: { id: string }) => project.id === currentProjectId)) {
+        const current = await callApi(ctx.idToken, 'GET', `/projects/${currentProjectId}`, { tenantId: ctx.tenantId });
+        if (current.status < 400 && current.payload?.project) projects.unshift({ id: currentProjectId, title: String(current.payload.project.title || '') });
+    }
+    if (!projects.length) throw new HttpError(400, 'Create a project first.', 'invalid-argument');
+    const validCurrent = currentProjectId && projects.some((project: { id: string }) => project.id === currentProjectId) ? currentProjectId : undefined;
+
+    const result = await runSnap({ input, language, projects, currentProjectId: validCurrent, ownKey, onStep: (step) => send('step', { tool: step }) });
+    send('snap', compact({ kind: result.kind, confidence: Math.round(result.confidence * 100) / 100, summary: result.summary || undefined }));
+    if (!result.projectId || !result.drafts.length) return result.usage;
+    for (const draft of result.drafts) {
+        try {
+            const preview = await createProposal(ctx, 'create_task', JSON.stringify({ projectId: result.projectId, ...draft }));
+            send('proposal', preview);
+        } catch (error: any) {
+            console.warn('snap proposal skipped', { tenantId: ctx.tenantId, message: error?.message });
+        }
+    }
+    return result.usage;
+};
+
 const CAPABILITIES: Record<string, { credit: CreditCapability; tier: ModelTier }> = {
     write: { credit: 'write', tier: 'fast' },
-    assist: { credit: 'assist', tier: 'agent' }
+    assist: { credit: 'assist', tier: 'agent' },
+    snap: { credit: 'snap', tier: 'agent' }
 };
 
 export const aiAssist = onRequest({
@@ -199,7 +233,7 @@ export const aiAssist = onRequest({
         const auth = await authenticate(req);
         uid = auth.uid;
         const { role, monthlyLimit } = await authorizeWorkspace(tenantId, uid);
-        if (body.capability === 'assist' && role === 'Guest') throw new HttpError(403, 'The assistant is not available for guests yet.', 'forbidden');
+        if (body.capability !== 'write' && role === 'Guest') throw new HttpError(403, 'The assistant is not available for guests yet.', 'forbidden');
         // Free workspaces have no included AI (brain/plans/billing-implementation.md).
         // AI per user: trial/beta for all members, otherwise the AI add-on (brain/plans/billing-entitlements-contract.md).
         // Without server AI the user may run on their own OpenAI key (BYOK, billing-entitlements-contract.md):
@@ -214,6 +248,7 @@ export const aiAssist = onRequest({
 
         // Validate before spending anything.
         if (body.capability === 'write') buildWriteRequest(body.input, body.language);
+        else if (body.capability === 'snap') normalizeSnapInput(body.input);
         else normalizeMessages(body.messages);
 
         let credits: { ok: boolean; used: number; limit: number } | null = null;
@@ -230,7 +265,9 @@ export const aiAssist = onRequest({
         try {
             usage = body.capability === 'write'
                 ? await runWrite(body, send, abort.signal, ownKey)
-                : await runAssist(body, ctx, send, abort.signal, ownKey);
+                : body.capability === 'snap'
+                    ? await runSnapCapability(body, ctx, send, ownKey)
+                    : await runAssist(body, ctx, send, abort.signal, ownKey);
         } catch (error) {
             // Nothing useful reached the user: give the credits back.
             if (credits) await refundCredits(tenantId, uid, capability.credit).catch(() => undefined);
@@ -251,12 +288,12 @@ export const aiAssist = onRequest({
     } catch (error: any) {
         const known = error instanceof HttpError
             ? error
-            : error instanceof AssistInputError
+            : error instanceof AssistInputError || error instanceof SnapInputError
                 ? new HttpError(400, error.message, 'invalid-argument')
                 : error instanceof ModelError
                     ? new HttpError(error.kind === 'quota' ? 503 : 502, error.message, error.kind === 'quota' ? 'provider-quota' : 'provider-unavailable')
                     : new HttpError(500, 'AI request failed.', 'internal');
-        if (!(error instanceof HttpError || error instanceof AssistInputError)) {
+        if (!(error instanceof HttpError || error instanceof AssistInputError || error instanceof SnapInputError)) {
             console.error('aiAssist failed', { tenantId, uid, message: error?.message });
         }
         if (started) {
