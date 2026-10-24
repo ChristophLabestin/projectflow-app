@@ -34,6 +34,7 @@ struct PlanStatusCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: PFSpace.s) {
             PFEyebrow(L10n.t("plan.section"))
+            if let hint { PlanHint(text: hint.text, tone: hint.tone) }
             SettingsCard(footer: L10n.t("plan.footer", ["name": workspaceName])) {
                 VStack(alignment: .leading, spacing: 0) {
                     HStack(spacing: PFSpace.s) {
@@ -52,6 +53,14 @@ struct PlanStatusCard: View {
                     row(L10n.t("plan.limit.projects"), projectsValue)
                     PFRowDivider()
                     row(L10n.t("plan.limit.members"), membersValue)
+                    if plan.seats > 0, !plan.isPersonalWorkspace {
+                        PFRowDivider()
+                        row(L10n.t("plan.seats"), L10n.t("plan.seats.value", ["used": fullMembers, "seats": plan.seats]))
+                    }
+                    if plan.aiAddonAvailable || plan.aiAddonSeats > 0 {
+                        PFRowDivider()
+                        row(L10n.t("plan.aiSeats"), L10n.t("plan.aiSeats.value", ["assigned": plan.aiMemberIds.count, "seats": plan.aiAddonSeats]))
+                    }
                     if !plan.isPersonalWorkspace {
                         PFRowDivider()
                         row(L10n.t("plan.limit.invites"), L10n.t(plan.canInvite ? "plan.limit.invitesOn" : "plan.limit.invitesOff"))
@@ -65,6 +74,30 @@ struct PlanStatusCard: View {
                 }
             }
         }
+    }
+
+    /// Full members (guests never count as a seat).
+    private var fullMembers: Int {
+        (model.workspace?.people.values ?? [:].values).filter { $0.role != .guest }.count
+    }
+
+    /// One neutral hint at a time, most important first. Never a purchase prompt (App Store 3.1.1).
+    private var hint: (text: String, tone: PlanHint.Tone)? {
+        switch plan.status {
+        case .pastDue: return (L10n.t("plan.hint.pastDue"), .warning)
+        case .canceled: return (L10n.t("plan.hint.canceled"), .warning)
+        case .trialing:
+            if let end = plan.trialEndsAt {
+                let days = max(0, Calendar.current.dateComponents([.day], from: .now, to: end).day ?? 0)
+                return (L10n.t("plan.hint.trial", ["days": days, "date": date(end)]), .info)
+            }
+        case .active where plan.cancelAtPeriodEnd:
+            if let end = plan.currentPeriodEnd { return (L10n.t("plan.hint.ending", ["date": date(end)]), .warning) }
+        default: break
+        }
+        if !plan.lockedProjectIds.isEmpty { return (L10n.t("plan.hint.locked", ["count": plan.lockedProjectIds.count]), .warning) }
+        if let limit = plan.projectLimit, plan.projectCount >= limit { return (L10n.t("plan.hint.projectLimit", ["limit": limit]), .info) }
+        return nil
     }
 
     private func row(_ title: String, _ value: String) -> some View {
@@ -111,5 +144,26 @@ struct PlanStatusCard: View {
         if plan.isPersonalWorkspace || plan.memberLimit == 1 { return L10n.t("plan.limit.membersOnly") }
         guard let limit = plan.memberLimit else { return L10n.t("plan.limit.unlimited") }
         return "\(limit)"
+    }
+}
+
+/// Small tinted notice above the plan card.
+struct PlanHint: View {
+    enum Tone { case info, warning }
+    let text: String
+    let tone: Tone
+
+    var body: some View {
+        HStack(alignment: .top, spacing: PFSpace.s) {
+            Image(systemName: tone == .warning ? "exclamationmark.triangle" : "info.circle")
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(tone == .warning ? PFColor.warningText : PFColor.statusText(.open))
+            Text(text).pfText(.meta).foregroundStyle(PFColor.textMain).fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 0)
+        }
+        .padding(PFSpace.s)
+        .background((tone == .warning ? PFColor.warning : PFColor.statusBase(.open)).opacity(0.12),
+                    in: .rect(cornerRadius: PFRadius.control, style: .continuous))
+        .accessibilityElement(children: .combine)
     }
 }
