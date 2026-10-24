@@ -7,7 +7,7 @@ Stand 2026-10-24. Owner-Wunsch: eigene Kaufseite statt Stripe Checkout. Backend-
 Layout (Owner-Vorlage 2026-10-24): schlanke Kopfzeile (Logo, „Zurück zu den Preisen“, keine Site-Navigation), Schrittleiste
 Plan → Konto → Workspace → Zahlung, links Eyebrow + große Headline + Rückblick der bisherigen Wahl mit „Ändern“, rechts die
 Frage des Schritts. Jeder Schritt ist ein History-Eintrag (Browser-Zurück geht einen Schritt zurück). Von einem Preis-CTA
-(`?plan=&interval=&seats=`) ist der Plan nur vorausgewählt; die Seite startet immer beim Plan-Schritt (Auswahl sichtbar). Team: Plätze-Zähler 1–50, wird als `seats` an `createSubscriptionIntent` geschickt (Backend: Menge = max(seats, Vollmitglieder) – mit der Billing-Session abzustimmen). Das KI-Paket ist seit 2026-10-24 nicht mehr auf der Landing (Preise + Checkout); es wird später in der Web-App zubuchbar. Anmeldung: Google, Apple, GitHub (Popup, dieselben Provider wie die App) oder
+(`?plan=&interval=&seats=`) ist der Plan nur vorausgewählt; die Seite startet immer beim Plan-Schritt (Auswahl sichtbar). Team: Plätze-Zähler 1–50, wird als `seats` an `createSubscriptionIntent` geschickt (Backend seit c4e4afc7: Menge = max(seats, Vollmitglieder); Mitglieder ändern die Menge nicht mehr automatisch). Das KI-Paket ist seit 2026-10-24 nicht mehr auf der Landing (Preise + Checkout); es wird später in der Web-App zubuchbar. Anmeldung: Google, Apple, GitHub (Popup, dieselben Provider wie die App) oder
 E-Mail/Passwort. Zahlung: Express Checkout (Apple/Google Pay; AGB-Haken wird vor dem Wallet-Sheet geprüft) über dem
 Payment Element (Karte, SEPA). MwSt.-Zeile erscheint erst, wenn der Server `tax > 0` liefert; bis dahin „Gesamtbetrag (netto)“.
 
