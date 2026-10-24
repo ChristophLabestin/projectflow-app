@@ -142,6 +142,19 @@ if (endpoint) {
     console.log('Created webhook endpoint', created.id, '- signing secret stored as STRIPE_WEBHOOK_SECRET');
 }
 
+// Payment method domains (Apple Pay / Google Pay via the Express Checkout Element on the landing /checkout).
+// Stripe hosts the Apple Pay domain verification for registered domains. Override with PAYMENT_DOMAINS=a,b.
+const PAYMENT_DOMAINS = (process.env.PAYMENT_DOMAINS
+    || 'getprojectflow.com,www.getprojectflow.com,getprojectflow.web.app,getprojectflow--preview-bi8zmvui.web.app').split(',');
+const knownDomains = await stripe.paymentMethodDomains.list({ limit: 100 });
+for (const domain of PAYMENT_DOMAINS.map((d) => d.trim()).filter(Boolean)) {
+    const existing = knownDomains.data.find((entry) => entry.domain_name === domain);
+    const record = existing || await stripe.paymentMethodDomains.create({ domain_name: domain, enabled: true });
+    const checked = await stripe.paymentMethodDomains.validate(record.id).catch(() => record);
+    console.log('Payment method domain', domain, existing ? '(exists)' : '(created)',
+        'apple_pay:', checked.apple_pay?.status, 'google_pay:', checked.google_pay?.status);
+}
+
 // Organization: product only (draft, inactive) until the owner decides the price.
 const orgExisting = await stripe.products.search({ query: "metadata['plan']:'organization'" }).catch(() => ({ data: [] }));
 if (!orgExisting.data.length) {
