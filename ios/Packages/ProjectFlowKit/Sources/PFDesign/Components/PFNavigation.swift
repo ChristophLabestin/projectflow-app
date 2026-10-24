@@ -53,10 +53,12 @@ public struct PFNavigator<Route: Hashable, Root: View, Destination: View>: View 
     public var body: some View {
         NavigationStack(path: $model.path) {
             root
+                .modifier(PFSideContentInset(side: sideRegion))
                 .safeAreaPadding(.top, extraTop)
                 .toolbar(.hidden, for: .navigationBar)
                 .navigationDestination(for: Route.self) { route in
                     destination(route)
+                        .modifier(PFSideContentInset(side: sideRegion))
                         .pfSideControlsHost(side: sideRegion)
                         .safeAreaPadding(.top, extraTop)
                         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
@@ -69,6 +71,23 @@ public struct PFNavigator<Route: Hashable, Root: View, Destination: View>: View 
 }
 
 /// Floating header for pushed screens: glass back button + optional trailing buttons.
+/// iPhone Duo closed: pages reach up to the (narrower) rail instead of the whole system side region. Applied inside
+/// the NavigationStack, which hands its pages the window's safe area directly.
+struct PFSideContentInset: ViewModifier {
+    let side: CGFloat
+
+    func body(content: Content) -> some View {
+        if side > 0 {
+            content
+                // Order matters: the inner padding becomes the trailing safe area once the outer modifier drops the system's.
+                .safeAreaPadding(.trailing, PFLayout.sideContentInset(side))
+                .ignoresSafeArea(.container, edges: .trailing)
+        } else {
+            content
+        }
+    }
+}
+
 public struct PFTopBar<Trailing: View>: View {
     let title: String?
     let backLabel: String

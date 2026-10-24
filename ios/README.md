@@ -106,6 +106,12 @@ UI in `Features/AI`: "Frag ProjectFlow" sheet (✦ on Today, task and project to
 hidden while typing, back after 800 ms) and "✦ KI" rewrites in the edit menu of a selection (replace + undo). Plan refusals
 show a hint, not an error. QA without a key: `-pfAiFake`.
 
+## Duo side region
+
+Rail, root actions and side controls are centred on the status column (`PFLayout.sideStatusCenter`, 48 pt from the trailing
+edge, under the camera); pages reach up to the rail (`PFLayout.sideContentInset`, applied inside `PFNavigator`) instead of the
+whole 84 pt system side region.
+
 ## Workspace sidebar and areas
 
 `Features/Workspace/WorkspaceSidebar.swift` + `Shell/SidebarDrawer.swift`: a left drawer like the ChatGPT app — screen-edge pan

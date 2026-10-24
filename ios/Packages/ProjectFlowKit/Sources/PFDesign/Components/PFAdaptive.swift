@@ -40,8 +40,19 @@ public enum PFLayout {
     /// Height of the Duo's status block (camera, time, connection icons) at the top of the side region.
     public static let sideStatusClearance: CGFloat = 160
 
+    /// Centre of the Duo's status column (camera, time, connection) measured from the trailing screen edge.
+    /// Rail, top actions and side controls are centred on it, so they line up with the camera.
+    public static let sideStatusCenter: CGFloat = 48
+
+    /// Trailing margin of rail-wide columns in the side region (centred under the camera).
     public static func sideGap(_ side: CGFloat) -> CGFloat {
-        ((side + PFSpace.page - PFDock.railWidth) / 2).rounded()
+        (min(sideStatusCenter, side / 2 + 6) - PFDock.railWidth / 2).rounded()
+    }
+
+    /// Trailing safe area for page content next to the rail: the rail plus a small gap, minus the page gutter the
+    /// screens add themselves — narrower than the system's side region, so the content gets wider.
+    public static func sideContentInset(_ side: CGFloat) -> CGFloat {
+        min(side, sideGap(side) + PFDock.railWidth + 8 - PFSpace.page)
     }
 }
 

@@ -51,7 +51,8 @@ struct SidebarDrawer<Sidebar: View>: ViewModifier {
                 }
                 .offset(x: pushesContent ? (reduceMotion ? 0 : -drawerWidth * 0.25 * (1 - progress)) : -drawerWidth * (1 - progress))
                 .opacity(pushesContent ? (progress > 0 ? Double(0.4 + 0.6 * progress) : 0) : (progress > 0 ? 1 : 0))
-                .allowsHitTesting(progress > 0)
+                // Always hit-testable: closed it sits off screen (overlay) or under the content (push). Toggling
+                // hit testing on open made the sidebar's scroll view swallow the first tap.
                 .accessibilityHidden(progress == 0)
         }
         .background(PFCanvas())
@@ -60,15 +61,16 @@ struct SidebarDrawer<Sidebar: View>: ViewModifier {
         .gesture(EdgePan(isEnabled: isEnabled && !isOpen,
                          onChange: { drag = max($0, 0) },
                          onEnd: { translation, velocity in end(open: velocity > 300 || (velocity > -300 && translation > drawerWidth * 0.4)) }))
-        // Simultaneous, so taps on the sidebar rows are never held back by the close drag.
+        // Simultaneous and always attached (toggling `isEnabled` on open swallowed the first tap in the sidebar).
         .simultaneousGesture(DragGesture(minimumDistance: 12)
             .onChanged { value in
-                guard abs(value.translation.width) > abs(value.translation.height) else { return }
+                guard isOpen, abs(value.translation.width) > abs(value.translation.height) else { return }
                 drag = min(value.translation.width, 0)
             }
             .onEnded { value in
+                guard isOpen, drag != nil else { return }
                 end(open: !(value.predictedEndTranslation.width < -drawerWidth * 0.35 || (drag ?? 0) < -drawerWidth * 0.5))
-            }, isEnabled: isOpen)
+            })
         .onChange(of: isEnabled) { _, enabled in if !enabled && isOpen { isOpen = false } }
         .animation(PFMotion.respecting(PFMotion.snappy), value: isOpen)
     }
