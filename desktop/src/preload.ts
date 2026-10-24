@@ -12,6 +12,7 @@ import {
     type DesktopPreferences,
     type DesktopPreferencesInfo,
     type OpenWindowRequest,
+    type AssistRequest,
     type AppAction,
     type UpcomingEvent,
     type DesktopWindowState,
@@ -94,6 +95,7 @@ if (location.origin === appOrigin) {
         onUpdateStateChange: (callback: (state: UpdateState) => void) => subscribe(IPC.updateStateChanged, callback),
         applyUpdate: () => ipcRenderer.send(IPC.updateAction),
         splashDone: () => ipcRenderer.send(IPC.splashDone),
+        assist: (request: AssistRequest): Promise<string | null> => ipcRenderer.invoke(IPC.assist, request),
         clearOfflineCache: () => ipcRenderer.send(IPC.clearOfflineCache)
     });
 }

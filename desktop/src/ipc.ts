@@ -1,12 +1,13 @@
 import { BrowserWindow, app, ipcMain, nativeImage, session, shell } from 'electron';
 import { APP_ORIGIN, sanitizeAppPath } from './config';
-import { IPC, type AppAction, type DesktopNotificationPayload, type OpenWindowRequest, type QuickAccessAction, type TitleBarTheme, type WindowAction } from './contract';
+import { IPC, type AssistRequest, type AppAction, type DesktopNotificationPayload, type OpenWindowRequest, type QuickAccessAction, type TitleBarTheme, type WindowAction } from './contract';
 import { showAppNotification } from './features/notifications';
 import { getPreferences, setPreferences } from './features/preferences';
 import { refreshTouchBar } from './features/focus';
 import { hideCapture, isCaptureWindow, markCaptureReady, openDayWindow, showCapture } from './windows/auxWindows';
 import { hideTrayPanel } from './windows/trayPanel';
 import { hidePalette } from './windows/paletteWindow';
+import { captureScreenForAssist, hideAssist, isAssistWindow, showAssist } from './windows/assistWindow';
 import { upcomingEvents } from './features/calendar';
 import { startExternalSignIn } from './features/externalAuth';
 import { indexSpotlight } from './features/spotlight';
@@ -179,6 +180,21 @@ export const registerIpc = () => {
     handle(IPC.getPreferences, () => getPreferences());
     handle(IPC.setPreferences, (_event, patch: unknown) => setPreferences(patch));
 
+    // AI pop-out: any app window may open it (Quick Capture hands over its screenshot); only the pop-out
+    // itself may grab the screen, and only on the user's click there.
+    handle(IPC.assist, async (event, request: AssistRequest) => {
+        if (!request || typeof request !== 'object') return null;
+        if (request.action === 'open') {
+            const image = typeof request.image === 'string' && /^data:image\/(png|jpeg|webp);base64,/.test(request.image) && request.image.length <= 40_000_000 ? request.image : undefined;
+            const prompt = typeof request.prompt === 'string' ? request.prompt.slice(0, 500) : undefined;
+            if (isCaptureWindow(senderWindow(event))) hideCapture();
+            showAssist({ image, prompt });
+            return null;
+        }
+        if (request.action === 'capture-screen' && isAssistWindow(senderWindow(event))) return captureScreenForAssist();
+        return null;
+    });
+
     on(IPC.openWindow, (_event, request: OpenWindowRequest) => {
         if (!request || typeof request !== 'object') return;
         if (request.kind === 'capture') showCapture(typeof request.text === 'string' ? request.text.slice(0, 500) : undefined);
@@ -197,6 +213,7 @@ export const registerIpc = () => {
         if (pathname === '/desktop/capture') hideCapture();
         else if (pathname === '/desktop/tray') hideTrayPanel();
         else if (pathname === '/desktop/palette') hidePalette();
+        else if (pathname === '/desktop/assist') hideAssist();
         else win.close();
     });
 

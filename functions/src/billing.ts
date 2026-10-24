@@ -5,6 +5,7 @@
  * Stripe ids: billing_customers/{tenantId} (server-only). Own OpenAI keys: ai_user_keys/{uid} (server-only).
  */
 import * as functions from 'firebase-functions/v1';
+import { FAST_START } from './runtime-options';
 import * as admin from 'firebase-admin';
 import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 import Stripe = require('stripe');
@@ -505,7 +506,7 @@ export const createPersonalWorkspace = async (uid: string, language?: string) =>
 };
 
 /** Called by the client after every sign-in; replaces client-side creation of a first workspace. */
-export const ensurePersonalWorkspace = functions.region(REGION).https.onCall(async (data, context) => {
+export const ensurePersonalWorkspace = functions.region(REGION).runWith(FAST_START).https.onCall(async (data, context) => {
     const uid = context.auth?.uid;
     if (!uid) throw new functions.https.HttpsError('unauthenticated', 'Authentication required.');
     return createPersonalWorkspace(uid, typeof data?.language === 'string' ? data.language : undefined);
@@ -556,7 +557,7 @@ const ensureCustomer = async (stripe: Stripe, tenantId: string, uid: string, nam
     return customer.id;
 };
 
-export const createBillingCheckout = functions.region(REGION).runWith({ secrets: STRIPE_SECRETS })
+export const createBillingCheckout = functions.region(REGION).runWith(FAST_START).runWith({ secrets: STRIPE_SECRETS })
     .https.onCall(async (data, context) => {
         const { uid, tenantId } = await requireOwner(data?.tenantId, context);
         const interval: BillingInterval = data?.interval === 'month' ? 'month' : 'year';
@@ -600,7 +601,7 @@ export const createBillingCheckout = functions.region(REGION).runWith({ secrets:
         return { url: session.url };
     });
 
-export const createBillingPortal = functions.region(REGION).runWith({ secrets: STRIPE_SECRETS })
+export const createBillingPortal = functions.region(REGION).runWith(FAST_START).runWith({ secrets: STRIPE_SECRETS })
     .https.onCall(async (data, context) => {
         const { tenantId } = await requireOwner(data?.tenantId, context);
         const customerId = (await customerRef(tenantId).get()).data()?.customerId;
@@ -777,7 +778,7 @@ const changeItemsFor = (subscription: Stripe.Subscription, target: { price: stri
 };
 
 /** Price preview for the purchase page (no side effects). */
-export const previewSubscription = functions.region(REGION).runWith({ secrets: STRIPE_SECRETS })
+export const previewSubscription = functions.region(REGION).runWith(FAST_START).runWith({ secrets: STRIPE_SECRETS })
     .https.onCall(async (data, context) => {
         const input = await resolvePurchase(data, context);
         const stripe = getStripe();
@@ -878,7 +879,7 @@ const createNewWorkspaceIntent = async (data: any, context: functions.https.Call
     return result(subscription, tenantId);
 };
 
-export const createSubscriptionIntent = functions.region(REGION).runWith({ secrets: STRIPE_SECRETS })
+export const createSubscriptionIntent = functions.region(REGION).runWith(FAST_START).runWith({ secrets: STRIPE_SECRETS })
     .https.onCall(async (data, context) => {
         if (data?.newWorkspace) return createNewWorkspaceIntent(data, context);
         const input = await resolvePurchase(data, context);
@@ -971,7 +972,7 @@ export const createSubscriptionIntent = functions.region(REGION).runWith({ secre
 // --- Purchase page helpers (landing /checkout, contract §8) ---
 
 /** Public: publishable key + availability for the purchase page (billing_public/config, set by script). */
-export const getBillingConfig = functions.region(REGION).https.onCall(async () => {
+export const getBillingConfig = functions.region(REGION).runWith(FAST_START).https.onCall(async () => {
     const config = (await db.doc('billing_public/config').get()).data() || {};
     return {
         publishableKey: typeof config.publishableKey === 'string' ? config.publishableKey : null,
@@ -981,7 +982,7 @@ export const getBillingConfig = functions.region(REGION).https.onCall(async () =
 });
 
 /** Workspaces the caller owns (personal one created if missing), with their billing state. */
-export const listBillingWorkspaces = functions.region(REGION).https.onCall(async (data, context) => {
+export const listBillingWorkspaces = functions.region(REGION).runWith(FAST_START).https.onCall(async (data, context) => {
     const uid = context.auth?.uid;
     if (!uid) throw new functions.https.HttpsError('unauthenticated', 'Authentication required.');
     await createPersonalWorkspace(uid, typeof data?.language === 'string' ? data.language : undefined);
@@ -1011,7 +1012,7 @@ export const listBillingWorkspaces = functions.region(REGION).https.onCall(async
 });
 
 /** Creates a team workspace for the caller (Owner); the onCreate trigger starts the 14-day Team trial. */
-export const createTeamWorkspace = functions.region(REGION).https.onCall(async (data, context) => {
+export const createTeamWorkspace = functions.region(REGION).runWith(FAST_START).https.onCall(async (data, context) => {
     const uid = context.auth?.uid;
     if (!uid) throw new functions.https.HttpsError('unauthenticated', 'Authentication required.');
     const name = typeof data?.name === 'string' && data.name.trim() ? data.name.trim().slice(0, 80) : 'Workspace';
@@ -1038,7 +1039,7 @@ export const createTeamWorkspace = functions.region(REGION).https.onCall(async (
 });
 
 /** Polled by the success page until the webhook has applied the purchase. */
-export const getSubscriptionStatus = functions.region(REGION).https.onCall(async (data, context) => {
+export const getSubscriptionStatus = functions.region(REGION).runWith(FAST_START).https.onCall(async (data, context) => {
     // New workspace from the purchase page that does not exist yet (card not saved / webhook not through).
     if (context.auth?.uid && typeof data?.tenantId === 'string' && !(await db.doc(`tenants/${data.tenantId}`).get()).exists) {
         const pending = (await pendingWorkspaceRef(context.auth.uid).get()).data();
