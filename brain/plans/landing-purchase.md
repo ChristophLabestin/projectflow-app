@@ -16,7 +16,7 @@ Payment Element (Karte, SEPA). MwSt.-Zeile erscheint erst, wenn der Server `tax 
 2. Konto: Firebase Auth desselben Projekts inline (E-Mail/Passwort, Registrierung, Google-Popup, Passwort-Reset).
    Passkeys nicht: rpId ist die App-Domain.
 3. Workspace: Personal → eigener persönlicher Workspace (`personal: true`); Team → eigene Team-Workspaces
-   (`listBillingWorkspaces`, mit Abo/exempt deaktiviert) oder neuer (`createTeamWorkspace`, Test startet per Trigger).
+   (`listBillingWorkspaces`, mit Abo/exempt deaktiviert) oder neuer: nur der Name wird erfasst und als `newWorkspace` an `createSubscriptionIntent` geschickt; das Backend reserviert die tenantId und legt den Workspace erst an, wenn die Karte gespeichert ist (Webhook). Ein abgebrochener Checkout hinterlässt nichts.
    Persönlicher Workspace mit Abo → Hinweis + Link in die App (Änderungen laufen nie implizit über die Kaufseite).
 4. Zahlung: `createSubscriptionIntent` → Stripe Payment Element (`js.stripe.com/v3`, Key aus `getBillingConfig`),
    `confirmPayment` bzw. `confirmSetup` (Team-Test) mit `redirect: 'if_required'`, `return_url=/checkout?step=done&tenant=&plan=`.
@@ -28,7 +28,7 @@ zeigen auf `/checkout?plan=…&interval=…` (folgt dem Monat/Jahr-Schalter); Fr
 
 ## Rechtliches (Platzhalter, Owner)
 - „Zahlungspflichtig bestellen“ (§ 312j BGB), Pflicht-Checkbox AGB + Datenschutz, Laufzeit-/Kündigungshinweis, Testhinweis.
-- Offen: Widerrufsbelehrung für Verbraucher (Personal), Laufzeittexte mit AGB abgleichen, USt/OSS (Summen sind netto, `tax` = 0).
+- Kleinunternehmerregelung: Endpreise, Hinweis „Gemäß § 19 UStG wird keine Umsatzsteuer berechnet.“ (Landing, Checkout, Rechnungen). Offen: Widerrufsbelehrung für Verbraucher (Personal), Laufzeittexte mit AGB abgleichen.
 
 ## Owner-Setup
 - Firebase Auth → Authorized domains: `getprojectflow.com`, `www.getprojectflow.com`, Preview-Domain `getprojectflow--preview-bi8zmvui.web.app` (keine Wildcards). Google-Login nutzt `signInWithPopup` über `projectflow-labestin.firebaseapp.com/__/auth/handler`; im OAuth-Client ist dafür nichts zusätzlich einzutragen.

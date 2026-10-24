@@ -39,6 +39,8 @@ export interface Workspace {
 }
 export interface SummaryLine { label: string; quantity: number; unitAmount: number; amount: number }
 export interface Intent {
+    /** Set when the request created a pending new workspace (it only exists once the card is saved). */
+    tenantId?: string;
     subscriptionId: string;
     clientSecret: string;
     /** 'none' = an existing subscription was changed and the card on file was charged; nothing to confirm. */
@@ -60,7 +62,8 @@ export interface BuyApi {
     publishableKey(): Promise<string>;
     workspaces(language: string): Promise<Workspace[]>;
     createTeam(name: string, language: string): Promise<string>;
-    intent(input: { tenantId: string; plan: Plan; interval: Interval; seats?: number; language: string }): Promise<Intent>;
+    /** `newWorkspace` instead of `tenantId`: the backend reserves the workspace and creates it after card saving. */
+    intent(input: { tenantId?: string; newWorkspace?: { name: string; language?: string }; plan: Plan; interval: Interval; seats?: number; language: string }): Promise<Intent>;
     status(tenantId: string, plan: Plan): Promise<SubscriptionStatus>;
 }
 
@@ -102,7 +105,8 @@ function firebaseApi(): BuyApi {
         },
         createTeam: async (name, language) => (await call<{ tenantId: string }>('createTeamWorkspace', { name, language })).tenantId,
         // Personal targets the caller's own personal workspace (`personal: true`), Team a workspace they own.
-        intent: ({ tenantId, ...rest }) => call<Intent>('createSubscriptionIntent', rest.plan === 'personal' ? { personal: true, ...rest } : { tenantId, ...rest }),
+        intent: ({ tenantId, newWorkspace, ...rest }) => call<Intent>('createSubscriptionIntent',
+            rest.plan === 'personal' ? { personal: true, ...rest } : newWorkspace ? { newWorkspace, ...rest } : { tenantId, ...rest }),
         status: (tenantId, plan) => call<SubscriptionStatus>('getSubscriptionStatus', plan === 'personal' ? { personal: true } : { tenantId }),
     };
 }
@@ -129,8 +133,13 @@ function mockApi(): BuyApi {
         publishableKey: async () => '',
         workspaces: async () => { await wait(); return spaces; },
         createTeam: async (name) => { await wait(); spaces.push({ tenantId: 'team_new', name, workspaceType: 'team', status: 'trialing', memberCount: 1, trialEndsAt: new Date(Date.now() + 14 * 864e5).toISOString() }); return 'team_new'; },
-        intent: async ({ tenantId, plan, interval, seats: wanted }) => {
+        intent: async ({ tenantId: id, newWorkspace, plan, interval, seats: wanted }) => {
             await wait();
+            // Pending new workspace: appears in the list as if the webhook had created it after card saving.
+            const tenantId = newWorkspace ? 'team_new' : id ?? '';
+            if (newWorkspace && !spaces.some((w) => w.tenantId === tenantId)) {
+                spaces.push({ tenantId, name: newWorkspace.name, workspaceType: 'team', status: 'trialing', memberCount: 1, trialEndsAt: new Date(Date.now() + 14 * 864e5).toISOString() });
+            }
             const ws = spaces.find((w) => w.tenantId === tenantId);
             const seats = plan === 'team' ? Math.max(wanted ?? 1, ws?.memberCount ?? 1) : 1;
             const unit = plan === 'team' ? (interval === 'year' ? 120 : 12) : (interval === 'year' ? 48 : 5);
@@ -138,7 +147,7 @@ function mockApi(): BuyApi {
             const trialing = ws?.status === 'trialing';
             const subtotal = lines.reduce((sum, l) => sum + l.amount, 0);
             return {
-                subscriptionId: 'sub_demo', clientSecret: 'demo', intentType: trialing ? 'setup' : 'payment',
+                tenantId, subscriptionId: 'sub_demo', clientSecret: 'demo', intentType: trialing ? 'setup' : 'payment',
                 summary: { currency: 'eur', lines, subtotal, total: subtotal, amountDue: trialing ? 0 : subtotal, trialEnd: trialing ? ws?.trialEndsAt : null },
             };
         },
