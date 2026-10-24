@@ -173,3 +173,5 @@ export {
     getSubscriptionStatus,
     onTenantCreatedBilling, onProjectCountBilling, onMemberWrittenBilling, billingSweep
 } from './billing';
+// Seat management (contract §9)
+export { previewSeatChange, changeSeats, getBillingOverview } from './billing-seats';

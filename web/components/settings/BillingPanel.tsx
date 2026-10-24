@@ -15,6 +15,7 @@ import {
 } from '../../utils/billingPlans';
 import { Button } from '../ui/Button';
 import { Checkbox } from '../ui/Checkbox';
+import { BillingSeats } from './BillingSeats';
 import { Input } from '../ui/Input';
 
 type BillingPanelProps = {
@@ -191,6 +192,10 @@ export const BillingPanel: React.FC<BillingPanelProps> = ({ tenantId, role }) =>
                     </div>
                 )}
             </section>
+
+            {ent.hasSubscription && isOwner && ent.status !== 'exempt' && ['active', 'trialing', 'past_due'].includes(ent.status) && (
+                <BillingSeats tenantId={tenantId} personal={ent.workspaceType === 'personal'} />
+            )}
 
             {canSubscribe && (
                 <section className="billing-settings__card">
