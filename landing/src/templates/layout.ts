@@ -23,6 +23,8 @@ interface LayoutOptions {
     scripts: string[];
     bodyClass?: string;
     noindex?: boolean;
+    /** 'focus' drops site header and footer (checkout renders its own slim bar). */
+    chrome?: 'site' | 'focus';
 }
 
 const otherLang = (lang: Lang): Lang => (lang === 'de' ? 'en' : 'de');
@@ -128,7 +130,7 @@ const footer = (page: PageDef, t: SiteCopy): string => {
 </footer>`;
 };
 
-export function layout({ page, title, description, body, scripts, bodyClass = '', noindex = false }: LayoutOptions): string {
+export function layout({ page, title, description, body, scripts, bodyClass = '', noindex = false, chrome = 'site' }: LayoutOptions): string {
     const t = site[page.lang];
     const canonical = SITE_URL + (page.url === '/' ? '/' : page.url);
     const alternates = page.kind === 'notFound'
@@ -168,11 +170,11 @@ export function layout({ page, title, description, body, scripts, bodyClass = ''
 </head>
 <body class="${bodyClass}">
     <a class="skip-link" href="#main">${esc(t.a11y.skip)}</a>
-    ${header(page, t)}
+    ${chrome === 'site' ? header(page, t) : ''}
     <main id="main" tabindex="-1">
 ${body}
     </main>
-    ${footer(page, t)}
+    ${chrome === 'site' ? footer(page, t) : ''}
 </body>
 </html>
 `;

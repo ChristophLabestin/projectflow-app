@@ -4,6 +4,13 @@ Stand 2026-10-24. Owner-Wunsch: eigene Kaufseite statt Stripe Checkout. Backend-
 `brain/plans/billing-entitlements-contract.md` §8 (Callables in europe-west3).
 
 ## Ablauf
+Layout (Owner-Vorlage 2026-10-24): schlanke Kopfzeile (Logo, „Zurück zu den Preisen“, keine Site-Navigation), Schrittleiste
+Plan → Konto → Workspace → Zahlung, links Eyebrow + große Headline + Rückblick der bisherigen Wahl mit „Ändern“, rechts die
+Frage des Schritts. Jeder Schritt ist ein History-Eintrag (Browser-Zurück geht einen Schritt zurück). Von einem Preis-CTA
+(`?plan=`) startet die Seite bei „Konto“. Anmeldung: Google, Apple, GitHub (Popup, dieselben Provider wie die App) oder
+E-Mail/Passwort. Zahlung: Express Checkout (Apple/Google Pay; AGB-Haken wird vor dem Wallet-Sheet geprüft) über dem
+Payment Element (Karte, SEPA). MwSt.-Zeile erscheint erst, wenn der Server `tax > 0` liefert; bis dahin „Gesamtbetrag (netto)“.
+
 `?plan=personal|team&interval=month|year&ai=1` (`?mock=1` = Demo ohne Netz/Konto/Zahlung, mit Banner).
 1. Plan + Intervall + KI-Paket (1 Platz für den Owner; weitere KI-Plätze später im Billing-Tab).
 2. Konto: Firebase Auth desselben Projekts inline (E-Mail/Passwort, Registrierung, Google-Popup, Passwort-Reset).

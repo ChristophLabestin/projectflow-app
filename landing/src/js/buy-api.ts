@@ -5,7 +5,7 @@
  */
 import { initializeApp, type FirebaseApp } from 'firebase/app';
 import {
-    browserLocalPersistence, createUserWithEmailAndPassword, getAuth, GoogleAuthProvider, onAuthStateChanged,
+    browserLocalPersistence, createUserWithEmailAndPassword, getAuth, GithubAuthProvider, GoogleAuthProvider, OAuthProvider, onAuthStateChanged,
     sendPasswordResetEmail, setPersistence, signInWithEmailAndPassword, signInWithPopup, signOut, updateProfile,
     type Auth,
 } from 'firebase/auth';
@@ -23,6 +23,7 @@ const firebaseConfig = {
 
 export type Plan = 'personal' | 'team';
 export type Interval = 'month' | 'year';
+export type OAuthKind = 'google' | 'apple' | 'github';
 
 export interface BuyUser { uid: string; email: string | null; name: string | null }
 export interface Workspace {
@@ -43,7 +44,7 @@ export interface Intent {
     /** 'none' = an existing subscription was changed and the card on file was charged; nothing to confirm. */
     intentType: 'payment' | 'setup' | 'none';
     trialEnd?: string | number | null;
-    summary?: { currency: string; lines: SummaryLine[]; subtotal: number; total?: number; amountDue?: number; trialEnd?: string | number | null };
+    summary?: { currency: string; lines: SummaryLine[]; subtotal: number; discount?: number; tax?: number; total?: number; amountDue?: number; trialEnd?: string | number | null };
 }
 
 export interface SubscriptionStatus { status: string; plan?: string; active?: boolean }
@@ -53,7 +54,7 @@ export interface BuyApi {
     onUser(cb: (user: BuyUser | null) => void): void;
     signIn(email: string, password: string): Promise<void>;
     register(name: string, email: string, password: string): Promise<void>;
-    google(): Promise<void>;
+    oauth(kind: OAuthKind): Promise<void>;
     reset(email: string): Promise<void>;
     signOut(): Promise<void>;
     publishableKey(): Promise<string>;
@@ -80,7 +81,18 @@ function firebaseApi(): BuyApi {
             const cred = await createUserWithEmailAndPassword(auth, email, password);
             if (name) await updateProfile(cred.user, { displayName: name });
         },
-        google: async () => { await signInWithPopup(auth, new GoogleAuthProvider()); },
+        // Same providers as the app (Firebase Auth → Sign-in method): Google, Apple, GitHub.
+        oauth: async (kind) => {
+            let provider: GoogleAuthProvider | GithubAuthProvider | OAuthProvider;
+            if (kind === 'google') provider = new GoogleAuthProvider();
+            else if (kind === 'github') provider = new GithubAuthProvider();
+            else {
+                provider = new OAuthProvider('apple.com');
+                provider.addScope('email');
+                provider.addScope('name');
+            }
+            await signInWithPopup(auth, provider);
+        },
         reset: (email) => sendPasswordResetEmail(auth, email),
         signOut: () => signOut(auth),
         publishableKey: async () => (await call<{ publishableKey: string }>('getBillingConfig')).publishableKey,
@@ -111,7 +123,7 @@ function mockApi(): BuyApi {
         onUser: (cb) => { listener = cb; cb(user); },
         signIn: async (email) => { await wait(); set({ uid: 'demo', email, name: null }); },
         register: async (name, email) => { await wait(); set({ uid: 'demo', email, name }); },
-        google: async () => { await wait(); set({ uid: 'demo', email: 'demo@example.com', name: 'Demo' }); },
+        oauth: async () => { await wait(); set({ uid: 'demo', email: 'demo@example.com', name: 'Demo' }); },
         reset: async () => { await wait(); },
         signOut: async () => { set(null); },
         publishableKey: async () => '',
