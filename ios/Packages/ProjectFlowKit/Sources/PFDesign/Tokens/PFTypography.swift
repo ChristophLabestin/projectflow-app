@@ -6,7 +6,7 @@ import CoreText
 /// Plus Jakarta Sans (bundled variable font) for everything that says "ProjectFlow" — headlines,
 /// titles, row titles, eyebrows, pills, buttons — and SF Pro for reading text and metadata.
 public enum PFTextStyle: CaseIterable, Sendable {
-    case display, displayLarge, title, section, rowTitle, eyebrow, pill, button, buttonSmall, tab
+    case display, displayLarge, title, section, rowTitle, eyebrow, pill, button, buttonSmall, tab, tabRail
     case body, bodyEmphasis, meta, metaStrong, caption, number
 
     var spec: (size: CGFloat, weight: CGFloat, tracking: CGFloat, lineSpacing: CGFloat, jakarta: Bool, relativeTo: UIFont.TextStyle) {
@@ -21,6 +21,7 @@ public enum PFTextStyle: CaseIterable, Sendable {
         case .button: (15, 700, -0.005, 0, true, .body)
         case .buttonSmall: (13, 700, 0, 0, true, .footnote)
         case .tab: (10.5, 700, 0.01, 0, true, .caption2)
+        case .tabRail: (10, 560, 0.01, 0, true, .caption2)
         case .body: (17, 400, 0, 0.3, false, .body)
         case .bodyEmphasis: (17, 600, 0, 0.3, false, .body)
         case .meta: (13, 500, 0, 0.1, false, .footnote)

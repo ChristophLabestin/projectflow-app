@@ -3,6 +3,8 @@ enum WorkspaceStrings {
     static let de: [String: String] = [
         "nav.activity": "Aktivität", "nav.insights": "Insights", "nav.files": "Dateien", "nav.wiki": "Wiki", "nav.flows": "Flows",
         "workspace.areas": "Arbeitsbereich",
+        "sidebar.areas": "Bereiche", "sidebar.workspaces": "Workspaces", "sidebar.newWorkspace": "Neuer Workspace",
+        "sidebar.open": "Seitenleiste öffnen", "sidebar.close": "Seitenleiste schließen",
         "flows.mobile.webOnly": "Flows legst du in der Web-App an und bearbeitest sie dort. Hier siehst du ihren Status, schaltest sie an oder aus und startest sie.",
         "flows.mobile.noPermission": "Diesen Flow dürfen nur Owner und Admins ändern.", "flows.mobile.error": "Das hat nicht geklappt. Bitte versuch es noch einmal.", "flows.untitled": "Unbenannter Flow",
         "files.source.camera": "Kamera", "files.source.photos": "Fotos", "files.source.files": "Dateien",
@@ -13,6 +15,8 @@ enum WorkspaceStrings {
     static let en: [String: String] = [
         "nav.activity": "Activity", "nav.insights": "Insights", "nav.files": "Files", "nav.wiki": "Wiki", "nav.flows": "Flows",
         "workspace.areas": "Workspace",
+        "sidebar.areas": "Areas", "sidebar.workspaces": "Workspaces", "sidebar.newWorkspace": "New workspace",
+        "sidebar.open": "Open sidebar", "sidebar.close": "Close sidebar",
         "flows.mobile.webOnly": "Create and edit flows in the web app. Here you see their status, switch them on or off and run them.",
         "flows.mobile.noPermission": "Only owners and admins can change this flow.", "flows.mobile.error": "That didn't work. Please try again.", "flows.untitled": "Untitled flow",
         "files.source.camera": "Camera", "files.source.photos": "Photos", "files.source.files": "Files",

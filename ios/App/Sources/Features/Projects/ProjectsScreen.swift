@@ -28,10 +28,6 @@ struct ProjectsScreen: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
                 header
-                WorkspaceAreasRow()
-                    .padding(.horizontal, PFSpace.page)
-                    .padding(.top, PFSpace.xs)
-                    .padding(.bottom, PFSpace.l)
                 if let workspace, workspace.loaded.contains(.projects) {
                     if projects.isEmpty {
                         emptyState

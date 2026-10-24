@@ -67,8 +67,8 @@ module.exports = {
                 lift: 'var(--shadow-lg)',
             },
             fontFamily: {
-                display: ['Plus Jakarta Sans', 'sans-serif'],
-                body: ['Plus Jakarta Sans', 'sans-serif'],
+                display: ['Plus Jakarta Sans Variable', 'Plus Jakarta Sans', 'sans-serif'],
+                body: ['Plus Jakarta Sans Variable', 'Plus Jakarta Sans', 'sans-serif'],
             },
         },
     },

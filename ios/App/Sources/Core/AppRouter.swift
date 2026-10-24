@@ -39,6 +39,8 @@ final class AppRouter {
     var tab: AppTab = .today
     var isSearchActive = false
     var isFocusRoomOpen = false
+    /// Workspace sidebar (left drawer on root screens).
+    var isSidebarOpen = false
     /// iPhone Duo opened: the list column of a list/detail tab is folded away (rail toggle), e.g. for the board.
     var isListColumnHidden = false
     /// Today opens in day-close mode (`/?mode=close`, day_close push).

@@ -95,7 +95,7 @@ version in `pf.announcement.dismissed`). Contract: admin-console iOS note, `brai
 `PlanErrorCode`), bound per workspace in `AppModel` (`model.entitlements`, `model.errorMessage(_:)`). UI in `Features/Billing`
 (plan card in Account, "Nur lesen" notice on locked projects); AI controls are greyed out without server AI; invites and
 new projects are pre-checked. Onboarding asks "Allein oder im Team?" (team → new team workspace + invite step); the
-workspace switcher lists "Persönlich" above "Teams". No purchase UI (App Store 3.1.1).
+workspace sidebar lists "Persönlich" above the team workspaces. No purchase UI (App Store 3.1.1).
 
 ## In-app AI (✦ KI)
 
@@ -106,7 +106,13 @@ UI in `Features/AI`: "Frag ProjectFlow" sheet (✦ on Today, task and project to
 hidden while typing, back after 800 ms) and "✦ KI" rewrites in the edit menu of a selection (replace + undo). Plan refusals
 show a hint, not an error. QA without a key: `-pfAiFake`.
 
-## Workspace areas (Projects tab → "Arbeitsbereich")
+## Workspace sidebar and areas
+
+`Features/Workspace/WorkspaceSidebar.swift` + `Shell/SidebarDrawer.swift`: a left drawer like the ChatGPT app — screen-edge pan
+from the left on any root screen (disabled once something is pushed), or the ☰ button in Today's top bar (replaces the old
+workspace chip). It holds the areas (`WorkspaceArea.all`), all workspaces (switch, "Neuer Workspace") and workspace settings.
+The content slides right and dims; tap or drag it back to close. The Projects tab no longer shows an areas row.
+
 
 `Features/Workspace`: Activity feed (`tenants/{t}/activity`, workspace and per project; contract
 `brain/plans/activity-events-contract.md`), Insights (`insights_daily/latest`, `refreshWorkspaceInsights`, weekly report via
