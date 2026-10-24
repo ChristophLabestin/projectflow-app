@@ -1,4 +1,4 @@
-import { Activity, BarChart3, Bot, Bug, Building2, FileText, Gauge, KeyRound, Mail, MailWarning, Newspaper, ScrollText, Settings2, Users } from 'lucide-react';
+import { Activity, BarChart3, Bot, Bug, Building2, FileText, Gauge, KeyRound, Mail, MailWarning, Newspaper, ScrollText, Send, Settings2, Users } from 'lucide-react';
 
 export type NavItem = { to: string; label: string; icon: typeof Gauge; key: string; group: string; keywords?: string };
 
@@ -14,7 +14,8 @@ export const NAV: NavItem[] = [
     { to: '/system', label: 'System', icon: Settings2, key: 's', group: 'Betrieb', keywords: 'flags banner ankündigung scheduler' },
     { to: '/legal', label: 'Rechtsdokumente', icon: FileText, key: 'l', group: 'Inhalte', keywords: 'agb datenschutz impressum zustimmung' },
     { to: '/blog', label: 'Blog', icon: Newspaper, key: 'p', group: 'Inhalte', keywords: 'posts beiträge kategorien' },
-    { to: '/newsletter', label: 'Leads & Newsletter', icon: Mail, key: 'n', group: 'Inhalte', keywords: 'abonnenten subscribers warteliste kontakt' },
+    { to: '/newsletter', label: 'Newsletter', icon: Send, key: 'n', group: 'Inhalte', keywords: 'abonnenten subscribers warteliste kampagnen' },
+    { to: '/leads', label: 'Leads & Kontakt', icon: Mail, key: 'd', group: 'Inhalte', keywords: 'kontaktformular altbestand leads' },
     { to: '/audit', label: 'Audit-Log', icon: ScrollText, key: 'a', group: 'Sicherheit', keywords: 'protokoll log' },
     { to: '/mcp-access', label: 'Admin-MCP', icon: KeyRound, key: 'm', group: 'Sicherheit', keywords: 'mcp claude ki zugriff oauth' },
 ];

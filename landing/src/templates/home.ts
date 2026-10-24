@@ -102,34 +102,51 @@ const mcp = (t: SiteCopy, lang: Lang) => {
     const m = t.mcp;
     // The prompt is always in the DOM (readable without JS); the scene reveals it character by character.
     const prompt = Array.from(m.prompt).map((ch) => `<span class="ch">${esc(ch)}</span>`).join('');
+    const win = (label: string) => `<p class="mcp-window"><i></i><i></i><i></i><span>${esc(label)}</span></p>`;
     return `
 <section class="section mcp" id="mcp" aria-labelledby="mcp-title" data-mcp-section>
-    <div class="container mcp__grid">
-        <div class="mcp__copy" data-reveal>
+    <div class="container">
+        <header class="mcp__head" data-reveal>
             <p class="eyebrow">${esc(m.eyebrow)}</p>
             <h2 class="sec-title" id="mcp-title">${headline(m.title)}</h2>
             <p class="sec-text">${esc(m.text)}</p>
-            <ul class="chips">${m.clients.map((c) => `<li>${esc(c)}</li>`).join('')}</ul>
-            <a class="btn btn--ghost" href="${urlFor('docsMcp', lang)}">${esc(m.cta)}${icon('arrowRight')}</a>
-            <p class="fineprint">${esc(m.note)}</p>
-        </div>
-        <div class="mcp__scene" aria-hidden="true" data-mcp>
-            <div class="agent">
-                <p class="agent__head">${icon('sparkles')}${esc(m.agent)}</p>
-                <p class="agent__prompt" data-mcp-prompt>${prompt}<i class="caret"></i></p>
-                <p class="agent__call" data-mcp-call><span class="mono">${esc(m.call)}</span><em>projectflow</em></p>
-                <p class="agent__result" data-mcp-result>${icon('check')}${esc(m.result)}</p>
+            <div class="mcp__meta">
+                <ul class="chips">${m.clients.map((c) => `<li>${esc(c)}</li>`).join('')}</ul>
+                <a class="btn btn--ghost btn--sm" href="${urlFor('docsMcp', lang)}">${esc(m.cta)}${icon('arrowRight')}</a>
             </div>
-            <div class="mini-board">
-                <div class="mini-board__head">
-                    <p class="scol__head"><i class="dot dot--open"></i>${esc(m.column)}<em data-mcp-count>3</em></p>
-                    <p class="perm" data-mcp-perm><span>${esc(m.perms)}</span><b class="perm__opt is-on">${esc(m.permRead)}</b><b class="perm__opt" data-mcp-write>${esc(m.permWrite)}</b></p>
+        </header>
+        <div class="mcp-stage" aria-hidden="true" data-mcp>
+            <div class="mcp-pane mcp-chat">
+                ${win(m.agent)}
+                <div class="mcp-chat__body">
+                    <p class="msg msg--user" data-mcp-prompt>${prompt}<i class="caret"></i></p>
+                    <div class="msg msg--ai" data-mcp-reply><span class="msg__avatar">${icon('sparkles')}</span><p>${esc(m.reply)}</p></div>
+                    <div class="tool" data-mcp-call>
+                        <p class="tool__head"><span class="mono">projectflow · ${esc(m.call)}</span><em>MCP</em></p>
+                        <dl>${m.params.map(([k, v]) => `<div data-mcp-param><dt class="mono">${esc(String(k))}</dt><dd class="mono">"${esc(String(v))}"</dd></div>`).join('')}</dl>
+                    </div>
+                    <p class="tool-result" data-mcp-result>${icon('check')}${esc(m.result)}</p>
                 </div>
-                <div class="mcp-card mcp-card--new" data-mcp-card>${check()}<span><b>${esc(m.card)}</b><span class="scard__meta"><i class="prio prio--high"></i>iOS 2.0</span></span><span class="agent-tag">${icon('sparkles')}</span></div>
-                ${t.story.cards.filter((c) => c.col === 0).slice(0, 2).map((c) => `<div class="mcp-card">${check()}<span><b>${esc(c.title)}</b><span class="scard__meta"><i class="prio prio--${c.prio}"></i>${esc(c.project)}</span></span></div>`).join('')}
-                <p class="mcp-log" data-mcp-log>${icon('sparkles')}${esc(m.log)}</p>
+            </div>
+            <div class="mcp-link">
+                <svg viewBox="0 0 120 12" preserveAspectRatio="none"><path class="mcp-link__track" d="M0 6 H120"/><path class="mcp-link__flow" d="M0 6 H120" data-mcp-flow/></svg>
+                <span class="mcp-link__chip" data-mcp-chip>${icon('lock')}${esc(m.connector)}</span>
+            </div>
+            <div class="mcp-pane mcp-board">
+                ${win(m.board)}
+                <div class="mcp-board__body">
+                    <p class="scol__head"><i class="dot dot--open"></i>${esc(m.column)}<em data-mcp-count>3</em></p>
+                    <div class="mcp-card mcp-card--new" data-mcp-card>${check()}<span><b>${esc(m.card)}</b><span class="scard__meta"><i class="prio prio--high"></i>iOS 2.0</span></span><span class="agent-tag">${icon('sparkles')}</span></div>
+                    ${t.story.cards.filter((c) => c.col === 0).slice(0, 2).map((c) => `<div class="mcp-card">${check()}<span><b>${esc(c.title)}</b><span class="scard__meta"><i class="prio prio--${c.prio}"></i>${esc(c.project)}</span></span></div>`).join('')}
+                    <p class="mcp-activity" data-mcp-log>${icon('sparkles')}<span>${esc(m.activity)}</span><time>${esc(m.activityTime)}</time></p>
+                    <div class="mcp-perms" data-mcp-perms>
+                        <p>${esc(m.permsTitle)}</p>
+                        <ul>${m.perms.map(([label, ok]) => `<li class="${ok ? 'is-ok' : 'is-no'}">${icon(ok ? 'check' : 'close')}${esc(String(label))}</li>`).join('')}</ul>
+                    </div>
+                </div>
             </div>
         </div>
+        <p class="fineprint mcp__note">${esc(m.note)}</p>
     </div>
 </section>`;
 };
@@ -314,31 +331,34 @@ const faq = (t: SiteCopy, lang: Lang) => {
             <h2 class="sec-title" id="faq-title">${headline(f.title)}</h2>
         </header>
         <div class="faq__list" data-reveal>
-            ${f.items.map((it) => `<details><summary>${esc(it.q)}${icon('plus')}</summary><p>${fill(it.a)}</p></details>`).join('')}
+            ${f.items.map((it) => `<details name="faq" data-faq><summary>${esc(it.q)}${icon('plus')}</summary><p>${fill(it.a)}</p></details>`).join('')}
         </div>
     </div>
 </section>`;
 };
 
-const cta = (t: SiteCopy) => `
-<section class="cta" aria-labelledby="cta-title">
-    <div class="container">
-        <div class="cta__card theme-dark" data-reveal data-spot>
-            <div class="cta__mark" aria-hidden="true" data-converge>
-                ${Array.from({ length: 8 }, (_, i) => `<i class="cta__frag" style="--i:${i}"></i>`).join('')}
-                ${logo('cta__logo')}
-            </div>
-            <div>
-                <h2 class="sec-title" id="cta-title">${headline(t.cta.title)}</h2>
-                <p>${esc(t.cta.text)}</p>
-            </div>
-            <div class="cta__actions">
-                <a class="btn btn--primary btn--lg" href="${links.register}" data-magnetic>${esc(t.cta.primary)}${icon('arrowRight')}</a>
-                <a class="btn btn--ghost btn--lg" href="${links.login}">${esc(t.cta.secondary)}</a>
-            </div>
+const cta = (t: SiteCopy) => {
+    // Two rows of finished story tasks glide past the closing statement – the hero's noise, now done.
+    const cards = t.story.cards.map((c) => `<li class="cta-card"><span class="checkbox is-done">${icon('check')}</span><span><b>${esc(c.title)}</b><small><i class="prio prio--${c.prio}"></i>${esc(c.project)}</small></span></li>`);
+    const row = (items: string[], dir: 'l' | 'r') => `
+        <div class="cta-row cta-row--${dir}" aria-hidden="true"><ul class="cta-row__track">${items.join('')}${items.join('')}</ul></div>`;
+    const half = Math.ceil(cards.length / 2);
+    return `
+<section class="cta theme-dark" aria-labelledby="cta-title">
+    ${row(cards.slice(0, half), 'l')}
+    <div class="container cta__inner" data-reveal>
+        <span class="cta__logo-wrap" aria-hidden="true">${logo('cta__logo')}</span>
+        <h2 class="cta__title" id="cta-title">${esc(t.cta.title)}</h2>
+        <p class="cta__text">${esc(t.cta.text)}</p>
+        <div class="cta__actions">
+            <a class="btn btn--primary btn--lg" href="${links.register}" data-magnetic>${esc(t.cta.primary)}${icon('arrowRight')}</a>
+            <a class="btn btn--ghost btn--lg" href="${links.login}">${esc(t.cta.secondary)}</a>
         </div>
+        <ul class="cta__points">${t.cta.points.map((p) => `<li>${icon('check')}${esc(p)}</li>`).join('')}</ul>
     </div>
+    ${row(cards.slice(half), 'r')}
 </section>`;
+};
 
 export const homeBody = (t: SiteCopy, lang: Lang): string =>
     [story(t, lang), audience(t), mcp(t, lang), apps(t), more(t, lang), trust(t, lang), pricing(t, lang), faq(t, lang), cta(t)].join('\n');

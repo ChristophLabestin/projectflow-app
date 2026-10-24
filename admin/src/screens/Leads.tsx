@@ -17,6 +17,21 @@ const TABS: { value: Kind; label: string; hint: string }[] = [
     { value: 'legacy', label: 'Alt (newsletter)', hint: 'Alte Sammlung ohne Bestätigung' },
 ];
 
+/** Imports legacy newsletter/waitlist entries into the new platform newsletter (dry run first). */
+const MigrateButton: React.FC = () => {
+    const { confirm, toast } = useUi();
+    const run = async () => {
+        try {
+            const dry = await adminApi<{ result: Record<string, { found: number; imported: number; skipped: number }> }>('newsletter.migrateLegacy', { dryRun: true });
+            const lines = Object.entries(dry.result).map(([k, v]) => `${k}: ${v.found} gefunden, ${v.imported} würden übernommen, ${v.skipped} übersprungen`);
+            if (!(await confirm({ title: 'Altbestand in den Newsletter übernehmen?', message: <>Probelauf:<br />{lines.map((l) => <span key={l}>{l}<br /></span>)}Danach läuft dieselbe Übernahme ohne Probelauf.</>, confirmLabel: 'Übernehmen' }))) return;
+            const real = await adminApi<{ result: Record<string, { imported: number }> }>('newsletter.migrateLegacy', { dryRun: false });
+            toast(`Übernommen: ${Object.values(real.result).reduce((a, v) => a + v.imported, 0)}`);
+        } catch (err: any) { toast(err.message, 'error'); }
+    };
+    return <button className="ac-btn" onClick={run}>In Newsletter übernehmen …</button>;
+};
+
 export const Leads: React.FC = () => {
     const [kind, setKind] = useState<Kind>('subscribers');
     const [search, setSearch] = useState('');
@@ -47,7 +62,7 @@ export const Leads: React.FC = () => {
 
     return (
         <div className="ac-page">
-            <PageHead title="Leads & Newsletter" subtitle="Personenbezogene Daten. Jeder Abruf landet im Audit-Log." />
+            <PageHead title="Leads & Kontakt" subtitle="Altbestand (vor dem neuen Newsletter) und Kontaktformular. Personenbezogene Daten, jeder Abruf landet im Audit-Log." actions={<MigrateButton />} />
             <Tabs value={kind} onChange={(v) => { setKind(v as Kind); setOpen(null); }} tabs={TABS.map((t) => ({ value: t.value, label: <>{t.label} <span className="ac-muted">{data?.counts ? num(data.counts[t.value]) : ''}</span></> }))} />
             <ErrorNote error={error} onRetry={reload} />
             <DataTable id={`leads-${kind}`} exportName={`projectflow-${kind}`} rows={data ? rows : null} loading={loading} columns={columns} rowKey={(r) => r.id} onOpen={setOpen} selectedKey={open?.id} defaultSort={{ key: 'at', dir: 'desc' }}

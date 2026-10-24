@@ -17,7 +17,12 @@ const PAGES = [
     { path: '/system', title: 'System' },
     { path: '/legal', title: 'Rechtsdokumente' },
     { path: '/blog', title: 'Blog' },
-    { path: '/newsletter', title: 'Leads & Newsletter' },
+    { path: '/newsletter', title: 'Newsletter' },
+    { path: '/newsletter?tab=subscribers', title: 'Newsletter' },
+    { path: '/newsletter?tab=campaigns', title: 'Newsletter' },
+    { path: '/newsletter/campaigns/new', title: 'Neue Kampagne' },
+    { path: '/leads', title: 'Leads & Kontakt' },
+    { path: '/email', title: 'E-Mail' },
     { path: '/audit', title: 'Audit-Log' },
     { path: '/mcp-access', title: 'Admin-MCP' },
 ];

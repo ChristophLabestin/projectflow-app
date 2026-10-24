@@ -22,6 +22,9 @@ test('index exports every function defined in lib/ and nothing else', () => {
     const defined = new Map();
     for (const file of walk(LIB)) {
         if (file === path.join(LIB, 'index.js')) continue;
+        // tsc never deletes outputs: skip stale lib files whose source was removed (e.g. old waitlist.js).
+        const src = path.join(__dirname, '../../src', path.relative(LIB, file)).replace(/\.js$/, '.ts');
+        if (!fs.existsSync(src)) continue;
         const mod = require(file);
         for (const [name, value] of Object.entries(mod)) {
             if (value && value.__endpoint && !NOT_DEPLOYED.includes(name)) defined.set(name, value);

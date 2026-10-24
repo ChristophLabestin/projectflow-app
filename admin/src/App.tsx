@@ -21,6 +21,8 @@ const UsersScreen = named(() => import('./screens/Users'), 'UsersScreen');
 const WorkspacesScreen = named(() => import('./screens/Workspaces'), 'WorkspacesScreen');
 const AiScreen = named(() => import('./screens/Ai'), 'AiScreen');
 const SystemScreen = named(() => import('./screens/System'), 'SystemScreen');
+const NewsletterScreen = named(() => import('./screens/Newsletter'), 'NewsletterScreen');
+const CampaignEditor = named(() => import('./screens/Campaign'), 'CampaignEditor');
 const EmailScreen = named(() => import('./screens/Email'), 'EmailScreen');
 const McpAccess = named(() => import('./screens/McpAccess'), 'McpAccess');
 const McpConsent = named(() => import('./screens/McpConsent'), 'McpConsent');
@@ -54,7 +56,9 @@ const Gate: React.FC = () => {
                     <Route path="onboarding" element={<Onboarding />} />
                     <Route path="blog" element={<BlogList />} />
                     <Route path="blog/:id" element={<BlogEditor />} />
-                    <Route path="newsletter" element={<Leads />} />
+                    <Route path="leads" element={<Leads />} />
+                    <Route path="newsletter" element={<NewsletterScreen />} />
+                    <Route path="newsletter/campaigns/:id" element={<CampaignEditor />} />
                     <Route path="*" element={<Navigate to="/" replace />} />
                 </Route>
             </Routes>

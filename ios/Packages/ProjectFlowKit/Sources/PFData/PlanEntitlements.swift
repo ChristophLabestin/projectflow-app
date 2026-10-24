@@ -21,6 +21,8 @@ public struct PlanEntitlements: Equatable, Sendable {
     public var aiIncluded = true
     public var aiAddonAvailable = false
     public var aiMemberIds: Set<String> = []
+    public var seats = 0
+    public var aiAddonSeats = 0
     public var isPersonalWorkspace = false
     public var storageQuotaBytes: Int64?
     /// No entitlements document yet (legacy workspace in grace).
@@ -44,6 +46,8 @@ public struct PlanEntitlements: Equatable, Sendable {
         aiIncluded = data["aiIncluded"] as? Bool ?? false
         aiAddonAvailable = data["aiAddonAvailable"] as? Bool ?? false
         aiMemberIds = Set(data["aiMemberIds"] as? [String] ?? [])
+        seats = (data["seats"] as? NSNumber)?.intValue ?? 0
+        aiAddonSeats = (data["aiAddonSeats"] as? NSNumber)?.intValue ?? 0
         isPersonalWorkspace = (data["workspaceType"] as? String) == "personal"
         storageQuotaBytes = (data["storageQuotaBytes"] as? NSNumber)?.int64Value
     }

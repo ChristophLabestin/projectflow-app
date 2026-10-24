@@ -51,3 +51,12 @@ Verdikt: „ja, mit Änderungen“. Zu viele gepinnte Szenen hintereinander (Scr
 - Preise: unverändert ruhig, keine hochzählenden Zahlen. FAQ: natives `<details>`, zweispaltig.
 - Abschluss: Karten fliegen frei (ohne Pin) zum Logo zusammen; mobil einfaches Einblenden.
 - Gestrichen: Fortschrittslinie, Wort-Einblendung überall, Drei-Geräte-Reise, Preis-Count-up.
+
+## Nachbesserung (Owner-Feedback 2026-10-24)
+
+- KI & MCP neu: Überschrift zentriert, darunter breite Bühne Chat-Fenster → MCP-Verbindung („deine Rechte“) →
+  ProjectFlow-Board; Ablauf Prompt → Antwort → Tool-Aufruf mit Parametern → Signal → Karte landet → Aktivität →
+  Rechte (Lesen ✓, Anlegen & ändern ✓, Löschen ✗). Gepinnt nur ≥ 1000 × 780 px, sonst einmal abspielen.
+- FAQ: immer nur eine Antwort offen (`<details name="faq">`, JS-Fallback).
+- Abschluss: vollbreites dunkles Band mit zwei gleitenden Reihen erledigter Story-Aufgaben, Logo, großer Headline,
+  Buttons und drei Punkten (kostenlos, keine Kreditkarte, alle Geräte); bei reduced motion stehend.
