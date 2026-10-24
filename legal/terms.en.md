@@ -1,12 +1,12 @@
 # Terms of Service (SaaS Agreement)
 
-_Last updated: October 23, 2026_
+_Last updated: October 24, 2026_
 
 Summary (non-binding): ProjectFlow is an online project management service for businesses (not consumers), offered by subscription. By registering, the business agrees to these terms.
 
 ## 1. Parties and scope (B2B only)
 
-These terms apply between Christoph Labestin, Frühlingsstraße 8, 84082 Laberweinting, Germany ("Provider"), and the registering business ("Customer") for use of ProjectFlow ("Service"), including the web app, iOS app and desktop app.
+These terms apply between Labestin Digital, owner Christoph Labestin, Ödwieser Weg 7, 84082 Laberweinting, Germany ("Provider"), and the registering business ("Customer") for use of ProjectFlow ("Service"), including the web app, iOS app and desktop app.
 
 The Service is intended exclusively for business users within the meaning of § 14 BGB. The Customer warrants that it is not a consumer and is authorized to bind the business. Consumer protection rights (e.g. right of withdrawal) do not apply. Conflicting terms of the Customer do not apply unless the Provider agrees in writing. Individual agreements (e.g. an order form) take precedence; for data protection matters the data processing agreement also applies (Section 12).
 

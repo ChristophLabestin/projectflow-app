@@ -1,3 +1,2 @@
-- The terms were streamlined and aligned with today's features.
-- Provisions for removed modules (social media, marketing suite) were dropped.
-- The annexes (acceptable use policy, SLA, data processing) are no longer part of the document; the data processing agreement is available on request.
+- Provider details corrected: Labestin Digital (owner Christoph Labestin), Ödwieser Weg 7, 84082 Laberweinting.
+- Nothing else has changed.

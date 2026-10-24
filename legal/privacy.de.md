@@ -1,6 +1,6 @@
 # Datenschutzerklärung
 
-_Zuletzt aktualisiert: 23. Oktober 2026_
+_Zuletzt aktualisiert: 24. Oktober 2026_
 
 Diese Datenschutzerklärung gilt einheitlich für die Website getprojectflow.com, die Web-App unter app.getprojectflow.com, die iOS-App und die Desktop-App (macOS/Windows) von ProjectFlow.
 
@@ -8,8 +8,9 @@ Diese Datenschutzerklärung gilt einheitlich für die Website getprojectflow.com
 
 Verantwortlich im Sinne der DSGVO ist:
 
-Christoph Labestin  
-Frühlingsstraße 8  
+Labestin Digital  
+Inhaber: Christoph Labestin  
+Ödwieser Weg 7  
 84082 Laberweinting  
 Deutschland  
 E-Mail: [hello@getprojectflow.com](mailto:hello@getprojectflow.com)
