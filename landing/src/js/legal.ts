@@ -13,6 +13,7 @@ async function refresh(root: HTMLElement) {
         if (String(doc.version) === root.dataset.version) return;
         const { html, toc } = legalHtml(doc);
         root.innerHTML = `${legalToc(toc, doc, lang)}<div class="legal__content">${html}</div>`;
+        if (matchMedia('(min-width: 961px)').matches) root.querySelector('details.legal__toc')?.setAttribute('open', '');
         root.dataset.version = String(doc.version);
         const heading = document.querySelector<HTMLElement>('[data-legal-title]');
         const meta = document.querySelector<HTMLElement>('[data-legal-meta]');
@@ -24,6 +25,6 @@ async function refresh(root: HTMLElement) {
 }
 
 const root = document.querySelector<HTMLElement>('[data-legal]');
-// Small screens: the table of contents starts collapsed.
-if (root && !matchMedia('(min-width: 961px)').matches) root.querySelector('details.legal__toc')?.removeAttribute('open');
+// Wide screens: the table of contents sits in its own column, so opening it shifts nothing (closed on phones).
+if (root && matchMedia('(min-width: 961px)').matches) root.querySelector('details.legal__toc')?.setAttribute('open', '');
 if (root) void refresh(root);

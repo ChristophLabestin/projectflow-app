@@ -97,5 +97,5 @@ export const legalMetaLine = (doc: LegalDoc, lang: string) => {
 
 export const legalToc = (toc: { id: string; title: string }[], doc: LegalDoc, lang: string) =>
     (toc.length > 4 && doc.markdown.length > 6000
-        ? `<details class="legal__toc" open><summary>${lang === 'de' ? 'Inhalt' : 'Contents'}</summary><ol>${toc.map((s) => `<li><a href="#${s.id}">${escapeHtml(s.title)}</a></li>`).join('')}</ol></details>`
+        ? `<details class="legal__toc"><summary>${lang === 'de' ? 'Inhalt' : 'Contents'}</summary><ol>${toc.map((s) => `<li><a href="#${s.id}">${escapeHtml(s.title)}</a></li>`).join('')}</ol></details>`
         : '');
