@@ -415,13 +415,13 @@ struct LabelsSheet: View {
                 PFTextField(L10n.t("projectSettings.labels.namePlaceholder"), text: $editName, onSubmit: { saveEdit(label) })
                 PFIconButton("checkmark", label: L10n.t("common.save"), style: .glass, size: 40) { saveEdit(label) }
             } else {
+                // Tap the name to rename it (no pencil).
                 Text(label.name).pfText(.rowTitle).foregroundStyle(PFColor.textMain).lineLimit(1)
-                Spacer(minLength: 0)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .contentShape(.rect)
+                    .onTapGesture { if canEdit { editName = label.name; editing = label.id } }
+                    .accessibilityAction(named: L10n.t("common.edit")) { if canEdit { editName = label.name; editing = label.id } }
                 if canEdit {
-                    PFIconButton("pencil", label: L10n.t("common.edit"), style: .glass, size: 36) {
-                        editName = label.name
-                        editing = label.id
-                    }
                     PFIconButton("trash", label: L10n.t("common.delete"), style: .glass, size: 36) { delete(label) }
                 }
             }

@@ -138,6 +138,18 @@ final class RichEditorController {
         guard let textView else { return }
         textView.becomeFirstResponder()
         textView.selectedRange = NSRange(location: textView.textStorage.length, length: 0)
+        // Tap-to-edit: once the keyboard and the format bar are up, bring the caret above them.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.45) { [weak self] in self?.revealCaret() }
+    }
+
+    /// Scrolls the enclosing scroll view so the caret sits above the keyboard and the floating format bar.
+    func revealCaret() {
+        guard let textView, let end = textView.selectedTextRange?.end else { return }
+        let rect = textView.caretRect(for: end).insetBy(dx: 0, dy: -96)
+        var view: UIView? = textView.superview
+        while let current = view, !(current is UIScrollView) { view = current.superview }
+        guard let scroll = view as? UIScrollView else { return }
+        scroll.scrollRectToVisible(textView.convert(rect, to: scroll), animated: true)
     }
 
     var isEmpty: Bool { (textView?.text ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }

@@ -137,16 +137,6 @@ struct PersonalTaskScreen: View {
             HStack {
                 Text(L10n.t("taskDetail.description.label")).pfText(.section).foregroundStyle(PFColor.textMain)
                 Spacer()
-                if !isEditingDescription, !document.isEmpty, document.isEditable {
-                    Button {
-                        withAnimation(PFMotion.respecting(PFMotion.fast)) { isEditingDescription = true }
-                    } label: {
-                        Image(systemName: "pencil").font(.system(size: 14, weight: .semibold)).foregroundStyle(PFColor.textMuted)
-                            .frame(width: 34, height: 34).background(PFColor.raised, in: .circle)
-                    }
-                    .buttonStyle(.pfPressable)
-                    .accessibilityLabel(L10n.t("common.edit"))
-                }
             }
             if isEditingDescription {
                 RichTextEditorView(controller: editor)
@@ -167,7 +157,16 @@ struct PersonalTaskScreen: View {
                 }
                 .buttonStyle(.pfPressable)
             } else {
+                // Tap the text to edit it (no pencil).
                 RichTextView(html: task.summary)
+                    .contentShape(.rect)
+                    .onTapGesture {
+                        guard document.isEditable else { return }
+                        withAnimation(PFMotion.respecting(PFMotion.fast)) { isEditingDescription = true }
+                    }
+                    .accessibilityAction(named: L10n.t("common.edit")) {
+                        withAnimation(PFMotion.respecting(PFMotion.fast)) { isEditingDescription = true }
+                    }
             }
         }
         .padding(PFSpace.m)
