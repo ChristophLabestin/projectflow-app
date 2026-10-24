@@ -20,6 +20,8 @@ const LOCAL_DEV_ORIGINS = [
     'http://localhost:3001',
     'http://localhost:3002',
     'http://localhost:5173',
+    'http://localhost:4300', // landing dev server
+    'http://localhost:3161', // landing dev server (newsletter session)
 ];
 
 const envOrigins = (process.env.CORS_EXTRA_ORIGINS || '')

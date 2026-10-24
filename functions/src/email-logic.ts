@@ -62,6 +62,8 @@ export interface ParsedSesEvent {
     eventType: string;
     messageId: string;
     mailType: string;
+    /** SES tag `campaign` (platform newsletter), '' if absent. */
+    campaignId: string;
     actions: SesEventAction[];
 }
 
@@ -82,7 +84,7 @@ export const parseSesEvent = (raw: unknown): ParsedSesEvent | null => {
     const eventType = String(event.eventType || event.notificationType || '');
     if (!eventType) return null;
     const mail = asRecord(event.mail);
-    const base = { eventType, messageId: String(mail.messageId || ''), mailType: tagValue(mail, 'type') };
+    const base = { eventType, messageId: String(mail.messageId || ''), mailType: tagValue(mail, 'type'), campaignId: tagValue(mail, 'campaign') };
     const destinations: string[] = Array.isArray(mail.destination) ? mail.destination.map(String) : [];
 
     if (eventType === 'Bounce') {

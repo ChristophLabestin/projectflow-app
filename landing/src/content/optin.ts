@@ -1,0 +1,141 @@
+/**
+ * Waitlist, newsletter signup and double-opt-in confirm page (DE/EN).
+ * Consent sentences must match CONSENT_TEXTS in functions/src/platform-newsletter/logic.ts (they are logged as proof).
+ */
+const de = {
+    meta: {
+        title: 'Warteliste · ProjectFlow',
+        description: 'Trag dich auf die Warteliste von ProjectFlow ein. Wir melden uns per E-Mail, sobald dein Zugang bereitsteht.',
+        confirmTitle: 'E-Mail-Adresse bestätigen · ProjectFlow',
+        confirmDescription: 'Bestätige deine E-Mail-Adresse für die ProjectFlow-Warteliste oder den Newsletter.',
+    },
+    waitlist: {
+        eyebrow: 'Warteliste',
+        title: 'Sei unter den Ersten.',
+        text: 'Wir öffnen ProjectFlow Schritt für Schritt. Trag dich ein, dann schreiben wir dir, sobald dein Zugang bereitsteht. Kein Spam, nur diese eine Nachricht und wichtige Updates zum Start.',
+        email: 'E-Mail-Adresse',
+        emailPlaceholder: 'du@firma.de',
+        name: 'Name',
+        optional: 'optional',
+        namePlaceholder: 'Vor- und Nachname',
+        interest: 'Wofür möchtest du ProjectFlow nutzen?',
+        interestOptions: ['Allein / Freelance', 'Kleines Team', 'Agentur / Studio', 'Software-Team', 'Etwas anderes'],
+        interestNone: 'Bitte wählen',
+        consent: 'Ich möchte auf die Warteliste von ProjectFlow und per E-Mail erfahren, sobald ich einen Zugang bekomme. Die Einwilligung kann ich jederzeit widerrufen, z. B. über den Abmeldelink in jeder E-Mail.',
+        privacy: 'Details in der {privacy}.',
+        privacyLink: 'Datenschutzerklärung',
+        submit: 'Auf die Warteliste',
+        honeypot: 'Website (bitte leer lassen)',
+        points: ['Du bestätigst deine Adresse mit einem Klick (Double-Opt-in).', 'Abmelden geht jederzeit mit einem Klick.', 'Deine Daten bleiben bei uns in der EU.'],
+    },
+    newsletter: {
+        title: 'Lieber nur Neuigkeiten?',
+        text: 'Der ProjectFlow-Newsletter kommt etwa ein- bis zweimal im Monat: neue Funktionen, Tipps, Einblicke.',
+        consent: 'Ich möchte den ProjectFlow-Newsletter mit Produktneuigkeiten und Tipps per E-Mail erhalten (etwa ein- bis zweimal im Monat). Die Einwilligung kann ich jederzeit widerrufen, z. B. über den Abmeldelink in jeder E-Mail.',
+        submit: 'Newsletter abonnieren',
+    },
+    status: {
+        sending: 'Wird gesendet …',
+        sent: 'Fast geschafft: Wir haben dir eine E-Mail an {email} geschickt. Bitte klick auf den Link darin, um deine Adresse zu bestätigen. Schau auch im Spam-Ordner nach.',
+        invalidEmail: 'Bitte gib eine gültige E-Mail-Adresse ein.',
+        consentMissing: 'Bitte bestätige die Einwilligung.',
+        rateLimited: 'Zu viele Versuche. Bitte versuch es in einer Stunde noch einmal.',
+        error: 'Das hat nicht geklappt. Bitte versuch es später noch einmal oder schreib uns an hello@getprojectflow.com.',
+    },
+    confirm: {
+        eyebrow: 'Bestätigung',
+        title: 'Bestätige deine E-Mail-Adresse.',
+        text: 'Ein Klick noch, dann ist deine Anmeldung aktiv.',
+        button: 'Jetzt bestätigen',
+        working: 'Wird bestätigt …',
+        doneTitle: 'Danke!',
+        alreadyTitle: 'Schon bestätigt.',
+        failTitle: 'Das hat nicht geklappt.',
+        confirmedWaitlist: 'Du stehst auf der Warteliste. Wir melden uns an {email}, sobald dein Zugang bereitsteht.',
+        confirmedNewsletter: 'Dein Newsletter-Abo ist aktiv. Die nächste Ausgabe kommt an {email}.',
+        already: 'Diese Adresse ist bereits bestätigt. Du musst nichts weiter tun.',
+        expired: 'Dieser Link ist abgelaufen (48 Stunden). Melde dich einfach noch einmal an.',
+        invalid: 'Dieser Link ist ungültig oder wurde schon verwendet.',
+        missing: 'Kein Bestätigungscode gefunden. Öffne den Link aus der E-Mail bitte vollständig.',
+        again: 'Erneut anmelden',
+        home: 'Zur Startseite',
+        upsellTitle: 'Auch den Newsletter abonnieren?',
+        upsellText: 'Etwa ein- bis zweimal im Monat: neue Funktionen, Tipps und Einblicke. Das ist eine eigene Einwilligung, unabhängig von der Warteliste.',
+        upsellButton: 'Ja, Newsletter abonnieren',
+        upsellNo: 'Nein, danke',
+        upsellDone: 'Erledigt. Du bekommst ab jetzt auch den Newsletter.',
+    },
+};
+
+type OptinCopy = typeof de;
+
+const en: OptinCopy = {
+    meta: {
+        title: 'Waitlist · ProjectFlow',
+        description: 'Join the ProjectFlow waitlist. We will email you as soon as your access is ready.',
+        confirmTitle: 'Confirm your email address · ProjectFlow',
+        confirmDescription: 'Confirm your email address for the ProjectFlow waitlist or newsletter.',
+    },
+    waitlist: {
+        eyebrow: 'Waitlist',
+        title: 'Be among the first.',
+        text: 'We are opening ProjectFlow step by step. Join the list and we will email you as soon as your access is ready. No spam, just that message and important launch updates.',
+        email: 'Email address',
+        emailPlaceholder: 'you@company.com',
+        name: 'Name',
+        optional: 'optional',
+        namePlaceholder: 'First and last name',
+        interest: 'What would you use ProjectFlow for?',
+        interestOptions: ['Solo / freelance', 'Small team', 'Agency / studio', 'Software team', 'Something else'],
+        interestNone: 'Please choose',
+        consent: 'I want to join the ProjectFlow waitlist and be notified by email when I get access. I can withdraw my consent at any time, e.g. via the unsubscribe link in every email.',
+        privacy: 'Details in our {privacy}.',
+        privacyLink: 'privacy policy',
+        submit: 'Join the waitlist',
+        honeypot: 'Website (leave empty)',
+        points: ['You confirm your address with one click (double opt-in).', 'Unsubscribe any time with one click.', 'Your data stays with us in the EU.'],
+    },
+    newsletter: {
+        title: 'Just want the news?',
+        text: 'The ProjectFlow newsletter arrives about once or twice a month: new features, tips, insights.',
+        consent: 'I want to receive the ProjectFlow newsletter with product news and tips by email (about once or twice a month). I can withdraw my consent at any time, e.g. via the unsubscribe link in every email.',
+        submit: 'Subscribe',
+    },
+    status: {
+        sending: 'Sending …',
+        sent: 'Almost done: we sent an email to {email}. Please click the link inside to confirm your address. Check your spam folder too.',
+        invalidEmail: 'Please enter a valid email address.',
+        consentMissing: 'Please confirm the consent.',
+        rateLimited: 'Too many attempts. Please try again in an hour.',
+        error: 'That did not work. Please try again later or write to hello@getprojectflow.com.',
+    },
+    confirm: {
+        eyebrow: 'Confirmation',
+        title: 'Confirm your email address.',
+        text: 'One more click and your signup is active.',
+        button: 'Confirm now',
+        working: 'Confirming …',
+        doneTitle: 'Thank you!',
+        alreadyTitle: 'Already confirmed.',
+        failTitle: 'That did not work.',
+        confirmedWaitlist: 'You are on the waitlist. We will write to {email} as soon as your access is ready.',
+        confirmedNewsletter: 'Your newsletter subscription is active. The next issue goes to {email}.',
+        already: 'This address is already confirmed. Nothing else to do.',
+        expired: 'This link has expired (48 hours). Simply sign up again.',
+        invalid: 'This link is invalid or has already been used.',
+        missing: 'No confirmation code found. Please open the full link from the email.',
+        again: 'Sign up again',
+        home: 'Back to the home page',
+        upsellTitle: 'Subscribe to the newsletter too?',
+        upsellText: 'About once or twice a month: new features, tips and insights. This is a separate consent, independent of the waitlist.',
+        upsellButton: 'Yes, subscribe',
+        upsellNo: 'No, thanks',
+        upsellDone: 'Done. You will receive the newsletter from now on.',
+    },
+};
+
+export const optinCopy = { de, en };
+export type { OptinCopy };
+
+/** Double-opt-in endpoints (functions/src/platform-newsletter/public.ts). */
+export const OPTIN_API = 'https://europe-west3-projectflow-labestin.cloudfunctions.net';

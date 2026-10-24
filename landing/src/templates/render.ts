@@ -9,6 +9,8 @@ import { docsMcpBody } from './docs';
 import { buyBody } from './buy';
 import { buyCopy } from '../content/buy';
 import { docsMcp } from '../content/docs-mcp';
+import { optinCopy } from '../content/optin';
+import { confirmBody, waitlistBody } from './optin';
 
 /** Legal texts fetched once per build/dev render by vite.config.ts (key: "<kind>.<lang>"). */
 let legalDocs: Record<string, LegalDoc> = {};
@@ -61,6 +63,25 @@ export function renderPage(page: PageDef): string {
                 bodyClass: 'page-buy',
                 noindex: true,
                 chrome: 'focus',
+            });
+        case 'waitlist':
+            return layout({
+                page,
+                title: optinCopy[page.lang].meta.title,
+                description: optinCopy[page.lang].meta.description,
+                body: waitlistBody(page.lang),
+                scripts: ['/src/js/main.ts', '/src/js/optin.ts'],
+                bodyClass: 'page-optin',
+            });
+        case 'confirm':
+            return layout({
+                page,
+                title: optinCopy[page.lang].meta.confirmTitle,
+                description: optinCopy[page.lang].meta.confirmDescription,
+                body: confirmBody(page.lang),
+                scripts: ['/src/js/main.ts', '/src/js/optin.ts'],
+                bodyClass: 'page-optin',
+                noindex: true,
             });
         case 'notFound':
             return layout({

@@ -100,6 +100,7 @@ Deploy only touched functions when possible, for example: `cd functions && fireb
   console on :3141, login `demo@projectflow.test` / `projectflow-demo`). `ADMIN_DEV_SERVER=0` = emulators only.
 - Tests: `npm --prefix admin test` (Vitest), `node functions/scripts/unit/admin-gate.test.js` via `npm --prefix functions run test:unit`,
   gateway E2E `node functions/scripts/admin-console-e2e.mjs` (needs `ADMIN_DEV_SERVER=0 bash scripts/dev-admin.sh`).
+  Waitlist/newsletter E2E `node functions/scripts/newsletter-e2e.mjs` (same emulators; ports/flow in the file header; mails land in `dev_outbox`).
 - Build: `npm --prefix admin run build` (`tsc --noEmit && vite build` → `admin/dist`).
 - Pre-deploy smoke (mandatory before console hosting deploys): fetch + merge main → `bash scripts/predeploy-smoke-admin.sh` (Exit ≠ 0 = do not deploy; own ports 4292/9881/8881/9882/5881; gate refuses a normal user, admin opens every page without errors).
 - Deploy: `(cd admin && npm run deploy)` = build + `firebase deploy --only hosting --project projectflow-labestin` with `admin/firebase.json` (site `projectflow-admin`). Backend: `firebase deploy --only functions:adminApi --project projectflow-labestin`.

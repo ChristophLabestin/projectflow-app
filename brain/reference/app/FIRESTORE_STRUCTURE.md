@@ -10,10 +10,11 @@
 ## **Public / System Collections**
 These collections are largely public or allow unauthenticated access (e.g., for landing page forms).
 
-*   📂 **`waitlist`** (Public Read/Write)
-    *   📄 `{email}`: Waitlist entry
-*   📂 **`newsletter`** (Public Read/Write)
-    *   📄 `{email}`: Newsletter subscription
+*   📂 **`waitlist`**, **`waitlist_pending`**, **`newsletter`**, **`newsletter_subscribers`**, **`newsletter_pending`** (legacy, server-only since 2026-10-24; read via admin `leads.list`)
+*   📂 **`platform_subscribers`** (server-only) — platform waitlist + newsletter, id = sha256(email); `lists.{waitlist,newsletter}.status`
+    *   📂 `consent_log` — consent proof (IP, user agent, consent text + version)
+*   📂 **`platform_optin_tokens`**, **`platform_campaigns`** (+ `sends`) (server-only). Contract: `brain/plans/newsletter-contract.md`
+*   📂 **`dev_outbox`** — emulator-only mail sink of `sendEmail()`
 *   📂 **`contact_submissions`** (Public Create)
     *   📄 `{docId}`: Contact form messages
 *   📂 **`blog_posts`** (Public Read)

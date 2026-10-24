@@ -167,13 +167,14 @@ service cloud.firestore {
         !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'roleIds', 'uid', 'inviteId']);
     }
 
-    // Public marketing intake. These remain write-only from clients.
+    // Old landing intake (legacy, read via adminApi leads.list). New signups go through the double-opt-in
+    // endpoints (functions/src/platform-newsletter), so clients no longer write here.
     match /waitlist/{email} {
-      allow create: if true;
+      allow read, write: if false;
     }
 
     match /newsletter/{email} {
-      allow create: if true;
+      allow read, write: if false;
     }
 
     match /contact_submissions/{doc} {
@@ -225,6 +226,18 @@ service cloud.firestore {
     match /email_stats/{day} { allow read, write: if false; }
     // Public endpoint rate limits (functions/src/public-rate-limit.ts), server-only.
     match /public_rate_limits/{id} { allow read, write: if false; }
+    // Platform waitlist + newsletter (brain/plans/newsletter-contract.md): only Cloud Functions / adminApi.
+    match /platform_subscribers/{id} {
+      allow read, write: if false;
+      match /consent_log/{entry} { allow read, write: if false; }
+    }
+    match /platform_optin_tokens/{id} { allow read, write: if false; }
+    match /platform_campaigns/{id} {
+      allow read, write: if false;
+      match /sends/{subscriberId} { allow read, write: if false; }
+    }
+    // Emulator mail sink (functions/src/email.ts), never used in production.
+    match /dev_outbox/{id} { allow read, write: if false; }
     // Admin MCP (functions/src/admin-console/mcp): clients, requests, codes, grants, tokens, pending confirmations.
     match /admin_mcp_clients/{id} { allow read, write: if false; }
     match /admin_mcp_requests/{id} { allow read, write: if false; }

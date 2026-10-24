@@ -102,10 +102,12 @@ export type EmailSendOptions = {
   /** One-click unsubscribe URL (RFC 8058) for non-transactional mails. */
   unsubscribeUrl?: string;
   text?: string;
+  /** Extra SES tags (e.g. `campaign` for platform newsletter stats in sesEvents). */
+  tags?: Record<string, string>;
 };
 
 export type SendEmailResult = {
-  transport: 'ses' | 'smtp' | 'tenant-smtp' | 'suppressed';
+  transport: 'ses' | 'smtp' | 'tenant-smtp' | 'suppressed' | 'emulator';
   messageId?: string;
 };
 
@@ -216,7 +218,7 @@ const awaitSendSlot = async (client: SESv2Client) => {
 
 const sendViaSes = async (
   client: SESv2Client,
-  mail: { to: string; subject: string; html: string; text: string; replyTo: string; headers: { Name: string; Value: string }[]; type: EmailType }
+  mail: { to: string; subject: string; html: string; text: string; replyTo: string; headers: { Name: string; Value: string }[]; type: EmailType; tags?: Record<string, string> }
 ) => {
   const configurationSet = env('SES_CONFIGURATION_SET', 'projectflow-default');
   const command = new (sesSdk().SendEmailCommand)({
@@ -226,7 +228,8 @@ const sendViaSes = async (
     ConfigurationSetName: configurationSet === 'none' ? undefined : configurationSet,
     EmailTags: [
       { Name: 'type', Value: sesTagValue(mail.type) },
-      { Name: 'category', Value: NON_TRANSACTIONAL.has(mail.type) ? 'list' : 'transactional' }
+      { Name: 'category', Value: NON_TRANSACTIONAL.has(mail.type) ? 'list' : 'transactional' },
+      ...Object.entries(mail.tags || {}).slice(0, 5).map(([Name, Value]) => ({ Name: sesTagValue(Name), Value: sesTagValue(Value) }))
     ],
     Content: {
       Simple: {
@@ -290,7 +293,13 @@ export const sendEmail = async (to: string, subject: string, html: string, optio
     return { transport: 'suppressed' };
   }
   const headers = options.unsubscribeUrl ? listUnsubscribeHeaders(options.unsubscribeUrl) : [];
-  const mail = { to: recipient, subject, html, text: options.text || stripHtml(html), replyTo: options.replyTo || replyToDefault(), headers, type };
+  const mail = { to: recipient, subject, html, text: options.text || stripHtml(html), replyTo: options.replyTo || replyToDefault(), headers, type, tags: options.tags };
+
+  // Emulator without any transport configured: mails land in dev_outbox (E2E tests read links from there).
+  if (process.env.FUNCTIONS_EMULATOR === 'true' && !getSesClient() && !env('SMTP_HOST')) {
+    const ref = await db.collection('dev_outbox').add({ ...mail, tags: mail.tags || {}, createdAt: new Date() });
+    return { transport: 'emulator', messageId: ref.id };
+  }
 
   const tenantSmtp = await getTenantSmtpConfig(options.tenantId);
   if (tenantSmtp) {

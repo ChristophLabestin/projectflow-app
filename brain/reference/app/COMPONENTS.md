@@ -324,6 +324,7 @@ Concept: `brain/plans/help-center-rework.md`.
 
 - `components/reminders/ReminderControls.tsx`: `ReminderNotifyToggle` ("Also remind assignees", `notifyAssignees`) and `ReminderSentBadge` (`sentAt`). Used by the task workbench (`ProjectTaskDetail`) and the project reminders popover (`ProjectRemindersPanel`); new reminders also set `createdBy` and `recipientIds: [uid]` (contract C2).
 - `components/settings/SettingsSwitch.tsx`: accessible `role="switch"` for settings rows.
+- `components/settings/PlatformNewsletterCard.tsx`: "ProjectFlow newsletter" switch at the end of the Notifications tab (callable `platformNewsletterPreference`, double opt-in: on → pending until the mail link is clicked).
 - `components/settings/NotificationSettingsPanel.tsx`: personal settings tab "Notifications" (`users/{uid}.notificationPrefs`: push/email per category, morning briefing, day close, time zone auto-detected and saved on first open; every change saves immediately).
 - `components/ui/AppleLogo.tsx`: Apple glyph (`currentColor`) for Sign in with Apple (`screens/Login.tsx`) and "Connected accounts" in the security settings.
 - Dashboard plan rows (`screens/Dashboard.tsx`) show personal tasks with a lock glyph (`dashboard.route.personal`), a "+ N more open tasks" link (`moreCount`) and a "Waiting on you" rail section.

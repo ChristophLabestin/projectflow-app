@@ -14,6 +14,7 @@ import {
 } from '../../utils/notificationPrefs';
 import { browserTimeZone } from '../../utils/zonedDate';
 import { SettingsSwitch } from './SettingsSwitch';
+import { PlatformNewsletterCard } from './PlatformNewsletterCard';
 
 type SaveState = 'idle' | 'saving' | 'saved' | 'error';
 type Channel = 'push' | 'email';
@@ -227,6 +228,8 @@ export const NotificationSettingsPanel: React.FC = () => {
                     </div>
                 </div>
             </section>
+
+            <PlatformNewsletterCard />
         </div>
     );
 };

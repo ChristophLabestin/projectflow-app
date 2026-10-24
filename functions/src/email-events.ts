@@ -40,6 +40,11 @@ export const setSuppression = async (
             ...(snap.exists ? {} : { createdAt: FieldValue.serverTimestamp() }),
         }, { merge: true });
     });
+    // Platform newsletter: a blocked address is no longer a deliverable subscriber.
+    if (entry.active) {
+        const { markBounced } = await import('./platform-newsletter/store');
+        await markBounced(email, `${entry.reason}: ${entry.detail}`.slice(0, 300)).catch((error) => console.warn('markBounced failed', error?.message));
+    }
 };
 
 const applyAction = async (action: SesEventAction, meta: { mailType: string; messageId: string }) => {
@@ -67,10 +72,14 @@ const applyAction = async (action: SesEventAction, meta: { mailType: string; mes
 };
 
 /** Daily counters for the admin console (bounce/complaint rate vs. SES thresholds 5 % / 0.1 %). */
-const countEvent = async (eventType: string, mailType: string, recipients: number) => {
+const countEvent = async (eventType: string, mailType: string, recipients: number, campaignId = '') => {
     const day = new Date().toISOString().slice(0, 10);
     const key = eventType.replace(/[^A-Za-z]/g, '').toLowerCase() || 'other';
     const inc = FieldValue.increment(Math.max(recipients, 1));
+    if (campaignId && campaignId !== 'test' && /^[A-Za-z0-9_-]{1,64}$/.test(campaignId)) {
+        // Platform newsletter campaign stats (delivery, bounce, complaint, …); missing campaigns are ignored.
+        await db.collection('platform_campaigns').doc(campaignId).update({ [`stats.ses.${key}`]: inc }).catch(() => undefined);
+    }
     await db.collection('email_stats').doc(day).set({
         day,
         counts: { [key]: inc },
@@ -154,7 +163,7 @@ export const sesEvents = onRequest({ region: REGION, serviceAccount: FUNCTIONS_S
         // SNS retries on non-2xx, so a failed write gets another chance; suppression writes are idempotent.
         const meta = { mailType: event.mailType, messageId: event.messageId };
         for (const action of event.actions) await applyAction(action, meta);
-        await countEvent(event.eventType, event.mailType, event.actions.length);
+        await countEvent(event.eventType, event.mailType, event.actions.length, event.campaignId);
         if (event.eventType === 'Bounce' || event.eventType === 'Complaint') {
             console.log(`sesEvents: ${event.eventType} type=${event.mailType} recipients=${event.actions.length}`);
         }
@@ -195,6 +204,27 @@ export const notificationUnsubscribeUrl = async (uid: string, category: string):
     return `${unsubscribeBase()}?t=${encodeURIComponent(token)}`;
 };
 
+/** Unsubscribe link for platform newsletter/waitlist mails (subject = platform_subscribers id). */
+export const newsletterUnsubscribeUrl = async (subscriberId: string, list: string, campaignId?: string): Promise<string> => {
+    const token = signUnsubscribeToken(await getUnsubscribeKey(), subscriberId, `newsletter:${list}${campaignId ? `:${campaignId}` : ''}`);
+    return `${unsubscribeBase()}?t=${encodeURIComponent(token)}`;
+};
+
+const NEWSLETTER_TEXT = {
+    de: {
+        title: 'Vom ProjectFlow-Newsletter abmelden',
+        titleWaitlist: 'Von der ProjectFlow-Warteliste abmelden',
+        confirm: 'Möchtest du dich abmelden? Du bekommst danach keine E-Mails dieser Liste mehr.',
+        done: 'Erledigt. Du bist abgemeldet und bekommst keine E-Mails dieser Liste mehr.',
+    },
+    en: {
+        title: 'Unsubscribe from the ProjectFlow newsletter',
+        titleWaitlist: 'Leave the ProjectFlow waitlist',
+        confirm: 'Do you want to unsubscribe? You will no longer receive emails from this list.',
+        done: 'Done. You are unsubscribed and will no longer receive emails from this list.',
+    },
+};
+
 const PAGE_TEXT = {
     de: {
         title: 'E-Mail-Benachrichtigungen abbestellen',
@@ -212,12 +242,17 @@ const PAGE_TEXT = {
     },
 };
 
-const page = (lang: 'de' | 'en', body: string) => `<!DOCTYPE html><html lang="${lang}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex"><title>${PAGE_TEXT[lang].title}</title>
+const page = (lang: 'de' | 'en', body: string, title = PAGE_TEXT[lang].title) => `<!DOCTYPE html><html lang="${lang}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex"><title>${title}</title>
 <style>body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;background:#f9fafb;color:#000;margin:0;padding:48px 16px}main{max-width:480px;margin:0 auto;background:#fff;border-radius:16px;padding:32px;text-align:center}button{background:#000;color:#fff;border:0;border-radius:8px;padding:14px 28px;font-size:16px;font-weight:600;cursor:pointer}</style></head>
-<body><main><h1 style="font-size:22px">${PAGE_TEXT[lang].title}</h1>${body}<p style="margin-top:32px"><a href="https://app.getprojectflow.com/?openSettings=notifications" style="color:#6b7280">ProjectFlow</a></p></main></body></html>`;
+<body><main><h1 style="font-size:22px">${title}</h1>${body}<p style="margin-top:32px"><a href="https://app.getprojectflow.com/?openSettings=notifications" style="color:#6b7280">ProjectFlow</a></p></main></body></html>`;
 
-const applyUnsubscribe = async (subject: string, scope: string) => {
-    const [kind, category] = scope.split(':');
+const applyUnsubscribe = async (subject: string, scope: string, ip?: string) => {
+    const [kind, category, campaignId] = scope.split(':');
+    if (kind === 'newsletter') {
+        if (category !== 'newsletter' && category !== 'waitlist') return false;
+        const { unsubscribe } = await import('./platform-newsletter/store');
+        return unsubscribe(subject, category, { via: 'link', campaignId, ip });
+    }
     if (kind !== 'notif' || !PREF_CATEGORIES.includes(category as PrefCategory)) return false;
     await db.collection('users').doc(subject).set({ notificationPrefs: { email: { [category]: false } } }, { merge: true });
     console.log(`emailUnsubscribe: ${category} off for ${subject.slice(0, 6)}…`);
@@ -226,18 +261,22 @@ const applyUnsubscribe = async (subject: string, scope: string) => {
 
 export const emailUnsubscribe = functions.region(REGION).https.onRequest(async (req, res) => {
     const lang = /^de\b/i.test(String(req.headers['accept-language'] || '')) ? 'de' : 'en';
-    const t = PAGE_TEXT[lang];
     const token = String(req.query.t || '');
     res.set('Cache-Control', 'no-store');
     const parsed = verifyUnsubscribeToken(await getUnsubscribeKey(), token);
+    const n = NEWSLETTER_TEXT[lang];
+    const t = parsed?.scope.startsWith('newsletter:')
+        ? { ...PAGE_TEXT[lang], title: parsed.scope.startsWith('newsletter:waitlist') ? n.titleWaitlist : n.title, confirm: n.confirm, done: n.done }
+        : PAGE_TEXT[lang];
     if (!parsed) {
-        res.status(400).send(page(lang, `<p>${t.invalid}</p>`));
+        res.status(400).send(page(lang, `<p>${t.invalid}</p>`, t.title));
         return;
     }
     if (req.method === 'POST') {
         // RFC 8058 one-click (mail client) or the confirm button below.
-        const ok = await applyUnsubscribe(parsed.subject, parsed.scope);
-        res.status(ok ? 200 : 400).send(page(lang, `<p>${ok ? t.done : t.invalid}</p>`));
+        const ip = String(req.headers['x-forwarded-for'] || req.ip || '').split(',')[0].trim();
+        const ok = await applyUnsubscribe(parsed.subject, parsed.scope, ip);
+        res.status(ok ? 200 : 400).send(page(lang, `<p>${ok ? t.done : t.invalid}</p>`, t.title));
         return;
     }
     if (req.method !== 'GET') {
@@ -245,5 +284,5 @@ export const emailUnsubscribe = functions.region(REGION).https.onRequest(async (
         return;
     }
     // GET only shows a confirm button: link scanners must not unsubscribe anyone.
-    res.status(200).send(page(lang, `<p>${t.confirm}</p><form method="post" action="?t=${encodeURIComponent(token)}"><button type="submit">${t.button}</button></form>`));
+    res.status(200).send(page(lang, `<p>${t.confirm}</p><form method="post" action="?t=${encodeURIComponent(token)}"><button type="submit">${t.button}</button></form>`, t.title));
 });
