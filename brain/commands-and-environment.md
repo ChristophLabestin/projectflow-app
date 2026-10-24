@@ -40,6 +40,21 @@ Use this to QA signed-in screens without touching production.
 **Security tests** (from `functions/`): `npm run test:rules` (Firestore rules, 33 checks), `node scripts/storage-rules-test.js` under `firebase emulators:exec --only firestore,storage`, `npm run test:account-data` (GDPR export/erasure), `npm run test:ai-access` (AI access model on `/api` + `/mcp` against own emulators, ports 9951/8951/5951: creator membership, role ceiling, AI policy, audit, annotations). `RULES_PATH=<file>` runs the Firestore suite against another rules file (e.g. an older version) for comparison.
 
 
+**E2E regression suite** (`bash scripts/e2e-regression.sh`, ~70 s locally incl. build, CI job `regression`):
+the production build (`E2E_WEB=preview`) against freshly seeded emulators with published legal docs
+(`E2E_LEGAL=1`), specs in `web/e2e/regression/` (config `web/playwright.regression.config.ts`, serial, one
+worker). Covers: task create/edit/done, file upload/trash/purge, wiki page create/edit/@-link, flow from
+template → test → activate → real event → run log, invite + member/seat limit (UI hint and
+`acceptWorkspaceInvite` refusal), legal consent gate, workspace suspension, Free plan limits (project limit
+dialog, read-only project, no invites) and API-level security regressions from
+`brain/audits/2026-10-24-security-review.md`. Own ports 3151/9851/8851/9852/5851 (`REGRESSION_*_PORT`);
+`bash scripts/e2e-regression.sh files wiki` runs only matching specs, `REGRESSION_WEB=dev` uses the Vite dev
+server, `REGRESSION_REPORTER=list` prints per-test durations. Specs flip workspace state (entitlements,
+`suspendedAt`) through the Firestore emulator REST API (`Bearer owner`) and restore it in `afterAll`; luis is
+reserved for the legal-gate spec (first sign-in without consent). Emulator-only code path: Storage uploads
+and reads skip V4 signing when `FUNCTIONS_EMULATOR` + `FIREBASE_STORAGE_EMULATOR_HOST` are set
+(`file-storage.ts` `storageEmulatorHost`).
+
 ## Functions Commands
 
 - Build: `cd functions && npm run build`
