@@ -39,6 +39,8 @@ import {
     assigneesOf,
     canManageAutomation,
     checkLimits,
+    lockedProjectsOf,
+    ownerMayRun,
     flowQuotaFor,
     computeNextRunAt,
     conditionsNeedTask,
@@ -286,7 +288,14 @@ interface ExecState {
     adminIds: string[] | null;
     today: string;
     dryRun: boolean;
+    /** Free-plan projects over the limit (entitlements `lockedProjectIds`): no flow writes. */
+    lockedProjectIds: Set<string>;
 }
+
+/** Writes into a locked (read-only) project fail with the billing code the UI translates. */
+const assertWritable = (state: ExecState, projectId: string | null | undefined) => {
+    if (projectId && state.lockedProjectIds.has(projectId)) throw new StepError('plan-project-locked');
+};
 
 interface StepResult {
     status: 'ok' | 'noop' | 'skipped';
@@ -365,6 +374,7 @@ const loadProject = async (state: ExecState, projectId: string | null) => {
 
 const addComment = async (state: ExecState, text: string, actionId: string) => {
     requireTask(state);
+    assertWritable(state, state.ctx.projectId);
     const ref = db.doc(`tenants/${state.tenantId}/projects/${state.ctx.projectId}/comments/${runIdFor(state.runId, actionId)}`);
     try {
         await ref.create({
@@ -545,6 +555,7 @@ const performTaskPatch = async (state: ExecState, action: Action): Promise<StepR
     requireTask(state);
     const patch = planTaskPatch(action, state.task!, { ...(await peopleContext(state)), today: state.today });
     if (!patch) return { status: 'noop' };
+    assertWritable(state, state.ctx.projectId);
     if (state.dryRun) return { status: 'ok', output: JSON.stringify(patch) };
     const write: Json = { ...patch, updatedAt: FieldValue.serverTimestamp(), updatedBy: state.ownerId, writeVia: writeVia(state) };
     Object.keys(write).forEach((key) => {
@@ -589,6 +600,7 @@ const performCreateTask = async (state: ExecState, action: Action, options: { ra
     const docId = runIdFor(state.runId, action.id);
     if (c.asSubtask) {
         requireTask(state);
+        assertWritable(state, state.ctx.projectId);
         if (state.dryRun) return { status: 'ok', output: `Subtask: ${title}` };
         try {
             await state.taskRef!.collection('subtasks').doc(docId).create({
@@ -612,6 +624,7 @@ const performCreateTask = async (state: ExecState, action: Action, options: { ra
     if (!projectId) throw new StepError('Choose a project for the new task.');
     const project = await projectRefOf(state.tenantId, projectId).get();
     if (!project.exists) throw new StepError('The target project no longer exists.');
+    assertWritable(state, projectId);
     if (state.dryRun) return { status: 'ok', output: `Task: ${title}` };
     try {
         await taskRefOf(state.tenantId, projectId, docId).create({
@@ -646,6 +659,8 @@ const performMove = async (state: ExecState, action: Action): Promise<StepResult
     if (targetId === state.ctx.projectId) return { status: 'noop' };
     const target = await projectRefOf(state.tenantId, targetId).get();
     if (!target.exists) throw new StepError('The target project no longer exists.');
+    assertWritable(state, state.ctx.projectId);
+    assertWritable(state, targetId);
     if (state.dryRun) return { status: 'ok', output: `Move to ${target.data()?.title || targetId}` };
     const taskId = state.ctx.taskId!;
     const fromRef = state.taskRef!;
@@ -775,6 +790,24 @@ export const executeRun = async (tenantId: string, runId: string, options: Execu
             'The flow owner no longer has access to this workspace. Open the flow and save it to take it over.');
         return finish('failed', { error: 'Flow owner lost access.' });
     }
+    // Re-check the owner's right to run this flow now (role changes, member policy, project gone).
+    const [tenantSnap, flowProjectSnap, entSnap] = await Promise.all([
+        db.doc(`tenants/${tenantId}`).get(),
+        automation.scope === 'project' && automation.projectId ? projectRefOf(tenantId, automation.projectId).get() : Promise.resolve(null),
+        db.doc(`tenants/${tenantId}/entitlements/plan`).get()
+    ]);
+    const permitted = ownerMayRun({
+        role: ownerRole,
+        uid: ownerId,
+        scope: automation.scope === 'project' ? 'project' : 'workspace',
+        project: flowProjectSnap?.exists ? (flowProjectSnap.data() as Json) : null,
+        allowMemberFlows: tenantSnap.data()?.automationPolicy?.allowMemberFlows !== false
+    });
+    if (!permitted) {
+        await pauseAutomation(tenantId, run.automationId, automation, 'owner_lost_access',
+            'The flow owner may no longer manage this flow (role or workspace policy changed). An admin can open the flow and save it to take it over.');
+        return finish('failed', { error: 'Flow owner is no longer permitted to run this flow.' });
+    }
 
     const ctx = run.context as RunContext;
     const state: ExecState = {
@@ -790,7 +823,8 @@ export const executeRun = async (tenantId: string, runId: string, options: Execu
         project: null,
         adminIds: null,
         today: localDateKey(Date.now(), flowTimeZone(automation.trigger)),
-        dryRun: false
+        dryRun: false,
+        lockedProjectIds: lockedProjectsOf(entSnap.exists ? entSnap.data() : null)
     };
     await Promise.all([reloadTask(state), loadProject(state, ctx.projectId)]);
     if (state.task) {
@@ -1283,7 +1317,8 @@ export const previewAutomation = callable(async (data, context) => {
         const matches = outcome.passed;
         const state: ExecState = {
             tenantId, automationId: 'preview', automation: { ...def, ownerId: uid }, runId: 'preview', depth: 1, ctx, ownerId: uid,
-            task: { ...task }, taskRef, project: null, adminIds: null, today, dryRun: true
+            task: { ...task }, taskRef, project: null, adminIds: null, today, dryRun: true,
+            lockedProjectIds: lockedProjectsOf((await loadFlowQuota(tenantId)).entitlement)
         };
         await loadProject(state, projectId);
         const steps: Json[] = [];

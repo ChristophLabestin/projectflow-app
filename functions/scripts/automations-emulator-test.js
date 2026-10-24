@@ -22,6 +22,7 @@ const T = 'ws-flows';
 const T2 = 'ws-limits';
 const T3 = 'ws-suspended';
 const T4 = 'ws-free';
+const T5 = 'ws-security';
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const waitFor = async (label, fn, { timeout = 30000, interval = 300 } = {}) => {
@@ -108,7 +109,7 @@ const flowDoc = (tenantId, id, def, ownerId) => db.doc(`tenants/${tenantId}/auto
     const guest = await signUp('guest@example.test');
     const outsider = await signUp('out@example.test');
 
-    for (const [tenantId, name] of [[T, 'Flows Test'], [T2, 'Limits Test'], [T3, 'Suspended Test'], [T4, 'Free Test']]) {
+    for (const [tenantId, name] of [[T, 'Flows Test'], [T2, 'Limits Test'], [T3, 'Suspended Test'], [T4, 'Free Test'], [T5, 'Security Test']]) {
         await db.doc(`tenants/${tenantId}`).set({ tenantId, name, ownerId: owner.uid });
         await db.doc(`tenants/${tenantId}/members/${owner.uid}`).set({ uid: owner.uid, role: 'Owner', displayName: 'Olga' });
         await db.doc(`tenants/${tenantId}/members/${anna.uid}`).set({ uid: anna.uid, role: 'Member', displayName: 'Anna' });
@@ -439,6 +440,49 @@ const flowDoc = (tenantId, id, def, ownerId) => db.doc(`tenants/${tenantId}/auto
         assert.equal(usage.runsLimit, 200);
         assert.equal(usage.quotaTier, 'free');
         await db.doc('_test/flowsAi').delete();
+    });
+
+    await check('security M6: owner rights re-checked per run (member policy off → paused)', async () => {
+        await db.doc(`tenants/${T5}/projects/p1`).set({ title: 'Sec', ownerId: owner.uid, memberIds: [owner.uid, anna.uid], tenantId: T5 });
+        await flowDoc(T5, 'member-flow', { name: 'Member flow', scope: 'project', projectId: 'p1', trigger: { type: 'task.created', config: {} },
+            actions: [{ id: 'a1', type: 'add_label', config: { label: 'x' } }] }, anna.uid);
+        await addTask(T5, 'p1', 'm1', owner.uid);
+        await waitFor('allowed run', async () => (await runsOf(T5, 'member-flow')).some((run) => run.status === 'succeeded'));
+        await db.doc(`tenants/${T5}`).set({ automationPolicy: { allowMemberFlows: false } }, { merge: true });
+        await addTask(T5, 'p1', 'm2', owner.uid);
+        const failed = await waitFor('denied run', async () => (await runsOf(T5, 'member-flow')).find((run) => run.taskId === 'm2' && run.status === 'failed'));
+        assert.match(failed.error, /no longer permitted/);
+        const flow = (await db.doc(`tenants/${T5}/automations/member-flow`).get()).data();
+        assert.equal(flow.enabled, false);
+        assert.equal(flow.pausedReason, 'owner_lost_access');
+        assert.equal((await task(T5, 'p1', 'm2').get()).data().category, undefined, 'nothing written');
+        // Demoted admin: workspace flow stops.
+        await db.doc(`tenants/${T5}/members/${anna.uid}`).set({ role: 'Member' }, { merge: true });
+        await flowDoc(T5, 'ws-flow', { name: 'WS', trigger: { type: 'task.created', config: {} },
+            actions: [{ id: 'a1', type: 'add_label', config: { label: 'y' } }] }, anna.uid);
+        await addTask(T5, 'p1', 'm3', owner.uid);
+        await waitFor('ws denied', async () => (await runsOf(T5, 'ws-flow')).some((run) => run.status === 'failed'));
+    });
+
+    await check('security M5: locked projects (Free over limit) are read-only for flows', async () => {
+        await db.doc(`tenants/${T5}/projects/p2`).set({ title: 'Locked', ownerId: owner.uid, memberIds: [owner.uid], tenantId: T5 });
+        await db.doc(`tenants/${T5}/entitlements/plan`).set({ plan: 'free', status: 'free', flowsQuota: 'free', lockedProjectIds: ['p2'] });
+        await flowDoc(T5, 'locked-flow', { name: 'Locked', scope: 'project', projectId: 'p2', trigger: { type: 'task.created', config: {} },
+            actions: [{ id: 'a1', type: 'add_label', config: { label: 'z' } }] }, owner.uid);
+        await flowDoc(T5, 'into-locked', { name: 'Into locked', scope: 'project', projectId: 'p1', trigger: { type: 'task.created', config: {} },
+            actions: [{ id: 'a1', type: 'create_task', config: { title: 'Copy', projectId: 'p2', priority: 'Medium', status: 'Open', userIds: [], dynamic: [] } }] }, owner.uid);
+        await addTask(T5, 'p2', 'l1', owner.uid);
+        await addTask(T5, 'p1', 'l2', owner.uid);
+        const [locked] = await waitFor('locked run', async () => {
+            const list = await runsOf(T5, 'locked-flow');
+            return list.length && list[0].status === 'failed' && list;
+        });
+        assert.equal(locked.steps[0].error, 'plan-project-locked');
+        assert.equal((await task(T5, 'p2', 'l1').get()).data().category, undefined);
+        const into = await waitFor('into locked run', async () => (await runsOf(T5, 'into-locked')).find((run) => run.taskId === 'l2' && run.status === 'failed'));
+        assert.equal(into.steps[0].error, 'plan-project-locked');
+        const created = await db.collection(`tenants/${T5}/projects/p2/tasks`).where('automationId', '==', 'into-locked').get();
+        assert.equal(created.size, 0);
     });
 
     await check('rules: members read flows and runs; guests and clients cannot write', async () => {

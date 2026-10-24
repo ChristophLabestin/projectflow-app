@@ -1,6 +1,7 @@
 // Email delivery logic (SES, suppression, SNS events, unsubscribe tokens).
 // Pure module: no Firebase imports, safe to unit test. Runbook: brain/operations/email-ses.md
 import { createHmac, createHash, timingSafeEqual } from 'crypto';
+import { BlockList, isIP } from 'net';
 
 /** Bind these on every function that can reach sendEmail(): `runWith({ secrets: EMAIL_SECRETS })`. */
 export const EMAIL_SECRETS = ['AWS_SES_ACCESS_KEY_ID', 'AWS_SES_SECRET_ACCESS_KEY'];
@@ -266,3 +267,33 @@ export const stripHtml = (html: string): string =>
         .replace(/[ \t]+/g, ' ')
         .replace(/\n\s*\n\s*\n+/g, '\n\n')
         .trim();
+
+// ---------------------------------------------------------------------------
+// Workspace SMTP: only public hosts on mail ports (SSRF guard, audit M9)
+// ---------------------------------------------------------------------------
+
+export const ALLOWED_SMTP_PORTS = [25, 465, 587, 2525];
+
+const BLOCKED = new BlockList();
+[
+    ['0.0.0.0', 8], ['10.0.0.0', 8], ['100.64.0.0', 10], ['127.0.0.0', 8], ['169.254.0.0', 16], ['172.16.0.0', 12],
+    ['192.0.0.0', 24], ['192.0.2.0', 24], ['192.168.0.0', 16], ['198.18.0.0', 15], ['198.51.100.0', 24], ['203.0.113.0', 24],
+    ['224.0.0.0', 3],
+].forEach(([net, prefix]) => BLOCKED.addSubnet(net as string, prefix as number, 'ipv4'));
+[
+    ['::', 128], ['::1', 128], ['fc00::', 7], ['fe80::', 10], ['ff00::', 8], ['64:ff9b::', 96], ['64:ff9b:1::', 48],
+    ['2001:db8::', 32], ['2002::', 16], ['100::', 64], ['::', 96],
+].forEach(([net, prefix]) => BLOCKED.addSubnet(net as string, prefix as number, 'ipv6'));
+
+/**
+ * True for anything that is not a routable public address. IPv4-mapped IPv6 in any notation
+ * (`::ffff:127.0.0.1`, `::ffff:7f00:1`, `0:0:0:0:0:ffff:7f00:1`) is checked against the IPv4 rules.
+ */
+export const isPrivateIp = (ip: string): boolean => {
+    const version = isIP(ip);
+    if (version === 4) return BLOCKED.check(ip, 'ipv4');
+    if (version === 6) return BLOCKED.check(ip, 'ipv6');
+    return true;
+};
+
+export const isAllowedSmtpPort = (port: unknown): boolean => ALLOWED_SMTP_PORTS.includes(Number(port));

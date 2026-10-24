@@ -11,6 +11,16 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+# Freshness guard: never smoke-test (and therefore never deploy) a state that is missing commits from
+# origin/main. Two production incidents came from hosting deploys out of stale worktrees.
+if [ "${SMOKE_SKIP_FRESHNESS:-0}" != "1" ]; then
+    git -C "$ROOT" fetch -q origin main
+    if ! git -C "$ROOT" merge-base --is-ancestor origin/main HEAD; then
+        echo "predeploy-smoke: HEAD is behind origin/main — run 'git fetch && git merge origin/main', rebuild, retry." >&2
+        exit 3
+    fi
+fi
 PORT="${SMOKE_PORT:-4291}"
 AUTH_PORT="${SMOKE_AUTH_PORT:-9871}"
 FIRESTORE_PORT="${SMOKE_FIRESTORE_PORT:-8871}"

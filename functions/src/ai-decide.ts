@@ -74,6 +74,8 @@ export interface GenerateRequest {
     apiKey?: string;
     /** Allow the hosted web search tool (blog research). */
     webSearch?: boolean;
+    /** Images (data URLs) sent along with `input` (Snap). */
+    images?: string[];
 }
 
 export const aiGenerate = async <T>(request: GenerateRequest): Promise<{ data: T; usage: ModelUsage }> => {
@@ -85,7 +87,9 @@ export const aiGenerate = async <T>(request: GenerateRequest): Promise<{ data: T
             service_tier: serviceTier,
             reasoning: { effort },
             instructions: request.instructions,
-            input: request.input,
+            input: request.images?.length
+                ? [{ role: 'user', content: [{ type: 'input_text', text: request.input }, ...request.images.map((url) => ({ type: 'input_image', image_url: url, detail: 'auto' }))] }]
+                : request.input,
             max_output_tokens: request.maxOutputTokens || 2000,
             ...(request.webSearch ? { tools: [{ type: 'web_search_preview' }] } : {}),
             text: { format: { type: 'json_schema', name: request.schema.name, schema: request.schema.schema, strict: true } }
