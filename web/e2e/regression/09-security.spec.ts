@@ -38,17 +38,17 @@ test.describe('security regressions', () => {
         }
     });
 
-    test('H3: a forged future createdAt does not extend the trial', async () => {
+    test('H3: clients cannot create workspaces (no forged createdAt / trial)', async () => {
+        // Since 2026-10-24 workspaces are created only by Cloud Functions (createTeamWorkspace etc.), so a forged
+        // createdAt cannot reach onTenantCreatedBilling at all.
         const token = await idToken(USERS.outsider);
         const tenantId = `e2e-trial-${Date.now().toString(36)}`;
         const uid = JSON.parse(Buffer.from(token.split('.')[1], 'base64url').toString()).user_id;
         const status = await userSet(`tenants/${tenantId}`, {
             tenantId, name: 'Forged trial', ownerId: uid, createdBy: uid, createdAt: new Date('2099-01-01T00:00:00Z'),
         }, token);
-        expect(status).toBe(200);
-        await expect.poll(async () => (await adminGet(`tenants/${tenantId}/entitlements/plan`))?.trialEndsAt, { timeout: 20_000 }).toBeTruthy();
-        const trialEndsAt = Date.parse((await adminGet(`tenants/${tenantId}/entitlements/plan`))!.trialEndsAt);
-        expect(trialEndsAt).toBeLessThan(Date.now() + 15 * 24 * 60 * 60 * 1000);
+        expect(status).toBe(403);
+        expect(await adminGet(`tenants/${tenantId}`)).toBeFalsy();
     });
 
     test('H4: a workspace admin cannot raise tenant limits', async () => {

@@ -96,4 +96,4 @@ Zugriffe (`/api`, `/mcp`, PAT/OAuth) prüfen sie mit 14 Tagen Grace.
   ausgeführt am 2026-10-24: 13 Workspaces, keine Funde (keine gefälschten Docs, kein auffälliges
   `createdAt`, jeder Workspace hat eine Entitlement-Doc). Keine Hinweise auf Ausnutzung von C1/H3.
 
-**Nachtrag 2026-10-24 (Billing, Projektlimit):** `withinProjectLimit` verlangt jetzt die Entitlement-Doc (`exists(planPath) && …`); ohne Doc keine neuen Projekte. Voraussetzung erfüllt: alle Anlagepfade (Web, iOS seit main, persönlich, Kaufseite) schreiben die Doc atomar mit dem Tenant. Offen bis iOS-Build 6 auf TestFlight: Client-Anlage von Tenants in den Regeln ganz schließen (alte Builds legen noch per Client-Batch an).
+**Nachtrag 2026-10-24 (Billing, Projektlimit):** `withinProjectLimit` verlangt jetzt die Entitlement-Doc (`exists(planPath) && …`); ohne Doc keine neuen Projekte. Voraussetzung erfüllt: alle Anlagepfade (Web, iOS seit main, persönlich, Kaufseite) schreiben die Doc atomar mit dem Tenant. ✅ Erledigt nach iOS-Build 6: Client-Anlage von Tenants und Mitgliedern in den Regeln geschlossen (`allow create: if false`), nur noch Cloud Functions; E2E-Regression H3 entsprechend angepasst.
