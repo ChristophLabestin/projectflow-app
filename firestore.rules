@@ -322,9 +322,10 @@ service cloud.firestore {
       // Personal workspaces (personal_{uid}, workspaceType) are created only by ensurePersonalWorkspace.
       allow create: if authed() && request.resource.data.ownerId == request.auth.uid &&
         !tenantId.matches('personal_.*') &&
-        !request.resource.data.keys().hasAny(['suspendedAt', 'suspendedReason', 'suspendedBy', 'isReviewAccount', 'workspaceType']);
+        !request.resource.data.keys().hasAny(['suspendedAt', 'suspendedReason', 'suspendedBy', 'isReviewAccount', 'workspaceType', 'limits']);
+      // `limits` is the platform-admin quota override (flows); never client-written (audit 2026-10-24, H4).
       allow update: if isTenantAdmin(tenantId) &&
-        !request.resource.data.diff(resource.data).affectedKeys().hasAny(['suspendedAt', 'suspendedReason', 'suspendedBy', 'workspaceType']) &&
+        !request.resource.data.diff(resource.data).affectedKeys().hasAny(['suspendedAt', 'suspendedReason', 'suspendedBy', 'workspaceType', 'isReviewAccount', 'limits']) &&
         (isOwner(tenantId) || !request.resource.data.diff(resource.data).affectedKeys().hasAny(['ownerId'])) &&
         (resource.data.get('workspaceType', 'team') != 'personal' ||
           !request.resource.data.diff(resource.data).affectedKeys().hasAny(['ownerId']));

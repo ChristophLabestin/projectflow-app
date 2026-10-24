@@ -163,5 +163,9 @@ export const initialEntitlement = (createdAtMs: number | null, now: number, type
     };
 };
 
+/** Trial start from the client-written `createdAt`, never later than the trusted server time (audit 2026-10-24, H3). */
+export const trialStartMs = (clientCreatedMs: number | null, serverMs: number) =>
+    clientCreatedMs == null || !Number.isFinite(clientCreatedMs) ? serverMs : Math.min(clientCreatedMs, serverMs);
+
 /** Only test keys are accepted until the owner switches to live billing. */
 export const isTestKey = (key: string | undefined) => typeof key === 'string' && /^(sk|rk)_test_/.test(key);

@@ -17,9 +17,10 @@ import {
     AI_ADDON_LOOKUP_KEYS, PLAN_LIMITS, PERSONAL_LOOKUP_KEYS, PRICE_LOOKUP_KEYS, TEAM_MEMBER_LIMIT, TRIAL_DAYS, storageFor, aiEnabledFor,
     aiIncludedForStatus, initialEntitlement, isAiAddonLookupKey, isPersonalLookupKey, isTestKey, limitsFor, limitsForType,
     mapStripeStatus, paidPlanFor, personalWorkspaceId, planForType,
-    memberLimitAllows, periodExpired, projectsToLock, seatQuantity,
+    memberLimitAllows, periodExpired, projectsToLock, seatQuantity, trialStartMs,
     type BillingInterval, type BillingStatus, type PlanId, type PlanLimits, type WorkspaceType,
 } from './billing-logic';
+import { memberRef } from './tenant-id';
 
 export const REGION = 'europe-west3';
 export const STRIPE_SECRETS = ['STRIPE_SECRET_KEY'];
@@ -222,7 +223,10 @@ export const onTenantCreatedBilling = functions.region(REGION).firestore
     .document('tenants/{tenantId}')
     .onCreate(async (snap, context) => {
         const type: WorkspaceType = snap.data()?.workspaceType === 'personal' ? 'personal' : 'team';
-        await ensureEntitlement(context.params.tenantId, toMs(snap.data()?.createdAt) ?? Date.now(), type);
+        // `createdAt` is client-written (tenant create rule): the trial starts at the server create time,
+        // a forged far-future createdAt must not extend it (audit 2026-10-24, H3).
+        const serverCreatedMs = snap.createTime?.toMillis?.() ?? Date.now();
+        await ensureEntitlement(context.params.tenantId, trialStartMs(toMs(snap.data()?.createdAt), serverCreatedMs), type);
     });
 
 /** Keeps `projectCount` (used by the rules' project limit) and the lock list current. */
@@ -426,7 +430,7 @@ export const createPersonalWorkspace = async (uid: string, language?: string) =>
             createdAt: now,
             updatedAt: now,
         });
-        tx.set(db.doc(`tenants/${tenantId}/members/${uid}`), {
+        tx.set(memberRef(tenantId, uid), {
             uid,
             role: 'Owner',
             roleIds: [],
@@ -461,7 +465,7 @@ export const requireOwner = async (tenantId: unknown, context: functions.https.C
     if (typeof tenantId !== 'string' || !tenantId.trim()) {
         throw new functions.https.HttpsError('invalid-argument', 'tenantId is required.');
     }
-    const member = await db.doc(`tenants/${tenantId}/members/${uid}`).get();
+    const member = await memberRef(tenantId, uid).get();
     if (String(member.data()?.role || '') !== 'Owner') {
         throw new functions.https.HttpsError('permission-denied', 'Only the workspace owner manages billing.');
     }
@@ -1096,7 +1100,7 @@ export const billingSweep = functions.region(REGION).runWith({ timeoutSeconds: 5
         for (const tenant of tenants.docs) {
             const tenantId = tenant.id;
             const type: WorkspaceType = tenant.data().workspaceType === 'personal' ? 'personal' : 'team';
-            if (await ensureEntitlement(tenantId, toMs(tenant.data().createdAt), type)) {
+            if (await ensureEntitlement(tenantId, trialStartMs(toMs(tenant.data().createdAt), now), type)) {
                 backfilled += 1;
                 continue;
             }

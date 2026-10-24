@@ -38,6 +38,7 @@ import {
     sha256Hex,
     verifyPkceS256
 } from './oauth-core';
+import { memberRef } from './tenant-id';
 
 const REGION = 'europe-west3';
 const CIMD_CACHE_MS = 24 * 60 * 60 * 1000;
@@ -387,7 +388,7 @@ const loadOpenRequest = async (requestId: unknown) => {
 };
 
 const memberRole = async (tenantId: string, uid: string): Promise<WorkspaceRole | null> => {
-    const snapshot = await db.doc(`tenants/${tenantId}/members/${uid}`).get();
+    const snapshot = await memberRef(tenantId, uid).get();
     return snapshot.exists ? normalizeRole(String(snapshot.data()?.role || 'Member')) : null;
 };
 

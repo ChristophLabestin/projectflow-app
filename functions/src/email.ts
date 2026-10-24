@@ -10,6 +10,7 @@ import {
   EmailType, NON_TRANSACTIONAL, SendRateLimiter, backoffMs, isActiveSuppression, isRetryableSendError,
   listUnsubscribeHeaders, normalizeEmail, sesTagValue, stripHtml, suppressionId
 } from './email-logic';
+import { memberRef } from './tenant-id';
 const REGION = 'europe-west3'; // Frankfurt
 
 const ALLOWED_SMTP_PORTS = [25, 465, 587, 2525];
@@ -68,7 +69,7 @@ export const testSMTPConnection = functions.region(REGION).https.onCall(async (d
   if (typeof tenantId !== 'string' || !tenantId) {
     throw new functions.https.HttpsError('invalid-argument', 'tenantId is required');
   }
-  const membership = await db.doc(`tenants/${tenantId}/members/${uid}`).get();
+  const membership = await memberRef(tenantId, uid).get();
   const role = membership.exists ? membership.data()?.role : null;
   if (role !== 'Owner' && role !== 'Admin') {
     throw new functions.https.HttpsError('permission-denied', 'Workspace owner or admin access required');

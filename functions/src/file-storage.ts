@@ -36,6 +36,7 @@ import {
 const escapeHtml = (value: string): string =>
     value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 import { AggregateField, FieldValue, Timestamp } from 'firebase-admin/firestore';
+import { memberRef } from './tenant-id';
 
 export type StorageProvider = 'firebase' | 's3' | 'googleDrive';
 type UploadModule = 'media' | 'profile' | 'project' | 'finance' | string;
@@ -168,7 +169,7 @@ export const getMembership = async (tenantId: string, uid: string) => {
     }
 
     const [membershipSnap, suspended] = await Promise.all([
-        db.collection('tenants').doc(tenantId).collection('members').doc(uid).get(),
+        memberRef(tenantId, uid).get(),
         isTenantSuspended(tenantId),
     ]);
     // A suspended workspace (admin console) behaves like no membership for file access.
@@ -1670,17 +1671,45 @@ export const listTenantFiles = functions.region(REGION).https.onCall(async (data
         throw new functions.https.HttpsError('invalid-argument', 'tenantId is required.');
     }
 
+    let uid: string;
     if (moduleName) {
-        await requireReadPermission(tenantId, context, moduleName);
+        uid = await requireReadPermission(tenantId, context, moduleName);
     } else {
-        await requireTenantAccess(tenantId, context);
+        uid = await requireTenantAccess(tenantId, context);
     }
+
+    // Every row is checked like a single read (audit 2026-10-24, H1): managed files follow the
+    // project scope (guests only their projects), legacy rows need the module permission.
+    const membership = await getMembership(tenantId, uid);
+    const projectCache = new Map<string, Promise<FileAccessContext['project']>>();
+    const loadProject = (id: string) => {
+        if (!projectCache.has(id)) {
+            projectCache.set(id, db.collection('tenants').doc(tenantId).collection('projects').doc(id).get()
+                .then((snap) => (snap.exists ? (snap.data() as FileAccessContext['project']) : null)));
+        }
+        return projectCache.get(id)!;
+    };
+    const modulePermission = new Map<string, Promise<boolean>>();
+    const canReadModule = (name: string) => {
+        const permission = name === 'finance' ? 'tenant.finance.ap.manage' : 'tenant.media.view';
+        if (!modulePermission.has(permission)) modulePermission.set(permission, hasTenantPermission(tenantId, uid, permission));
+        return modulePermission.get(permission)!;
+    };
+    const canReadRow = async (row: TenantFileRecord) => {
+        if (!isManagedDocument(row)) return canReadModule(String(row.module || ''));
+        const rowProjectId = normalizeString(row.projectId) || null;
+        const project = rowProjectId ? await loadProject(rowProjectId) : null;
+        return canReadScope({ isMember: membership.exists, role: membership.role, project, uid }, rowProjectId);
+    };
 
     const snapshot = await filesCollectionRef(tenantId).limit(500).get();
     const secret = await getSecretConfig(tenantId);
-    const filtered = snapshot.docs
+    const rows = snapshot.docs
         .map((docSnap) => ({ id: docSnap.id, row: docSnap.data() as TenantFileRecord }))
-        .filter(({ row }) => row.status === 'ready')
+        .filter(({ row }) => row.status === 'ready');
+    const readable = await Promise.all(rows.map(({ row }) => canReadRow(row)));
+    const filtered = rows
+        .filter((_, index) => readable[index])
         .filter(({ row }) => (!moduleName || row.module === moduleName))
         .filter(({ row }) => (!projectId || normalizeString(row.projectId) === projectId))
         .filter(({ row }) => (!entityType || row.entityType === entityType))
@@ -1695,7 +1724,8 @@ export const listTenantFiles = functions.region(REGION).https.onCall(async (data
     const page = filtered.slice(startIndex, startIndex + limitValue);
 
     const files = await Promise.all(page.map(async ({ id, row }) => {
-        const downloadUrl = await generateDownloadUrlFromRecord(tenantId, secret, row);
+        // Managed documents get the 15-minute signed URL, never a permanent token.
+        const downloadUrl = await generateExpiringUrlFromRecord(tenantId, secret, row);
         return {
             id,
             ...row,
@@ -1752,7 +1782,25 @@ export const getTenantFirebaseStorageDownloadUrl = functions.region(REGION).http
         throw new functions.https.HttpsError('permission-denied', 'Storage path is outside this tenant.');
     }
 
-    await requireTenantAccess(tenantId, context);
+    const uid = await requireTenantAccess(tenantId, context);
+
+    // File-manager objects: same scope check as a single read and a 15-minute signed URL only
+    // (audit 2026-10-24, H2). Everything else is legacy media: module permission, no guests.
+    if (storagePath.startsWith(`tenants/${tenantId}/files/`)) {
+        const match = await filesCollectionRef(tenantId).where('providerRef.firebasePath', '==', storagePath).limit(1).get();
+        const record = match.docs[0]?.data() as TenantFileRecord | undefined;
+        if (!record) throw new functions.https.HttpsError('not-found', 'File not found.');
+        if (isManagedDocument(record)) {
+            await requireFileScopeRead(tenantId, uid, normalizeString(record.projectId) || null);
+        } else {
+            await requireReadPermission(tenantId, context, record.module);
+        }
+        const secret = await getSecretConfig(tenantId);
+        return { storagePath, downloadUrl: await generateExpiringUrlFromRecord(tenantId, secret, record) };
+    }
+    if (!await hasTenantPermission(tenantId, uid, 'tenant.media.view')) {
+        throw new functions.https.HttpsError('permission-denied', 'Missing permission tenant.media.view.');
+    }
 
     const bucket = fileBucket();
     const file = bucket.file(storagePath);
