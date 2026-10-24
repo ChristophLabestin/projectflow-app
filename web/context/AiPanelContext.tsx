@@ -10,7 +10,7 @@ import type { AiContextEnvelope } from '../services/aiAssistClient';
  */
 type ScreenExtras = Pick<AiContextEnvelope, 'selection' | 'view'> & { surface?: string };
 
-const dataUrlToFile = (dataUrl: string): File | null => {
+export const dataUrlToFile = (dataUrl: string): File | null => {
     const match = /^data:(image\/(?:png|jpeg|webp));base64,(.+)$/.exec(dataUrl);
     if (!match) return null;
     const bytes = Uint8Array.from(atob(match[2]), (char) => char.charCodeAt(0));
