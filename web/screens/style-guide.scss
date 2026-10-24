@@ -590,6 +590,7 @@
     padding: 10px 12px;
     border-radius: var(--radius-lg);
     background: var(--color-surface-hover);
+    --control-bg: var(--color-surface-card); // badges in an L2 row: Level 3
 
     span:first-child {
         min-width: 0;

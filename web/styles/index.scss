@@ -1,6 +1,7 @@
 @use './tokens';
 @use './utilities';
 @use './motion';
+@use './depth';
 @use '../src/styles/components/dashboard';
 @use '../src/styles/components/scheduled-tasks-card';
 @use '../src/styles/components/tasks';

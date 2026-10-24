@@ -293,9 +293,18 @@ html.dark {
 //   &:hover { background-color: var(--control-bg-hover, var(--field-bg-hover)); }
 // Scope depth-canvas to the toolbar / filter row itself (not the whole page), so cards
 // further down keep the default. Shells (Card, Modal, glass menus) reset with depth-shell.
+// Blocks that are Level 1 on the canvas but Level 2 inside a shell (secondary buttons,
+// EmptyState, Skeleton block) read --nested-bg / --nested-shadow with the canvas value as
+// fallback: background: var(--nested-bg, var(--color-surface-card)); box-shadow: var(--nested-shadow, var(--shadow-sm));
 @mixin depth-canvas {
   --control-bg: var(--color-surface-card);
   --color-surface-input: var(--color-surface-card);
+  --nested-bg: var(--color-surface-card);
+  --nested-bg-hover: var(--color-surface-hover);
+  --nested-shadow: var(--shadow-sm);
+  --nested-shadow-hover: var(--shadow-md);
+  --nested-frame-bg: var(--color-surface-card);
+  --nested-inner-bg: var(--color-surface-hover);
   --control-bg-hover: color-mix(in srgb, var(--color-surface-card) 45%, var(--color-surface-hover));
 }
 
@@ -303,6 +312,14 @@ html.dark {
   --control-bg: var(--color-surface-hover);
   --color-surface-input: var(--color-surface-hover);
   --control-bg-hover: var(--field-bg-hover);
+  // Nested blocks (secondary buttons, empty states, skeletons) step down to Level 2 without a
+  // shadow; frame-only wrappers (ListToolbar) drop their own surface inside a shell.
+  --nested-bg: var(--color-surface-hover);
+  --nested-bg-hover: var(--field-bg-hover);
+  --nested-shadow: none;
+  --nested-shadow-hover: none;
+  --nested-frame-bg: transparent;
+  --nested-inner-bg: var(--color-surface-card);
 }
 
 // Control surface on the current depth (rest + hover); focus/selection stay sunken/selected.

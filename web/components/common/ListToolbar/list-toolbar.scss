@@ -7,8 +7,10 @@
     width: 100%;
     padding: 14px;
     border-radius: var(--radius-lg);
-    background: var(--color-surface-card);
-    box-shadow: var(--shadow-sm);
+    // Own Level 1 frame on the canvas; inside a shell the frame disappears and the
+    // controls sit directly on the card at Level 2 (§5.2).
+    background: var(--nested-frame-bg, var(--color-surface-card));
+    box-shadow: var(--nested-shadow, var(--shadow-sm));
 }
 
 .list-toolbar__header {

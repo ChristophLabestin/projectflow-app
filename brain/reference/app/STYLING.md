@@ -384,7 +384,19 @@ and modals without any setup. A container whose controls sit on the canvas decla
 ```
 
 Scope `depth-canvas` to the toolbar / filter row itself, never to a whole page (cards further down must keep L2).
-Shared consumers: `TextInput`, `TextArea`, `Select` trigger (incl. disabled), `PrioritySelect` group options,
+
+**Nested blocks** (`--nested-bg`, `--nested-bg-hover`, `--nested-shadow`, `--nested-shadow-hover`, `--nested-frame-bg`,
+`--nested-inner-bg`): elements that are their own Level 1 block on the canvas but must step down inside a shell read
+`background: var(--nested-bg, var(--color-surface-card)); box-shadow: var(--nested-shadow, var(--shadow-sm));`.
+Consumers: Button `secondary` (L1 + shadow on the canvas, L2 tonal without shadow or ring in cards/modals/menus),
+`EmptyState`, `SkeletonBlock`, `Stepper` steps; `ListToolbar` uses `--nested-frame-bg` (its frame disappears inside a
+shell); icons/markers/buttons one level deeper use `--nested-inner-bg`. Screen-level card classes that aren't the shared
+Card/Modal/ui-card are registered in `web/styles/_depth.scss` (one list with `tokens.depth-shell`) — add new card
+classes there instead of hardcoding child surfaces.
+
+**Tab indicators** (`.motion-tabs > .motion-indicator`) default to sunken (`--sunken-bg` + `--sunken-shadow`), so the
+active tab reads on any track level; a raised white pill would vanish on a Level 1 track.
+Shared consumers of `--control-bg`: `TextInput`, `TextArea`, `Select` trigger (incl. disabled), `PrioritySelect` group options, `Badge`, `Checkbox`,
 `ListToolbar` search, `.work-toolbar` search / view track, `.work-chip`. Focus stays `tokens.sunken-field`, selected
 chips/segments stay `tokens.selected` — those don't depend on depth.
 
