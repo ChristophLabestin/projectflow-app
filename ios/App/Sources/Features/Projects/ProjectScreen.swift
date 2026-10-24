@@ -268,15 +268,9 @@ struct ProjectScreen: View {
 
     // MARK: Actions
 
+    /// Project activity from the workspace event stream (replaces the legacy `activities` list).
     private func presentActivity() {
-        let entries = store.activity
-        presenter.present(detents: [.large]) {
-            VStack(alignment: .leading, spacing: PFSpace.m) {
-                PFSheetHeader(L10n.t("projects.overview.activity"), title: project?.title)
-                ScrollView { ActivityFeedView(entries: entries).padding(.bottom, PFSpace.xl) }
-                    .scrollIndicators(.hidden)
-            }
-        }
+        model.router.push(.activity(tenantId: tenantId, projectId: projectId))
     }
 
     private func presentGrouping() {
