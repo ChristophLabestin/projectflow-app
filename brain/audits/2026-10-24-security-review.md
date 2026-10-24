@@ -48,7 +48,7 @@ Test: `functions/scripts/unit/tenant-id.test.js`.
 | M8 | KI | `consumeAiQuota` überspringt Tageslimit für BYOK-Nutzer auch bei Server-KI | `ai-service.ts` | Modus aus Tenant-Gate übergeben |
 | M9 | E-Mail | Workspace-SMTP: Host/Port beim Senden ungeprüft (SSRF ins interne Netz); IPv4-mapped-IPv6-Hex nicht geblockt | `email.ts` `sendViaSmtp`, `workspace-admin.ts` | Public-IP- und Port-Check beim Speichern und Senden |
 | M10 | E-Mail | Waitlist/Newsletter ohne Rate-Limit (Mail-Bombing über SES), Codes per `Math.random` | `waitlist.ts`, `newsletter-public.ts` | Cooldown pro E-Mail/IP, `crypto.randomBytes` |
-| M11 | Admin-MCP | DCR offen, Rate-Limit per XFF spoofbar und nur im Speicher → Clients/Audit fluten | `admin-console/mcp/oauth.ts` | Firestore-Zähler, echte Peer-IP, Pending-Cap |
+| M11 | Admin-MCP | DCR offen, Rate-Limit per XFF spoofbar und nur im Speicher → Clients/Audit fluten | `admin-console/mcp/oauth.ts` | ✅ erledigt 2026-10-24: kein IP-Vertrauen mehr; globaler Firestore-Zähler (10 Registrierungen/h), max. 5 unbestätigte Clients, Pending-Clients laufen nach 24 h ab (Aufräumen bei jeder Registrierung + TTL `expireAt`), nur bei eingeschaltetem Kill-Switch; E2E „DCR flood guard“ |
 
 ## Niedrig (offen, gemeldet)
 
