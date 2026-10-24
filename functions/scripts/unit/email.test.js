@@ -62,9 +62,9 @@ test('three soft bounces within seven days suppress', () => {
 test('SNS messages: string to sign, signature, cert and topic checks', () => {
     const { privateKey, publicKey } = crypto.generateKeyPairSync('rsa', { modulusLength: 2048 });
     const msg = {
-        Type: 'Notification', MessageId: 'id-1', TopicArn: 'arn:aws:sns:eu-central-1:123456789012:projectflow-ses-events',
+        Type: 'Notification', MessageId: 'id-1', TopicArn: 'arn:aws:sns:eu-north-1:123456789012:projectflow-ses-events',
         Message: '{"eventType":"Delivery"}', Timestamp: '2026-10-24T10:00:00.000Z', SignatureVersion: '2',
-        SigningCertURL: 'https://sns.eu-central-1.amazonaws.com/SimpleNotificationService-abc.pem', Signature: '',
+        SigningCertURL: 'https://sns.eu-north-1.amazonaws.com/SimpleNotificationService-abc.pem', Signature: '',
     };
     const toSign = logic.snsStringToSign(msg);
     assert.equal(toSign, `Message\n${msg.Message}\nMessageId\nid-1\nTimestamp\n${msg.Timestamp}\nTopicArn\n${msg.TopicArn}\nType\nNotification\n`);
@@ -73,18 +73,18 @@ test('SNS messages: string to sign, signature, cert and topic checks', () => {
     assert.ok(crypto.createVerify('RSA-SHA256').update(logic.snsStringToSign(parsed)).verify(publicKey, parsed.Signature, 'base64'));
     assert.ok(!crypto.createVerify('RSA-SHA256').update(logic.snsStringToSign({ ...parsed, Message: '{}' })).verify(publicKey, parsed.Signature, 'base64'));
 
-    const sub = { ...msg, Type: 'SubscriptionConfirmation', Token: 't', SubscribeURL: 'https://sns.eu-central-1.amazonaws.com/?Action=ConfirmSubscription' };
+    const sub = { ...msg, Type: 'SubscriptionConfirmation', Token: 't', SubscribeURL: 'https://sns.eu-north-1.amazonaws.com/?Action=ConfirmSubscription' };
     assert.match(logic.snsStringToSign(sub), /^Message\n.*\nMessageId\nid-1\nSubscribeURL\n.*\nTimestamp\n.*\nToken\nt\nTopicArn/s);
 
     assert.equal(logic.isSnsCertUrl(msg.SigningCertURL), true);
-    assert.equal(logic.isSnsCertUrl('https://sns.eu-central-1.amazonaws.com.evil.com/x.pem'), false);
-    assert.equal(logic.isSnsCertUrl('http://sns.eu-central-1.amazonaws.com/x.pem'), false);
-    assert.equal(logic.isSnsHostUrl('https://evil.com/?sns.eu-central-1.amazonaws.com'), false);
+    assert.equal(logic.isSnsCertUrl('https://sns.eu-north-1.amazonaws.com.evil.com/x.pem'), false);
+    assert.equal(logic.isSnsCertUrl('http://sns.eu-north-1.amazonaws.com/x.pem'), false);
+    assert.equal(logic.isSnsHostUrl('https://evil.com/?sns.eu-north-1.amazonaws.com'), false);
     assert.equal(logic.parseSnsMessage({ ...msg, SignatureVersion: '3' }), null);
     assert.equal(logic.parseSnsMessage('not json'), null);
 
     assert.equal(logic.isAllowedTopic(msg.TopicArn, ` ${msg.TopicArn} , arn:other`), true);
-    assert.equal(logic.isAllowedTopic('arn:aws:sns:eu-central-1:999:projectflow-ses-events', msg.TopicArn), false);
+    assert.equal(logic.isAllowedTopic('arn:aws:sns:eu-north-1:999:projectflow-ses-events', msg.TopicArn), false);
     assert.equal(logic.isAllowedTopic(msg.TopicArn, ''), false);
     assert.equal(logic.isAllowedTopic(msg.TopicArn, undefined), false);
 });

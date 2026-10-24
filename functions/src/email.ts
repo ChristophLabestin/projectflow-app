@@ -218,7 +218,7 @@ const getSesClient = () => {
   const credentials = sesCredentials();
   if (!credentials) return null;
   if (!sesClient) {
-    sesClient = new SESv2Client({ region: env('SES_REGION', 'eu-central-1'), credentials, maxAttempts: 1 });
+    sesClient = new SESv2Client({ region: env('SES_REGION', 'eu-north-1'), credentials, maxAttempts: 1 });
   }
   return sesClient;
 };

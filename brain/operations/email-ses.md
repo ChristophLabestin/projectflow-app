@@ -11,7 +11,7 @@ ihren Server.
 sendEmail(to, subject, html, { type, unsubscribeUrl, tenantId })
   1. email_suppressions/{sha256(email)} aktiv?  → nicht senden ({ transport: 'suppressed' })
   2. Tenant-SMTP konfiguriert?                  → nodemailer (unverändert)
-  3. EMAIL_TRANSPORT=ses + Keys gesetzt         → SES API v2 (eu-central-1), Config-Set, Tags, Rate-Limit, Retries
+  3. EMAIL_TRANSPORT=ses + Keys gesetzt         → SES API v2 (eu-north-1), Config-Set, Tags, Rate-Limit, Retries
      sonst / EMAIL_TRANSPORT=smtp               → System-SMTP (SMTP_HOST/PORT/USER/PASS/FROM)
      SES lehnt Empfänger ab (Sandbox) + EMAIL_SMTP_FALLBACK=true → System-SMTP
 
@@ -42,15 +42,17 @@ detail, source ses|admin, mailType, softBounces[], events, by, createdAt, update
 
 ## Einrichtung (einmalig)
 
+**Konto/Region (2026-10-24):** neues AWS-Konto 173433120074 („Lift Off Soon“), Region `eu-north-1` (Stockholm, EU) — die Konsole ließ sich nicht auf Frankfurt halten. Identität `mail.getprojectflow.com` ist dort angelegt (Easy DKIM RSA-2048, MAIL FROM `bounce.mail`).
+
 Der Bestand im AWS-Konto (frühere Waitlist-Einrichtung) wird weiterverwendet: vorhandene Identitäten in
-eu-central-1 prüfen; eine bereits verifizierte E-Mail-Identität des Users kann bleiben. Im DNS von
+eu-north-1 prüfen; eine bereits verifizierte E-Mail-Identität des Users kann bleiben. Im DNS von
 getprojectflow.com gab es am 2026-10-24 keine SES-Einträge (Root: Google Workspace MX, SPF
 `include:_spf.google.com`, DMARC `p=none`).
 
 **Warum `mail.getprojectflow.com` statt der Root-Domain:** eigene Reputation für App-Mails, keine
 Änderung am SPF-Record der Google-Workspace-Postfächer, DMARC für App-Mails separat verschärfbar.
 
-### 1. SES-Identität (AWS-Konsole, Region Europe (Frankfurt) eu-central-1) — klickbar ohne Keys
+### 1. SES-Identität (AWS-Konsole, Region Europe (Stockholm) eu-north-1, AWS-Konto 173433120074 „Lift Off Soon“) — klickbar ohne Keys
 1. SES → Configuration → Identities → Create identity → Domain `mail.getprojectflow.com`.
 2. „Use a custom MAIL FROM domain“: `bounce` (ergibt `bounce.mail.getprojectflow.com`),
    „Behavior on MX failure“: Use default MAIL FROM.
@@ -61,23 +63,24 @@ getprojectflow.com gab es am 2026-10-24 keine SES-Einträge (Root: Google Worksp
 
 | Typ | Hostname (IONOS) | Wert | TTL |
 |---|---|---|---|
-| CNAME | `<token1>._domainkey.mail` | `<token1>.dkim.amazonses.com` | 1 h |
-| CNAME | `<token2>._domainkey.mail` | `<token2>.dkim.amazonses.com` | 1 h |
-| CNAME | `<token3>._domainkey.mail` | `<token3>.dkim.amazonses.com` | 1 h |
-| MX | `bounce.mail` | `feedback-smtp.eu-central-1.amazonses.com`, Priorität 10 | 1 h |
+| CNAME | `547pvw3cqsoqrgtttcupfwvqnwlv2hld._domainkey.mail` | `547pvw3cqsoqrgtttcupfwvqnwlv2hld.dkim.amazonses.com` | 1 h |
+| CNAME | `hnoyfbv3gvym5qzr4d7inctwm3zq4qzf._domainkey.mail` | `hnoyfbv3gvym5qzr4d7inctwm3zq4qzf.dkim.amazonses.com` | 1 h |
+| CNAME | `zdtumbluxesorfd2zumubxiokplprkj7._domainkey.mail` | `zdtumbluxesorfd2zumubxiokplprkj7.dkim.amazonses.com` | 1 h |
+| MX | `bounce.mail` | `feedback-smtp.eu-north-1.amazonses.com`, Priorität 10 | 1 h |
 | TXT | `bounce.mail` | `v=spf1 include:amazonses.com ~all` | 1 h |
 | TXT | `_dmarc.mail` | `v=DMARC1; p=none; rua=mailto:hello@getprojectflow.com; adkim=r; aspf=r` | 1 h |
 
-Die drei `<token>`-Werte stehen erst nach Schritt 1 in der SES-Konsole (Identity → Authentication → Publish DNS records).
+DKIM-Tokens aus der SES-Konsole (Identity → Authentication → Publish DNS records), Stand 2026-10-24.
 DMARC nach 2–4 Wochen ohne Fehler in den Reports auf `p=quarantine` anheben. Prüfen:
-`dig +short CNAME <token1>._domainkey.mail.getprojectflow.com`, `dig +short MX bounce.mail.getprojectflow.com`.
+`dig +short CNAME 547pvw3cqsoqrgtttcupfwvqnwlv2hld._domainkey.mail.getprojectflow.com`, `dig +short MX bounce.mail.getprojectflow.com`.
 SES meldet „Verified“ für DKIM und MAIL FROM meist innerhalb einer Stunde (bis 72 h).
 
 ### 3. Konto-Suppression, SNS, Configuration Set — klickbar ohne Keys
 1. SES → Configuration → Suppression list → Account-level suppression: **Bounces und Complaints** aktivieren.
-2. SNS (eu-central-1) → Topics → Create topic → Standard, Name `projectflow-ses-events`. ARN notieren
-   (`arn:aws:sns:eu-central-1:<ACCOUNT_ID>:projectflow-ses-events`) → in `functions/.env.projectflow-labestin`
-   bei `SES_SNS_TOPIC_ARNS=` eintragen und `sesEvents` deployen (vor Schritt 4, sonst lehnt der Webhook die Bestätigung ab).
+2. SNS (eu-north-1) → Topics → Create topic → Standard, Name `projectflow-ses-events`. Die ARN
+   `arn:aws:sns:eu-north-1:173433120074:projectflow-ses-events` ist bereits in `functions/.env.projectflow-labestin`
+   (`SES_SNS_TOPIC_ARNS`) eingetragen; weicht der echte ARN ab, dort ändern. `sesEvents` muss vor Schritt 4 deployt sein,
+   sonst schlägt die Bestätigung der Subscription fehl.
 3. SES → Configuration sets → Create set `projectflow-default`: Reputation metrics an, Suppression „Use account-level
    settings“. Event destinations → Add destination → Event types: Sends, Rejects, Bounces, Complaints, Deliveries,
    Delivery delays, Rendering failures → Destination SNS → Topic `projectflow-ses-events`.
@@ -87,7 +90,7 @@ SES meldet „Verified“ für DKIM und MAIL FROM meist innerhalb einer Stunde (
 5. Identity `mail.getprojectflow.com` → Configuration set → Default configuration set `projectflow-default`.
 
 ### 4. IAM-User mit minimaler Policy (macht der User; Keys nie im Chat)
-1. IAM → Policies → Create policy → JSON (ACCOUNT_ID ersetzen) → Name `ProjectFlowSesSend`:
+1. IAM → Policies → Create policy → JSON → Name `ProjectFlowSesSend`:
 ```json
 {
   "Version": "2012-10-17",
@@ -97,8 +100,8 @@ SES meldet „Verified“ für DKIM und MAIL FROM meist innerhalb einer Stunde (
       "Effect": "Allow",
       "Action": ["ses:SendEmail", "ses:SendRawEmail"],
       "Resource": [
-        "arn:aws:ses:eu-central-1:ACCOUNT_ID:identity/*",
-        "arn:aws:ses:eu-central-1:ACCOUNT_ID:configuration-set/projectflow-default"
+        "arn:aws:ses:eu-north-1:173433120074:identity/*",
+        "arn:aws:ses:eu-north-1:173433120074:configuration-set/projectflow-default"
       ],
       "Condition": { "StringLike": { "ses:FromAddress": "*@mail.getprojectflow.com" } }
     },
@@ -153,7 +156,7 @@ SES → Account dashboard → „Request production access“. Felder:
 - **Preferred contact language:** English
 - **Use case description** (EN, so ins Formular):
 
-> ProjectFlow (https://getprojectflow.com, app at https://app.getprojectflow.com) is a project management SaaS for small teams, operated by Christoph Labestin, Frühlingsstraße 8, 84082 Laberweinting, Germany. We use Amazon SES in eu-central-1 only for transactional email from our verified domain mail.getprojectflow.com (Easy DKIM, custom MAIL FROM bounce.mail.getprojectflow.com, SPF and DMARC published).
+> ProjectFlow (https://getprojectflow.com, app at https://app.getprojectflow.com) is a project management SaaS for small teams, operated by Christoph Labestin, Frühlingsstraße 8, 84082 Laberweinting, Germany. We use Amazon SES in eu-north-1 only for transactional email from our verified domain mail.getprojectflow.com (Easy DKIM, custom MAIL FROM bounce.mail.getprojectflow.com, SPF and DMARC published).
 >
 > Email types: (1) workspace invitations that a workspace owner sends to a specific person, (2) activity notifications for registered users (task assigned, mentions, due dates), (3) account, billing and legal notices to registered users (e.g. updated Terms of Service or Privacy Policy), (4) double-opt-in confirmations for our waitlist/newsletter and contact-form copies to our own inbox. We do not send marketing campaigns, do not buy, rent or scrape lists, and never email anyone who has not signed up or been explicitly invited by a workspace owner.
 >
@@ -166,7 +169,7 @@ SES → Account dashboard → „Request production access“. Felder:
 > Volume: we are in early launch. We expect fewer than 1,000 emails per day (typically 50–300) in the first months, growing gradually with the user base; a daily quota of 10,000 and 10 messages per second would be ample. Peak sends are spread by our own rate limiter that follows the account's maximum send rate.
 
 - **Deutsch (zum Gegenlesen, nicht einreichen):** ProjectFlow ist eine Projektmanagement-SaaS für kleine Teams,
-  betrieben von Christoph Labestin (Impressum s. o.). SES in eu-central-1 nur für transaktionale Mails von der
+  betrieben von Christoph Labestin (Impressum s. o.). SES in eu-north-1 nur für transaktionale Mails von der
   verifizierten Domain mail.getprojectflow.com (DKIM, eigene MAIL-FROM-Domain, SPF, DMARC). Mail-Arten: Einladungen
   durch Workspace-Owner an konkrete Personen, Aktivitäts-Benachrichtigungen an registrierte Nutzer, Konto-, Billing-
   und Rechtshinweise an registrierte Nutzer, Double-Opt-in-Bestätigungen (Waitlist/Newsletter) und Kopien des
