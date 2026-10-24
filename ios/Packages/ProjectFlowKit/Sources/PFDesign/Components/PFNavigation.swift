@@ -286,8 +286,8 @@ public struct PFDock: View {
             .frame(maxWidth: vertical ? nil : (compact ? 64 : .infinity), minHeight: vertical ? nil : 54)
             .background {
                 if selected {
-                    RoundedRectangle(cornerRadius: vertical ? 17 : 19, style: .continuous)
-                        .fill(PFColor.raised)
+                    // Current tab sinks in (web: navigation = sunken, not inverted), with the primary glider bar.
+                    PFSunkenFill(RoundedRectangle(cornerRadius: vertical ? 17 : 19, style: .continuous))
                         .overlay(alignment: .top) {
                             Capsule()
                                 .fill(PFColor.primary)

@@ -24,14 +24,13 @@ public struct PFSegmented<Value: Hashable>: View {
                 } label: {
                     Text(option.label)
                         .pfText(.buttonSmall)
-                        .foregroundStyle(selected ? PFColor.textMain : PFColor.textMuted)
+                        .foregroundStyle(selected ? PFColor.onPrimary : PFColor.textMuted)
                         .lineLimit(1)
                         .padding(.horizontal, 14)
                         .frame(maxWidth: .infinity, minHeight: 34)
                         .background {
                             if selected {
-                                Capsule().fill(PFColor.card)
-                                    .pfElevation(.card, radius: 100)
+                                Capsule().fill(PFColor.primary)  // selected segment is inverted
                                     .matchedGeometryEffect(id: "thumb", in: glider)
                             }
                         }

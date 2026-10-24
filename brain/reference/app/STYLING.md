@@ -189,8 +189,8 @@ drop-zone states, status/priority markers.
 ## 1.11 Glass menus — option popovers (2026-10-24)
 
 Every floating menu/dropdown/popover (`web/src/styles/components/_glass.scss` list + `pf-glass` class) uses
-`mixins.glass-surface` → `tokens.glass-panel`: milky glass, borderless — light `--glass-bg` white at 72 %,
-dark card colour at 74 %, `--glass-filter` blur 18 px + saturate 1.6, `--glass-shadow` (light top edge + soft
+`mixins.glass-surface` → `tokens.glass-panel`: milky glass, borderless — light `--glass-bg` white at 86 %,
+dark card colour at 86 %, `--glass-filter` blur 24 px + saturate 1.5, `--glass-shadow` (light top edge + soft
 drop). Options (Select `select-input__option`, InlineMenu `inline-menu__option`): hover / keyboard highlight
 sink into the glass (`tokens.menu-sunken`: translucent `--menu-sunken-bg` + sunken shadow); the selected option
 stays sunken with a short primary bar on the left, weight 600 and the check (`tokens.menu-option-selected`) —

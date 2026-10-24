@@ -80,9 +80,9 @@ private struct ThemeSwatch: View {
                 }
                 .frame(height: 96)
                 .clipShape(.rect(cornerRadius: PFRadius.card, style: .continuous))
-                // Selected preview sits in a sunken well instead of an outline.
+                // Selected theme sits in an inverted well (web "selected"), no outline.
                 .padding(5)
-                .pfSunken(isSelected, in: .rect(cornerRadius: PFRadius.card + 5, style: .continuous))
+                .background(isSelected ? PFColor.primary : Color.clear, in: .rect(cornerRadius: PFRadius.card + 5, style: .continuous))
                 Text(title).pfText(.buttonSmall).foregroundStyle(isSelected ? PFColor.textMain : PFColor.textMuted)
             }
             .frame(maxWidth: .infinity)
