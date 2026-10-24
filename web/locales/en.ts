@@ -3304,6 +3304,8 @@ const en = {
     'ai.card.field.subtask': 'Subtask',
     'ai.card.people': '{count} people',
     'ai.card.none': '—',
+    'ai.card.showAll': 'Show full text ({count} characters)',
+    'ai.card.showLess': 'Show less',
     'ai.card.apply': 'Apply',
     'ai.card.dismiss': 'Dismiss',
     'ai.card.applying': 'Applying…',

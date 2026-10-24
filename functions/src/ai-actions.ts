@@ -32,6 +32,7 @@ interface UndoStep { method: 'DELETE' | 'PATCH'; path: string; body?: Record<str
 
 const proposalRef = (uid: string, id: string) => db.doc(`users/${uid}/ai_proposals/${id}`);
 
+/** Previous values are context only and may be shortened; new values (`to`) are shown exactly as they will be written. */
 const clipValue = (value: unknown) => (typeof value === 'string' && value.length > 400 ? `${value.slice(0, 400)}…` : value);
 
 const get = async (ctx: ToolContext, path: string) => {
@@ -49,7 +50,7 @@ export const diffTaskUpdate = (current: Record<string, unknown>, args: Record<st
         if (!(field in args) || args[field] === undefined) continue;
         const from = current[field] ?? (field === 'assigneeIds' ? [] : '');
         if (JSON.stringify(from) === JSON.stringify(args[field])) continue;
-        changes.push({ field, from: clipValue(from), to: clipValue(args[field]) });
+        changes.push({ field, from: clipValue(from), to: args[field] });
         before[field] = from;
     }
     if ('status' in before) before.isCompleted = before.status === 'Done';
@@ -75,16 +76,16 @@ export const createProposal = async (ctx: ToolContext, toolName: string, rawArgs
     let before: Record<string, unknown> | null = null;
     if (toolName === 'create_task') {
         changes = Object.entries(compact({ title: args.title, description: args.description, status: args.status, priority: args.priority, dueDate: args.dueDate, assigneeIds: args.assigneeIds }))
-            .map(([field, to]) => ({ field, to: clipValue(to) }));
+            .map(([field, to]) => ({ field, to }));
     } else if (toolName === 'update_task') {
         const diff = diffTaskUpdate(taskPayload.task, args);
         if (!diff.changes.length) throw new Error('Nothing would change.');
         changes = diff.changes;
         before = diff.before;
     } else if (toolName === 'add_comment') {
-        changes = [{ field: 'comment', to: clipValue(args.content) }];
+        changes = [{ field: 'comment', to: args.content }];
     } else if (toolName === 'add_subtask') {
-        changes = [{ field: 'subtask', to: clipValue(args.title) }];
+        changes = [{ field: 'subtask', to: args.title }];
     }
 
     const ref = db.collection(`users/${ctx.uid}/ai_proposals`).doc();

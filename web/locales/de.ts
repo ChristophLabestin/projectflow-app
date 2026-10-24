@@ -3304,6 +3304,8 @@ const de = {
     'ai.card.field.subtask': 'Teilaufgabe',
     'ai.card.people': '{count} Personen',
     'ai.card.none': '—',
+    'ai.card.showAll': 'Ganzen Text zeigen ({count} Zeichen)',
+    'ai.card.showLess': 'Weniger zeigen',
     'ai.card.apply': 'Übernehmen',
     'ai.card.dismiss': 'Verwerfen',
     'ai.card.applying': 'Wird übernommen …',

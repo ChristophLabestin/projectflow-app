@@ -253,11 +253,12 @@ export const aiAssist = onRequest({
         else if (body.capability === 'snap') normalizeSnapInput(body.input);
         else normalizeMessages(body.messages);
 
-        let credits: { ok: boolean; used: number; limit: number } | null = null;
+        // Daily limit for both keys (own key: separate, generous abuse limit), decided by the tenant gate above.
+        await consumeAiQuota(uid, 'text', ownKey ? 'own-key' : 'server').catch(() => {
+            throw new HttpError(429, 'Daily AI limit reached.', 'resource-exhausted');
+        });
+        let credits: { ok: boolean; used: number; limit: number; month: string } | null = null;
         if (!ownKey) {
-            await consumeAiQuota(uid, 'text').catch(() => {
-                throw new HttpError(429, 'Daily AI limit reached.', 'resource-exhausted');
-            });
             credits = await reserveCredits(tenantId, uid, capability.credit, monthlyLimit);
             if (!credits.ok) throw new HttpError(429, 'The workspace has used its AI credits for this month.', 'credits-exhausted');
         }
@@ -271,8 +272,9 @@ export const aiAssist = onRequest({
                     ? await runSnapCapability(body, ctx, send, ownKey)
                     : await runAssist(body, ctx, send, abort.signal, ownKey);
         } catch (error) {
-            // Nothing useful reached the user: give the credits back.
-            if (credits) await refundCredits(tenantId, uid, capability.credit).catch(() => undefined);
+            // Nothing useful reached the user: give the credits back (to the reservation's month). A client abort
+            // is no refund: the model already ran.
+            if (credits && !abort.signal.aborted) await refundCredits(tenantId, uid, capability.credit, credits.month).catch(() => undefined);
             throw error;
         }
 
