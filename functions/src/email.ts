@@ -8,9 +8,10 @@ import type * as SesV2 from '@aws-sdk/client-sesv2';
 const nodemailer = (): typeof Nodemailer => require('nodemailer');
 const sesSdk = (): typeof SesV2 => require('@aws-sdk/client-sesv2');
 type SESv2Client = SesV2.SESv2Client;
+import { FieldValue } from 'firebase-admin/firestore';
 import { db } from './init';
 import {
-  ALLOWED_SMTP_PORTS, EmailType, NON_TRANSACTIONAL, isAllowedSmtpPort, isPrivateIp, SendRateLimiter, backoffMs, isActiveSuppression, isRetryableSendError,
+  ALLOWED_SMTP_PORTS, EmailType, NON_TRANSACTIONAL, isAllowedSmtpPort, isAllowedSystemSmtpHost, isPrivateIp, smtpDailyAllowance, systemSmtpSecurity, SendRateLimiter, backoffMs, isActiveSuppression, isRetryableSendError,
   listUnsubscribeHeaders, normalizeEmail, sesTagValue, stripHtml, suppressionId
 } from './email-logic';
 import { memberRef } from './tenant-id';
@@ -143,8 +144,85 @@ const getTenantSmtpConfig = async (tenantId?: string) => {
 };
 
 const systemSmtpConfig = () => {
-  const port = parseInt(env('SMTP_PORT', '587'), 10) || 587;
-  return { host: env('SMTP_HOST'), port, secure: port === 465, user: env('SMTP_USER'), pass: env('SMTP_PASS'), fromEmail: env('SMTP_FROM', SYSTEM_FROM_EMAIL) };
+  const port = parseInt(env('SMTP_PORT', '465'), 10) || 465;
+  return { host: env('SMTP_HOST', 'smtp.gmail.com'), port, secure: port === 465, user: env('SMTP_USER'), pass: env('SMTP_PASS'), fromEmail: env('SMTP_FROM', SYSTEM_FROM_EMAIL) };
+};
+
+let systemTransport: { key: string; transport: any } | null = null;
+const smtpLimiter = new SendRateLimiter(parseFloat(env('SMTP_MAX_SEND_RATE', '0.5')) || 0.5);
+
+/**
+ * System SMTP (Google Workspace bridge): allowlisted host, TLS on 465/587 only, resolved public IP
+ * pinned (audit M9), one pooled connection, paced and capped per day (SMTP_DAILY_LIMIT).
+ */
+const sendViaSystemSmtp = async (
+  mail: { to: string; subject: string; html: string; text: string; replyTo: string; headers: { Name: string; Value: string }[]; type: EmailType }
+) => {
+  const config = systemSmtpConfig();
+  if (!config.user || !config.pass || config.pass === 'unset') throw new Error('System SMTP is not configured (SMTP_USER / SMTP_PASS).');
+  if (!isAllowedSystemSmtpHost(config.host, env('SMTP_ALLOWED_HOSTS'))) throw new Error('System SMTP host is not allowlisted.');
+  const security = systemSmtpSecurity(config.port);
+  if (!security) throw new Error('System SMTP port must be 465 or 587.');
+
+  const day = new Date().toISOString().slice(0, 10);
+  const statsRef = db.collection('email_stats').doc(day);
+  const sentToday = Number((await statsRef.get()).get('counts.smtp') || 0);
+  if (!smtpDailyAllowance(sentToday, parseInt(env('SMTP_DAILY_LIMIT', '1800'), 10))) {
+    throw new Error(`System SMTP daily limit reached (${sentToday}).`);
+  }
+
+  const getTransport = async () => {
+    const key = `${config.host}|${config.port}|${config.user}`;
+    if (!systemTransport || systemTransport.key !== key) {
+      systemTransport?.transport.close?.();
+      // Resolved once per pooled transport; Gmail rotates IPs, all of them must be public.
+      const ip = await resolvePublicHost(config.host);
+      systemTransport = {
+        key,
+        transport: nodemailer().createTransport({
+          host: ip,
+          port: config.port,
+          ...security,
+          pool: true,
+          maxConnections: 1,
+          auth: { user: config.user, pass: config.pass },
+          tls: { rejectUnauthorized: true, servername: config.host, minVersion: 'TLSv1.2' },
+          connectionTimeout: 10000,
+          greetingTimeout: 10000,
+          socketTimeout: 30000
+        })
+      };
+    }
+    return systemTransport.transport;
+  };
+  const fromName = env('SMTP_FROM_NAME', 'ProjectFlow');
+  for (let attempt = 0; ; attempt++) {
+    const wait = smtpLimiter.reserve();
+    if (wait > 0) await new Promise((resolve) => setTimeout(resolve, wait));
+    try {
+      const transport = await getTransport();
+      const info = await transport.sendMail({
+        from: { name: fromName, address: config.fromEmail },
+        to: mail.to,
+        replyTo: mail.replyTo,
+        subject: mail.subject,
+        html: mail.html,
+        text: mail.text,
+        headers: Object.fromEntries(mail.headers.map((h) => [h.Name, h.Value]))
+      });
+      await statsRef.set({ day, counts: { smtp: FieldValue.increment(1), send: FieldValue.increment(1) }, byType: { [mail.type]: { send: FieldValue.increment(1) } }, updatedAt: FieldValue.serverTimestamp() }, { merge: true })
+        .catch((error) => console.warn('email_stats update failed', error?.code));
+      return info.messageId as string;
+    } catch (error: any) {
+      // 4xx = temporary (Gmail rate limit 421/454), network errors; 5xx = permanent.
+      const code = Number(error?.responseCode || 0);
+      const temporary = (code >= 400 && code < 500) || ['ECONNECTION', 'ETIMEDOUT', 'ESOCKET', 'ECONNRESET'].includes(error?.code);
+      if (attempt >= 2 || !temporary) throw error;
+      systemTransport?.transport.close?.();
+      systemTransport = null;
+      await new Promise((resolve) => setTimeout(resolve, backoffMs(attempt + 1)));
+    }
+  }
 };
 
 const sendViaSmtp = async (
@@ -304,7 +382,8 @@ export const sendEmail = async (to: string, subject: string, html: string, optio
   const client = env('EMAIL_TRANSPORT', 'ses') === 'smtp' ? null : getSesClient();
   if (!client) {
     if (env('EMAIL_TRANSPORT', 'ses') !== 'smtp') console.warn('SES credentials missing, using system SMTP');
-    const messageId = await sendViaSmtp(systemSmtpConfig(), mail);
+    const messageId = await sendViaSystemSmtp(mail);
+    console.log(`SMTP sent type=${type} messageId=${messageId}`);
     return { transport: 'smtp', messageId };
   }
   try {
@@ -315,7 +394,7 @@ export const sendEmail = async (to: string, subject: string, html: string, optio
     const sandboxReject = error?.name === 'MessageRejected' && /not verified/i.test(String(error?.message || ''));
     if (sandboxReject && env('EMAIL_SMTP_FALLBACK') === 'true') {
       console.warn('SES sandbox rejected the recipient, falling back to SMTP');
-      const messageId = await sendViaSmtp(systemSmtpConfig(), mail);
+      const messageId = await sendViaSystemSmtp(mail);
       return { transport: 'smtp', messageId };
     }
     console.error(`SES send failed type=${type}`, error?.name, error?.message);

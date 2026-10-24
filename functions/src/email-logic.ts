@@ -4,7 +4,7 @@ import { createHmac, createHash, timingSafeEqual } from 'crypto';
 import { BlockList, isIP } from 'net';
 
 /** Bind these on every function that can reach sendEmail(): `runWith({ secrets: EMAIL_SECRETS })`. */
-export const EMAIL_SECRETS = ['AWS_SES_ACCESS_KEY_ID', 'AWS_SES_SECRET_ACCESS_KEY'];
+export const EMAIL_SECRETS = ['AWS_SES_ACCESS_KEY_ID', 'AWS_SES_SECRET_ACCESS_KEY', 'SMTP_USER', 'SMTP_PASS'];
 
 /**
  * v2 functions default to the compute service account, which has no Firestore role in this project
@@ -297,3 +297,20 @@ export const isPrivateIp = (ip: string): boolean => {
 };
 
 export const isAllowedSmtpPort = (port: unknown): boolean => ALLOWED_SMTP_PORTS.includes(Number(port));
+
+// ---------------------------------------------------------------------------
+// System SMTP (Google Workspace bridge until SES production access)
+// ---------------------------------------------------------------------------
+
+/** System SMTP may only talk to allowlisted hosts (default smtp.gmail.com). */
+export const isAllowedSystemSmtpHost = (host: string, allowedCsv: string | undefined): boolean => {
+    const allowed = String(allowedCsv || 'smtp.gmail.com').split(',').map((h) => h.trim().toLowerCase()).filter(Boolean);
+    return allowed.includes(String(host || '').trim().toLowerCase());
+};
+
+/** 465 = implicit TLS, 587 = STARTTLS (required); everything else is refused. */
+export const systemSmtpSecurity = (port: number): { secure: boolean; requireTLS: boolean } | null =>
+    port === 465 ? { secure: true, requireTLS: false } : port === 587 ? { secure: false, requireTLS: true } : null;
+
+/** Daily cap check for the system SMTP account (Google Workspace: ~2,000 recipients/day). */
+export const smtpDailyAllowance = (sentToday: number, limit: number): boolean => sentToday < Math.max(0, limit);

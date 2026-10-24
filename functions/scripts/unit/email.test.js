@@ -177,3 +177,17 @@ test('workspace SMTP hosts must be public (SSRF guard, audit M9)', () => {
     assert.equal(logic.isAllowedSmtpPort(22), false);
     assert.equal(logic.isAllowedSmtpPort(6379), false);
 });
+
+test('system SMTP: allowlisted host, TLS ports and daily cap', () => {
+    assert.equal(logic.isAllowedSystemSmtpHost('smtp.gmail.com', undefined), true);
+    assert.equal(logic.isAllowedSystemSmtpHost('SMTP.Gmail.com ', 'smtp.gmail.com'), true);
+    assert.equal(logic.isAllowedSystemSmtpHost('evil.example.com', undefined), false);
+    assert.equal(logic.isAllowedSystemSmtpHost('smtp.gmail.com.evil.com', 'smtp.gmail.com'), false);
+    assert.equal(logic.isAllowedSystemSmtpHost('', ''), false);
+    assert.deepEqual(logic.systemSmtpSecurity(465), { secure: true, requireTLS: false });
+    assert.deepEqual(logic.systemSmtpSecurity(587), { secure: false, requireTLS: true });
+    assert.equal(logic.systemSmtpSecurity(25), null);
+    assert.equal(logic.smtpDailyAllowance(1799, 1800), true);
+    assert.equal(logic.smtpDailyAllowance(1800, 1800), false);
+    assert.ok(logic.EMAIL_SECRETS.includes('SMTP_PASS') && logic.EMAIL_SECRETS.includes('SMTP_USER'));
+});
