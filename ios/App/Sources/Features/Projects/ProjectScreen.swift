@@ -7,8 +7,10 @@ enum ProjectTab: Hashable {
     case overview, list, board, plan, wiki, files, team
 }
 
-/// Project cockpit: a light, editorial header (cover or monogram, situation sentence), a tab bar that pins
-/// under the top bar, and Überblick · Aufgaben · Board · Plan · Team below it.
+/// Project cockpit: a light, editorial header (cover or monogram, situation sentence) and one section below it
+/// (Überblick · Aufgaben · Board · Plan · Wiki · Dateien · Team). No tab bar: on iPhone a section picker sits top
+/// right in the bar; on the iPhone Duo outer display the sections are circle buttons in the side rail and there is
+/// no bar at the top at all. Settings and links sit at the end of the overview (no ··· menu).
 struct ProjectScreen: View {
     let tenantId: String
     let projectId: String
@@ -22,7 +24,7 @@ struct ProjectScreen: View {
     @State private var topInset: CGFloat = 0
     @State private var scrolledY: CGFloat = 0
     @State private var headerHeight: CGFloat = 400
-    @Namespace private var underline
+    @Environment(\.pfSideRegionWidth) private var sideRegion
 
     init(tenantId: String, projectId: String) {
         self.tenantId = tenantId
@@ -37,8 +39,7 @@ struct ProjectScreen: View {
     private var health: HealthSnapshot? { model.workspace?.healthSnapshots[projectId] }
     private var pulse: ProjectPulse { ProjectPulse(tasks: store.tasks, milestones: store.milestones) }
     private var barHeight: CGFloat { topInset + 54 }
-    /// The tab bar is pinned once the header has scrolled away (native pinned section header).
-    private var isPinned: Bool { scrolledY > headerHeight - 2 }
+    private var isScrolledPastHeader: Bool { scrolledY > headerHeight - 2 }
 
     /// The user's project navigation (hidden items, order) applied to the cockpit tabs.
     private var navLayout: ProjectNavLayout { ProjectNavLayout(prefs: store.navPrefs, modules: project?.modules ?? []) }
@@ -91,32 +92,86 @@ struct ProjectScreen: View {
     // MARK: Chrome
 
     private var topBar: some View {
-        PFTopBar(title: isPinned || tab == .board ? project?.title : nil, backLabel: L10n.t("common.back"), onBack: { model.router.pop() }) {
-            if project != nil, model.showsInAppAi {
-                AiSparkButton { AiAsk.present(model: model, context: AiAskContext(surface: "project", projectId: projectId, entity: .project(id: projectId))) }
-            }
+        PFTopBar(backLabel: L10n.t("common.back"), onBack: { model.router.pop() }, collapsesOnSide: true) {
             if project != nil {
-                PFIconButton("gearshape", label: L10n.t("projects.settings.open"), style: .glass) {
-                    model.router.push(.projectSettings(tenantId: tenantId, projectId: projectId))
+                if sideRegion > 0 {
+                    // Duo: the sections stack in the side rail as circle buttons (current one inverted), ✦ on top.
+                    if model.showsInAppAi { askButton }
+                    ForEach(tabOptions, id: \.value) { option in
+                        PFIconButton(Self.symbol(option.value), label: option.label,
+                                     style: option.value == tab ? .primary : .glass) { selectTab(option.value) }
+                            .accessibilityAddTraits(option.value == tab ? .isSelected : [])
+                    }
+                } else {
+                    if model.showsInAppAi { askButton }
+                    sectionPicker
                 }
-                PFIconButton("ellipsis", label: L10n.t("common.more"), style: .glass) { presentMenu() }
             }
         }
-        .animation(PFMotion.respecting(PFMotion.fast), value: isPinned)
     }
 
-    private func presentMenu() {
-        let url = ProjectLinks.project(projectId)
+    private var askButton: some View {
+        AiSparkButton { AiAsk.present(model: model, context: AiAskContext(surface: "project", projectId: projectId, entity: .project(id: projectId))) }
+    }
+
+    /// iPhone: the current section as a glass capsule with a chevron; opens the list of sections.
+    private var sectionPicker: some View {
+        let current = tabOptions.first { $0.value == tab }
+        return Button { presentSections() } label: {
+            HStack(spacing: 6) {
+                Image(systemName: Self.symbol(tab)).font(.system(size: 13, weight: .semibold))
+                Text(current?.label ?? "").pfText(.buttonSmall).lineLimit(1)
+                Image(systemName: "chevron.down").font(.system(size: 10, weight: .bold)).opacity(0.6)
+            }
+            .foregroundStyle(PFColor.textMain)
+            .padding(.horizontal, 14)
+            .frame(minHeight: 44)
+            .pfGlass(in: .capsule)
+            .contentShape(.capsule)
+        }
+        .buttonStyle(.pfPressable)
+        .accessibilityLabel(L10n.t("projects.section.pick"))
+        .accessibilityValue(current?.label ?? "")
+    }
+
+    private func presentSections() {
+        let options = tabOptions
         presenter.present(detents: [.fit]) {
-            ActionSheet(title: project?.title, items: [
-                .init(title: L10n.t("common.copyLink"), systemImage: "link") { ProjectsClipboard.copy(url, model: model) },
-                .init(title: L10n.t("common.openInWeb"), systemImage: "safari") { ProjectsClipboard.open(url) },
-            ])
+            OptionSheet(title: L10n.t("projects.section.pick"), options: options.map { option in
+                OptionSheet.Option(id: option.label, label: (option.badge ?? 0) > 0 ? "\(option.label) · \(option.badge!)" : option.label,
+                                   isSelected: option.value == tab) {
+                    Image(systemName: Self.symbol(option.value)).font(.system(size: 15, weight: .medium)).foregroundStyle(PFColor.textMuted)
+                }
+            }) { id in
+                if let option = options.first(where: { $0.label == id }) { selectTab(option.value) }
+            }
         }
     }
 
-    private func tabBar(_ namespace: Namespace.ID) -> some View {
-        CockpitTabBar(tabOptions, selection: $tab, namespace: namespace)
+    static func symbol(_ tab: ProjectTab) -> String {
+        switch tab {
+        case .overview: "square.grid.2x2"
+        case .list: "checklist"
+        case .board: "rectangle.split.3x1"
+        case .plan: "calendar"
+        case .wiki: "book.closed"
+        case .files: "doc.on.doc"
+        case .team: "person.2"
+        }
+    }
+
+    /// End of the overview: settings and links (replaces the gear and ··· buttons in the bar).
+    private var projectFooter: some View {
+        let url = ProjectLinks.project(projectId)
+        return SettingsCard {
+            SettingsRow(systemImage: "gearshape", title: L10n.t("projects.settings.open")) {
+                model.router.push(.projectSettings(tenantId: tenantId, projectId: projectId))
+            }
+            SettingsRow(systemImage: "link", title: L10n.t("common.copyLink"), showsChevron: false) { ProjectsClipboard.copy(url, model: model) }
+            SettingsRow(systemImage: "safari", title: L10n.t("common.openInWeb"), showsChevron: false) { ProjectsClipboard.open(url) }
+        }
+        .padding(.horizontal, PFSpace.page)
+        .padding(.top, PFSpace.xl)
     }
 
     // MARK: Layouts
@@ -126,20 +181,16 @@ struct ProjectScreen: View {
     private func scrollLayout(_ project: Project) -> some View {
         ScrollViewReader { reader in
             ScrollView {
-                LazyVStack(alignment: .leading, spacing: 0, pinnedViews: [.sectionHeaders]) {
+                LazyVStack(alignment: .leading, spacing: 0) {
                     header(project)
                         .padding(.bottom, PFSpace.l)
                         .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { headerHeight = $0 }
                     if model.entitlements.isLocked(projectId: projectId) { PlanLockedNotice().padding(.bottom, PFSpace.l) }
-                    Section {
-                        tabContent(project)
-                            .padding(.bottom, 120)
-                            .id(tab)
-                    } header: {
-                        tabBar(underline)
-                            .background(PFColor.canvas)
-                            .id("cockpit-tabs")
-                    }
+                    Color.clear.frame(height: 0).id("cockpit-content")
+                    tabContent(project)
+                        .id(tab)
+                    if tab == .overview { projectFooter }
+                    Color.clear.frame(height: 120)
                 }
             }
             .onScrollGeometryChange(for: CGFloat.self) { $0.contentOffset.y + $0.contentInsets.top } action: { _, value in
@@ -153,10 +204,11 @@ struct ProjectScreen: View {
                     .background(alignment: .top) { topFade }
             }
             .onChange(of: tab) { _, _ in
-                if isPinned {
+                // Switching sections far down jumps to the start of the new section (header scrolled away).
+                if isScrolledPastHeader {
                     var transaction = Transaction()
                     transaction.disablesAnimations = true
-                    withTransaction(transaction) { reader.scrollTo("cockpit-tabs", anchor: .top) }
+                    withTransaction(transaction) { reader.scrollTo("cockpit-content", anchor: .top) }
                 }
             }
         }
@@ -171,11 +223,10 @@ struct ProjectScreen: View {
             .allowsHitTesting(false)
     }
 
-    /// Board uses the whole screen: the title lives in the top bar, then the tab bar and the lanes.
+    /// Board uses the whole screen: under the bar come the lanes directly.
     private func boardLayout(_ project: Project) -> some View {
         VStack(alignment: .leading, spacing: 0) {
-            Color.clear.frame(height: barHeight)
-            tabBar(underline)
+            Color.clear.frame(height: sideRegion > 0 ? topInset + 14 : barHeight)
             tabContent(project)
                 .padding(.top, PFSpace.s)
         }
@@ -191,8 +242,8 @@ struct ProjectScreen: View {
             coverURL: project.coverImage,
             eyebrow: eyebrow(project),
             situation: ProjectSituation.text(pulse: p, status: project.status),
-            // The top bar is a safe-area inset above the scroll content; only keep a small gap.
-            topInset: -48
+            // The top bar is a safe-area inset above the scroll content (none on the Duo); only keep a small gap.
+            topInset: sideRegion > 0 ? -44 : -48
         )
     }
 

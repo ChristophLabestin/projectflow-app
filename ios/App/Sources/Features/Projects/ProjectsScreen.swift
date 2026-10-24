@@ -103,18 +103,7 @@ struct ProjectsScreen: View {
             .padding(.top, PFSpace.m)
         }
         filterChips(rows)
-            // Duo: a horizontal scroll view draws into the side region; the chips fade out before the rail instead of
-            // ending on a hard cut.
-            .mask {
-                if compact {
-                    HStack(spacing: 0) {
-                        Color.black
-                        LinearGradient(colors: [.black, .black.opacity(0)], startPoint: .leading, endPoint: .trailing).frame(width: 56)
-                    }
-                } else {
-                    Rectangle().ignoresSafeArea()
-                }
-            }
+            .pfSideFade()
             .padding(.top, focusIds.isEmpty ? PFSpace.m : PFSpace.l)
         let groups = filter.map { [$0] } ?? PortfolioGroup.allCases.filter { $0 != .closed }
         let hidden = Set(focusIds)

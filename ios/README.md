@@ -120,6 +120,13 @@ Rail, root actions and side controls are centred on the status column (`PFLayout
 edge, under the camera); pages reach up to the rail (`PFLayout.sideContentInset`, applied inside `PFNavigator`) instead of the
 whole 84 pt system side region.
 
+## Project detail chrome
+
+No tab bar, no title pill, no ··· menu. iPhone: back left, ✦ + section picker ("Überblick ⌄", option sheet) right. Duo outer
+display: no top bar (`PFTopBar(collapsesOnSide:)`), the sections are circle buttons in the side rail (current inverted,
+back lowest). Project settings, copy link and open in web sit at the end of the overview. Horizontal scrollers next to the
+Duo rail fade out (`pfSideFade`).
+
 ## Workspace sidebar and areas
 
 `Features/Workspace/WorkspaceSidebar.swift` + `Shell/SidebarDrawer.swift`: a left drawer like the ChatGPT app — screen-edge pan
