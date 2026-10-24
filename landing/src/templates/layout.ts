@@ -74,7 +74,7 @@ const header = (page: PageDef, t: SiteCopy): string => {
     const docsUrl = urlFor('docsMcp', page.lang);
     const navList = navItems.map(([id, label]) => `<li><a href="${anchor(id)}">${esc(label)}</a></li>`).join('')
         + `<li><a href="${docsUrl}"${page.kind === 'docsMcp' ? ' aria-current="page"' : ''}>${esc(t.nav.docs)}</a></li>`;
-    const langLink = `<a class="lang-switch" href="${alternateOf(page, other)}" hreflang="${other}" lang="${other}" aria-label="${other === 'en' ? 'English' : 'Deutsch'}" data-lang="${other}">${other.toUpperCase()}</a>`;
+    const langLink = `<a class="lang-switch" href="${alternateOf(page, other)}" hreflang="${other}" lang="${other}" title="${other === 'en' ? 'English' : 'Deutsch'}" data-lang="${other}">${other.toUpperCase()}</a>`;
     return `
 <header class="site-header" data-header>
     <div class="container site-header__inner">
