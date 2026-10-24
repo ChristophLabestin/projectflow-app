@@ -1,4 +1,5 @@
 @use '../mixins';
+@use '../../../styles/tokens';
 
 .dashboard-page {
     width: 100%;
@@ -419,10 +420,13 @@
 
     &:hover,
     &:focus-visible {
-        border-color: var(--color-primary);
-        background: rgba(var(--color-primary-rgb), 0.08);
+        background: var(--color-surface-hover);
         color: var(--color-primary);
         opacity: 1;
+    }
+
+    &:focus-visible {
+        @include tokens.focus-ring;
     }
 
     &.is-active {

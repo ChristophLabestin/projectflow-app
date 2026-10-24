@@ -166,6 +166,25 @@ Variants (`data-variant`, pending the user's choice): **a** neutral, **b** neutr
 primary actions are the app's primary buttons. Working state = a status line with a soft text shimmer
 plus neutral skeleton lines; streamed text fades in. Motion stops under `prefers-reduced-motion`.
 
+## 1.10 Sunken states — borderless focus & selection (2026-10-24)
+
+The app is borderless: focus and selection never draw a border, outline or hard ring. They read as a
+slightly recessed surface ("sunken"). Tokens in `web/styles/_tokens.scss` (light + dark):
+`--sunken-bg`, `--sunken-shadow` (soft inset shadow), `--focus-ring` (2 px card gap + 2 px primary at 50 %).
+Mixins (same file, `@use '…/styles/tokens'`):
+- `tokens.sunken` — selected / active / current / pressed: cards, chips, tiles, rows, options, segmented
+  buttons, the sidebar dock (`.snav-dock__*.is-active`) and theme switch. Text colour may strengthen; no fill
+  swap to primary for plain choices (ModuleSelection: sunken card + filled check).
+- `tokens.sunken-field` — text fields and search wrappers sink in on `:focus` / `:focus-within` (TextInput,
+  TextArea, Select trigger when focused or open, quick project form). Rest = filled `--color-surface-hover`
+  without hairline, hover = `--color-surface-hover-light`.
+- `tokens.focus-ring` / `focus-ring(true)` — keyboard focus (`:focus-visible`) on non-text controls; `(true)`
+  keeps the sunken shadow of a selected element. Never remove keyboard focus without this.
+Global guard (`web/styles/index.scss`): focused input/textarea/select get `border-color: transparent` and only
+`--field-focus-shadow` as box-shadow (`@property`, non-inheriting) — the Tailwind forms focus border/ring can't
+come back. Exempt: checkbox/radio/switch controls, colour swatches (offset ring), tab underlines, error and
+drop-zone states, status/priority markers.
+
 ## 2) Border Radius
 
 Border radius tokens define the rounding used across components. Use them consistently (cards, buttons, inputs, modals).
@@ -359,6 +378,10 @@ slot; `null` (sidebar collapsed, mobile drawer closed, inside a project) → ren
 Styles: `.snav-panel-slot`, `.snav-avatar--icon` in `_sidebar-navigator.scss`; the area provides an
 `--embedded` variant without card/header. In use: workspace wiki (`/wiki`), workspace flows (`/flows/*`: `FlowsSidebar` `--embedded`, header action „Neuer Flow“; `/project/:id/flows` keeps the list in the page). Apply to new areas and
 existing ones where it fits (Files, Flows, …).
+Lower section (2026-10-24): everything sits on the nav gutter (8 px, same edges as the rows): desktop promo,
+dock (32 px tiles: home, recent/pinned projects, "new"; current one sunken — home only on `/`), footer
+(collapse, theme switch, notifications). The nav layer hides its scrollbar and fades its top/bottom edge
+(mask) so content scrolling under the dock is visible.
 
 ## 6) Interaction Guidelines (UX Patterns)
 

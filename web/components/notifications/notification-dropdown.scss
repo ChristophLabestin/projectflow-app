@@ -1,3 +1,4 @@
+@use '../../styles/tokens';
 // Bell + portaled Notification Center popover.
 
 .notification-bell {
@@ -29,8 +30,7 @@
     }
 
     &:focus-visible {
-        outline: 2px solid var(--color-primary);
-        outline-offset: 2px;
+        @include tokens.focus-ring;
     }
 }
 
@@ -106,8 +106,7 @@
     }
 
     &:focus-visible {
-        outline: 2px solid var(--color-primary);
-        outline-offset: 1px;
+        @include tokens.focus-ring;
     }
 
     &:disabled {

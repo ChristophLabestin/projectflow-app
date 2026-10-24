@@ -1,3 +1,4 @@
+@use '../../styles/tokens';
 // Plan limit hint (PlanHint) and the top-bar plan status pill (PlanStatusPill).
 
 .plan-hint {
@@ -65,8 +66,7 @@
     &:hover { background: var(--color-primary-hover); }
 
     &:focus-visible {
-        outline: 2px solid var(--color-primary);
-        outline-offset: 2px;
+        @include tokens.focus-ring;
     }
 }
 
@@ -111,8 +111,7 @@
     &:hover { background: var(--color-surface-border); }
 
     &:focus-visible {
-        outline: 2px solid var(--color-primary);
-        outline-offset: 2px;
+        @include tokens.focus-ring;
     }
 
     &--urgent,

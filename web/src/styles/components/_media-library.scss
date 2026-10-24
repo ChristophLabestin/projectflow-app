@@ -1,3 +1,5 @@
+@use '../../../styles/tokens';
+
 .media-library__overlay {
     position: fixed;
     inset: 0;
@@ -432,8 +434,7 @@
 
     &.is-active {
         color: var(--color-primary);
-        box-shadow: inset 0 0 0 1px rgba(var(--color-primary-rgb), 0.35);
-        background-color: rgba(var(--color-primary-rgb), 0.08);
+        @include tokens.sunken;
     }
 }
 
@@ -740,8 +741,7 @@
     &.is-active,
     &:hover {
         color: var(--color-primary);
-        box-shadow: inset 0 0 0 2px rgba(var(--color-primary-rgb), 0.5);
-        background-color: rgba(var(--color-primary-rgb), 0.08);
+        @include tokens.sunken;
     }
 }
 
@@ -758,10 +758,7 @@
     box-shadow: inset 0 0 0 1px var(--color-surface-border);
     transition: box-shadow var(--transition-fast);
 
-    &:focus {
-        box-shadow: inset 0 0 0 1px rgba(var(--color-primary-rgb), 0.4),
-            0 0 0 2px rgba(var(--color-primary-rgb), 0.15);
-    }
+    @include tokens.sunken-field;
 
     &::placeholder {
         color: var(--color-text-subtle);
@@ -792,8 +789,7 @@
 
     &.is-active {
         color: var(--color-primary);
-        background-color: rgba(var(--color-primary-rgb), 0.08);
-        box-shadow: inset 0 0 0 1px rgba(var(--color-primary-rgb), 0.5);
+        @include tokens.sunken;
     }
 }
 
@@ -1210,9 +1206,7 @@
     color: var(--color-text-main);
     transition: box-shadow var(--transition-fast);
 
-    &:focus {
-        box-shadow: 0 0 0 2px rgba(var(--color-primary-rgb), 0.2);
-    }
+    @include tokens.sunken-field;
 
     &::placeholder {
         color: var(--color-text-subtle);

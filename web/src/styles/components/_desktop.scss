@@ -1,3 +1,5 @@
+@use '../../../styles/tokens';
+
 // Desktop app (Electron shell, `desktop/`). Everything here is scoped to `html.is-desktop`,
 // a class the shell's preload sets before first paint — the browser build is unaffected.
 
@@ -254,8 +256,7 @@ html.is-desktop.desktop-window-quick-access {
     cursor: pointer;
 
     &:focus-visible {
-        outline: 2px solid var(--color-primary);
-        outline-offset: 2px;
+        @include tokens.focus-ring;
         border-radius: 4px;
     }
 }
@@ -1237,9 +1238,7 @@ html.is-desktop.desktop-window-tray {
         font: inherit;
     }
 
-    &:focus-within {
-        border-color: var(--color-primary);
-    }
+    @include tokens.sunken-field;
 
     &.is-error {
         border-color: var(--color-error);
@@ -1547,7 +1546,7 @@ html.is-desktop.desktop-window-tray {
 .desktop-promo {
     position: relative;
     overflow: hidden;
-    margin: 4px 10px 6px;
+    margin: 4px 8px 0; // nav gutter: same edges as rows, dock and footer
     padding: 12px 12px 10px;
     border-radius: var(--radius-lg);
     background: linear-gradient(150deg, var(--color-primary-light), var(--color-primary) 70%);

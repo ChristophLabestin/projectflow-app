@@ -1,3 +1,5 @@
+@use '../../../styles/tokens';
+
 .topbar-focus-pill {
     display: inline-flex;
     align-items: center;
@@ -446,8 +448,11 @@
 
     &:hover,
     &:focus-visible {
-        border-color: var(--color-surface-border-hover);
         background: var(--color-surface-hover);
+    }
+
+    &:focus-visible {
+        @include tokens.focus-ring;
     }
 
     &:active {
@@ -1584,7 +1589,6 @@
 
                     &:focus {
                         outline: none;
-                        border-bottom-color: var(--color-primary);
                     }
                 }
 
@@ -1807,9 +1811,7 @@
                 }
 
                 &.selected {
-                    background-color: var(--color-surface-card);
-                    border-color: rgba(var(--color-primary-rgb), 0.3);
-                    box-shadow: var(--shadow-sm);
+                    @include tokens.sunken;
 
                     .item-title {
                         color: var(--color-text-main);
@@ -1984,9 +1986,7 @@
                     outline: none;
                     transition: all var(--transition-fast);
 
-                    &:focus {
-                        box-shadow: 0 0 0 2px rgba(var(--color-primary-rgb), 0.2);
-                    }
+                    @include tokens.sunken-field;
                 }
 
                 .icon-container {

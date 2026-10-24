@@ -798,9 +798,16 @@ html.dark .bg-dots {
   background-image: radial-gradient(rgba(255, 255, 255, 0.1) 1px, transparent 1px);
 }
 
-/* --- No focus rings on form fields ---
-   Product decision: text fields, textareas and selects show no outline or
-   ring (outline, inset/outer box-shadow) when focused — anywhere in the app.
+/* Set per field (sunken-field mixin), never inherited by inputs inside a sunken wrapper. */
+@property --field-focus-shadow {
+  syntax: '*';
+  inherits: false;
+}
+
+/* --- No focus rings or borders on form fields ---
+   Product decision: text fields, textareas and selects show no outline, border
+   colour or ring when focused — anywhere in the app. Focus reads as "sunken"
+   instead: fields using the sunken-field mixin set --field-focus-shadow.
    Component styles and the forms base add rings with higher specificity, so
    this has to be !important. Checkboxes/radios/ranges keep their focus cue. */
 input:not([type='checkbox']):not([type='radio']):not([type='range']):focus,
@@ -810,5 +817,6 @@ textarea:focus-visible,
 select:focus,
 select:focus-visible {
   outline: none !important;
-  box-shadow: none !important;
+  border-color: transparent !important;
+  box-shadow: var(--field-focus-shadow, none) !important;
 }

@@ -1,3 +1,4 @@
+@use '../../styles/tokens';
 // Filter tabs, other-workspace hints and list states of the Notification Center.
 
 .notification-filter {
@@ -28,8 +29,7 @@
     }
 
     &:focus-visible {
-        outline: 2px solid var(--color-primary);
-        outline-offset: 1px;
+        @include tokens.focus-ring;
     }
 }
 

@@ -1,3 +1,5 @@
+@use '../../../styles/tokens';
+
 .public-initiative-feedback {
     min-height: 100vh;
     padding: clamp(1.5rem, 4vw, 3rem) 1rem;
@@ -272,14 +274,11 @@
     }
 
     &:hover {
-        border-color: var(--color-primary);
-        background: rgba(var(--color-primary-rgb), 0.02);
+        background: var(--color-surface-hover);
     }
 
     &:focus-visible {
-        outline: 0;
-        border-color: var(--color-primary);
-        box-shadow: 0 0 0 3px rgba(var(--color-primary-rgb), 0.08);
+        @include tokens.focus-ring;
     }
 }
 

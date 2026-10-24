@@ -1,3 +1,5 @@
+@use '../../../styles/tokens';
+
 .project-overview-container {
     display: flex;
     flex-direction: column;
@@ -7734,7 +7736,8 @@ button.project-next-action-card__primary.is-warning:hover {
             }
 
             &.active {
-                border-color: var(--color-primary);
+                border-color: transparent;
+                @include tokens.focus-ring;
                 opacity: 1;
             }
 

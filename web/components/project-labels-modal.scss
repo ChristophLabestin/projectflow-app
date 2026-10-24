@@ -33,7 +33,7 @@
 
 .project-labels__color.is-selected {
     transform: scale(1.1);
-    box-shadow: 0 0 0 2px var(--color-text-main);
+    box-shadow: 0 0 0 2px var(--color-surface-card), 0 0 0 4px var(--color-text-main);
 }
 
 .project-labels__error {

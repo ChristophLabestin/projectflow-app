@@ -461,8 +461,7 @@
     }
 
     &:focus-visible {
-        outline: none;
-        box-shadow: 0 0 0 3px rgba(var(--color-primary-rgb), 0.18);
+        @include tokens.focus-ring;
     }
 
     &__copy {

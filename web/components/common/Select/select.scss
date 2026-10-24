@@ -23,39 +23,26 @@
         justify-content: space-between;
         width: 100%;
         padding: 8px 14px;
-        background-color: rgba(var(--color-surface-hover-rgb), 0.5);
+        background-color: var(--color-surface-hover);
         border: none !important;
         border-radius: var(--radius-control);
-        box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-surface-border) 60%, transparent);
+        box-shadow: none;
         font-size: 0.95rem;
         color: var(--color-text-main);
         cursor: pointer;
         transition: all var(--transition-normal);
         height: 42px;
 
-        &:hover,
-        &:focus,
-        &[aria-expanded='true'] {
+        &:hover {
             background-color: var(--color-surface-hover-light);
         }
 
-        &:focus {
+        // Focused or open: sunken (tokens.sunken), no ring, no border.
+        &:focus,
+        &:focus-visible,
+        &[aria-expanded='true'] {
             outline: none;
-            border-color: transparent;
-            background-color: var(--color-surface-bg);
-            box-shadow: inset 0 0 0 2px var(--color-primary), 0 4px 12px rgba(0, 0, 0, 0.05);
-        }
-
-        @media (prefers-color-scheme: light) {
-            :root:not(.dark) & {
-                background-color: #f4f4f5;
-
-                &:hover,
-                &:focus,
-                &[aria-expanded='true'] {
-                    background-color: #e4e4e7;
-                }
-            }
+            @include tokens.sunken;
         }
 
         /* Placeholder style when nothing selected */
@@ -71,10 +58,11 @@
         }
 
         &--error {
-            border-color: var(--color-error);
+            box-shadow: inset 0 0 0 1px rgba(var(--color-error-rgb), 0.55);
 
-            &:focus {
-                box-shadow: none;
+            &:focus,
+            &[aria-expanded='true'] {
+                box-shadow: var(--sunken-shadow), inset 0 0 0 1px rgba(var(--color-error-rgb), 0.55);
             }
         }
     }

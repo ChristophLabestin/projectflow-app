@@ -1,3 +1,4 @@
+@use '../../styles/tokens';
 // Help center: floating one-column sheet (home → article / search), borderless, depth via surface contrast.
 @use '../../src/styles/mixins';
 
@@ -113,8 +114,7 @@
     }
 
     &:focus-visible {
-        outline: 2px solid var(--color-primary);
-        outline-offset: 2px;
+        @include tokens.focus-ring;
     }
 }
 
@@ -173,8 +173,7 @@
     }
 
     &:focus-visible {
-        outline: 2px solid var(--color-primary);
-        outline-offset: 2px;
+        @include tokens.focus-ring;
     }
 }
 

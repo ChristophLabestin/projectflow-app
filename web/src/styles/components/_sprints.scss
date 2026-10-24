@@ -1,3 +1,5 @@
+@use '../../../styles/tokens';
+
 /* ============================================================
    Sprints (project) — current sprint, planning, history.
    ============================================================ */
@@ -574,7 +576,7 @@
         font-size: 15px;
         outline: none;
 
-        &:focus { border-color: var(--color-primary); background: var(--color-surface-card); }
+        @include tokens.sunken-field;
     }
 
     &__dates {
@@ -625,7 +627,7 @@
         cursor: pointer;
 
         .material-symbols-outlined { font-size: 20px; color: var(--color-text-muted); }
-        &.is-active { border-color: var(--color-primary); background: var(--color-surface-card); }
+        &.is-active { @include tokens.sunken; }
     }
 
     &__foot {

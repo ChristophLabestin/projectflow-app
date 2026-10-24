@@ -24,8 +24,7 @@
 
     // Disable native outline and use focus-visible usually, but for now standard focus
     &:focus-visible {
-        outline: 2px solid var(--color-primary);
-        outline-offset: 2px;
+        @include tokens.focus-ring;
     }
 
     &--ghost:active:not(:disabled) {

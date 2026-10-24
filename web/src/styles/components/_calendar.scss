@@ -1,3 +1,5 @@
+@use '../../../styles/tokens';
+
 .calendar-page {
     position: relative;
     display: flex;
@@ -204,7 +206,7 @@
 }
 
 .calendar-day--selected {
-    box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-primary) 40%, transparent) inset;
+    @include tokens.sunken;
 }
 
 .calendar-day--drag {
@@ -1089,8 +1091,7 @@
     cursor: pointer;
 
     &:focus-visible {
-        outline: 2px solid var(--color-primary);
-        outline-offset: -2px;
+        @include tokens.focus-ring;
     }
 }
 
@@ -1213,8 +1214,7 @@
     }
 
     &:focus-visible {
-        outline: 2px solid var(--color-primary);
-        outline-offset: -2px;
+        @include tokens.focus-ring;
     }
 }
 

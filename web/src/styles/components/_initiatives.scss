@@ -1,3 +1,5 @@
+@use '../../../styles/tokens';
+
 .initiative-detail {
     max-width: 1400px;
     margin: 0 auto;
@@ -588,9 +590,7 @@
     }
     
     &.is-selected .feedback-canvas__field-overlay {
-        border-color: var(--color-primary);
-        background: var(--color-surface-card);
-        box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.2);
+        @include tokens.sunken;
     }
     
     .feedback-canvas__field-content {
@@ -632,9 +632,7 @@
     }
     
     &.is-selected .feedback-canvas__field-overlay {
-        border-color: var(--color-primary);
-        background: var(--color-surface-card);
-        box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.2);
+        @include tokens.sunken;
     }
     
     &.has-error .feedback-canvas__field-overlay {

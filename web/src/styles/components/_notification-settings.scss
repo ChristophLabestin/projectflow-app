@@ -1,3 +1,5 @@
+@use '../../../styles/tokens';
+
 // Personal settings → Notifications (users/{uid}.notificationPrefs).
 
 .notification-settings {
@@ -136,10 +138,7 @@
     font-size: 0.85rem;
     font-weight: 650;
 
-    &:focus-visible {
-        outline: 2px solid var(--color-primary);
-        outline-offset: 1px;
-    }
+    @include tokens.sunken-field;
 
     &:disabled {
         opacity: 0.5;
@@ -186,8 +185,7 @@
     transition: background var(--transition-fast);
 
     &:focus-visible {
-        outline: 2px solid var(--color-primary);
-        outline-offset: 2px;
+        @include tokens.focus-ring;
     }
 
     &:disabled {

@@ -140,6 +140,13 @@
   --shadow-soft: 0 24px 48px -12px rgba(0, 0, 0, 0.08);
   --shadow-inner: inset 0 2px 4px 0 rgba(0, 0, 0, 0.06);
 
+  /* Sunken (STYLING.md §1.10): focus and selection read as a slightly recessed surface,
+     never as a border. --focus-ring is the only extra cue, for :focus-visible on
+     non-text controls (keyboard). Use the sunken / sunken-field / focus-ring mixins below. */
+  --sunken-bg: #e2e2e6;
+  --sunken-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.08), inset 0 2px 6px -2px rgba(0, 0, 0, 0.10);
+  --focus-ring: 0 0 0 2px var(--color-surface-card), 0 0 0 4px rgba(var(--color-primary-rgb), 0.5);
+
   /* Transitions */
   --transition-fast: 150ms cubic-bezier(0.16, 1, 0.3, 1);
   --transition-normal: 300ms cubic-bezier(0.16, 1, 0.3, 1);
@@ -237,6 +244,8 @@ html.dark {
   --color-accent: var(--color-primary);
   --color-primary-active: var(--color-primary-dark);
   --color-primary-rgb: 229, 229, 229;
+  --sunken-bg: #0e1116;
+  --sunken-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.55), inset 0 2px 8px -2px rgba(0, 0, 0, 0.5);
 
   --shadow-sm: 0 2px 8px -2px rgba(0, 0, 0, 0.4), 0 1px 4px -1px rgba(0, 0, 0, 0.2);
   --shadow-md: 0 8px 24px -4px rgba(0, 0, 0, 0.5), 0 4px 8px -2px rgba(0, 0, 0, 0.3);
@@ -261,4 +270,37 @@ html.dark {
   --priority-medium-rgb: 96, 165, 250;
   --priority-low: #94a3b8;
   --priority-low-rgb: 148, 163, 184;
+}
+
+// ---- Sunken state mixins (STYLING.md §1.10) ---------------------------------
+// Selected / pressed / current: recessed surface, no border.
+@mixin sunken {
+  background-color: var(--sunken-bg);
+  border-color: transparent;
+  box-shadow: var(--sunken-shadow);
+}
+
+// Keyboard focus on buttons, cards, chips, rows: soft offset ring (keeps any sunken state).
+@mixin focus-ring($sunken: false) {
+  outline: none;
+  @if $sunken {
+    box-shadow: var(--sunken-shadow), var(--focus-ring);
+  } @else {
+    box-shadow: var(--focus-ring);
+  }
+}
+
+// Text fields: sink in on focus. The global field rule in index.scss strips every focus
+// ring with !important and only lets --field-focus-shadow through.
+@mixin sunken-field {
+  &:focus,
+  &:focus:hover,
+  &:focus-within,
+  &:focus-within:hover {
+    --field-focus-shadow: var(--sunken-shadow);
+    background-color: var(--sunken-bg);
+    border-color: transparent;
+    box-shadow: var(--sunken-shadow);
+    outline: none;
+  }
 }

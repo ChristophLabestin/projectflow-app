@@ -1,4 +1,5 @@
 @use '../mixins';
+@use '../../../styles/tokens';
 
 .modal.project-edit-modal-shell {
     max-width: min(1080px, calc(100vw - 2rem));
@@ -59,11 +60,11 @@
         background: var(--color-surface-card);
         box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-surface-border) 72%, transparent);
 
-        &:hover:not(:disabled),
-        &:focus {
+        &:hover:not(:disabled) {
             background: var(--color-surface-hover);
-            box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-surface-border) 92%, transparent);
         }
+
+        @include tokens.sunken-field;
     }
 
     .text-input,
@@ -916,9 +917,8 @@
     cursor: pointer;
 
     &.is-active {
-        background: var(--color-surface-hover);
         color: var(--color-text-main);
-        box-shadow: inset 0 0 0 1px var(--color-surface-border-hover);
+        @include tokens.sunken;
     }
 }
 

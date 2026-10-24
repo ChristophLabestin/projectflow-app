@@ -1,3 +1,5 @@
+@use '../../../styles/tokens';
+
 .project-switcher {
     position: relative;
     width: 100%;
@@ -133,10 +135,7 @@
         background-color var(--transition-fast),
         border-color var(--transition-fast);
 
-    &:focus-within {
-        border-color: var(--color-surface-border-hover);
-        background: var(--color-surface-card);
-    }
+    @include tokens.sunken-field;
 
     .material-symbols-outlined {
         font-size: 1.125rem;

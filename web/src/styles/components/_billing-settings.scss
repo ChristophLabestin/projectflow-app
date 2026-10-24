@@ -1,3 +1,5 @@
+@use '../../../styles/tokens';
+
 /* Settings → Billing (BillingPanel). Card/head pattern mirrors _ai-settings.scss. */
 .billing-settings {
     display: flex;
@@ -115,8 +117,7 @@
         em { font-size: 12px; font-style: normal; font-weight: 700; color: var(--color-text-main); }
 
         &.is-active {
-            border-color: var(--color-primary);
-            box-shadow: 0 0 0 1px var(--color-primary);
+            @include tokens.sunken;
         }
     }
 

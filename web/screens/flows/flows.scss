@@ -1,5 +1,6 @@
 // Flows (automations): shell with sidebar, home, new-flow page, step editor, preview and run log.
 // Tokens only (brain/reference/app/STYLING.md).
+@use '../../styles/tokens';
 
 .flows-skeleton {
     height: 16rem;
@@ -35,10 +36,13 @@
     cursor: pointer;
     transition: border-color 0.15s ease, box-shadow 0.15s ease;
 
-    &:hover,
-    &:focus-visible {
+    &:hover {
         border-color: var(--color-surface-border-hover);
         box-shadow: var(--shadow-sm);
+    }
+
+    &:focus-visible {
+        @include tokens.focus-ring;
     }
 
     &--blank {
@@ -78,9 +82,10 @@
 .flow-editor__name {
     flex: 1 1 20rem;
     min-width: 0;
-    padding: 0.25rem 0;
+    padding: 0.25rem 0.5rem;
+    margin-left: -0.5rem;
     border: none;
-    border-bottom: 1px solid transparent;
+    border-radius: var(--radius-md);
     background: transparent;
     color: var(--color-text-main);
     font: inherit;
@@ -92,11 +97,11 @@
         color: var(--color-text-subtle);
     }
 
-    &:hover:not(:disabled),
-    &:focus {
-        border-bottom-color: var(--color-surface-border);
-        outline: none;
+    &:hover:not(:disabled) {
+        background: var(--color-surface-hover);
     }
+
+    @include tokens.sunken-field;
 }
 
 .flow-banner {
@@ -868,9 +873,7 @@
             font-size: 0.8125rem;
         }
 
-        &:focus-within {
-            box-shadow: 0 0 0 2px rgba(var(--color-primary-rgb), 0.28);
-        }
+        @include tokens.sunken-field;
     }
 
     &__filters {
@@ -1378,7 +1381,7 @@
         }
 
         &.is-active {
-            border-color: var(--color-primary);
+            @include tokens.sunken;
         }
     }
 
@@ -1760,9 +1763,8 @@
     }
 
     &.is-active {
-        border-color: var(--color-primary);
-        background: var(--color-primary);
-        color: var(--color-primary-text);
+        @include tokens.sunken;
+        color: var(--color-text-main);
 
         .flow-tile__icon {
             color: inherit;

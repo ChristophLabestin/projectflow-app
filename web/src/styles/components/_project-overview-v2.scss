@@ -1,3 +1,5 @@
+@use '../../../styles/tokens';
+
 /* ============================================================
    Project Overview V2 — redesigned operational workspace
    Token-driven (see web/styles/_tokens.scss). No hardcoded colors.
@@ -642,10 +644,7 @@
             outline: none;
             transition: var(--transition-fast);
 
-            &:focus {
-                background: var(--color-surface-hover-light);
-                box-shadow: 0 0 0 2px rgba(var(--color-primary-rgb), 0.18);
-            }
+            @include tokens.sunken-field;
         }
 
         .dt-picker,
@@ -937,7 +936,7 @@
 
         .material-symbols-outlined { font-size: 18px; }
         &:hover { background: var(--color-surface-hover); }
-        &.is-active { border-color: var(--color-primary); }
+        &.is-active { @include tokens.sunken; }
     }
 
     &__badge {
@@ -1928,7 +1927,7 @@ html:not(.dark) .po-board {
         border: 1px solid var(--color-surface-border); border-radius: var(--radius-md); box-shadow: var(--shadow-lg);
     }
     &__swatch { width: 20px; height: 20px; border-radius: 50%; border: 2px solid transparent; cursor: pointer;
-        &.is-active { border-color: var(--color-text-main); }
+        &.is-active { border-color: transparent; box-shadow: 0 0 0 1.5px var(--color-surface-card), 0 0 0 3px var(--color-text-main); }
         &--clear { background: var(--color-surface-hover); color: var(--color-text-muted); display: flex; align-items: center; justify-content: center;
             .material-symbols-outlined { font-size: 13px; } } }
 }

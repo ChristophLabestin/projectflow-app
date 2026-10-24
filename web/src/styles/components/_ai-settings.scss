@@ -1,3 +1,5 @@
+@use '../../../styles/tokens';
+
 /* Settings → AI & integrations (AiIntegrationsPanel). Code blocks reuse .mcp-connect__code. */
 .ai-settings {
     display: flex;
@@ -84,8 +86,8 @@
         cursor: pointer;
 
         .material-symbols-outlined { font-size: 18px; }
-        &:hover { border-color: var(--color-surface-border-hover); color: var(--color-text-main); }
-        &.is-active { border-color: var(--color-primary); color: var(--color-text-main); background: var(--color-surface-hover-light); }
+        &:hover { background: var(--color-surface-hover); color: var(--color-text-main); }
+        &.is-active { color: var(--color-text-main); @include tokens.sunken; }
     }
 
     &__steps {

@@ -1,4 +1,5 @@
 @use '../mixins';
+@use '../../../styles/tokens';
 
 // ======================================================================
 // Sidebar Navigator (sidebarV2) — a floating column that zooms between
@@ -232,6 +233,9 @@
     overflow-y: auto;
     box-sizing: border-box;
     @include mixins.no-scrollbar;
+    // The scrollbar is hidden, so the edges fade: content scrolling under the dock is visible
+    // as such. Without overflow only the padding sits in the fade.
+    mask-image: linear-gradient(to bottom, transparent 0, black 6px, black calc(100% - 14px), transparent 100%);
 }
 
 // ---- Groups + rows + morphing glider ---------------------------------
@@ -421,7 +425,7 @@
 .snav-avatar--company { background: var(--color-primary); color: var(--color-primary-text); }
 .snav-avatar--client { background: var(--color-accent, var(--color-primary)); color: var(--color-primary-text); }
 .snav-avatar--row { width: 26px; height: 26px; border-radius: 8px; font-size: 11px; }
-.snav-avatar--dock { width: 26px; height: 26px; border-radius: 8px; font-size: 11px; }
+.snav-avatar--dock { width: 24px; height: 24px; border-radius: 7px; font-size: 11px; transition: transform var(--transition-fast); }
 
 // ---- Pin / status dot ------------------------------------------------
 .snav-pin {
@@ -456,44 +460,54 @@
 }
 
 // ---- Project dock (recent / pinned quick-switch) ---------------------
+// One tile grid on the nav gutter (8 px, same edges as the rows above): home, projects and
+// "new" are 32 px tiles. The current one is sunken (tokens.sunken); hover only tints.
 .snav-dock {
     display: flex;
     align-items: center;
-    gap: 6px;
-    padding: 10px 10px 2px;
+    gap: 4px;
+    padding: 8px 8px 0;
 }
 
 .snav-dock__home,
-.snav-dock__add {
+.snav-dock__add,
+.snav-dock__project {
+    position: relative;
     flex: 0 0 auto;
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 28px;
-    height: 28px;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border: 0;
     border-radius: var(--radius-control);
+    background: transparent;
+    color: var(--color-text-muted);
     cursor: pointer;
     text-decoration: none;
-    transition: background-color var(--transition-fast), transform var(--transition-fast);
+    transition: background-color var(--transition-fast), box-shadow var(--transition-fast), color var(--transition-fast);
 
-    .material-symbols-outlined { font-size: 18px; }
-    &:active { transform: scale(0.92); }
-}
+    .material-symbols-outlined { font-size: 20px; }
 
-.snav-dock__home { background: var(--color-primary); color: var(--color-primary-text); }
+    &:hover { background: var(--color-surface-hover); color: var(--color-text-main); }
+    &:active > * { transform: scale(0.92); }
+    &:focus-visible { @include tokens.focus-ring; }
 
-.snav-dock__add {
-    background: var(--color-surface-hover);
-    border: 0;
-    color: var(--color-text-muted);
+    &.is-active,
+    &.is-active:hover {
+        @include tokens.sunken;
+        color: var(--color-text-main);
+    }
 
-    &:hover { background: var(--color-surface-border); color: var(--color-text-main); }
+    &.is-active:focus-visible { @include tokens.focus-ring(true); }
 }
 
 .snav-dock__divider {
     flex: 0 0 auto;
     width: 1px;
-    height: 20px;
+    height: 18px;
+    margin: 0 2px;
     background: var(--color-surface-border);
     opacity: 0.6;
 }
@@ -503,26 +517,14 @@
     min-width: 0;
     display: flex;
     align-items: center;
-    gap: 6px;
-}
-
-.snav-dock__project {
-    position: relative;
-    flex: 0 0 auto;
-    border: 2px solid transparent;
-    border-radius: 10px;
-    text-decoration: none;
-    transition: transform var(--transition-fast), border-color var(--transition-fast);
-
-    &:hover { transform: translateY(-2px); }
-    &.is-active { border-color: var(--color-primary); }
+    gap: 4px;
 }
 
 .snav-dock__pin {
     position: absolute;
-    right: -3px;
-    bottom: -3px;
-    font-size: 12px;
+    right: 0;
+    bottom: 0;
+    font-size: 11px !important;
     color: var(--color-primary);
     background: var(--color-surface-card);
     border-radius: 50%;
@@ -560,7 +562,7 @@
     display: flex;
     flex-direction: column;
     gap: 10px;
-    padding: 10px 12px 12px;
+    padding: 8px 8px 12px;
 }
 
 .snav-footer__row {
@@ -607,8 +609,8 @@
 
         .material-symbols-outlined { font-size: 16px; }
         &:hover:not(.is-active) { color: var(--color-text-main); }
-        &:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 1px; }
-        &.is-active { background: var(--color-surface-card); color: var(--color-text-main); box-shadow: var(--shadow-sm); }
+        &:focus-visible { @include tokens.focus-ring; }
+        &.is-active { @include tokens.sunken; color: var(--color-text-main); }
     }
 }
 

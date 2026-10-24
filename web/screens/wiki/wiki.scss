@@ -1,5 +1,6 @@
 // Wiki & Docs (brain/plans/wiki-concept.md). Borderless: layers separate by surface + shadow.
 @use '../../styles/motion-mixins' as motion;
+@use '../../styles/tokens';
 
 // Container for the @container rules below (the viewport width ignores the app sidebar).
 .wiki-shell {
@@ -191,7 +192,7 @@
         font-size: 13px;
     }
 
-    &:focus-within { box-shadow: 0 0 0 2px rgba(var(--color-primary-rgb), 0.28); }
+    @include tokens.sunken-field;
 }
 
 .wiki-nav__scroll {
@@ -1223,7 +1224,7 @@
     color: var(--color-text-main);
     font-size: 14px;
 
-    &:focus { box-shadow: 0 0 0 2px rgba(var(--color-primary-rgb), 0.28); }
+    @include tokens.sunken-field;
 }
 
 .wiki-dialog__list {
@@ -1746,7 +1747,7 @@
     box-shadow: var(--shadow-sm);
     transition: box-shadow var(--motion-duration-fast) var(--motion-ease-out);
 
-    &.is-selected { box-shadow: 0 0 0 2px rgba(var(--color-primary-rgb), 0.45), var(--shadow-sm); }
+    &.is-selected { @include tokens.sunken; }
 }
 
 .wiki-tasks {

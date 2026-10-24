@@ -1,3 +1,5 @@
+@use '../../../styles/tokens';
+
 // Work lists (My Work + Project Tasks): grouped, inline-editable task rows.
 // Borderless: depth via surface contrast and shadows only.
 
@@ -582,8 +584,7 @@
     }
 
     &.is-selected {
-        background: rgba(var(--color-primary-rgb), 0.06);
-        box-shadow: var(--shadow-sm), inset 0 0 0 1.5px rgba(var(--color-primary-rgb), 0.5);
+        @include tokens.sunken;
     }
 
     .work-row__select {
