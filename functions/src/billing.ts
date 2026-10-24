@@ -557,7 +557,9 @@ const resolvePurchase = async (data: any, context: functions.https.CallableConte
     if (ent.billingExempt === true) throw new functions.https.HttpsError('failed-precondition', 'billing-exempt');
     const interval: BillingInterval = data?.interval === 'month' ? 'month' : 'year';
     const maxAi = type === 'personal' ? 1 : seatQuantity(await fullMemberRoles(tenantId));
-    const aiAddonSeats = Math.min(maxAi, Math.max(0, Math.floor(Number(data?.aiAddonSeats) || 0)));
+    // `aiAddon: true` = one AI add-on for the owner (landing page); `aiAddonSeats` = explicit count.
+    const requestedAi = typeof data?.aiAddon === 'boolean' && data?.aiAddonSeats === undefined ? (data.aiAddon ? 1 : 0) : Number(data?.aiAddonSeats) || 0;
+    const aiAddonSeats = Math.min(maxAi, Math.max(0, Math.floor(requestedAi)));
     return { tenantId, uid, type, interval, aiAddonSeats };
 };
 
@@ -589,17 +591,42 @@ const trialEndFor = (ent: Record<string, unknown>) => {
     return ms && ms > Date.now() + 49 * 60 * 60 * 1000 ? Math.floor(ms / 1000) : undefined;
 };
 
-const invoiceSummary = (invoice: Stripe.Invoice | null | undefined) => invoice ? {
+/** Net amounts in cents; `tax` stays 0 until VAT/OSS is decided (no automatic_tax yet). */
+const invoiceSummary = (invoice: Stripe.Invoice | null | undefined, trialEnd?: number | null) => invoice ? {
     currency: invoice.currency,
     subtotal: invoice.subtotal,
     discount: (invoice.total_discount_amounts || []).reduce((sum, entry) => sum + entry.amount, 0),
-    // Placeholder until VAT/OSS is decided (no automatic_tax yet).
     tax: (invoice.total_taxes || []).reduce((sum, entry) => sum + entry.amount, 0),
     total: invoice.total,
+    amountDue: invoice.amount_due,
+    trialEnd: trialEnd ?? null,
     lines: invoice.lines.data.map((line) => ({
-        description: line.description, quantity: line.quantity, amount: line.amount,
+        label: line.description,
+        description: line.description,
+        quantity: line.quantity,
+        unitAmount: line.quantity ? Math.round(line.amount / line.quantity) : line.amount,
+        amount: line.amount,
     })),
 } : null;
+
+const LIVE_STATUSES = ['active', 'trialing', 'past_due'];
+
+/** Item changes from an existing subscription to the requested plan items (interval switch, AI seats). */
+const changeItemsFor = (subscription: Stripe.Subscription, target: { price: string; quantity: number }[]) => {
+    const planItem = subscription.items.data.find((entry) => !isAiAddonLookupKey(entry.price?.lookup_key));
+    const addonItem = subscription.items.data.find((entry) => isAiAddonLookupKey(entry.price?.lookup_key));
+    const [planTarget, addonTarget] = target;
+    const items: Stripe.SubscriptionUpdateParams.Item[] = [
+        planItem ? { id: planItem.id, price: planTarget.price, quantity: planTarget.quantity } : planTarget,
+    ];
+    if (addonTarget) items.push(addonItem ? { id: addonItem.id, price: addonTarget.price, quantity: addonTarget.quantity } : addonTarget);
+    else if (addonItem) items.push({ id: addonItem.id, deleted: true });
+    const unchanged = Boolean(planItem) && planItem!.price.id === planTarget.price && planItem!.quantity === planTarget.quantity
+        && (addonTarget
+            ? Boolean(addonItem) && addonItem!.price.id === addonTarget.price && addonItem!.quantity === addonTarget.quantity
+            : !addonItem);
+    return { items, unchanged, removesAddon: Boolean(addonItem && !addonTarget) };
+};
 
 /** Price preview for the purchase page (no side effects). */
 export const previewSubscription = functions.region(REGION).runWith({ secrets: STRIPE_SECRETS })
@@ -609,18 +636,35 @@ export const previewSubscription = functions.region(REGION).runWith({ secrets: S
         const customer = await ensureCustomer(stripe, input.tenantId, input.uid);
         const promotion = await resolvePromotion(stripe, data?.promotionCode);
         const ent = (await entRef(input.tenantId).get()).data() || {};
+        const target = await purchaseItems(stripe, input);
+        if (ent.stripeSubscriptionId && LIVE_STATUSES.includes(String(ent.status))) {
+            // Change of an existing subscription: prorated preview of what is charged now.
+            const subscription = await stripe.subscriptions.retrieve(String(ent.stripeSubscriptionId));
+            const change = changeItemsFor(subscription, target);
+            const preview = change.unchanged ? null : await stripe.invoices.createPreview({
+                customer,
+                subscription: subscription.id,
+                subscription_details: { items: change.items, proration_behavior: 'always_invoice' },
+            });
+            const summary = invoiceSummary(preview);
+            return {
+                plan: paidPlanFor(input.type), interval: input.interval, aiAddonSeats: input.aiAddonSeats,
+                change: true, unchanged: change.unchanged, trialEnd: null, invoice: summary, summary,
+            };
+        }
         const trialEnd = trialEndFor(ent);
         const preview = await stripe.invoices.createPreview({
             customer,
             subscription_details: {
-                items: await purchaseItems(stripe, input),
+                items: target,
                 ...(trialEnd ? { trial_end: trialEnd } : {}),
             },
             ...(promotion ? { discounts: [{ promotion_code: promotion }] } : {}),
         });
+        const summary = invoiceSummary(preview, trialEnd);
         return {
             plan: paidPlanFor(input.type), interval: input.interval, aiAddonSeats: input.aiAddonSeats,
-            trialEnd: trialEnd ?? null, invoice: invoiceSummary(preview),
+            change: false, trialEnd: trialEnd ?? null, invoice: summary, summary,
         };
     });
 
@@ -634,11 +678,35 @@ export const createSubscriptionIntent = functions.region(REGION).runWith({ secre
         const input = await resolvePurchase(data, context);
         const stripe = getStripe();
         const ent = (await entRef(input.tenantId).get()).data() || {};
-        if (ent.stripeSubscriptionId && ['active', 'trialing', 'past_due'].includes(String(ent.status))) {
-            throw new functions.https.HttpsError('failed-precondition', 'billing-already-subscribed');
-        }
         const customer = await ensureCustomer(stripe, input.tenantId, input.uid);
         const items = await purchaseItems(stripe, input);
+        if (ent.stripeSubscriptionId && LIVE_STATUSES.includes(String(ent.status))) {
+            // Upgrade/downgrade on the same page: interval switch and AI seats, prorated and invoiced now.
+            // Seats follow members automatically. Upgrades only apply once paid (pending_if_incomplete).
+            const current = await stripe.subscriptions.retrieve(String(ent.stripeSubscriptionId));
+            const change = changeItemsFor(current, items);
+            if (change.unchanged) {
+                return { subscriptionId: current.id, intentType: 'none', clientSecret: null, change: true, trialEnd: current.trial_end ?? null, invoice: null, summary: null };
+            }
+            const updated = await stripe.subscriptions.update(current.id, {
+                items: change.items,
+                proration_behavior: 'always_invoice',
+                payment_behavior: change.removesAddon ? 'allow_incomplete' : 'pending_if_incomplete',
+                expand: ['latest_invoice.confirmation_secret'],
+            });
+            const invoice = updated.latest_invoice as Stripe.Invoice | null;
+            const needsPayment = Boolean(invoice && invoice.status === 'open' && invoice.amount_due > 0);
+            const summary = invoiceSummary(invoice);
+            return {
+                subscriptionId: updated.id,
+                intentType: needsPayment ? 'payment' : 'none',
+                clientSecret: needsPayment ? invoice?.confirmation_secret?.client_secret || null : null,
+                change: true,
+                trialEnd: updated.trial_end ?? null,
+                invoice: summary,
+                summary,
+            };
+        }
         const promotion = await resolvePromotion(stripe, data?.promotionCode);
         const trialEnd = trialEndFor(ent);
         const expand = ['latest_invoice.confirmation_secret', 'pending_setup_intent'];
@@ -647,12 +715,15 @@ export const createSubscriptionIntent = functions.region(REGION).runWith({ secre
             const invoice = subscription.latest_invoice as Stripe.Invoice | null;
             const setup = subscription.pending_setup_intent as Stripe.SetupIntent | null;
             const clientSecret = setup?.client_secret || invoice?.confirmation_secret?.client_secret || null;
+            const summary = invoiceSummary(invoice, subscription.trial_end ?? null);
             return {
                 subscriptionId: subscription.id,
                 intentType: setup ? 'setup' : 'payment',
                 clientSecret,
+                change: false,
                 trialEnd: subscription.trial_end ?? null,
-                invoice: invoiceSummary(invoice),
+                invoice: summary,
+                summary,
             };
         };
 
@@ -683,6 +754,80 @@ export const createSubscriptionIntent = functions.region(REGION).runWith({ secre
         }, { merge: true });
         return toResult(subscription);
     });
+
+// --- Purchase page helpers (landing /kaufen, contract §8) ---
+
+/** Public: publishable key + availability for the purchase page (billing_public/config, set by script). */
+export const getBillingConfig = functions.region(REGION).https.onCall(async () => {
+    const config = (await db.doc('billing_public/config').get()).data() || {};
+    return {
+        publishableKey: typeof config.publishableKey === 'string' ? config.publishableKey : null,
+        checkoutAvailable: config.checkoutAvailable === true,
+        mode: config.mode || 'test',
+    };
+});
+
+/** Workspaces the caller owns (personal one created if missing), with their billing state. */
+export const listBillingWorkspaces = functions.region(REGION).https.onCall(async (data, context) => {
+    const uid = context.auth?.uid;
+    if (!uid) throw new functions.https.HttpsError('unauthenticated', 'Authentication required.');
+    await createPersonalWorkspace(uid, typeof data?.language === 'string' ? data.language : undefined);
+    const owned = await db.collectionGroup('members').where('uid', '==', uid).limit(50).get();
+    const tenantIds = owned.docs
+        .filter((doc) => doc.ref.parent.parent?.parent.id === 'tenants' && String(doc.data().role) === 'Owner')
+        .map((doc) => doc.ref.parent.parent!.id);
+    return Promise.all(tenantIds.map(async (tenantId) => {
+        const [tenant, ent, roles] = await Promise.all([
+            db.doc(`tenants/${tenantId}`).get(), entRef(tenantId).get(), fullMemberRoles(tenantId),
+        ]);
+        const e = ent.data() || {};
+        return {
+            tenantId,
+            name: String(tenant.data()?.name || 'Workspace'),
+            workspaceType: e.workspaceType === 'personal' ? 'personal' : 'team',
+            plan: e.plan || 'team',
+            status: e.status || 'grace',
+            billingInterval: e.billingInterval || null,
+            memberCount: roles.filter((role) => role !== 'Guest').length,
+            aiAddonSeats: Number(e.aiAddonSeats || 0),
+            trialEndsAt: toMs(e.trialEndsAt),
+            billingExempt: e.billingExempt === true,
+            hasSubscription: Boolean(e.stripeSubscriptionId),
+        };
+    }));
+});
+
+/** Creates a team workspace for the caller (Owner); the onCreate trigger starts the 14-day Team trial. */
+export const createTeamWorkspace = functions.region(REGION).https.onCall(async (data, context) => {
+    const uid = context.auth?.uid;
+    if (!uid) throw new functions.https.HttpsError('unauthenticated', 'Authentication required.');
+    const name = typeof data?.name === 'string' && data.name.trim() ? data.name.trim().slice(0, 80) : 'Workspace';
+    const user = await admin.auth().getUser(uid);
+    const email = String(user.email || '').toLowerCase();
+    const tenantRef = db.collection('tenants').doc();
+    const now = FieldValue.serverTimestamp();
+    const batch = db.batch();
+    batch.set(tenantRef, { tenantId: tenantRef.id, name, ownerId: uid, createdBy: uid, createdAt: now, updatedAt: now });
+    batch.set(tenantRef.collection('members').doc(uid), {
+        uid, role: 'Owner', roleIds: [], joinedAt: now,
+        displayName: user.displayName || email.split('@')[0] || 'User', email, photoURL: user.photoURL || '',
+    });
+    await batch.commit();
+    return { tenantId: tenantRef.id };
+});
+
+/** Polled by the success page until the webhook has applied the purchase. */
+export const getSubscriptionStatus = functions.region(REGION).https.onCall(async (data, context) => {
+    const { tenantId } = await requireOwner(data?.personal === true && context.auth?.uid ? personalWorkspaceId(context.auth.uid) : data?.tenantId, context);
+    const e = (await entRef(tenantId).get()).data() || {};
+    return {
+        status: e.status || 'grace',
+        plan: e.plan || 'team',
+        interval: e.billingInterval || null,
+        aiAddonSeats: Number(e.aiAddonSeats || 0),
+        active: Boolean(e.stripeSubscriptionId) && LIVE_STATUSES.includes(String(e.status)),
+    };
+});
 
 // --- Webhook ---
 
