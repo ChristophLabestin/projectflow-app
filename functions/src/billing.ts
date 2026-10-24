@@ -472,7 +472,11 @@ const resolveOrigin = (requested: unknown) =>
         ? requested
         : process.env.APP_URL || 'https://app.getprojectflow.com';
 
-const INVOICE_FOOTER = 'ProjectFlow · Christoph Labestin · Frühlingsstraße 8 · 84082 Laberweinting · hello@getprojectflow.com';
+// Kleinunternehmerregelung (§ 19 UStG, owner 2026-10-24): no VAT, no Stripe Tax; the note is on every invoice.
+export const INVOICE_FOOTER = [
+    'ProjectFlow · Christoph Labestin · Frühlingsstraße 8 · 84082 Laberweinting · hello@getprojectflow.com',
+    'Gemäß § 19 UStG wird keine Umsatzsteuer berechnet. / No VAT is charged under the German small business scheme (§ 19 UStG).',
+].join('\n');
 /** "PF" + 6 chars derived from the tenant id (Stripe: 3–12 uppercase letters/digits, unique per customer). */
 const invoicePrefixFor = (tenantId: string) =>
     `PF${createHash('sha256').update(tenantId).digest('hex').slice(0, 6).toUpperCase()}`;
