@@ -610,7 +610,7 @@
         .material-symbols-outlined { font-size: 16px; }
         &:hover:not(.is-active) { color: var(--color-text-main); }
         &:focus-visible { @include tokens.focus-ring; }
-        &.is-active { @include tokens.sunken; color: var(--color-text-main); }
+        &.is-active { @include tokens.selected; }
     }
 }
 

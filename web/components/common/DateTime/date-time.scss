@@ -360,7 +360,7 @@
         }
 
         &--current {
-            @include tokens.sunken;
+            @include tokens.selected;
         }
     }
 

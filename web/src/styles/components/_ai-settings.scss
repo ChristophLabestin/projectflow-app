@@ -87,7 +87,7 @@
 
         .material-symbols-outlined { font-size: 18px; }
         &:hover { background: var(--color-surface-hover); color: var(--color-text-main); }
-        &.is-active { color: var(--color-text-main); @include tokens.sunken; }
+        &.is-active { color: var(--color-text-main); @include tokens.selected; }
     }
 
     &__steps {

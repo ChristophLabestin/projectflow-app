@@ -55,7 +55,7 @@
     &:hover:not(:disabled),
     .text-area-group:hover &:not(:disabled) {
         // Use exact same hover effect as TextInput
-        background-color: var(--color-surface-hover-light);
+        background-color: var(--field-bg-hover);
     }
 
 

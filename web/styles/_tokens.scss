@@ -140,11 +140,14 @@
   --shadow-soft: 0 24px 48px -12px rgba(0, 0, 0, 0.08);
   --shadow-inner: inset 0 2px 4px 0 rgba(0, 0, 0, 0.06);
 
-  /* Sunken (STYLING.md §1.10): focus and selection read as a slightly recessed surface,
-     never as a border. --focus-ring is the only extra cue, for :focus-visible on
-     non-text controls (keyboard). Use the sunken / sunken-field / focus-ring mixins below. */
-  --sunken-bg: #e2e2e6;
-  --sunken-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.08), inset 0 2px 6px -2px rgba(0, 0, 0, 0.10);
+  /* Sunken (STYLING.md §1.10): focus, current and list selection read as a slightly recessed
+     surface, never as a border; choices (options, chips, segments) invert when selected.
+     --focus-ring is the only extra cue, for :focus-visible on non-text controls (keyboard).
+     Fields: rest --color-surface-hover, hover --field-bg-hover, focus sunken.
+     Use the sunken / selected / sunken-field / focus-ring mixins below. */
+  --field-bg-hover: #e9e9eb;
+  --sunken-bg: #e7e7ea;
+  --sunken-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.05), inset 0 1px 4px -1px rgba(0, 0, 0, 0.05);
   --focus-ring: 0 0 0 2px var(--color-surface-card), 0 0 0 4px rgba(var(--color-primary-rgb), 0.5);
 
   /* Transitions */
@@ -244,8 +247,9 @@ html.dark {
   --color-accent: var(--color-primary);
   --color-primary-active: var(--color-primary-dark);
   --color-primary-rgb: 229, 229, 229;
-  --sunken-bg: #0e1116;
-  --sunken-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.55), inset 0 2px 8px -2px rgba(0, 0, 0, 0.5);
+  --field-bg-hover: #232a35;
+  --sunken-bg: #12161c;
+  --sunken-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.35), inset 0 1px 5px -1px rgba(0, 0, 0, 0.3);
 
   --shadow-sm: 0 2px 8px -2px rgba(0, 0, 0, 0.4), 0 1px 4px -1px rgba(0, 0, 0, 0.2);
   --shadow-md: 0 8px 24px -4px rgba(0, 0, 0, 0.5), 0 4px 8px -2px rgba(0, 0, 0, 0.3);
@@ -278,6 +282,38 @@ html.dark {
   background-color: var(--sunken-bg);
   border-color: transparent;
   box-shadow: var(--sunken-shadow);
+}
+
+// Selected choice (option card, chip, segment, picker option): inverted colours.
+// Text tokens are remapped for the subtree, so titles/descriptions/icons follow.
+@mixin selected-colors {
+  --sel-bg: var(--color-primary);
+  --sel-fg: var(--color-primary-text);
+  background-color: var(--sel-bg);
+  border-color: transparent;
+  box-shadow: none;
+  color: var(--sel-fg);
+  --color-text-main: var(--sel-fg);
+  --color-text-muted: color-mix(in srgb, var(--sel-fg) 72%, transparent);
+  --color-text-subtle: color-mix(in srgb, var(--sel-fg) 56%, transparent);
+
+  // Inside: primary and primary-text swap (checks, dots, filled badges stay visible) and
+  // surface tiles turn translucent on the inverted card.
+  * {
+    --color-primary: var(--sel-fg);
+    --color-primary-text: var(--sel-bg);
+    --color-surface-card: color-mix(in srgb, var(--sel-fg) 14%, transparent);
+    --color-surface-hover: color-mix(in srgb, var(--sel-fg) 10%, transparent);
+  }
+}
+
+@mixin selected {
+  @include selected-colors;
+
+  &:hover,
+  &:hover:not(:disabled) {
+    @include selected-colors;
+  }
 }
 
 // Keyboard focus on buttons, cards, chips, rows: soft offset ring (keeps any sunken state).

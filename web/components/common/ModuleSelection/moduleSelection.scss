@@ -43,7 +43,7 @@
         // Selected: sunken card, filled check carries the state (no fill swap, no border).
         &--selected,
         &--selected:hover:not(:disabled) {
-            @include tokens.sunken;
+            @include tokens.selected;
             transform: none;
 
             .module-selection__icon {

@@ -34,7 +34,7 @@
         height: 42px;
 
         &:hover {
-            background-color: var(--color-surface-hover-light);
+            background-color: var(--field-bg-hover);
         }
 
         // Focused or open: sunken (tokens.sunken), no ring, no border.
@@ -116,10 +116,10 @@
             background-color: var(--color-surface-hover);
         }
 
+        // Selected option: inverted (tokens.selected).
         &--selected {
-            background-color: var(--color-surface-hover);
+            @include tokens.selected;
             font-weight: 500;
-            color: var(--color-primary);
         }
 
         &--disabled {

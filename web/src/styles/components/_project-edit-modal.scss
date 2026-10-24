@@ -917,8 +917,7 @@
     cursor: pointer;
 
     &.is-active {
-        color: var(--color-text-main);
-        @include tokens.sunken;
+        @include tokens.selected;
     }
 }
 

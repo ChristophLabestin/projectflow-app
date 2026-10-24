@@ -166,20 +166,22 @@ Variants (`data-variant`, pending the user's choice): **a** neutral, **b** neutr
 primary actions are the app's primary buttons. Working state = a status line with a soft text shimmer
 plus neutral skeleton lines; streamed text fades in. Motion stops under `prefers-reduced-motion`.
 
-## 1.10 Sunken states — borderless focus & selection (2026-10-24)
+## 1.10 Sunken & selected states — borderless focus & selection (2026-10-24)
 
-The app is borderless: focus and selection never draw a border, outline or hard ring. They read as a
-slightly recessed surface ("sunken"). Tokens in `web/styles/_tokens.scss` (light + dark):
-`--sunken-bg`, `--sunken-shadow` (soft inset shadow), `--focus-ring` (2 px card gap + 2 px primary at 50 %).
-Mixins (same file, `@use '…/styles/tokens'`):
-- `tokens.sunken` — selected / active / current / pressed: cards, chips, tiles, rows, options, segmented
-  buttons, the sidebar dock (`.snav-dock__*.is-active`) and theme switch. Text colour may strengthen; no fill
-  swap to primary for plain choices (ModuleSelection: sunken card + filled check).
-- `tokens.sunken-field` — text fields and search wrappers sink in on `:focus` / `:focus-within` (TextInput,
-  TextArea, Select trigger when focused or open, quick project form). Rest = filled `--color-surface-hover`
-  without hairline, hover = `--color-surface-hover-light`.
-- `tokens.focus-ring` / `focus-ring(true)` — keyboard focus (`:focus-visible`) on non-text controls; `(true)`
-  keeps the sunken shadow of a selected element. Never remove keyboard focus without this.
+The app is borderless: focus and selection never draw a border, outline or hard ring. Tokens in
+`web/styles/_tokens.scss` (light + dark): `--sunken-bg`, `--sunken-shadow` (light, soft inset),
+`--field-bg-hover`, `--focus-ring` (2 px card gap + 2 px primary at 50 %). Mixins (`@use '…/styles/tokens'`):
+- `tokens.selected` — **choices** (option cards, chips, segments, picker options, the selected option in a
+  Select dropdown, ModuleSelection, quick-project templates, wizard cards, theme switch): inverted colours
+  (primary background, primary-text). It remaps the text tokens and, for descendants, swaps primary ↔
+  primary-text and makes surface tiles translucent — checks, dots and icon tiles follow without overrides.
+- `tokens.sunken` — **current / list selection and navigation** (sidebar dock, list rows, calendar cells,
+  roles list, priority group, tree items): slightly recessed surface.
+- `tokens.sunken-field` — text fields and search wrappers on `:focus` / `:focus-within` (TextInput, TextArea,
+  Select trigger focused/open, quick project form). Field states: rest `--color-surface-hover` (no hairline),
+  hover `--field-bg-hover` (a touch darker), focus sunken.
+- `tokens.focus-ring` / `focus-ring(true)` — keyboard focus (`:focus-visible`) on non-text controls.
+  Never remove keyboard focus without it.
 Global guard (`web/styles/index.scss`): focused input/textarea/select get `border-color: transparent` and only
 `--field-focus-shadow` as box-shadow (`@property`, non-inheriting) — the Tailwind forms focus border/ring can't
 come back. Exempt: checkbox/radio/switch controls, colour swatches (offset ring), tab underlines, error and

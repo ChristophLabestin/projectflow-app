@@ -117,7 +117,7 @@
         em { font-size: 12px; font-style: normal; font-weight: 700; color: var(--color-text-main); }
 
         &.is-active {
-            @include tokens.sunken;
+            @include tokens.selected;
         }
     }
 

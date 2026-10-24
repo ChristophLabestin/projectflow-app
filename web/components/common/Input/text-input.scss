@@ -77,7 +77,7 @@
     // Hover on self OR parent group
     &:hover:not(:disabled),
     .text-input-group:hover &:not(:disabled) {
-        background-color: var(--color-surface-hover-light);
+        background-color: var(--field-bg-hover);
     }
 
 

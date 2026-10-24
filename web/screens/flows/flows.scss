@@ -1381,7 +1381,7 @@
         }
 
         &.is-active {
-            @include tokens.sunken;
+            @include tokens.selected;
         }
     }
 
@@ -1763,7 +1763,7 @@
     }
 
     &.is-active {
-        @include tokens.sunken;
+        @include tokens.selected;
         color: var(--color-text-main);
 
         .flow-tile__icon {

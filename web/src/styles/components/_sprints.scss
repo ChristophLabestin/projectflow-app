@@ -627,7 +627,7 @@
         cursor: pointer;
 
         .material-symbols-outlined { font-size: 20px; color: var(--color-text-muted); }
-        &.is-active { @include tokens.sunken; }
+        &.is-active { @include tokens.selected; }
     }
 
     &__foot {

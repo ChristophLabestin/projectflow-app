@@ -433,8 +433,7 @@
     }
 
     &.is-active {
-        color: var(--color-primary);
-        @include tokens.sunken;
+        @include tokens.selected;
     }
 }
 
@@ -788,8 +787,7 @@
     }
 
     &.is-active {
-        color: var(--color-primary);
-        @include tokens.sunken;
+        @include tokens.selected;
     }
 }
 

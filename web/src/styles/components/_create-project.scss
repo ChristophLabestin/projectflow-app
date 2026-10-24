@@ -75,7 +75,7 @@
         outline: none;
         transition: background var(--transition-fast), box-shadow var(--transition-fast);
 
-        &:hover { background: var(--color-surface-hover-light); }
+        &:hover { background: var(--field-bg-hover); }
         @include tokens.sunken-field;
     }
 
@@ -103,11 +103,11 @@
 
         .material-symbols-outlined { font-size: 20px; color: var(--color-text-muted); }
 
-        &:hover { background: var(--color-surface-hover-light); }
+        &:hover { background: var(--field-bg-hover); }
         &:focus-visible { @include tokens.focus-ring; }
 
         &.is-active {
-            @include tokens.sunken;
+            @include tokens.selected;
 
             .material-symbols-outlined { color: var(--color-text-main); }
         }
@@ -383,13 +383,11 @@
     transition: all var(--transition-fast);
 
     &:hover:not(:disabled),
-    .text-area-group:hover &:not(:disabled),
-    &:focus,
-    &:focus-within {
-        background: var(--color-surface-hover-light);
-        border-color: transparent;
-        box-shadow: none;
+    .text-area-group:hover &:not(:disabled) {
+        background: var(--field-bg-hover);
     }
+
+    @include tokens.sunken-field;
 }
 
 .create-project__description-input .text-area {
@@ -551,7 +549,7 @@
 
     &.is-active,
     &.is-selected {
-        @include tokens.sunken;
+        @include tokens.selected;
 
         &:focus-visible {
             @include tokens.focus-ring(true);
@@ -567,7 +565,7 @@
 
     &.is-active,
     &.is-active:hover {
-        @include tokens.sunken;
+        @include tokens.selected;
 
         .create-project__mode-check {
             opacity: 1;
@@ -681,7 +679,7 @@
 
     &.is-active,
     &.is-active:hover {
-        @include tokens.sunken;
+        @include tokens.selected;
 
         .create-project__type-check {
             opacity: 1;
@@ -848,8 +846,7 @@
 
     &.is-active,
     &.is-active:hover {
-        color: var(--color-text-main);
-        @include tokens.sunken;
+        @include tokens.selected;
 
         .create-project__startup-track-check {
             border-color: var(--color-primary);
@@ -891,7 +888,7 @@
 
     &.is-active,
     &.is-active:hover {
-        @include tokens.sunken;
+        @include tokens.selected;
         filter: none;
     }
 }
@@ -1008,7 +1005,7 @@
 
 .create-project__module-card {
     &.is-active {
-        @include tokens.sunken;
+        @include tokens.selected;
 
         .create-project__module-check {
             opacity: 1;
@@ -1017,8 +1014,8 @@
         }
 
         .create-project__module-icon {
-            background: var(--color-text-main);
-            color: var(--color-text-ondark);
+            background: var(--color-surface-card);
+            color: var(--color-text-main);
         }
     }
 }
@@ -1034,7 +1031,7 @@
 
 .create-project__member-card {
     &.is-selected {
-        @include tokens.sunken;
+        @include tokens.selected;
 
         .create-project__member-check {
             opacity: 1;
@@ -1105,7 +1102,7 @@
     height: 100%; // consistent height
 
     &.is-active {
-        @include tokens.sunken;
+        @include tokens.selected;
     }
 }
 
@@ -1170,8 +1167,7 @@
 
     &.is-active,
     &.is-active:hover {
-        color: var(--color-text-main);
-        @include tokens.sunken;
+        @include tokens.selected;
     }
 }
 

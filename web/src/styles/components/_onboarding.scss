@@ -128,7 +128,7 @@
         &:hover { background: var(--color-surface-border); }
 
         &.is-active {
-            @include tokens.sunken;
+            @include tokens.selected;
             font-weight: 600;
         }
     }
@@ -165,7 +165,7 @@
         &:hover:not(:disabled) { background: var(--color-surface-hover); }
 
         &.is-selected {
-            @include tokens.sunken;
+            @include tokens.selected;
 
             .material-symbols-outlined { color: var(--color-text-main); }
         }
