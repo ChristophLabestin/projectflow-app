@@ -174,15 +174,16 @@ public final class SessionStore {
 
     private func loadWorkspaces(defaultWorkspaceName: String?) async throws {
         var summaries = try await fetchWorkspaces()
-        if let defaultWorkspaceName {
+        if defaultWorkspaceName != nil {
             // Billing contract §7: the server owns the personal workspace (idempotent, called after every sign-in).
-            // Older backends without the callable: fall back to creating a first workspace on the client.
+            // No client-side fallback: a workspace without `entitlements/plan` would count as Free without AI.
             var created = false
-            if let result = try? await PFCallables.call("ensurePersonalWorkspace", ["language": language]) as? [String: Any] {
-                created = result["created"] as? Bool == true
-            } else if !summaries.contains(where: { $0.role == .owner }) {
-                _ = try await createWorkspace(name: defaultWorkspaceName)
-                created = true
+            do {
+                let result = try await PFCallables.call("ensurePersonalWorkspace", ["language": language]) as? [String: Any]
+                created = result?["created"] as? Bool == true
+            } catch {
+                // Offline or backend hiccup: carry on with the existing workspaces; none at all fails below (noWorkspace).
+                if summaries.isEmpty { throw error }
             }
             if created {
                 try? await Self.onboardingDoc(uid).setData(
@@ -222,26 +223,13 @@ public final class SessionStore {
         }
     }
 
-    /// Same batch as web `createWorkspace`.
+    /// New team workspace through the server (billing contract §8): tenant, owner membership and the 14-day trial
+    /// plan are written atomically, so there is never a workspace without `entitlements/plan`.
     @discardableResult
     public func createWorkspace(name: String) async throws -> String {
-        guard let user = Auth.auth().currentUser else { throw PFDataError.notSignedIn }
-        let tenant = PFFirebase.db.collection("tenants").document()
-        let batch = PFFirebase.db.batch()
-        batch.setData([
-            "tenantId": tenant.documentID,
-            "name": name.trimmingCharacters(in: .whitespaces).isEmpty ? "Workspace" : name,
-            "ownerId": uid, "createdBy": uid,
-            "createdAt": FieldValue.serverTimestamp(), "updatedAt": FieldValue.serverTimestamp(),
-        ], forDocument: tenant)
-        batch.setData([
-            "uid": uid, "role": "Owner", "roleIds": [],
-            "joinedAt": FieldValue.serverTimestamp(),
-            "displayName": user.displayName ?? (user.email ?? "User").components(separatedBy: "@").first ?? "User",
-            "email": (user.email ?? "").lowercased(),
-            "photoURL": user.photoURL?.absoluteString ?? "",
-        ], forDocument: PFPath.members(tenant.documentID).document(uid))
-        try await batch.commit()
-        return tenant.documentID
+        let trimmed = name.trimmingCharacters(in: .whitespaces)
+        let result = try await PFCallables.call("createTeamWorkspace", ["name": trimmed.isEmpty ? "Workspace" : trimmed, "language": language])
+        guard let tenantId = (result as? [String: Any])?["tenantId"] as? String else { throw PFDataError.noWorkspace }
+        return tenantId
     }
 }
