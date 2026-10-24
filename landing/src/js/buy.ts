@@ -37,6 +37,14 @@ function start(root: HTMLElement, c: any) {
         current: 'plan' as StepId,
     };
 
+    // Workspaces are fetched once per user and as early as possible (right after sign-in), so the workspace step is
+    // usually ready when it opens; the callable can be slow on a cold start.
+    let workspacesReq: Promise<Workspace[]> | null = null;
+    const loadWorkspaces = () => {
+        workspacesReq ??= api.workspaces(lang).catch((e) => { workspacesReq = null; throw e; });
+        return workspacesReq;
+    };
+
     if (api.mock) root.insertAdjacentHTML('afterbegin', `<p class="ck-demo">${esc(c.demo)}</p>`);
 
     const form = $<HTMLFormElement>('[data-buy-form]');
@@ -195,8 +203,15 @@ function start(root: HTMLElement, c: any) {
     api.onUser((user) => {
         state.user = user;
         state.workspaces = [];
+        workspacesReq = null;
+        if (user) void loadWorkspaces().catch(() => { /* shown when the step opens */ });
         // The first callback is the restored session: just refresh the visible pane, don't jump ahead.
-        if (firstAuth) { firstAuth = false; if (state.current === 'account') renderAccount(); return; }
+        if (firstAuth) {
+            firstAuth = false;
+            if (state.current === 'account') renderAccount();
+            if (!$('[data-done]').hidden) void renderReceipt();
+            return;
+        }
         if (state.current === 'account') { if (user) go('workspace'); else renderAccount(); } else if (!user && ORDER.indexOf(state.current) > 1) go('account');
     });
 
@@ -204,9 +219,10 @@ function start(root: HTMLElement, c: any) {
     const subscribed = (w: Workspace) => Boolean(w.hasSubscription || w.billingExempt) || ['active', 'past_due'].includes(String(w.status));
     const renderWorkspaces = async () => {
         const box = $('[data-pane="workspace"]');
-        box.innerHTML = `<p class="ck-loading">${esc(c.workspace.loading)}</p>`;
+        box.innerHTML = `<div class="ck-skeleton" aria-busy="true"><span class="sr-only">${esc(c.workspace.loading)}</span><i></i><i></i><i class="is-btn"></i></div>`;
+        void prepareStripe();
         try {
-            if (!state.workspaces.length) state.workspaces = await api.workspaces(lang);
+            if (!state.workspaces.length) state.workspaces = await loadWorkspaces();
         } catch (e) {
             box.innerHTML = `<p class="ck-error" role="alert">${esc(errorText(e))}</p>`;
             return;
@@ -261,7 +277,9 @@ function start(root: HTMLElement, c: any) {
                 btn.disabled = true;
                 try {
                     state.tenantId = await api.createTeam(state.newTeamName, lang);
-                    state.workspaces = await api.workspaces(lang);
+                    // The trigger starts the trial; no second round trip needed to show the new workspace.
+                    state.workspaces = [...state.workspaces, { tenantId: state.tenantId, name: state.newTeamName, workspaceType: 'team', status: 'trialing', memberCount: 1, trialEndsAt: Date.now() + 14 * 864e5 }];
+                    workspacesReq = null;
                 } catch (ex) {
                     if (err) { err.hidden = false; err.textContent = errorText(ex); }
                     btn.disabled = false;
@@ -288,6 +306,16 @@ function start(root: HTMLElement, c: any) {
         s.onerror = reject;
         document.head.append(s);
     });
+
+    /** Stripe.js and the publishable key load in the background (page start, workspace step), not after the intent. */
+    let stripeReq: Promise<any> | null = null;
+    const prepareStripe = (): Promise<any> => {
+        if (api.mock) return Promise.resolve(null);
+        stripeReq ??= Promise.all([loadStripe(), api.publishableKey()])
+            .then(([StripeCtor, pk]) => StripeCtor(pk, { locale: lang }))
+            .catch((e) => { stripeReq = null; throw e; });
+        return stripeReq;
+    };
 
     const renderTotals = () => {
         const s = state.intent?.summary;
@@ -367,13 +395,17 @@ function start(root: HTMLElement, c: any) {
         const mount = $('[data-payment-element]');
         const express = $('[data-express]');
         const or = $('[data-or]');
-        mount.innerHTML = `<p class="ck-loading">${esc(c.payment.loading)}</p>`;
+        mount.innerHTML = `<div class="ck-skeleton ck-skeleton--pay" aria-busy="true"><span class="sr-only">${esc(c.payment.loading)}</span><i></i><i></i><i class="is-half"></i><i class="is-half"></i></div>`;
         express.innerHTML = '';
         express.hidden = false;
         or.hidden = true;
         renderTotals();
         try {
-            state.intent = await api.intent({ tenantId: state.tenantId, plan: state.plan, interval: state.interval, aiAddon: state.ai, language: lang });
+            const [intent, stripeInstance] = await Promise.all([
+                api.intent({ tenantId: state.tenantId, plan: state.plan, interval: state.interval, aiAddon: state.ai, language: lang }),
+                prepareStripe(),
+            ]);
+            state.intent = intent;
             renderTotals();
             if (state.intent.intentType === 'none') { mount.innerHTML = ''; return; }
             if (api.mock) {
@@ -382,8 +414,7 @@ function start(root: HTMLElement, c: any) {
                 mount.innerHTML = `<div class="ck-mock">${lang === 'de' ? 'Hier erscheint das Stripe-Zahlungsformular (Karte, SEPA).' : 'The Stripe payment form appears here (card, SEPA).'}</div>`;
                 return;
             }
-            const StripeCtor = await loadStripe();
-            stripe = StripeCtor(await api.publishableKey(), { locale: lang });
+            stripe = stripeInstance;
             elements = stripe.elements({
                 clientSecret: state.intent.clientSecret,
                 appearance: appearance(),
@@ -434,39 +465,70 @@ function start(root: HTMLElement, c: any) {
     });
 
     /* ---------------------------------------------------------------- done */
+    let doneStatus: { status: string; active?: boolean; interval?: string; aiAddonSeats?: number } | null = null;
+    let doneTenant = '';
+    /** Receipt on the confirmation screen; filled from the session state, then from the server once known. */
+    const renderReceipt = async () => {
+        const box = root.querySelector<HTMLElement>('[data-receipt]');
+        if (!box) return;
+        if (state.user && !state.workspaces.length) state.workspaces = await loadWorkspaces().catch(() => []);
+        const ws = state.workspaces.find((w) => w.tenantId === doneTenant);
+        const interval = (doneStatus?.interval as Interval | undefined) ?? state.interval;
+        const ai = doneStatus ? (doneStatus.aiAddonSeats ?? 0) > 0 : state.ai;
+        const trialEnd = state.intent?.summary?.trialEnd ?? state.intent?.trialEnd ?? (ws?.status === 'trialing' ? ws.trialEndsAt : null);
+        const statusText = !doneStatus?.active ? c.done.statusPending
+            : doneStatus.status === 'trialing' && trialEnd ? c.done.statusTrial.replace('{d}', date(trialEnd)) : c.done.statusActive;
+        const rows: [string, string][] = [[c.done.rowPlan, `${c.plan[state.plan].name}${ai ? ` + ${c.plan.aiTitle}` : ''} · ${interval === 'year' ? c.plan.yearly : c.plan.monthly}`]];
+        if (ws) rows.push([c.done.rowWorkspace, ws.workspaceType === 'personal' ? c.workspace.personalName : ws.name]);
+        if (state.user?.email) rows.push([c.done.rowAccount, state.user.email]);
+        box.innerHTML = `${rows.map(([k, v]) => `<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join('')}
+            <div><dt>${esc(c.done.rowStatus)}</dt><dd><span class="ck-pill${doneStatus?.active ? ' is-ok' : ''}">${esc(statusText)}</span></dd></div>`;
+    };
+
     const showDone = async (tenantId: string, redirectStatus: string | null) => {
+        doneTenant = tenantId;
+        root.classList.add('is-finished');
         form.hidden = true;
         question.hidden = true;
         $('[data-recap]').hidden = true;
         ORDER.forEach((s) => { const it = $(`[data-stepper="${s}"]`); it.classList.add('is-done'); it.classList.remove('is-active'); it.removeAttribute('aria-current'); });
         const done = $('[data-done]');
         done.hidden = false;
+        $('.ck-intro').insertAdjacentHTML('afterbegin', `<div class="ck-done__icon">${svg(redirectStatus === 'failed' ? 'close' : 'check')}</div>`);
+        window.scrollTo(0, 0);
         if (redirectStatus === 'failed') {
+            root.classList.add('is-failed');
             $('[data-eyebrow]').textContent = c.stepNames.payment;
-            $('[data-headline]').textContent = c.done.failed;
-            $('[data-lead]').textContent = '';
+            $('[data-headline]').textContent = c.done.failedTitle;
+            $('[data-lead]').textContent = c.done.failed;
             done.innerHTML = `<a class="ck-btn" href="${location.pathname}?plan=${state.plan}&interval=${state.interval}">${esc(c.done.retry)}${svg('arrowRight')}</a>`;
             return;
         }
         $('[data-eyebrow]').textContent = c.done.eyebrow;
         $('[data-headline]').textContent = c.done.title;
-        $('[data-lead]').textContent = c.done.pending;
+        $('[data-lead]').textContent = c.done.text;
         const appLink = `${APP_URL}/?tenant=${encodeURIComponent(tenantId)}&openSettings=billing`;
-        done.innerHTML = `<div class="ck-done__icon">${svg('check')}</div><a class="ck-btn" href="${appLink}">${esc(c.done.openApp)}${svg('arrowRight')}</a>`;
-        $<HTMLElement>('.ck-btn', done).focus();
-        // Wait for the webhook to activate the plan (max ~30 s), then confirm.
+        done.innerHTML = `
+            <dl class="ck-receipt" data-receipt></dl>
+            <a class="ck-btn" href="${appLink}">${esc(c.done.openApp)}${svg('arrowRight')}</a>
+            <p class="ck-fine">${esc(c.done.manage)}</p>`;
+        void renderReceipt();
+        $<HTMLElement>('.ck-btn', done).focus({ preventScroll: true });
+        // Wait for the webhook to activate the plan (max ~30 s).
         for (let i = 0; i < 15; i += 1) {
             try {
-                const s = await api.status(tenantId, state.plan);
-                if (s.active) break;
+                doneStatus = await api.status(tenantId, state.plan) as typeof doneStatus;
+                if (doneStatus?.active) break;
             } catch { /* keep polling */ }
             await new Promise((r) => window.setTimeout(r, 2000));
         }
-        $('[data-lead]').textContent = c.done.text;
+        void renderReceipt();
     };
 
     /* ---------------------------------------------------------------- boot */
     renderPlan();
+    // Warm up Stripe while the visitor is still signing in.
+    if (params.get('step') !== 'done') window.setTimeout(() => void prepareStripe().catch(() => { /* retried on the payment step */ }), 600);
     if (params.get('step') === 'done' && params.get('tenant')) {
         const status = params.get('redirect_status');
         void showDone(params.get('tenant')!, status === 'failed' ? 'failed' : status);
@@ -485,6 +547,7 @@ const iconSvg: Record<string, string> = {
     check: ICON('<path d="M20 6 9 17l-5-5"/>'),
     arrowRight: ICON('<path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>'),
     plus: ICON('<path d="M12 5v14"/><path d="M5 12h14"/>'),
+    close: ICON('<path d="M18 6 6 18"/><path d="m6 6 12 12"/>'),
     mail: ICON('<rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/>'),
     users: ICON('<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>'),
     user: ICON('<circle cx="12" cy="8" r="4"/><path d="M4 21v-1a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v1"/>'),
