@@ -122,8 +122,10 @@ firebase functions:secrets:set AWS_SES_ACCESS_KEY_ID --project projectflow-labes
 ```bash
 firebase functions:secrets:set AWS_SES_SECRET_ACCESS_KEY --project projectflow-labestin
 ```
-   Die Secrets existieren bereits mit dem Platzhalter `unset` (damit Deploys nicht scheitern); `secrets:set` legt eine
-   neue Version an. Danach die Mail-Functions neu deployen (Liste unten), sonst laufen sie mit dem Platzhalter.
+   Erst wenn beide Secrets existieren, lässt sich der SES-Code nach main mergen und deployen: Firebase bricht den
+   Deploy jeder Function ab, die ein nicht existierendes Secret bindet (betrifft auch `adminApi`/`adminMcp`).
+   Neue Secret-Versionen (Key-Rotation) greifen erst nach erneutem Deploy der Mail-Functions (Liste unten).
+   Der Code behandelt den Wert `unset` als „nicht gesetzt“ (Fallback SMTP), falls Secrets vorab als Platzhalter angelegt werden.
 
 Functions mit `EMAIL_SECRETS`: `sendInvitation`, `onNotificationCreated`, `onLegalMailJobCreated`,
 `processLegalMailJobs`, `requestWaitlist`, `requestNewsletterSignup`, `sendContactFormEmail`, `adminApi`, `adminMcp`.
