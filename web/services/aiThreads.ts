@@ -1,4 +1,4 @@
-import { deleteDoc, doc, getDoc, setDoc, Timestamp, serverTimestamp } from 'firebase/firestore';
+import { collection, deleteDoc, doc, getDoc, getDocs, limit, orderBy, query, setDoc, Timestamp, serverTimestamp } from 'firebase/firestore';
 import { db } from './firebase';
 import type { AiChatMessage, AiContextEnvelope } from './aiAssistClient';
 
@@ -22,9 +22,16 @@ export const loadThread = async (uid: string, key: string): Promise<AiChatMessag
     return Array.isArray(messages) ? messages.filter((m) => m && typeof m.content === 'string') : [];
 };
 
-export const saveThread = async (uid: string, key: string, tenantId: string, messages: AiChatMessage[]) => {
+/** Where the conversation happened (history: label + reopen at that route). */
+export interface AiThreadMeta { route?: string; label?: string }
+
+export interface AiThreadSummary { key: string; route: string; label: string; question: string; updatedAt: number }
+
+export const saveThread = async (uid: string, key: string, tenantId: string, messages: AiChatMessage[], meta: AiThreadMeta = {}) => {
     await setDoc(threadRef(uid, key), {
         tenantId,
+        ...(meta.route ? { route: meta.route.slice(0, 300) } : {}),
+        ...(meta.label ? { label: meta.label.slice(0, 200) } : {}),
         messages: messages.slice(-MAX_MESSAGES).map(({ role, content }) => ({ role, content: content.slice(0, 8000) })),
         updatedAt: serverTimestamp(),
         expireAt: Timestamp.fromMillis(Date.now() + RETENTION_MS)
@@ -32,3 +39,27 @@ export const saveThread = async (uid: string, key: string, tenantId: string, mes
 };
 
 export const clearThread = (uid: string, key: string) => deleteDoc(threadRef(uid, key));
+
+/**
+ * Recent conversations of this workspace (newest first). Ordered by `updatedAt` only and filtered by tenant
+ * here, so no composite index is needed; threads from before the history (no route) are skipped.
+ */
+export const listRecentThreads = async (uid: string, tenantId: string, max = 6): Promise<AiThreadSummary[]> => {
+    const snapshot = await getDocs(query(collection(db, 'users', uid, 'ai_threads'), orderBy('updatedAt', 'desc'), limit(40)));
+    return snapshot.docs
+        .map((entry) => {
+            const data = entry.data();
+            const first = Array.isArray(data.messages) ? data.messages.find((message: AiChatMessage) => message?.role === 'user') : null;
+            return {
+                key: entry.id,
+                tenantId: data.tenantId,
+                route: typeof data.route === 'string' ? data.route : '',
+                label: typeof data.label === 'string' ? data.label : '',
+                question: typeof first?.content === 'string' ? first.content : '',
+                updatedAt: data.updatedAt?.toMillis?.() || 0
+            };
+        })
+        .filter((thread) => thread.tenantId === tenantId && thread.route && thread.question)
+        .slice(0, max)
+        .map(({ tenantId: _tenant, ...thread }) => thread);
+};

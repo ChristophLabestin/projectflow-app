@@ -1,6 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
+import { listRecentThreads, type AiThreadSummary } from '../../services/aiThreads';
 import { useLanguage } from '../../context/LanguageContext';
 import { useAiPanel } from '../../context/AiPanelContext';
 import { useAiAccess } from '../../hooks/useAiAccess';
@@ -21,6 +23,16 @@ import './ai-family.scss';
  * the current screen; the answer appears as a short text plus compact rows and proposals (action
  * cards) — only as large as needed. Follow-up questions continue the conversation of this object.
  */
+/** „vor 5 Min.“ / „5 min ago“ for the history rows. */
+const relativeTime = (millis: number, language: string) => {
+    const minutes = Math.round((millis - Date.now()) / 60000);
+    const format = new Intl.RelativeTimeFormat(language, { numeric: 'auto', style: 'short' });
+    if (Math.abs(minutes) < 60) return format.format(minutes, 'minute');
+    const hours = Math.round(minutes / 60);
+    if (Math.abs(hours) < 24) return format.format(hours, 'hour');
+    return format.format(Math.round(hours / 24), 'day');
+};
+
 const SUGGESTIONS: Record<string, string[]> = {
     dashboard: ['ai.panel.suggest.overdue', 'ai.panel.suggest.planDay', 'ai.panel.suggest.whatsNew'],
     project: ['ai.panel.suggest.projectStatus', 'ai.panel.suggest.projectBlockers', 'ai.panel.suggest.projectNext'],
@@ -40,13 +52,15 @@ export interface AiCommandBarProps {
 }
 
 export const AiCommandBar: React.FC<AiCommandBarProps> = ({ variant = 'overlay', onCaptureScreen, onNavigate }) => {
-    const { t } = useLanguage();
+    const { t, language } = useLanguage();
     const location = useLocation();
-    const { enabled, open, draft, draftImage, closePanel, getContext } = useAiPanel();
+    const navigate = useNavigate();
+    const { user } = useAuth();
+    const { enabled, open, draft, draftImage, autoSend, closePanel, getContext } = useAiPanel();
     const { tenantId } = useInAppAi();
     const access = useAiAccess();
     const blocked = access.status === 'addon-required' || access.status === 'plan-required';
-    const { messages, running, steps, error, planStatus, context, send, snap, stop, reset } =
+    const { messages, running, steps, error, planStatus, context, threadReady, send, snap, stop, reset } =
         useAiConversation({ active: open, getContext, screenKey: location.pathname });
     const [input, setInput] = useState('');
     const [image, setImage] = useState<File | null>(null);
@@ -60,9 +74,23 @@ export const AiCommandBar: React.FC<AiCommandBarProps> = ({ variant = 'overlay',
 
     useEffect(() => () => { if (imageUrl) URL.revokeObjectURL(imageUrl); }, [imageUrl]);
 
+    // History: recent conversations of this workspace, shown while the bar is empty.
+    const [recent, setRecent] = useState<AiThreadSummary[]>([]);
+    const empty = messages.length === 0;
+    useEffect(() => {
+        if (!open || !empty || !user || !tenantId) return undefined;
+        let alive = true;
+        listRecentThreads(user.uid, tenantId).then((list) => { if (alive) setRecent(list); }).catch(() => undefined);
+        return () => { alive = false; };
+    }, [open, empty, user, tenantId]);
+
+    // Section actions open the bar with a prompt to send right away (once per opening, after the thread loaded).
+    const autoSent = useRef(false);
+    useEffect(() => { if (!open) autoSent.current = false; }, [open]);
+
     useEffect(() => {
         if (!open) return;
-        setInput(draft || '');
+        setInput(autoSend ? '' : draft || '');
         setImage(draftImage);
         setAttachImage(true);
         setAttachFailed(false);
@@ -77,6 +105,12 @@ export const AiCommandBar: React.FC<AiCommandBarProps> = ({ variant = 'overlay',
         document.addEventListener('keydown', onKey);
         return () => document.removeEventListener('keydown', onKey);
     }, [open, running, stop, closePanel]);
+
+    useEffect(() => {
+        if (!open || !autoSend || !draft.trim() || !threadReady || running || blocked || autoSent.current) return;
+        autoSent.current = true;
+        void send(draft, { standalone: true });
+    }, [open, autoSend, draft, threadReady, running, blocked, send]);
 
     if (!enabled || !open) return null;
 
@@ -94,6 +128,12 @@ export const AiCommandBar: React.FC<AiCommandBarProps> = ({ variant = 'overlay',
         void send(text);
         // Clicking a suggestion moves focus to the button: keep the input ready for the follow-up.
         requestAnimationFrame(() => inputRef.current?.focus());
+    };
+
+    /** Reopen a past conversation: go to its object; the bar follows the screen and loads that thread. */
+    const openThread = (thread: AiThreadSummary) => {
+        if (variant === 'window' && onNavigate) onNavigate(thread.route);
+        else navigate(thread.route);
     };
 
     const pickImage = (file: File | null | undefined) => {
@@ -207,6 +247,22 @@ export const AiCommandBar: React.FC<AiCommandBarProps> = ({ variant = 'overlay',
                                 </li>
                             ))}
                         </ul>
+                        {recent.filter((thread) => thread.route !== location.pathname).length > 0 && (
+                            <>
+                                <p className="ai-bar__section ai-bar__section--spaced">{t('ai.bar.recent')}</p>
+                                <ul className="ai-bar__rows ai-bar__rows--recent">
+                                    {recent.filter((thread) => thread.route !== location.pathname).map((thread) => (
+                                        <li key={thread.key}>
+                                            <button type="button" onClick={() => openThread(thread)} title={thread.question}>
+                                                <span className="material-symbols-outlined" aria-hidden="true">history</span>
+                                                <span className="ai-bar__recent-question">{thread.question}</span>
+                                                <span className="ai-bar__recent-meta">{[thread.label, thread.updatedAt ? relativeTime(thread.updatedAt, language) : ''].filter(Boolean).join(' · ')}</span>
+                                            </button>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </>
+                        )}
                     </div>
                 )}
 

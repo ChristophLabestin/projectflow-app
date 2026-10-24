@@ -338,6 +338,12 @@
     gap: 12px;
 }
 
+.task-detail__section-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
 .task-detail__section-title {
     display: flex;
     align-items: center;

@@ -24,7 +24,9 @@ interface AiPanelContextValue {
     draft: string;
     /** Image to analyse when opening (Snap: desktop quick capture, paste elsewhere). */
     draftImage: File | null;
-    openPanel: (draft?: string, image?: File | null) => void;
+    /** Send `draft` right away when opening (section actions like „✦ Teilaufgaben vorschlagen“). */
+    autoSend: boolean;
+    openPanel: (draft?: string, image?: File | null, options?: { send?: boolean }) => void;
     closePanel: () => void;
     togglePanel: () => void;
     getContext: () => AiContextEnvelope;
@@ -59,13 +61,15 @@ export const AiPanelProvider: React.FC<{ children: React.ReactNode }> = ({ child
     const [open, setOpen] = useState(false);
     const [draft, setDraft] = useState('');
     const [draftImage, setDraftImage] = useState<File | null>(null);
+    const [autoSend, setAutoSend] = useState(false);
     const extrasRef = useRef<ScreenExtras | null>(null);
     const pathRef = useRef(location.pathname);
     pathRef.current = location.pathname;
 
-    const openPanel = useCallback((text?: string, image?: File | null) => {
+    const openPanel = useCallback((text?: string, image?: File | null, options?: { send?: boolean }) => {
         setDraft(text || '');
         setDraftImage(image || null);
+        setAutoSend(Boolean(options?.send && text?.trim()));
         setOpen(true);
     }, []);
     const closePanel = useCallback(() => setOpen(false), []);
@@ -89,6 +93,7 @@ export const AiPanelProvider: React.FC<{ children: React.ReactNode }> = ({ child
                 event.preventDefault();
                 setDraft('');
                 setDraftImage(null);
+                setAutoSend(false);
                 setOpen((value) => !value);
             }
         };
@@ -109,14 +114,14 @@ export const AiPanelProvider: React.FC<{ children: React.ReactNode }> = ({ child
     useEffect(() => { if (!enabled) setOpen(false); }, [enabled]);
 
     const value = useMemo(() => ({
-        enabled, open, draft, draftImage, openPanel, closePanel, togglePanel, getContext, setScreenExtras
-    }), [enabled, open, draft, draftImage, openPanel, closePanel, togglePanel, getContext, setScreenExtras]);
+        enabled, open, draft, draftImage, autoSend, openPanel, closePanel, togglePanel, getContext, setScreenExtras
+    }), [enabled, open, draft, draftImage, autoSend, openPanel, closePanel, togglePanel, getContext, setScreenExtras]);
 
     return <AiPanelContext.Provider value={value}>{children}</AiPanelContext.Provider>;
 };
 
 const FALLBACK: AiPanelContextValue = {
-    enabled: false, open: false, draft: '', draftImage: null,
+    enabled: false, open: false, draft: '', draftImage: null, autoSend: false,
     openPanel: () => undefined, closePanel: () => undefined, togglePanel: () => undefined,
     getContext: () => ({ surface: 'other' }), setScreenExtras: () => undefined
 };
