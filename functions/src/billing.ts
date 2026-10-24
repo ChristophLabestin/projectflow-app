@@ -359,6 +359,8 @@ const PERSONAL_NAMES: Record<string, string> = { de: 'Mein Workspace', en: 'My w
 export const createPersonalWorkspace = async (uid: string, language?: string) => {
     const tenantId = personalWorkspaceId(uid);
     const tenantRef = db.doc(`tenants/${tenantId}`);
+    // Fast path (called on every purchase-page sign-in): no auth lookup or transaction when it exists.
+    if ((await tenantRef.get()).exists) return { tenantId, created: false };
     const user = await admin.auth().getUser(uid);
     const email = String(user.email || '').toLowerCase();
     const limits = limitsForType('free', 'personal');
@@ -572,11 +574,11 @@ const resolvePurchase = async (data: any, context: functions.https.CallableConte
     }
     if (ent.billingExempt === true) throw new functions.https.HttpsError('failed-precondition', 'billing-exempt');
     const interval: BillingInterval = data?.interval === 'month' ? 'month' : 'year';
-    const maxAi = type === 'personal' ? 1 : seatQuantity(await fullMemberRoles(tenantId));
+    const members = seatQuantity(await fullMemberRoles(tenantId));
+    const maxAi = type === 'personal' ? 1 : members;
     // `aiAddon: true` = one AI add-on for the owner (landing page); `aiAddonSeats` = explicit count.
     const requestedAi = typeof data?.aiAddon === 'boolean' && data?.aiAddonSeats === undefined ? (data.aiAddon ? 1 : 0) : Number(data?.aiAddonSeats) || 0;
     const aiAddonSeats = Math.min(maxAi, Math.max(0, Math.floor(requestedAi)));
-    const members = seatQuantity(await fullMemberRoles(tenantId));
     const seats = type === 'personal' ? 1 : Math.min(TEAM_MEMBER_LIMIT, Math.max(members, Math.floor(Number(data?.seats) || members)));
     return {
         tenantId, uid, type, interval, aiAddonSeats: Math.min(aiAddonSeats, seats), seats,
@@ -592,7 +594,7 @@ const purchaseItems = async (stripe: Stripe, input: PurchaseInput) => {
     const addonPrice = prices.data.find((price) => price.lookup_key === addonKey);
     if (!planPrice || !addonPrice) throw new functions.https.HttpsError('failed-precondition', 'billing-price-missing');
     // Seats: at least the full members (guests are free); the buyer may book more up front.
-    const seats = input.type === 'personal' ? 1 : (input.seats ?? seatQuantity(await fullMemberRoles(input.tenantId)));
+    const seats = input.type === 'personal' ? 1 : (input.seats ?? 1);
     // The add-on entry is always returned (quantity 0 = none) so changes know the add-on price of the interval.
     return [
         { price: planPrice.id, quantity: seats },
@@ -712,8 +714,13 @@ export const createSubscriptionIntent = functions.region(REGION).runWith({ secre
         const input = await resolvePurchase(data, context);
         const stripe = getStripe();
         const ent = (await entRef(input.tenantId).get()).data() || {};
-        const customer = await ensureCustomer(stripe, input.tenantId, input.uid);
-        const items = await purchaseItems(stripe, input);
+        // Independent Stripe/Firestore calls in parallel (the purchase page waits on this call).
+        const [customer, items, promotion, customerDoc] = await Promise.all([
+            ensureCustomer(stripe, input.tenantId, input.uid),
+            purchaseItems(stripe, input),
+            resolvePromotion(stripe, data?.promotionCode),
+            customerRef(input.tenantId).get(),
+        ]);
         if (ent.stripeSubscriptionId && LIVE_STATUSES.includes(String(ent.status))) {
             // Upgrade/downgrade on the same page: interval switch and AI seats, prorated and invoiced now.
             // Seats follow members automatically. Upgrades only apply once paid (pending_if_incomplete).
@@ -741,7 +748,6 @@ export const createSubscriptionIntent = functions.region(REGION).runWith({ secre
                 summary,
             };
         }
-        const promotion = await resolvePromotion(stripe, data?.promotionCode);
         const trialEnd = trialEndFor(ent);
         const expand = ['latest_invoice.confirmation_secret', 'pending_setup_intent'];
 
@@ -762,7 +768,7 @@ export const createSubscriptionIntent = functions.region(REGION).runWith({ secre
         };
 
         const newItems = items.filter((entry) => entry.quantity > 0);
-        const pendingId = (await customerRef(input.tenantId).get()).data()?.pendingSubscriptionId;
+        const pendingId = customerDoc.data()?.pendingSubscriptionId;
         if (typeof pendingId === 'string') {
             const pending = await stripe.subscriptions.retrieve(pendingId, { expand }).catch(() => null);
             const same = pending && pending.status === 'incomplete' && !promotion
