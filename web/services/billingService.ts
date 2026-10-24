@@ -10,6 +10,15 @@ export const createBillingCheckout = async (tenantId: string, interval: BillingI
     return (await call({ tenantId, interval, origin: window.location.origin, language })).data.url;
 };
 
+const LANDING_ORIGIN = 'https://getprojectflow.com';
+
+/** Own purchase page on the landing (contract §8): /checkout (DE) or /en/checkout. */
+export const checkoutPageUrl = (input: { tenantId: string; plan: 'team' | 'personal'; interval: BillingInterval; language: string; aiAddon?: boolean }) => {
+    const params = new URLSearchParams({ tenant: input.tenantId, plan: input.plan, interval: input.interval });
+    if (input.aiAddon) params.set('ai', '1');
+    return `${LANDING_ORIGIN}${input.language === 'en' ? '/en' : ''}/checkout?${params.toString()}`;
+};
+
 /** Opens the Stripe Customer Portal (owner only). */
 export const createBillingPortal = async (tenantId: string, language: string) => {
     const call = httpsCallable<{ tenantId: string; origin: string; language: string }, { url: string }>(functions, 'createBillingPortal');
