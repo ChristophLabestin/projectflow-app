@@ -371,13 +371,12 @@ function start(root: HTMLElement, c: any) {
         if (trialEnd && !due) $('[data-lead]').textContent = c.intro.payment.leadTrial.replace('{d}', date(trialEnd));
     };
 
-    /** Stripe Appearance API fed from the live design tokens, so light/dark and radii match the page. */
-    const darkQuery = matchMedia('(prefers-color-scheme: dark)');
+    /** Stripe Appearance API fed from the live design tokens, so colours and radii match the page. */
     const appearance = () => {
         const css = getComputedStyle(document.body);
         const v = (name: string) => css.getPropertyValue(name).trim();
         return {
-            theme: darkQuery.matches ? 'night' : 'stripe',
+            theme: 'stripe',
             labels: 'above',
             variables: {
                 fontFamily: '"Plus Jakarta Sans", system-ui, sans-serif',
@@ -400,7 +399,6 @@ function start(root: HTMLElement, c: any) {
             },
         };
     };
-    darkQuery.addEventListener('change', () => elements?.update({ appearance: appearance() }));
 
     const returnUrl = () => {
         const url = new URL(location.pathname, location.origin);

@@ -1,16 +1,5 @@
-@use 'tokens';
-
 // Checkout (/checkout, /en/checkout): slim top bar, step bar, big headline + recap left, one question right.
-// Follows the system colour scheme (dark tokens from _tokens.scss); the Stripe elements read the same tokens.
-
-@media (prefers-color-scheme: dark) {
-    body.page-buy {
-        @include tokens.dark-tokens;
-        color-scheme: dark;
-        color: var(--color-text-main);
-        background: var(--color-surface-bg);
-    }
-}
+// Light only, like the rest of the landing; the Stripe elements read the same tokens.
 
 // JS toggles blocks via [hidden]; component display rules must not override it.
 .ck [hidden] {
