@@ -12,12 +12,12 @@ html.dark {
     --color-surface-card: #151920;
     --color-surface-paper: #151920;
     /* Reusing card color for paper in dark mode by default */
-    --color-surface-hover: #1e242e;
-    --color-surface-hover-light: #212732;
+    --color-surface-hover: #1f232a;
+    --color-surface-hover-light: #23272e;
     --color-surface-border: #2e3440;
     --color-surface-bg-rgb: 11, 13, 17;
     --color-surface-card-rgb: 21, 25, 32;
-    --color-surface-hover-rgb: 30, 36, 46;
+    --color-surface-hover-rgb: 31, 35, 42;
     --color-surface-border-rgb: 46, 52, 64;
     --color-surface-paper-rgb: var(--color-surface-card-rgb);
 

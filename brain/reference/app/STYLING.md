@@ -181,6 +181,10 @@ The app is borderless: focus and selection never draw a border, outline or hard 
   hover `--field-bg-hover` (a touch darker), focus sunken.
 - `tokens.focus-ring` / `focus-ring(true)` — keyboard focus (`:focus-visible`) on non-text controls.
   Never remove keyboard focus without it.
+Dark values (2026-10-24, calmer): `--color-surface-hover` #1f232a (card #151920 + 10, same hue — no blue cast;
+Level 2 for fields/rows/choices), `--color-surface-hover-light` #23272e, `--field-bg-hover` #22262d (minimal step),
+`--sunken-bg` rgba(0,0,0,0.24) (recessed relative to the parent), `--sunken-shadow` inset 0 1 2 black 40 % +
+inset 0 1 6 (−2) black 30 %. Light unchanged.
 Global guard (`web/styles/index.scss`): focused input/textarea/select get `border-color: transparent` and only
 `--field-focus-shadow` as box-shadow (`@property`, non-inheriting) — the Tailwind forms focus border/ring can't
 come back. Exempt: checkbox/radio/switch controls, colour swatches (offset ring), tab underlines, error and
