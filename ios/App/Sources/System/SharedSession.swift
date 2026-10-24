@@ -16,10 +16,11 @@ enum SharedSession {
         guard !refreshToken.isEmpty else { return }
         var credentials = SharedSessionCredentials(refreshToken: refreshToken, apiKey: apiKey, projectId: projectId,
                                                    tenantId: tenantId, uid: uid)
-        if case let .emulator(host, authPort, firestorePort, _, _) = PFFirebase.backend {
+        if case let .emulator(host, authPort, firestorePort, functionsPort, _) = PFFirebase.backend {
             credentials.emulatorHost = host
             credentials.authPort = authPort
             credentials.firestorePort = firestorePort
+            credentials.functionsPort = functionsPort
         }
         SharedSessionStore.save(credentials)
     }

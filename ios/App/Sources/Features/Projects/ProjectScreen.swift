@@ -4,7 +4,7 @@ import PFDesign
 import PFModel
 
 enum ProjectTab: Hashable {
-    case overview, list, board, plan, team
+    case overview, list, board, plan, files, team
 }
 
 /// Project cockpit: a light, editorial header (cover or monogram, situation sentence), a tab bar that pins
@@ -52,7 +52,7 @@ struct ProjectScreen: View {
         let plan: [CockpitTabBar<ProjectTab>.Option] = layout.planSections.isEmpty ? [] : [.init(.plan, L10n.t("projects.tab.plan"))]
         return [.init(.overview, L10n.t("projects.tab.overview"))]
             + (layout.tasksBeforePlan ? tasks + plan : plan + tasks)
-            + [.init(.team, L10n.t("projects.tab.team"))]
+            + [.init(.files, L10n.t("files.projectTitle")), .init(.team, L10n.t("projects.tab.team"))]
     }
 
     var body: some View {
@@ -219,6 +219,11 @@ struct ProjectScreen: View {
             ProjectBoardView(tasks: store.tasks, canMove: access.canEditTasks, emptyText: L10n.t("projects.board.empty"))
         case .plan:
             ProjectPlanView(store: store, canEdit: access.canManage, sections: navLayout.planSections, onOpenBoard: { selectTab(.board) }).padding(.top, PFSpace.m)
+        case .files:
+            FileAttachmentsCard(tenantId: tenantId,
+                                parent: FileParent(kind: .project, id: projectId, projectId: projectId, title: project.title))
+                .padding(.horizontal, PFSpace.page)
+                .padding(.top, PFSpace.m)
         case .team:
             ProjectTeamView(store: store, canEdit: access.canManage).padding(.top, PFSpace.m)
         }
