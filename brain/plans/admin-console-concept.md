@@ -84,3 +84,24 @@ Pakete 1–4 live inkl. Workspace-Sperre (`tenants/{id}.suspendedAt`, PERMISSION
   `admin.getprojectflow.com` hinzufügen und die DNS-Einträge (TXT/A) beim Registrar setzen. Danach die Domain unter Auth →
   Settings → „Autorisierte Domains“ eintragen und beim Google-OAuth-Client die Redirect-URI
   `https://admin.getprojectflow.com/__/auth/handler` ergänzen.
+
+## Admin-MCP (2026-10-24)
+
+Eigener MCP-Server nur für den Plattform-Admin, getrennt vom Nutzer-MCP (`/mcp` auf app.getprojectflow.com).
+- **Endpoint/Resource:** `https://admin.getprojectflow.com/mcp` (Fallback `https://projectflow-admin.web.app/mcp`), Hosting-Rewrites
+  der Site `projectflow-admin` → Functions `adminMcp` (MCP) und `adminOAuth` (`/.well-known/oauth-authorization-server`, `/oauth/authorize|token|register|revoke`).
+  Issuer = Konsolen-Host. Code: `functions/src/admin-console/mcp/`.
+- **Getrennte Datenhaltung:** `admin_mcp_clients`, `admin_mcp_requests`, `admin_mcp_codes`, `admin_mcp_grants`, `admin_mcp_tokens`,
+  `admin_mcp_pending` (Rules: dicht). Token-Präfixe `pfa_` (Access, 15 min) / `pfar_` (Refresh, rotierend, Grant max. 7 Tage).
+  Nutzer-MCP-Tokens (`pfo_`/`pfp_`, `ai_tokens`) werden hier nie gefunden und umgekehrt; Audience wird zusätzlich geprüft.
+- **Clients:** DCR nur mit Redirect-URIs aus der Allowlist (Loopback beliebiger Port = Claude Code, `https://claude.ai|claude.com/api/mcp/auth_callback`).
+  Neue Clients sind `pending`, bis der Admin sie in der Konsole freigibt (auch direkt auf der Consent-Seite). Kein CIMD.
+- **Consent** `/oauth/consent?request=…` in der Konsole: volle Konsolen-Kette (Claim, Allowlist, TOTP, Session) **plus** frische
+  Re-Authentifizierung mit TOTP (`auth_time` ≤ 5 min) direkt vor der Freigabe. Scopes `admin:read`, optional `admin:write`.
+- **Bei jedem MCP-Request:** Kill-Switch `admin_config/mcp.enabled` (Default aus), Token gültig + Audience, Grant aktiv und < 7 Tage,
+  Client freigegeben, Nutzer hat Claim, Allowlist aktiv mit passender E-Mail, keine Token-Widerrufe nach Grant-Erstellung,
+  Rate-Limit 60/min. Jeder Werkzeugaufruf → `admin_audit` (`mcp:<tool>`).
+- **Werkzeuge:** lesend über dieselben `adminApi`-Handler (Übersicht, Nutzer, Workspaces inkl. Billing/Flows, Crashes, KI, System, Audit).
+  Schreibend (`destructiveHint`): Sperre, Banner, In-App-KI-Rollout/Policy, Exempt, Speicher-Override, Crash-Status. Erster Aufruf legt
+  `admin_mcp_pending` an und liefert keine Wirkung; der 6-stellige Code steht nur in der Konsole (Admin-MCP → Ausstehend). Zweiter Aufruf
+  mit `confirmationCode` führt aus. Nichts löscht Daten endgültig. E-Mail an den Admin bei neuer Verbindung und jeder ausgeführten Schreibaktion.

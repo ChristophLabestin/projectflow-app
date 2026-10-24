@@ -606,3 +606,10 @@ Flows (`onAutomationEvent`, `runAutomationSchedules`, `executeRun` → `skipped_
 ### Platform config
 `platform_config/announcement` is public read (banner); every other `platform_config/*` and `admin_config/*` is closed. Writes only via `adminApi`.
 
+### Admin MCP (platform admin only)
+Separate from the user MCP: resource `https://admin.getprojectflow.com/mcp`, tokens `pfa_`/`pfar_` in `admin_mcp_tokens` (never in
+`ai_tokens`), clients only via DCR with allowlisted redirects (Claude Code loopback, claude.ai/claude.com) and admin approval.
+Consent = console gate + re-authentication with TOTP ≤ 5 min. Every request re-checks kill switch (`admin_config/mcp.enabled`),
+token, audience, grant (≤ 7 days), client, claim, allowlist and token revocation (`core.ts decideAccess`). Write tools need a code
+shown only in the console. All `admin_mcp_*` collections are closed to clients. Guide: `brain/operations/admin-mcp.md`.
+

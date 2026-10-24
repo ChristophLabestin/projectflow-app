@@ -431,7 +431,7 @@ const run = async () => {
         await check('owner cannot write insights', 'deny', () => owner.doc(`${T}/insights_daily/latest`).set({ day: 'x' }));
 
         // Admin console collections: closed to every client, platform admin included (adminApi only).
-        for (const path of ['platform_admins/platformAdminA', 'admin_sessions/platformAdminA', 'admin_audit/a1']) {
+        for (const path of ['platform_admins/platformAdminA', 'admin_sessions/platformAdminA', 'admin_audit/a1', 'admin_mcp_clients/c1', 'admin_mcp_grants/g1', 'admin_mcp_tokens/t1', 'admin_mcp_pending/p1', 'admin_mcp_codes/x', 'admin_mcp_requests/r1']) {
             await check(`platform admin cannot read ${path}`, 'deny', () => platformAdmin.doc(path).get());
             await check(`platform admin cannot write ${path}`, 'deny', () => platformAdmin.doc(path).set({ email: 'x' }));
             await check(`member cannot write ${path}`, 'deny', () => member.doc(path).set({ email: 'x' }));
