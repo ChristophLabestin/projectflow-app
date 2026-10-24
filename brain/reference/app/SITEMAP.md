@@ -132,6 +132,8 @@ Social module and Marketing dashboard/ads/email/recipients were removed 2026-10-
 
 ## Landing (getprojectflow.com, separate app in `landing/`)
 Static pages rendered at build time from `landing/src/templates/pages.ts` (Firebase site `getprojectflow`, cleanUrls):
+- Home sections (order): `#story` (pinned, 6 acts) · `#teams` (role tabs) · `#mcp` (pinned on desktop) · `#apps` · `#more` (bento) · `#trust` · `#pricing` · `#faq` · CTA. Concept: `brain/plans/landing-sections-v2.md`.
+- Generated at build: `/sitemap.xml`, `/llms.txt` (`landing/src/templates/seo-files.ts`); legal pages prerendered from the app's legal API (fallback `legal/*.md`).
 - `/` (DE) · `/en` (EN) — home: pinned story stage (6 acts), Für wen (#teams), Apps (#apps), KI & MCP (#mcp), Funktionen (#more), Preise (#pricing, planned prices – see brain/plans/pricing-strategy.md), FAQ, CTA
 - Legal: no texts in the landing. `LEGAL_SOURCE` in `landing/src/templates/pages.ts`: `app-link` links to `app.getprojectflow.com/legal/<type>`; `api` (current since 2026-10-23) builds `/impressum` · `/en/imprint`, `/datenschutz` · `/en/privacy`, `/agb` · `/en/terms` as shells that load `GET /api/legal/<type>?lang=` (`landing/src/js/legal.ts`). Source texts: `legal/<type>.<lang>.md` (imported as drafts by `functions/scripts/import-legal-docs.mjs`)
 - `/docs/mcp` · `/en/docs/mcp` — public MCP guide (`landing/src/content/docs-mcp.ts`, template `docs.ts`); server URL constant `MCP_URL` in `landing/src/templates/pages.ts`. Linked from nav, footer and the AI section. Keep in sync with `brain/operations/mcp-install-guide.md` and `web/components/settings/aiClients.ts`.

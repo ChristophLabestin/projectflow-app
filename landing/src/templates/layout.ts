@@ -87,9 +87,9 @@ const header = (page: PageDef, t: SiteCopy): string => {
     const other = otherLang(page.lang);
     const navItems = [
         ['story', t.nav.story],
+        ['mcp', t.nav.ai],
         ['apps', t.nav.apps],
         ['pricing', t.nav.pricing],
-        ['mcp', t.nav.ai],
     ];
     const docsUrl = urlFor('docsMcp', page.lang);
     const navList = navItems.map(([id, label]) => `<li><a href="${anchor(id)}">${esc(label)}</a></li>`).join('')
