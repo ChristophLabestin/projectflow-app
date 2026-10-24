@@ -41,7 +41,10 @@ struct SidebarDrawer<Sidebar: View>: ViewModifier {
                             .accessibilityAddTraits(.isButton)
                     }
                 }
-                .shadow(color: .black.opacity(0.12 * progress), radius: 16)
+                // A crisp hairline instead of a soft shadow that would smear grey over the sidebar.
+                .overlay(alignment: .leading) {
+                    if progress > 0 { Rectangle().fill(PFColor.hairlineStrong).frame(width: 1).ignoresSafeArea() }
+                }
                 .offset(x: drawerWidth * progress)
         }
         .background(PFCanvas())
